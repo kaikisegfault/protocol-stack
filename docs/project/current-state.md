@@ -16,6 +16,7 @@ vectors.
   all four GitHub compiler/sanitizer jobs passed.
 - Ledger-transition v1 merged through PR #9 on 2026-07-23; all four GitHub
   compiler/sanitizer jobs passed.
+- The complete issue #8 in-memory kernel is published for review in PR #10.
 - On 2026-07-23 the owner granted standing authority for autonomous project
   decisions and repository operations. A `proceed` instruction requires no
   follow-up approval.
@@ -139,9 +140,10 @@ vectors.
 
 Continue issue #8:
 
-> Commit and push the verified production-primitive and fuzz slice, open the
-> coherent pull request with exact local evidence, and monitor all four
-> required GitHub checks to a terminal result.
+> Monitor all four required checks on PR #10 to a terminal result and
+> rebase-merge it when green. Then open the next M1 issue for replaceable
+> atomic persistence, reopen/replay, snapshots, corruption detection, and
+> crash recovery before starting its storage ADR.
 
 ## Open autonomous decisions
 
