@@ -47,7 +47,7 @@ The version-one canonical genesis bytes are:
 | total supply | `u64` | configured, nonzero and at most the limit |
 | fixed transfer fee | `u64` | configured, nonzero |
 | initial fee pool | `u64` | configured |
-| account count | `u32` | 1 through 65,535 |
+| account count | `u32` | 1 through 21,844 |
 | accounts | repeated 48-byte state entries | exactly `account count` entries |
 
 Each account entry has the layout specified by ADR 0004:
@@ -60,6 +60,12 @@ Genesis account IDs must be strictly increasing, every genesis balance must be
 nonzero, and every genesis nonce must be zero. Checked addition of all balances
 and the initial fee pool must equal total supply. No trailing bytes are
 allowed.
+
+The generic maximum canonical-object size is 1,048,576 bytes. The genesis
+prefix through `account count` is 46 bytes, so at most 21,844 48-byte entries
+fit: `46 + 48 * 21,844 = 1,048,558`. A decoder must reject a declared count
+above 21,844 before allocating account storage or deriving the expected byte
+length. A count of 21,845 would require 1,048,606 bytes and is invalid.
 
 ```text
 chain_id =
@@ -103,6 +109,13 @@ these checks in order:
 2. require the configured chain ID;
 3. derive the sender account ID from the encoded public key;
 4. strictly verify the Ed25519 signature over the version-one signing message.
+
+Step 1 classifies a wrong length, magic, schema version, transaction kind, or
+signature-scheme identifier as `MALFORMED_TRANSACTION`. The fixed-width public
+key and signature fields remain uninterpreted bytes during shape decoding.
+At step 4, a non-canonical or small-order public key or `R`, a non-canonical
+`S`, or a failed signature equation all return `INVALID_SIGNATURE`; these
+cryptographic distinctions are never malformed-transaction results.
 
 A failure returns the first applicable admission error:
 
