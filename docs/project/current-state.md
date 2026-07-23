@@ -4,9 +4,9 @@ Last updated: 2026-07-23
 
 ## Phase
 
-M1 — Sovereign Devnet Alpha. Protocol primitives and ledger-transition v1 are
-accepted, and the reproducible toolchain executes their cross-language
-vectors.
+M1 — Sovereign Devnet Alpha. The deterministic in-memory ledger kernel is
+merged and verified. Atomic persistence, replay, snapshots, and recovery are
+the active roadmap slice.
 
 ## Verified facts
 
@@ -16,7 +16,10 @@ vectors.
   all four GitHub compiler/sanitizer jobs passed.
 - Ledger-transition v1 merged through PR #9 on 2026-07-23; all four GitHub
   compiler/sanitizer jobs passed.
-- The complete issue #8 in-memory kernel is published for review in PR #10.
+- The complete issue #8 in-memory kernel merged through PR #10 on 2026-07-23;
+  all four GitHub compiler/sanitizer jobs passed.
+- Issue #11 defines the next M1 slice for replaceable atomic persistence,
+  reopen/replay, snapshots, corruption detection, and crash recovery.
 - On 2026-07-23 the owner granted standing authority for autonomous project
   decisions and repository operations. A `proceed` instruction requires no
   follow-up approval.
@@ -43,10 +46,10 @@ vectors.
 - The M1 devnet uses nine atomic decimal places, a `10^18` atomic supply limit,
   a default `10^17` atomic four-account genesis, a 1,000-atomic fixed fee, and
   no post-genesis issuance.
-- The issue #8 in-memory kernel branch implements strict transaction admission,
-  checked transfer execution, bounded canonical genesis loading, state and
-  transaction commitments, receipts, and atomic ordered block commit behind an
-  owning public `Ledger`.
+- The in-memory kernel implements strict transaction admission, checked
+  transfer execution, bounded canonical genesis loading, state and transaction
+  commitments, receipts, and atomic ordered block commit behind an owning
+  public `Ledger`.
 - Account IDs, chain IDs, transaction IDs, state roots, transaction roots, and
   block IDs are distinct tagged C++ types with unchanged canonical 32-byte
   representations. Persistence, networking, RPC, consensus integration, and
@@ -138,17 +141,22 @@ vectors.
 
 ## Exact next action
 
-Continue issue #8:
+Begin issue #11:
 
-> Monitor all four required checks on PR #10 to a terminal result and
-> rebase-merge it when green. Then open the next M1 issue for replaceable
-> atomic persistence, reopen/replay, snapshots, corruption detection, and
-> crash recovery before starting its storage ADR.
+> Research SQLite, LMDB, RocksDB, and a custom journal from primary sources;
+> record the selected replaceable M1 storage adapter, exact dependency pin,
+> durability contract, versioned schema boundary, failure model, and removal
+> path in an accepted ADR before implementing persistence.
 
 ## Open autonomous decisions
 
 - Final acceptance of CometBFT as the replaceable M1 consensus/P2P adapter.
+- Selection of the replaceable M1 persistence adapter and pinned version.
 
 ## Blockers
 
 None.
+
+The remote `protocol/6-ledger-transition-spec` branch is not a project blocker,
+but it contains the unique pre-existing `protocol-stack.code-workspace` commit
+and must not be deleted until that file is deliberately retained or discarded.
