@@ -70,27 +70,39 @@ add_executable(
   protocol_primitive_vectors
   tools/protocol-vectors/verify.cpp
 )
-target_compile_features(protocol_primitive_vectors PRIVATE cxx_std_20)
-target_compile_definitions(
-  protocol_primitive_vectors
-  PRIVATE
-    _GLIBCXX_ASSERTIONS
+add_executable(
+  ledger_transition_vectors
+  tools/ledger-vectors/verify.cpp
 )
-target_compile_options(
-  protocol_primitive_vectors
-  PRIVATE
-    -Wall
-    -Wextra
-    -Wpedantic
-    -Werror
-    ${PROTOCOL_STACK_SANITIZER_FLAGS}
+
+foreach(
+  protocol_stack_target
+  IN ITEMS
+    protocol_primitive_vectors
+    ledger_transition_vectors
 )
-target_link_options(
-  protocol_primitive_vectors
-  PRIVATE
-    ${PROTOCOL_STACK_SANITIZER_FLAGS}
-)
-target_link_libraries(protocol_primitive_vectors PRIVATE protocol_stack_sodium)
+  target_compile_features(${protocol_stack_target} PRIVATE cxx_std_20)
+  target_compile_definitions(
+    ${protocol_stack_target}
+    PRIVATE
+      _GLIBCXX_ASSERTIONS
+  )
+  target_compile_options(
+    ${protocol_stack_target}
+    PRIVATE
+      -Wall
+      -Wextra
+      -Wpedantic
+      -Werror
+      ${PROTOCOL_STACK_SANITIZER_FLAGS}
+  )
+  target_link_options(
+    ${protocol_stack_target}
+    PRIVATE
+      ${PROTOCOL_STACK_SANITIZER_FLAGS}
+  )
+  target_link_libraries(${protocol_stack_target} PRIVATE protocol_stack_sodium)
+endforeach()
 
 add_test(
   NAME protocol-primitives-cpp
@@ -105,8 +117,22 @@ add_test(
     "${PROJECT_SOURCE_DIR}/tools/protocol-vectors/verify.py"
     "${PROJECT_SOURCE_DIR}/test-vectors/protocol-primitives-v1.txt"
 )
+add_test(
+  NAME ledger-transition-cpp
+  COMMAND
+    ledger_transition_vectors
+    "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
+)
+add_test(
+  NAME ledger-transition-python
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tools/ledger-vectors/verify.py"
+    "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
+)
 set_tests_properties(
   protocol-primitives-python
+  ledger-transition-python
   PROPERTIES
     ENVIRONMENT
       "PROTOCOL_STACK_LIBSODIUM=${PROTOCOL_STACK_SODIUM_SHARED_LIBRARY}"

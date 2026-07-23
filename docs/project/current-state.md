@@ -4,13 +4,16 @@ Last updated: 2026-07-23
 
 ## Phase
 
-M1 — Sovereign Devnet Alpha. Protocol primitives are accepted and the
-reproducible build/toolchain slice is verified.
+M1 — Sovereign Devnet Alpha. Protocol primitives and ledger-transition v1 are
+accepted, and the reproducible toolchain executes their cross-language
+vectors.
 
 ## Verified facts
 
 - Repository: `kaikisegfault/protocol-stack`.
 - F0 merged to `main` through PR #3 on 2026-07-23.
+- The reproducible build/toolchain slice merged through PR #7 on 2026-07-23;
+  all four GitHub compiler/sanitizer jobs passed.
 - On 2026-07-23 the owner granted standing authority for autonomous project
   decisions and repository operations. A `proceed` instruction requires no
   follow-up approval.
@@ -27,10 +30,16 @@ reproducible build/toolchain slice is verified.
 - `tools/verify.sh` is the clean-clone entry point. It isolates build tools in
   an ignored virtual environment, builds the pinned libsodium source, and runs
   C++ and standard-library-only Python checks through CTest.
+- ADR 0006 and `ledger-transition-v1.md` define canonical genesis, a
+  single-native-asset transfer, fixed fee-pool routing, exact nonce/expiry and
+  failure rules, receipts, and ordered atomic block execution.
+- The M1 devnet uses nine atomic decimal places, a `10^18` atomic supply limit,
+  a default `10^17` atomic four-account genesis, a 1,000-atomic fixed fee, and
+  no post-genesis issuance.
 - The repository still contains no ledger, networking, persistence, or
   production deployment implementation.
 
-## Protocol-primitives evidence
+## Verification evidence
 
 - The fixed primitive vector suite passes through `tools/verify.sh` with GCC
   12.2.0, Clang 14.0.6, and `-Wall -Wextra -Wpedantic -Werror`.
@@ -43,19 +52,29 @@ reproducible build/toolchain slice is verified.
 - CMake preset JSON, TOML, GitHub workflow and issue-form YAML, Python bytecode
   compilation, shell syntax, internal Markdown links, and `git diff --check`
   pass.
+- The independent C++20 and Python ledger decision harnesses reproduce a
+  canonical genesis, chain ID, 11 admitted transaction results, three
+  admission error classes plus unknown-kind rejection, ordered receipts,
+  recipient creation, fee routing, final accounts, transaction/state roots,
+  application header, and block ID.
+- Ledger vectors cover success, replay, self-transfer, zero amount, low fee
+  limit, expiry, absent sender, nonce mismatch and exhaustion, debit overflow,
+  insufficient balance, malformed bytes, wrong chain, invalid signature, and
+  unauthorized transaction kind.
+- All four local presets pass 4/4 CTest tests: GCC, GCC ASan+UBSan, Clang, and
+  Clang ASan+UBSan.
 
 ## Exact next action
 
-Land the verified GitHub issue #4 build/toolchain slice, then begin issue #6:
+Land the verified GitHub issue #6 specification/vector slice, then begin issue
+#8:
 
-> Specify deterministic M1 ledger state transitions and devnet monetary
-> constants, including exact failure atomicity and normative cross-language
-> vectors.
+> Implement the original in-memory C++20 ledger kernel and differentially
+> verify at least 10,000 seeded ordered transaction sequences against the
+> independent Python model.
 
 ## Open autonomous decisions
 
-- Devnet native unit name, precision, supply limit, genesis allocation, and fee
-  constants under issue #6.
 - Final acceptance of CometBFT as the replaceable M1 consensus/P2P adapter.
 
 ## Blockers
