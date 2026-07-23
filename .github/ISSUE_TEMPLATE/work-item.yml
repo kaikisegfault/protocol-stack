@@ -1,0 +1,32 @@
+name: Work item
+description: Define a measurable implementation, test, documentation, or research outcome.
+title: "[Work]: "
+labels:
+  - triage
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome
+      description: What observable result should exist?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance evidence
+      description: Which exact checks or artifacts prove completion?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: What is included and explicitly excluded?
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies and owner decisions
+      description: List blocking issues, ADRs, specifications, or owner gates.
