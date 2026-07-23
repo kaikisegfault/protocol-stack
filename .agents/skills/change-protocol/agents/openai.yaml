@@ -1,0 +1,4 @@
+interface:
+  display_name: "Change Protocol"
+  short_description: "Design and verify protocol-level changes"
+  default_prompt: "Use $change-protocol to make a specification-led protocol change."

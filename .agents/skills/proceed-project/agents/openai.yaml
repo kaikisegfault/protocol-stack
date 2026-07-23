@@ -1,0 +1,4 @@
+interface:
+  display_name: "Proceed Project"
+  short_description: "Continue the next verified project slice"
+  default_prompt: "Use $proceed-project to continue the next verified project slice."

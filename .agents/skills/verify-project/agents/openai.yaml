@@ -1,0 +1,4 @@
+interface:
+  display_name: "Verify Project"
+  short_description: "Run the repository verification gates"
+  default_prompt: "Use $verify-project to run the required repository verification gates."
