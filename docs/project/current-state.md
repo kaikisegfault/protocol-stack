@@ -20,6 +20,12 @@ the active roadmap slice.
   all four GitHub compiler/sanitizer jobs passed.
 - Issue #11 defines the next M1 slice for replaceable atomic persistence,
   reopen/replay, snapshots, corruption detection, and crash recovery.
+- ADR 0007 selects the official SQLite 3.53.3 autoconf archive at SHA-256
+  `c917d7db16648ec95f714974ace5e5dcf46b7dc70e26600a0a102a3141125db0`
+  as the replaceable M1 persistence engine. The adapter requires local
+  rollback-journal storage, `synchronous=EXTRA`, lifetime exclusive locking,
+  full genesis replay, independent snapshot-plus-suffix recovery, and a
+  versioned engine-independent export path.
 - On 2026-07-23 the owner granted standing authority for autonomous project
   decisions and repository operations. A `proceed` instruction requires no
   follow-up approval.
@@ -141,17 +147,16 @@ the active roadmap slice.
 
 ## Exact next action
 
-Begin issue #11:
+Continue issue #11:
 
-> Research SQLite, LMDB, RocksDB, and a custom journal from primary sources;
-> record the selected replaceable M1 storage adapter, exact dependency pin,
-> durability contract, versioned schema boundary, failure model, and removal
-> path in an accepted ADR before implementing persistence.
+> Add the integrity-pinned static SQLite build and a narrow validated
+> `Ledger` state-restoration factory, then verify those dependency and kernel
+> boundaries in all four compiler/sanitizer presets before implementing the
+> owning persistence adapter.
 
 ## Open autonomous decisions
 
 - Final acceptance of CometBFT as the replaceable M1 consensus/P2P adapter.
-- Selection of the replaceable M1 persistence adapter and pinned version.
 
 ## Blockers
 
