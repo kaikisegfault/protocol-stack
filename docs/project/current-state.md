@@ -14,6 +14,8 @@ vectors.
 - F0 merged to `main` through PR #3 on 2026-07-23.
 - The reproducible build/toolchain slice merged through PR #7 on 2026-07-23;
   all four GitHub compiler/sanitizer jobs passed.
+- Ledger-transition v1 merged through PR #9 on 2026-07-23; all four GitHub
+  compiler/sanitizer jobs passed.
 - On 2026-07-23 the owner granted standing authority for autonomous project
   decisions and repository operations. A `proceed` instruction requires no
   follow-up approval.
@@ -37,7 +39,8 @@ vectors.
   a default `10^17` atomic four-account genesis, a 1,000-atomic fixed fee, and
   no post-genesis issuance.
 - The repository still contains no ledger, networking, persistence, or
-  production deployment implementation.
+  production deployment implementation beyond the issue #8 transaction
+  admission layer.
 
 ## Verification evidence
 
@@ -63,15 +66,18 @@ vectors.
   unauthorized transaction kind.
 - All four local presets pass 4/4 CTest tests: GCC, GCC ASan+UBSan, Clang, and
   Clang ASan+UBSan.
+- The initial production kernel slice uses owned value types, exact canonical
+  shape and chain checks, domain-separated account/transaction IDs, and the
+  pinned strict libsodium adapter. Its frozen admission vectors pass 5/5 CTest
+  tests under all four local presets.
 
 ## Exact next action
 
-Land the verified GitHub issue #6 specification/vector slice, then begin issue
-#8:
+Continue issue #8:
 
-> Implement the original in-memory C++20 ledger kernel and differentially
-> verify at least 10,000 seeded ordered transaction sequences against the
-> independent Python model.
+> Implement checked transfer execution, commitments, and atomic ordered block
+> results against the frozen ledger vectors, then add fuzz/property and 10,000
+> seeded differential sequences.
 
 ## Open autonomous decisions
 
