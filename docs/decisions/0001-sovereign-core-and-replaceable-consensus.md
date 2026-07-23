@@ -30,5 +30,6 @@ state.
 
 ## Acceptance
 
-The owner must explicitly accept this record before the M1 consensus adapter is
-implemented.
+Accept this record under the standing delegation only after the adapter choice
+is supported by compatibility research and the M1 integration evidence is
+defined. Acceptance is required before implementing the M1 consensus adapter.

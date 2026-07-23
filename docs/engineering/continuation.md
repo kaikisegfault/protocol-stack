@@ -29,19 +29,23 @@ When the owner says `proceed`, the session should:
 6. Implement, test, inspect, and document the slice.
 7. Commit and push each atomic verified chunk when repository policy allows.
 8. Update `current-state.md` with evidence and the next action.
-9. Continue with another bounded slice while time, context, and permissions
-   remain.
+9. Open and merge reviewable PRs when their evidence gates pass.
+10. Continue with another bounded slice while time, context, and tools remain.
 
-Do not stop merely because one small slice completed. Do stop for an owner gate,
-an unrecoverable external blocker, a safety boundary, or exhausted execution
-limits.
+The owner's 2026-07-23 standing delegation means `proceed` requires no
+follow-up approval for project decisions or GitHub, release, and deployment
+operations. Do not stop merely because one slice, PR, or milestone completed.
+Stop only for exhausted execution limits or a genuine external blocker such as
+unavailable credentials or infrastructure, required independent review, or
+conflicting unexplained user work. Complete other unblocked work first.
 
-## Questions
+## Autonomous decisions
 
-Questions are reserved for decisions that materially change architecture,
-economics, cryptography, dependencies, authority, external state, or risk.
-Before asking, complete all safe research and unblocked work. Present one
-recommended option and the consequence of each alternative.
+For decisions that materially change architecture, economics, cryptography,
+dependencies, authority, external state, or risk, research credible
+alternatives and record the recommended choice, rejected alternatives,
+consequences, and evidence in the relevant specification and ADR. Evidence
+gates remain mandatory even though owner approval pauses do not.
 
 ## Interrupted work
 
@@ -61,4 +65,4 @@ Before yielding:
 - review `git diff` and `git status`;
 - update specifications and ADRs affected by the change;
 - update `current-state.md` using only verified facts;
-- state the exact next action and any owner decision required.
+- state the exact next action and any genuine external blocker.

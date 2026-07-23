@@ -34,5 +34,7 @@ attestations from independent AI authorities.
 
 ## Acceptance
 
-The owner must accept the authority, threshold, and recovery model before an AI
-authority module is implemented.
+Accept the authority, threshold, and recovery model under the standing
+delegation only after its specification, threat model, simulations, and
+independent review requirements are recorded. Acceptance is required before an
+AI authority module is implemented.

@@ -63,23 +63,28 @@ test evidence, then repair the state document.
   cryptography, tokenomics, authority, or compatibility changes.
 - Use the `verify-project` skill before claiming completion.
 
-## Autonomy and owner gates
+## Standing autonomous delegation
 
-Proceed autonomously with reversible implementation that follows accepted
-specifications and ADRs. Stop and ask the owner before:
+On 2026-07-23 the owner granted standing authority for end-to-end autonomous
+project execution. A `proceed` instruction activates that authority for the
+session; it does not require follow-up approval for technical, product,
+protocol, economic, dependency, GitHub, release, or deployment decisions.
 
-- changing a constitutional or economic invariant;
-- selecting or replacing cryptographic primitives or canonical encoding;
-- adding a production dependency;
-- changing the long-term consensus strategy;
-- enabling public contract deployment or secondary assets;
-- changing AI authority, treasury, mint, bridge, or upgrade powers;
-- handling secrets, deploying externally, publishing a release, or touching a
-  public testnet/mainnet;
-- destructive operations or changes that conflict with unexplained user work.
+For consequential choices, research credible alternatives, record the selected
+default and consequences in a specification or ADR, satisfy the applicable
+verification and review gates, and continue. Evidence gates replace approval
+pauses; they must not be bypassed merely to preserve momentum.
 
-Questions should present a recommended default, alternatives, consequences,
-and the smallest decision needed.
+Continue through bounded slices until execution limits or a genuine external
+blocker prevent useful work. Do not stop to ask for approval. When one path is
+blocked, complete other safe work first. Record a remaining blocker only when
+it requires unavailable credentials, unavailable external infrastructure,
+independent review that cannot be performed in-session, or resolution of
+conflicting unexplained user work.
+
+Use only credentials already configured for the repository, never expose or
+commit secrets, and keep destructive actions narrowly scoped and recoverable
+where practical.
 
 ## Git and authorship
 
@@ -98,8 +103,9 @@ and the smallest decision needed.
 - Keep the configured repository identity:
   `Giorgi Chomakhashvili <133794518+kaikisegfault@users.noreply.github.com>`.
 - Bot-authored dependency and platform automation is allowed.
-- Push verified work to the current feature branch. Do not merge, tag, release,
-  or deploy without the owner or an explicit repository policy authorizing it.
+- Push verified work to the current feature branch. The standing delegation
+  authorizes opening and merging PRs, tagging, publishing releases, and
+  deploying when the applicable repository evidence gates are satisfied.
 
 ## Definition of done
 

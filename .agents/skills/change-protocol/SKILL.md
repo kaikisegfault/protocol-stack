@@ -11,8 +11,9 @@ description: Design or implement consensus-visible changes in protocol-stack, in
    state.
 2. Classify the change: primitive, encoding, validation, state transition,
    economics, authority, compatibility, or adapter-only.
-3. Confirm whether an owner gate in `AGENTS.md` applies. Research and present a
-   recommended default before asking.
+3. Research credible alternatives, select a recommended default under the
+   standing delegation in `AGENTS.md`, and record the rationale and
+   consequences in an ADR. Do not pause for owner approval.
 4. Write or update the canonical specification before implementation.
 
 The specification must define:
@@ -59,4 +60,4 @@ canonical execution.
    compatibility effect in the current handoff.
 
 Do not label an economic rule immutable until its specification, simulation,
-failure modes, and owner acceptance are recorded.
+failure modes, independent review requirements, and accepted ADR are recorded.

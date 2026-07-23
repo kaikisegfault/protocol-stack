@@ -43,7 +43,7 @@ body:
   - type: checkboxes
     id: gates
     attributes:
-      label: Owner gates
+      label: Decision and evidence gates
       options:
-        - label: I identified any cryptography, encoding, tokenomics, dependency, authority, bridge, or consensus decision requiring owner acceptance.
+        - label: I identified and will document any cryptography, encoding, tokenomics, dependency, authority, bridge, or consensus decision and its required evidence.
           required: true

@@ -28,5 +28,5 @@ body:
   - type: textarea
     id: dependencies
     attributes:
-      label: Dependencies and owner decisions
-      description: List blocking issues, ADRs, specifications, or owner gates.
+      label: Dependencies and decision gates
+      description: List blocking issues, ADRs, specifications, evidence gates, or external blockers.
