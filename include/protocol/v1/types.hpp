@@ -43,6 +43,14 @@ enum class AdmissionError : std::uint8_t {
   invalid_signature = 3,
 };
 
+enum class GenesisError : std::uint8_t {
+  malformed = 1,
+  unsupported_network = 2,
+  invalid_parameters = 3,
+  invalid_accounts = 4,
+  invalid_supply = 5,
+};
+
 enum class TransferResult : std::uint8_t {
   success = 0,
   zero_amount = 1,
