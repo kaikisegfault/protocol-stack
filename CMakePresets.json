@@ -47,6 +47,7 @@
       "inherits": "clang-debug",
       "displayName": "Clang ASan and UBSan",
       "cacheVariables": {
+        "PROTOCOL_STACK_ENABLE_FUZZING": "ON",
         "PROTOCOL_STACK_ENABLE_SANITIZERS": "ON"
       }
     }

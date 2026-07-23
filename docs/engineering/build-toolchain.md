@@ -40,12 +40,18 @@ The script checks the supported platform and host prerequisites, creates
 `.cache/toolchain-linux-x86_64`, and uses hash-checked requirements to install
 the exact CMake and Ninja wheels. CMake then downloads the official libsodium
 1.0.22 archive, verifies its committed SHA-256 digest, builds it within the
-selected preset, builds the C++20 vector harness, and runs both C++ and Python
-tests through CTest.
+selected preset, builds the C++20 verification targets, and runs the C++ and
+Python suite through CTest.
 
-The Python test uses only the standard library and the exact libsodium shared
-library produced by that build. It does not inspect or modify the user's
+The Python tests use only the standard library and the exact libsodium shared
+library produced by that build. They do not inspect or modify the user's
 Python environment.
+
+The `clang-sanitizers` preset additionally builds a separate copy of the
+protocol kernel with libFuzzer coverage instrumentation. CTest runs bounded
+512-input smoke sessions for transaction admission, text-address decoding,
+and canonical genesis loading under AddressSanitizer and
+UndefinedBehaviorSanitizer. The other three presets do not build fuzz targets.
 
 ## Cache and cleanup
 

@@ -289,7 +289,7 @@ void verify_state_errors() {
   require_state_error(invalid, pc::StateError::invalid_parameters);
   invalid = state;
   invalid.parameters.total_supply = 0;
-  require_state_error(invalid, pc::StateError::invalid_parameters);
+  require_state_error(invalid, pc::StateError::supply_mismatch);
   invalid = state;
   invalid.parameters.fixed_fee = 0;
   require_state_error(invalid, pc::StateError::invalid_parameters);

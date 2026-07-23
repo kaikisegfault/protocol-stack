@@ -27,12 +27,15 @@ CTest. See `build-toolchain.md` for host prerequisites, other presets, cache
 behavior, and cleanup.
 
 CI runs GCC and Clang debug builds plus AddressSanitizer and
-UndefinedBehaviorSanitizer builds. As production surfaces are added, this same
-entry point will expand to orchestrate:
+UndefinedBehaviorSanitizer builds. The current suite includes unit and boundary
+tests, deterministic properties, 10,000 seeded differential sequences, and
+bounded libFuzzer smoke under the Clang sanitizer preset.
+
+As production surfaces are added, this same entry point will expand to
+orchestrate:
 
 - format and static analysis;
-- unit, property, and integration tests;
-- bounded CI fuzz smoke tests;
+- integration tests;
 - deterministic replay and restart tests.
 
 Long-running fuzzing, economic simulations, and multi-platform reproducibility
