@@ -100,6 +100,25 @@ vectors.
   determinism, tentative-copy isolation, and internal execution atomicity.
 - All four local presets pass 9/9 CTest tests with the public block slice: GCC,
   GCC ASan+UBSan, Clang, and Clang ASan+UBSan.
+- Deterministic property tests run 9,000 generated states and transfers, cover
+  all nine execution results with deliberately overlapping invalid conditions,
+  compare every successful post-state exactly, and assert determinism,
+  failure atomicity, receipt validity, commitment validity, and supply
+  conservation.
+- A standard-library-only Python reference model differentially checks 10,000
+  nonempty SplitMix64-v1-seeded transaction sequences plus 11 directed
+  sequences against the public C++ ledger. Across 19,972 successful blocks and
+  60,432 raw inputs, it compares raw-aligned admission results, 48,471 admitted
+  transaction IDs, typed and encoded receipts, all roots, headers, block IDs,
+  immutable parameters, height, fee pool, and every account after each block.
+- The randomized corpus independently covers all three admission errors, every
+  execution result reachable from valid genesis, replay, reversed order,
+  self-transfer, recipient creation, empty blocks, and all-unadmitted blocks.
+  Nonce exhaustion and rejected genesis/block containers remain covered by
+  focused boundary tests because nonce exhaustion is not reachable from valid
+  genesis within a bounded sequence.
+- All four local presets pass 11/11 CTest tests with property and differential
+  coverage: GCC, GCC ASan+UBSan, Clang, and Clang ASan+UBSan.
 - Variable-length genesis and transaction byte entry points are now present;
   bounded fuzz smoke coverage is required before issue #8 is complete.
 
@@ -107,11 +126,9 @@ vectors.
 
 Continue issue #8:
 
-> Add deterministic property/invariant coverage, bounded transaction/genesis
-> fuzz targets with Clang sanitizer CI smoke, and an independent Python model
-> that differentially checks at least 10,000 seeded ordered transaction
-> sequences against the public C++ ledger; then run every repository gate and
-> prepare the coherent issue #8 pull request.
+> Add bounded transaction-admission and genesis-decoder libFuzzer targets with
+> Clang ASan+UBSan CI smoke, then run every repository gate, self-review the
+> complete issue #8 diff, and prepare its coherent pull request.
 
 ## Open autonomous decisions
 
