@@ -79,6 +79,7 @@ add_library(
   STATIC
     src/v1/admission.cpp
     src/v1/crypto.cpp
+    src/v1/execution.cpp
 )
 target_include_directories(
   protocol_kernel
@@ -90,6 +91,11 @@ add_executable(
   tests/kernel/admission_test.cpp
 )
 target_link_libraries(kernel_admission_tests PRIVATE protocol_kernel)
+add_executable(
+  kernel_execution_tests
+  tests/kernel/execution_test.cpp
+)
+target_link_libraries(kernel_execution_tests PRIVATE protocol_kernel)
 
 foreach(
   protocol_stack_target
@@ -98,6 +104,7 @@ foreach(
     ledger_transition_vectors
     protocol_kernel
     kernel_admission_tests
+    kernel_execution_tests
 )
   target_compile_features(${protocol_stack_target} PRIVATE cxx_std_20)
   target_compile_definitions(
@@ -152,6 +159,12 @@ add_test(
   NAME kernel-admission
   COMMAND
     kernel_admission_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
+)
+add_test(
+  NAME kernel-execution
+  COMMAND
+    kernel_execution_tests
     "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
 )
 set_tests_properties(
