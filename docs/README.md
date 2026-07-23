@@ -35,3 +35,8 @@ superseded.
 Canonical protocol specifications live in `specifications/` and must define
 consensus-critical behavior before implementation. An accepted version is
 immutable; compatible changes require a new version.
+
+- `specifications/protocol-primitives-v1.md`: canonical version-one encoding,
+  cryptography, identifiers, addresses, transactions, and commitments.
+- `specifications/ledger-transition-v1.md`: M1 genesis, native transfer, fee,
+  receipt, and ordered block semantics.
