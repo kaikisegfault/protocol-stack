@@ -1,0 +1,41 @@
+name: Verify
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: Linux x86_64 / ${{ matrix.preset }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        preset:
+          - gcc-debug
+          - gcc-sanitizers
+          - clang-debug
+          - clang-sanitizers
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - name: Install host prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes \
+            build-essential \
+            clang \
+            make \
+            python3 \
+            python3-venv
+
+      - name: Verify
+        env:
+          PROTOCOL_STACK_PRESET: ${{ matrix.preset }}
+        run: tools/verify.sh

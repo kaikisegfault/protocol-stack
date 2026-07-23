@@ -6,23 +6,6 @@
 
 namespace pv = protocol_vectors;
 
-extern "C" {
-int sodium_init(void);
-const char* sodium_version_string(void);
-int crypto_sign_seed_keypair(unsigned char* public_key,
-                             unsigned char* secret_key,
-                             const unsigned char* seed);
-int crypto_sign_detached(unsigned char* signature,
-                         unsigned long long* signature_size,
-                         const unsigned char* message,
-                         unsigned long long message_size,
-                         const unsigned char* secret_key);
-int crypto_sign_verify_detached(const unsigned char* signature,
-                                const unsigned char* message,
-                                unsigned long long message_size,
-                                const unsigned char* public_key);
-}
-
 pv::Bytes public_key(const pv::Bytes& seed) {
   pv::require(seed.size() == 32, "wrong Ed25519 seed size");
   pv::Bytes public_bytes(32);

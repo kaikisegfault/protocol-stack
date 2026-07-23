@@ -24,6 +24,16 @@ verified unit of work with:
 proceed
 ```
 
+On a supported Linux x86_64 development host, configure, build, and test the
+current implementation with:
+
+```sh
+tools/verify.sh
+```
+
+See the [build and test toolchain](docs/engineering/build-toolchain.md) for
+host prerequisites and compiler/sanitizer presets.
+
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).
