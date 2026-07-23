@@ -1,0 +1,49 @@
+name: Protocol change
+description: Propose consensus, encoding, cryptography, economic, authority, or compatibility behavior.
+title: "[Protocol]: "
+labels:
+  - protocol
+  - triage
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and outcome
+      description: What problem exists and what protocol behavior should result?
+    validations:
+      required: true
+  - type: textarea
+    id: canonical
+    attributes:
+      label: Canonical behavior
+      description: Define inputs, validation, state transition, outputs, and failures.
+    validations:
+      required: true
+  - type: textarea
+    id: invariants
+    attributes:
+      label: Affected invariants
+      description: Include supply, authorization, replay, atomicity, determinism, and economic conservation as applicable.
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility and migration
+      description: Describe versioning, migration, and cross-node effects.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Required evidence
+      description: List vectors, properties, differential tests, fuzzing, simulations, and reviews.
+    validations:
+      required: true
+  - type: checkboxes
+    id: gates
+    attributes:
+      label: Owner gates
+      options:
+        - label: I identified any cryptography, encoding, tokenomics, dependency, authority, bridge, or consensus decision requiring owner acceptance.
+          required: true
