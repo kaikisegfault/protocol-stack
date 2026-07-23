@@ -39,9 +39,9 @@ CI runs all four presets.
 The script checks the supported platform and host prerequisites, creates
 `.cache/toolchain-linux-x86_64`, and uses hash-checked requirements to install
 the exact CMake and Ninja wheels. CMake then downloads the official libsodium
-1.0.22 archive, verifies its committed SHA-256 digest, builds it within the
-selected preset, builds the C++20 verification targets, and runs the C++ and
-Python suite through CTest.
+1.0.22 and SQLite 3.53.3 archives, verifies their committed SHA-256 digests,
+builds them within the selected preset, builds the C++20 verification targets,
+and runs the C++ and Python suite through CTest.
 
 The Python tests use only the standard library and the exact libsodium shared
 library produced by that build. They do not inspect or modify the user's
@@ -52,16 +52,20 @@ protocol kernel with libFuzzer coverage instrumentation. CTest runs bounded
 512-input smoke sessions for transaction admission, text-address decoding,
 and canonical genesis loading under AddressSanitizer and
 UndefinedBehaviorSanitizer. The other three presets do not build fuzz targets.
+Both sanitizer presets also apply AddressSanitizer and
+UndefinedBehaviorSanitizer to the pinned SQLite amalgamation. Libsodium retains
+its explicit release build flags and is exercised through the instrumented
+protocol-stack test harnesses.
 
 ## Cache and cleanup
 
 Tool wheels and the isolated virtual environment live under `.cache/`. Each
-preset's configuration, downloaded dependency source, compiled dependency,
+preset's configuration, downloaded dependency sources, compiled dependencies,
 and test artifacts live under `out/build/<preset>/`. Both roots are ignored by
 Git and may be deleted safely; the next verification run reconstructs them
 from committed versions and hashes.
 
-The bootstrap deliberately does not share a compiled libsodium tree between
+The bootstrap deliberately does not share compiled dependency trees between
 presets because compiler selections and project instrumentation configurations
 differ. CMake and Ninja wheel downloads may be served from pip's normal user
 download cache, but their contents are still checked against the committed
@@ -69,5 +73,7 @@ hashes.
 
 ## Dependency inventory
 
-ADR 0005 records versions, archive hashes, licenses, alternatives, update
-policy, and removal paths. No Node.js tooling or package manager is involved.
+ADR 0005 records the build-tool and cryptographic dependency inventory. ADR
+0007 records SQLite's version, archive hashes, deliverable public-domain
+status, retained build-script notices, configuration, update policy, and
+removal path. No Node.js tooling or package manager is involved.

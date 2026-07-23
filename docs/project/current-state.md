@@ -40,8 +40,8 @@ the active roadmap slice.
   small-order rejection. OpenSSL 3.0.20 alone accepted the adversarial
   identity-key vector and is not a valid consensus verifier.
 - `tools/verify.sh` is the clean-clone entry point. It isolates build tools in
-  an ignored virtual environment, builds the pinned libsodium source, and runs
-  C++ and standard-library-only Python checks through CTest.
+  an ignored virtual environment, builds the pinned libsodium and SQLite
+  sources, and runs C++ and standard-library-only Python checks through CTest.
 - ADR 0006 and `ledger-transition-v1.md` define canonical genesis, a
   single-native-asset transfer, fixed fee-pool routing, exact nonce/expiry and
   failure rules, receipts, and ordered atomic block execution.
@@ -144,14 +144,25 @@ the active roadmap slice.
   respectively.
 - The Clang ASan+UBSan preset passes 15/15 CTest tests including all three fuzz
   targets; GCC, GCC ASan+UBSan, and Clang pass 12/12.
+- The integrity-pinned SQLite 3.53.3 dependency builds only its static library
+  and public headers, with loadable extensions, JSON, math functions, carray,
+  and readline disabled. Its dependency test checks the exact header and
+  runtime source identities, serialized thread mode, hardening options,
+  untrusted-schema default, rollback journaling, `synchronous=EXTRA`, strict
+  tables, durable commit-and-reopen, and rollback-and-reopen.
+- Clean dependency-slice verification passes 13/13 CTest tests in GCC debug,
+  GCC ASan+UBSan, and Clang debug, and 16/16 in Clang ASan+UBSan including all
+  three fuzz targets. Both sanitizer presets compile the SQLite amalgamation
+  itself with AddressSanitizer and UndefinedBehaviorSanitizer.
 
 ## Exact next action
 
 Continue issue #11:
 
-> Add the integrity-pinned static SQLite build and a narrow validated
-> `Ledger` state-restoration factory, then verify those dependency and kernel
-> boundaries in all four compiler/sanitizer presets before implementing the
+> Add a narrow `Ledger` state-restoration factory that validates intrinsic
+> state invariants, trusted canonical-genesis parameters, and the expected
+> state root in explicit precedence order. Prove ordinary/restored continuation
+> equivalence in all four compiler/sanitizer presets before implementing the
 > owning persistence adapter.
 
 ## Open autonomous decisions

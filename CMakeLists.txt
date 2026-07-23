@@ -12,6 +12,7 @@ option(PROTOCOL_STACK_ENABLE_FUZZING
 
 find_package(Python3 3.11 REQUIRED COMPONENTS Interpreter)
 find_program(PROTOCOL_STACK_MAKE_EXECUTABLE make REQUIRED)
+find_package(Threads REQUIRED)
 
 set(PROTOCOL_STACK_SODIUM_VERSION "1.0.22")
 set(PROTOCOL_STACK_SODIUM_PREFIX
@@ -75,6 +76,65 @@ set_target_properties(
     INTERFACE_INCLUDE_DIRECTORIES "${PROTOCOL_STACK_SODIUM_PREFIX}/include"
 )
 add_dependencies(protocol_stack_sodium libsodium_external)
+
+set(PROTOCOL_STACK_SQLITE_VERSION "3.53.3")
+set(PROTOCOL_STACK_SQLITE_ARCHIVE_VERSION "3530300")
+set(PROTOCOL_STACK_SQLITE_CFLAGS
+    "-O2 -g -DSQLITE_DQS=0 -DSQLITE_TRUSTED_SCHEMA=0 -DSQLITE_ENABLE_API_ARMOR")
+if(PROTOCOL_STACK_ENABLE_SANITIZERS)
+  string(
+    APPEND
+    PROTOCOL_STACK_SQLITE_CFLAGS
+    " -fsanitize=address,undefined -fno-omit-frame-pointer"
+  )
+endif()
+set(PROTOCOL_STACK_SQLITE_PREFIX
+    "${CMAKE_BINARY_DIR}/dependencies/sqlite")
+set(PROTOCOL_STACK_SQLITE_LIBRARY
+    "${PROTOCOL_STACK_SQLITE_PREFIX}/lib/libsqlite3.a")
+
+file(MAKE_DIRECTORY "${PROTOCOL_STACK_SQLITE_PREFIX}/include")
+
+ExternalProject_Add(
+  sqlite_external
+  URL
+    "https://sqlite.org/2026/sqlite-autoconf-${PROTOCOL_STACK_SQLITE_ARCHIVE_VERSION}.tar.gz"
+  URL_HASH
+    "SHA256=c917d7db16648ec95f714974ace5e5dcf46b7dc70e26600a0a102a3141125db0"
+  TLS_VERIFY ON
+  UPDATE_COMMAND ""
+  CONFIGURE_COMMAND
+    "${CMAKE_COMMAND}" -E env
+    "CC=${CMAKE_C_COMPILER}"
+    "CFLAGS=${PROTOCOL_STACK_SQLITE_CFLAGS}"
+    <SOURCE_DIR>/configure
+    --prefix=<INSTALL_DIR>
+    --libdir=<INSTALL_DIR>/lib
+    --disable-shared
+    --enable-static
+    --disable-load-extension
+    --disable-math
+    --disable-json
+    --disable-carray
+    --disable-readline
+  BUILD_COMMAND
+    "${PROTOCOL_STACK_MAKE_EXECUTABLE}" libsqlite3.a
+  INSTALL_COMMAND
+    "${PROTOCOL_STACK_MAKE_EXECUTABLE}" install-lib install-headers
+  INSTALL_DIR "${PROTOCOL_STACK_SQLITE_PREFIX}"
+  BUILD_BYPRODUCTS
+    "${PROTOCOL_STACK_SQLITE_LIBRARY}"
+)
+
+add_library(protocol_stack_sqlite STATIC IMPORTED GLOBAL)
+set_target_properties(
+  protocol_stack_sqlite
+  PROPERTIES
+    IMPORTED_LOCATION "${PROTOCOL_STACK_SQLITE_LIBRARY}"
+    INTERFACE_INCLUDE_DIRECTORIES "${PROTOCOL_STACK_SQLITE_PREFIX}/include"
+)
+target_link_libraries(protocol_stack_sqlite INTERFACE Threads::Threads)
+add_dependencies(protocol_stack_sqlite sqlite_external)
 
 add_executable(
   protocol_primitive_vectors
@@ -140,6 +200,11 @@ add_executable(
   tests/differential/kernel_runner.cpp
 )
 target_link_libraries(kernel_differential_runner PRIVATE protocol_kernel)
+add_executable(
+  sqlite_dependency_tests
+  tests/storage/sqlite_dependency_test.cpp
+)
+target_link_libraries(sqlite_dependency_tests PRIVATE protocol_stack_sqlite)
 
 set(
   PROTOCOL_STACK_TARGETS
@@ -154,6 +219,7 @@ set(
   kernel_block_tests
   kernel_property_tests
   kernel_differential_runner
+  sqlite_dependency_tests
 )
 if(PROTOCOL_STACK_ENABLE_FUZZING)
   add_library(
@@ -320,6 +386,12 @@ add_test(
     10000
     --libsodium
     "${PROTOCOL_STACK_SODIUM_SHARED_LIBRARY}"
+)
+add_test(
+  NAME sqlite-dependency
+  COMMAND
+    sqlite_dependency_tests
+    "${CMAKE_CURRENT_BINARY_DIR}/sqlite-dependency-test.db"
 )
 set_tests_properties(
   protocol-primitives-python
