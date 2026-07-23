@@ -24,6 +24,8 @@ struct Parameters {
   std::uint64_t supply_limit;
   std::uint64_t total_supply;
   std::uint64_t fixed_fee;
+
+  bool operator==(const Parameters&) const = default;
 };
 
 struct State {
@@ -31,6 +33,8 @@ struct State {
   std::uint64_t height;
   std::uint64_t fee_pool;
   std::map<Hash, Account> accounts;
+
+  bool operator==(const State&) const = default;
 };
 
 enum class AdmissionError : std::uint8_t {
@@ -67,6 +71,8 @@ struct Receipt {
   Hash transaction_id;
   TransferResult result;
   std::uint64_t fee_charged;
+
+  bool operator==(const Receipt&) const = default;
 };
 
 }  // namespace protocol::v1

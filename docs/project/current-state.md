@@ -38,9 +38,9 @@ vectors.
 - The M1 devnet uses nine atomic decimal places, a `10^18` atomic supply limit,
   a default `10^17` atomic four-account genesis, a 1,000-atomic fixed fee, and
   no post-genesis issuance.
-- The repository still contains no ledger, networking, persistence, or
-  production deployment implementation beyond the issue #8 transaction
-  admission layer.
+- The issue #8 in-memory kernel branch implements strict transaction admission
+  and checked transfer execution. It does not yet implement genesis loading,
+  commitments, ordered block commit, persistence, networking, or deployment.
 
 ## Verification evidence
 
@@ -70,13 +70,26 @@ vectors.
   shape and chain checks, domain-separated account/transaction IDs, and the
   pinned strict libsodium adapter. Its frozen admission vectors pass 5/5 CTest
   tests under all four local presets.
+- Checked production transfer execution reproduces all nine result codes and
+  the 11 admitted frozen-vector receipts. Tests establish fee routing,
+  conservation after every accepted transition, self-transfer, recipient
+  creation, nonce exhaustion, and byte-equivalent state atomicity for ordinary
+  failures and checked recipient/fee-pool invariant failures.
+- All four local presets pass 6/6 CTest tests with the transfer execution
+  slice: GCC, GCC ASan+UBSan, Clang, and Clang ASan+UBSan.
+- The execution slice adds no raw-byte entry point; fuzzing remains required
+  when the variable-length production genesis decoder is introduced.
 
 ## Exact next action
 
 Continue issue #8:
 
-> Implement checked transfer execution, commitments, and atomic ordered block
-> results against the frozen ledger vectors, then add fuzz/property and 10,000
+> Reconcile the generic 1,048,576-byte canonical-object limit with the ledger
+> genesis account-count bound and clarify signature-canonicality admission
+> errors in the accepted specification. Then implement production genesis
+> loading and commitments plus a public state owner that encapsulates immutable
+> parameters, enforces the exact next height, and atomically commits ordered
+> block results against the frozen vectors before fuzz/property and 10,000
 > seeded differential sequences.
 
 ## Open autonomous decisions
