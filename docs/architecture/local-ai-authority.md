@@ -129,3 +129,15 @@ Prefer:
 
 Model selection and compute scheduling belong outside the consensus protocol so
 they can improve without a chain migration.
+
+## Research references
+
+- [vLLM distributed inference and serving](https://docs.vllm.ai/en/v0.10.0/serving/distributed_serving.html)
+  describes tensor and pipeline parallel deployment and the need for efficient
+  cross-node communication such as InfiniBand.
+- [Petals: Collaborative Inference and Fine-tuning of Large Models](https://arxiv.org/abs/2209.01188)
+  demonstrates collaborative internet inference while illustrating the
+  throughput tradeoff.
+- [LoRA: Low-Rank Adaptation of Large Language Models](https://arxiv.org/abs/2106.09685)
+  provides the foundation for parameter-efficient ecosystem specialization
+  without full-model retraining.
