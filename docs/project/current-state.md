@@ -4,7 +4,7 @@ Last updated: 2026-07-23
 
 ## Phase
 
-F0 — Agent and project foundation.
+M1 — Sovereign Devnet Alpha, protocol-primitives decision.
 
 ## Verified facts
 
@@ -19,10 +19,12 @@ F0 — Agent and project foundation.
   assigned to bounded AI authority rather than community or node-owner voting.
 - JavaScript, TypeScript, Node.js, React, public contracts, and EVM are excluded
   from M1.
+- F0 merged to `main` through PR #3 on 2026-07-23.
+- GitHub issue #2 is active on `research/2-protocol-primitives`.
 
 ## Foundation status
 
-F0 is complete on `chore/initial-general`; PR #3 is clean and mergeable.
+F0 is complete on `main`.
 
 On 2026-07-23 the owner granted standing authority for autonomous project
 decisions and repository operations. A `proceed` instruction requires no
@@ -31,7 +33,8 @@ follow-up approval.
 Verified foundation evidence:
 
 - all three repository skills pass the official skill validator;
-- `.codex/config.toml` parses and selects `gpt-5.6-sol` with high reasoning;
+- `.codex/config.toml` parses and selects `gpt-5.6-sol` with extra-high
+  (`xhigh`) reasoning;
 - GitHub issue-form YAML parses;
 - all internal Markdown links resolve;
 - `git diff --check` passes;
@@ -43,7 +46,7 @@ Verified foundation evidence:
 
 ## Exact next action
 
-Merge PR #3 under the standing delegation, then begin GitHub issue #2:
+Complete GitHub issue #2:
 
 > Draft the protocol-primitives specification and a decision package comparing
 > candidate signature, hashing, address, and canonical encoding suites. Record
@@ -52,9 +55,8 @@ Merge PR #3 under the standing delegation, then begin GitHub issue #2:
 
 ## Open autonomous decisions
 
-- Signature and key scheme.
-- Hash function and state-tree construction.
-- Address format and canonical binary encoding.
+- Final verification of the proposed signature, hash, state-tree, address, and
+  canonical encoding suite.
 - Native unit name, precision, maximum supply, genesis allocation, and issuance
   schedule.
 - Final acceptance of CometBFT as the replaceable M1 consensus/P2P adapter.
