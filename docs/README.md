@@ -28,5 +28,8 @@ superseded.
 - `engineering/git-workflow.md`: issues, branches, atomic commits, PRs, and
   authorship.
 
-Protocol specifications will live in `spec/` and must define
-consensus-critical behavior before implementation.
+## Specifications
+
+Canonical protocol specifications live in `specifications/` and must define
+consensus-critical behavior before implementation. An accepted version is
+immutable; compatible changes require a new version.

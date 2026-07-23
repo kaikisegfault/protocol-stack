@@ -4,64 +4,58 @@ Last updated: 2026-07-23
 
 ## Phase
 
-M1 — Sovereign Devnet Alpha, protocol-primitives decision.
+M1 — Sovereign Devnet Alpha. The protocol-primitives decision is complete on
+`research/2-protocol-primitives` and awaits its evidence-bearing PR.
 
 ## Verified facts
 
 - Repository: `kaikisegfault/protocol-stack`.
-- Working branch: `chore/initial-general`.
-- Git author and committer identity is configured as Giorgi Chomakhashvili
-  using the GitHub noreply address documented in `AGENTS.md`.
-- The repository contains no blockchain implementation.
-- The active product milestone is M1 — Sovereign Devnet Alpha.
-- Root economics will be native C++ protocol modules.
-- Future venture acceptance, milestone review, and escrow funding decisions are
-  assigned to bounded AI authority rather than community or node-owner voting.
-- JavaScript, TypeScript, Node.js, React, public contracts, and EVM are excluded
-  from M1.
 - F0 merged to `main` through PR #3 on 2026-07-23.
-- GitHub issue #2 is active on `research/2-protocol-primitives`.
+- On 2026-07-23 the owner granted standing authority for autonomous project
+  decisions and repository operations. A `proceed` instruction requires no
+  follow-up approval.
+- `.codex/config.toml` selects `gpt-5.6-sol` with extra-high (`xhigh`)
+  reasoning.
+- ADR 0004 accepts PureEdDSA Ed25519, SHA-256 with explicit domain separation,
+  fixed-width big-endian PSCE, 32-byte account IDs with Bech32m text addresses,
+  and RFC 9162-style ordered Merkle trees for M1.
+- Strict signature acceptance requires libsodium-compatible canonical and
+  small-order rejection. OpenSSL 3.0.20 alone accepted the adversarial
+  identity-key vector and is not a valid consensus verifier.
+- The repository still contains no ledger, networking, persistence, or
+  production deployment implementation.
 
-## Foundation status
+## Protocol-primitives evidence
 
-F0 is complete on `main`.
-
-On 2026-07-23 the owner granted standing authority for autonomous project
-decisions and repository operations. A `proceed` instruction requires no
-follow-up approval.
-
-Verified foundation evidence:
-
-- all three repository skills pass the official skill validator;
-- `.codex/config.toml` parses and selects `gpt-5.6-sol` with extra-high
-  (`xhigh`) reasoning;
-- GitHub issue-form YAML parses;
-- all internal Markdown links resolve;
-- `git diff --check` passes;
-- Git author and committer match the repository owner identity;
-- project, architecture, agent, and GitHub-governance chunks were committed and
-  pushed separately;
-- GitHub issue #1 tracks F0 and issue #2 tracks the first M1 decision package;
-- F0 and M1 GitHub milestones and the referenced labels exist.
+- `tools/protocol-vectors/verify.sh` passes the fixed vector suite in C++20 and
+  the independent Python model.
+- The C++ harness passes with `-Wall -Wextra -Wpedantic -Werror`.
+- The same C++ vectors pass with AddressSanitizer,
+  UndefinedBehaviorSanitizer, and `_GLIBCXX_ASSERTIONS`.
+- Vectors cover RFC 8032 interoperability, domain separation, transaction
+  bytes and identifiers, Bech32m, state and transaction roots, mutation,
+  malformed length, checksum, non-canonical scalar, small-order, supply-bound,
+  conservation, and ordering rejection.
+- Python bytecode compilation, shell syntax, TOML parsing, GitHub issue-form
+  YAML parsing, internal Markdown links, and `git diff --check` pass.
+- Clang is not installed in the current environment; issue #4 owns the
+  reproducible compiler and sanitizer matrix.
 
 ## Exact next action
 
-Complete GitHub issue #2:
+Open and rebase-merge the issue #2 PR, then begin GitHub issue #4:
 
-> Draft the protocol-primitives specification and a decision package comparing
-> candidate signature, hashing, address, and canonical encoding suites. Record
-> and accept the selected suite in an ADR before consensus-critical
-> implementation.
+> Bootstrap the reproducible C++20 and Python build, dependency, test, and CI
+> toolchains, pinning the strict libsodium adapter and providing one
+> clean-clone verification command.
 
 ## Open autonomous decisions
 
-- Final verification of the proposed signature, hash, state-tree, address, and
-  canonical encoding suite.
 - Native unit name, precision, maximum supply, genesis allocation, and issuance
   schedule.
 - Final acceptance of CometBFT as the replaceable M1 consensus/P2P adapter.
+- Exact toolchain and production dependency pins under issue #4.
 
 ## Blockers
 
-None. Protocol-primitives selection remains a mandatory research, ADR, and
-verification gate before consensus-critical M1 implementation.
+None.
