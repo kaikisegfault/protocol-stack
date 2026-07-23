@@ -74,12 +74,30 @@ add_executable(
   ledger_transition_vectors
   tools/ledger-vectors/verify.cpp
 )
+add_library(
+  protocol_kernel
+  STATIC
+    src/v1/admission.cpp
+    src/v1/crypto.cpp
+)
+target_include_directories(
+  protocol_kernel
+  PUBLIC
+    "${PROJECT_SOURCE_DIR}/include"
+)
+add_executable(
+  kernel_admission_tests
+  tests/kernel/admission_test.cpp
+)
+target_link_libraries(kernel_admission_tests PRIVATE protocol_kernel)
 
 foreach(
   protocol_stack_target
   IN ITEMS
     protocol_primitive_vectors
     ledger_transition_vectors
+    protocol_kernel
+    kernel_admission_tests
 )
   target_compile_features(${protocol_stack_target} PRIVATE cxx_std_20)
   target_compile_definitions(
@@ -128,6 +146,12 @@ add_test(
   COMMAND
     "${Python3_EXECUTABLE}"
     "${PROJECT_SOURCE_DIR}/tools/ledger-vectors/verify.py"
+    "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
+)
+add_test(
+  NAME kernel-admission
+  COMMAND
+    kernel_admission_tests
     "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
 )
 set_tests_properties(
