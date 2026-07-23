@@ -10,6 +10,12 @@
 
 namespace protocol::v1 {
 
+enum class LedgerRestoreError : std::uint8_t {
+  invalid_state = 1,
+  immutable_parameters_mismatch = 2,
+  state_root_mismatch = 3,
+};
+
 enum class BlockError : std::uint8_t {
   invalid_state = 1,
   height_exhausted = 2,
@@ -32,6 +38,7 @@ struct BlockCommit {
 };
 
 struct LedgerLoad;
+struct LedgerRestore;
 
 class Ledger {
  public:
@@ -53,6 +60,10 @@ class Ledger {
 
   friend LedgerLoad load_genesis(
       std::span<const std::uint8_t> canonical_genesis);
+  friend LedgerRestore restore_ledger(
+      State state,
+      const Parameters& expected_parameters,
+      const StateRoot& expected_state_root);
 
   State state_;
 };
@@ -61,7 +72,16 @@ struct LedgerLoad {
   std::variant<Ledger, GenesisError> result;
 };
 
+struct LedgerRestore {
+  std::variant<Ledger, LedgerRestoreError> result;
+};
+
 LedgerLoad load_genesis(
     std::span<const std::uint8_t> canonical_genesis);
+
+LedgerRestore restore_ledger(
+    State state,
+    const Parameters& expected_parameters,
+    const StateRoot& expected_state_root);
 
 }  // namespace protocol::v1

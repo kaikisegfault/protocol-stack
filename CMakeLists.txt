@@ -191,6 +191,11 @@ add_executable(
 )
 target_link_libraries(kernel_block_tests PRIVATE protocol_kernel)
 add_executable(
+  kernel_restore_tests
+  tests/kernel/restore_test.cpp
+)
+target_link_libraries(kernel_restore_tests PRIVATE protocol_kernel)
+add_executable(
   kernel_property_tests
   tests/kernel/property_test.cpp
 )
@@ -217,6 +222,7 @@ set(
   kernel_genesis_tests
   kernel_commitment_tests
   kernel_block_tests
+  kernel_restore_tests
   kernel_property_tests
   kernel_differential_runner
   sqlite_dependency_tests
@@ -370,6 +376,12 @@ add_test(
   NAME kernel-block
   COMMAND
     kernel_block_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
+)
+add_test(
+  NAME kernel-restore
+  COMMAND
+    kernel_restore_tests
     "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
 )
 add_test(

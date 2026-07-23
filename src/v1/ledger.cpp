@@ -41,6 +41,38 @@ LedgerLoad load_genesis(
   };
 }
 
+LedgerRestore restore_ledger(
+    State state,
+    const Parameters& expected_parameters,
+    const StateRoot& expected_state_root) {
+  const auto commitment = internal::state_root(state);
+  if (std::holds_alternative<internal::StateError>(commitment)) {
+    return LedgerRestore{
+        std::variant<Ledger, LedgerRestoreError>(
+            std::in_place_type<LedgerRestoreError>,
+            LedgerRestoreError::invalid_state),
+    };
+  }
+  if (state.parameters != expected_parameters) {
+    return LedgerRestore{
+        std::variant<Ledger, LedgerRestoreError>(
+            std::in_place_type<LedgerRestoreError>,
+            LedgerRestoreError::immutable_parameters_mismatch),
+    };
+  }
+  if (std::get<StateRoot>(commitment) != expected_state_root) {
+    return LedgerRestore{
+        std::variant<Ledger, LedgerRestoreError>(
+            std::in_place_type<LedgerRestoreError>,
+            LedgerRestoreError::state_root_mismatch),
+    };
+  }
+  return LedgerRestore{
+      std::variant<Ledger, LedgerRestoreError>(
+          std::in_place_type<Ledger>, Ledger(std::move(state))),
+  };
+}
+
 std::variant<StateRoot, BlockError> Ledger::current_state_root() const {
   auto commitment = internal::state_root(state_);
   if (std::holds_alternative<internal::StateError>(commitment)) {

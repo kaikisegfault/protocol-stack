@@ -154,16 +154,28 @@ the active roadmap slice.
   GCC ASan+UBSan, and Clang debug, and 16/16 in Clang ASan+UBSan including all
   three fuzz targets. Both sanitizer presets compile the SQLite amalgamation
   itself with AddressSanitizer and UndefinedBehaviorSanitizer.
+- `restore_ledger` is the public operational construction boundary for a live
+  materialized state. It accepts state by value, validates intrinsic state
+  invariants before caller-trusted canonical-genesis parameters and the
+  expected root, and constructs no ledger on any typed failure. The parameter
+  anchor closes the version-one state root's intentional omission of
+  `fixed_fee` without changing frozen commitment bytes or transitions.
+- Restore tests prove genesis and nonzero-height reconstruction, ordinary and
+  restored block-output equivalence, next-block continuation, copy/move
+  ownership, live zero-balance accounts with nonzero nonce, intrinsic invariant
+  rejection, every parameter mismatch, stale roots, and error precedence.
+  GCC debug, GCC ASan+UBSan, and Clang debug pass 14/14 CTest tests; Clang
+  ASan+UBSan passes 17/17 including all three fuzz targets.
 
 ## Exact next action
 
 Continue issue #11:
 
-> Add a narrow `Ledger` state-restoration factory that validates intrinsic
-> state invariants, trusted canonical-genesis parameters, and the expected
-> state root in explicit precedence order. Prove ordinary/restored continuation
-> equivalence in all four compiler/sanitizer presets before implementing the
-> owning persistence adapter.
+> Implement the owning SQLite adapter's database-creation and height-zero reopen
+> boundary: accept caller-trusted canonical genesis, create a new path
+> exclusively, install the exact version-one schema and durability settings,
+> commit genesis state, and reject an existing database unless integrity,
+> schema, genesis, materialized state, and root validation all agree.
 
 ## Open autonomous decisions
 

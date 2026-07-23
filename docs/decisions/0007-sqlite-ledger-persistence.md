@@ -148,11 +148,16 @@ transaction root. A local kernel exception is an operational failure: the
 adapter leaves both states unchanged and fails closed rather than translating
 it into a protocol result.
 
-The kernel needs a narrow operational restoration factory that validates an
-owned `State` before constructing a `Ledger`. The adapter must separately
-compare the restored chain ID and every immutable parameter with those derived
-from canonical genesis. A state root alone is insufficient because the
-version-one state-root preimage does not contain `fixed_fee`.
+The kernel provides a narrow operational restoration factory that validates an
+owned `State` before constructing a `Ledger`. It first checks the state's
+intrinsic invariants, then compares every immutable parameter with a trusted
+`Parameters` value derived by loading canonical genesis, and finally compares
+the expected state root. The adapter passes that trusted genesis value into the
+factory. On open, the expected canonical genesis comes from caller
+configuration trusted independently of the database and must exactly match the
+persisted copy; snapshot bytes, the persisted copy alone, and database metadata
+are never the parameter authority. A state root alone is insufficient because
+the version-one state-root preimage does not contain `fixed_fee`.
 
 ### Storage schema version one
 

@@ -32,6 +32,36 @@ construction transfers ownership. Assignment is intentionally unavailable so
 an already-published ledger instance cannot silently change identity or
 invalidate references through assignment.
 
+## Operational state restoration
+
+`restore_ledger` is the only public path for constructing a ledger from an
+already-materialized live `State`. It accepts the state by value, so an lvalue
+is independently copied and an rvalue transfers ownership. Expected parameters
+and the expected root are borrowed only for the call and are never retained.
+
+The factory validates in this fixed order:
+
+1. the existing state-commitment validation must accept the materialized
+   state;
+2. every state parameter must equal a trusted `Parameters` value derived by
+   successfully loading the canonical genesis;
+3. the computed state root must equal the caller's expected root.
+
+No ledger is constructed on failure. The three failures are returned as
+`LedgerRestoreError::invalid_state`,
+`LedgerRestoreError::immutable_parameters_mismatch`, and
+`LedgerRestoreError::state_root_mismatch`, in that precedence order. The
+factory applies live-state invariants rather than genesis-only constraints:
+zero-balance accounts and nonzero account nonces remain valid.
+
+The trusted parameter anchor is mandatory because the frozen version-one state
+root does not include `fixed_fee`. Snapshot or database metadata must never
+provide that anchor. An adapter derives it from caller-configured canonical
+genesis bytes whose identity is trusted outside the database, exact-compares
+the persisted genesis copy, and passes the independently derived value into the
+factory. Restoration does not change commitment bytes or consensus-visible
+transition behavior.
+
 ## Caller synchronization
 
 The kernel contains no locks and does not schedule work. A caller must serialize
@@ -112,6 +142,10 @@ libsodium boundary can depend on local process state, so the kernel does not
 translate them into `GenesisError`, `BlockError`, `AdmissionError`, or a
 receipt result. They propagate as local operational failures while the public
 ledger state remains unchanged.
+
+A `LedgerRestoreError` is also not a consensus rejection. It reports that
+locally supplied persistence state failed the operational reconstruction
+boundary, and the adapter must fail closed rather than expose that state.
 
 A future node adapter must catch such failures at its process boundary, record
 diagnostics, fail closed, and stop or halt the affected proposal-processing
