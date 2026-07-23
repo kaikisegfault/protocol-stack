@@ -114,6 +114,16 @@ add_executable(
   tests/kernel/block_test.cpp
 )
 target_link_libraries(kernel_block_tests PRIVATE protocol_kernel)
+add_executable(
+  kernel_property_tests
+  tests/kernel/property_test.cpp
+)
+target_link_libraries(kernel_property_tests PRIVATE protocol_kernel)
+add_executable(
+  kernel_differential_runner
+  tests/differential/kernel_runner.cpp
+)
+target_link_libraries(kernel_differential_runner PRIVATE protocol_kernel)
 
 foreach(
   protocol_stack_target
@@ -126,6 +136,8 @@ foreach(
     kernel_genesis_tests
     kernel_commitment_tests
     kernel_block_tests
+    kernel_property_tests
+    kernel_differential_runner
 )
   target_compile_features(${protocol_stack_target} PRIVATE cxx_std_20)
   target_compile_definitions(
@@ -206,10 +218,30 @@ add_test(
     kernel_block_tests
     "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
 )
+add_test(
+  NAME kernel-properties
+  COMMAND kernel_property_tests
+)
+add_test(
+  NAME kernel-differential
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/differential/run.py"
+    "$<TARGET_FILE:kernel_differential_runner>"
+    --count
+    10000
+    --libsodium
+    "${PROTOCOL_STACK_SODIUM_SHARED_LIBRARY}"
+)
 set_tests_properties(
   protocol-primitives-python
   ledger-transition-python
   PROPERTIES
     ENVIRONMENT
       "PROTOCOL_STACK_LIBSODIUM=${PROTOCOL_STACK_SODIUM_SHARED_LIBRARY}"
+)
+set_tests_properties(
+  kernel-differential
+  PROPERTIES
+    TIMEOUT 300
 )
