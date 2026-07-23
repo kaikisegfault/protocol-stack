@@ -83,8 +83,7 @@ bool valid_result(TransferResult result) {
 
 StateCommitment state_root(const State& state) {
   const auto& parameters = state.parameters;
-  if (parameters.supply_limit == 0 || parameters.total_supply == 0 ||
-      parameters.fixed_fee == 0 ||
+  if (parameters.supply_limit == 0 || parameters.fixed_fee == 0 ||
       parameters.total_supply > parameters.supply_limit) {
     return StateError::invalid_parameters;
   }

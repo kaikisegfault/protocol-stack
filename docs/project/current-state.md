@@ -79,6 +79,12 @@ vectors.
   shape and chain checks, domain-separated account/transaction IDs, and the
   pinned strict libsodium adapter. Its frozen admission vectors pass 5/5 CTest
   tests under all four local presets.
+- The unchanged primitive vector now runs directly through production hashing,
+  strict Ed25519 verification and admission, canonical Bech32m address
+  encoding/decoding, populated and empty state commitments, and ordered
+  transaction commitments. Focused cases cover non-canonical `S`, small-order
+  public keys and `R`, malformed lengths, bad checksums and padding, wrong
+  chains and HRPs, and admission-precedence overlaps.
 - Checked production transfer execution reproduces all nine result codes and
   the 11 admitted frozen-vector receipts. Tests establish fee routing,
   conservation after every accepted transition, self-transfer, recipient
@@ -119,16 +125,23 @@ vectors.
   genesis within a bounded sequence.
 - All four local presets pass 11/11 CTest tests with property and differential
   coverage: GCC, GCC ASan+UBSan, Clang, and Clang ASan+UBSan.
-- Variable-length genesis and transaction byte entry points are now present;
-  bounded fuzz smoke coverage is required before issue #8 is complete.
+- The Clang sanitizer preset builds a separate copy of every kernel source with
+  libFuzzer coverage instrumentation. Fixed-seed 512-input smoke sessions
+  exercise raw and structured transaction admission up to 256 bytes, raw and
+  structured address decoding up to 256 bytes, and raw and structured genesis
+  loading up to 4,096 bytes. Every callback includes a valid signed
+  transaction, canonical address round trip, or successful minimal genesis,
+  respectively.
+- The Clang ASan+UBSan preset passes 15/15 CTest tests including all three fuzz
+  targets; GCC, GCC ASan+UBSan, and Clang pass 12/12.
 
 ## Exact next action
 
 Continue issue #8:
 
-> Add bounded transaction-admission and genesis-decoder libFuzzer targets with
-> Clang ASan+UBSan CI smoke, then run every repository gate, self-review the
-> complete issue #8 diff, and prepare its coherent pull request.
+> Commit and push the verified production-primitive and fuzz slice, open the
+> coherent pull request with exact local evidence, and monitor all four
+> required GitHub checks to a terminal result.
 
 ## Open autonomous decisions
 

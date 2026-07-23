@@ -120,6 +120,21 @@ though peers necessarily observed the same condition. No C++ exception may
 cross a C ABI; an adapter exposing a C boundary must catch every exception
 before returning through that boundary.
 
+## Text address boundary
+
+`encode_address` derives the canonical lowercase Bech32m text form of a typed
+account identifier for a validated chain HRP. `decode_address` accepts only
+that canonical form, requires the configured HRP and version-one 33-byte
+payload, and rejects bad checksums, nonzero padding, mixed or uppercase text,
+unknown payload versions, and noncanonical HRPs. Both operations return an
+empty optional for invalid text or configuration rather than defining new
+protocol error codes.
+
+Text addresses are an input and display boundary only. The ledger, canonical
+transactions, and commitments continue to store the typed 32-byte account
+identifier. A caller must supply the HRP selected by its validated network
+configuration; address text does not select or override a ledger chain ID.
+
 ## Tagged protocol values
 
 The kernel represents `AccountId`, `ChainId`, `TransactionId`, `StateRoot`,
