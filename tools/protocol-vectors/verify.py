@@ -4,12 +4,9 @@ from __future__ import annotations
 
 import ctypes
 import ctypes.util
+import os
 import sys
 from pathlib import Path
-
-from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from vector_common import (
     bech32m,
@@ -27,11 +24,28 @@ from vector_common import (
 
 class Sodium:
     def __init__(self) -> None:
-        library_name = ctypes.util.find_library("sodium")
+        library_name = os.environ.get(
+            "PROTOCOL_STACK_LIBSODIUM"
+        ) or ctypes.util.find_library("sodium")
         require(library_name is not None, "libsodium runtime not found")
         self.library = ctypes.CDLL(library_name)
         self.library.sodium_init.restype = ctypes.c_int
         require(self.library.sodium_init() >= 0, "libsodium init")
+        self.library.sodium_version_string.restype = ctypes.c_char_p
+        self.library.crypto_sign_seed_keypair.argtypes = (
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+        )
+        self.library.crypto_sign_seed_keypair.restype = ctypes.c_int
+        self.library.crypto_sign_detached.argtypes = (
+            ctypes.c_void_p,
+            ctypes.POINTER(ctypes.c_ulonglong),
+            ctypes.c_void_p,
+            ctypes.c_ulonglong,
+            ctypes.c_void_p,
+        )
+        self.library.crypto_sign_detached.restype = ctypes.c_int
         self.library.crypto_sign_verify_detached.argtypes = (
             ctypes.c_void_p,
             ctypes.c_void_p,
@@ -39,6 +53,46 @@ class Sodium:
             ctypes.c_void_p,
         )
         self.library.crypto_sign_verify_detached.restype = ctypes.c_int
+
+    def public_key(self, seed: bytes) -> bytes:
+        require(len(seed) == 32, "wrong Ed25519 seed size")
+        public_key = ctypes.create_string_buffer(32)
+        secret_key = ctypes.create_string_buffer(64)
+        require(
+            self.library.crypto_sign_seed_keypair(
+                public_key, secret_key, seed
+            )
+            == 0,
+            "libsodium key derivation failed",
+        )
+        return public_key.raw
+
+    def sign(self, seed: bytes, message: bytes) -> bytes:
+        require(len(seed) == 32, "wrong Ed25519 seed size")
+        public_key = ctypes.create_string_buffer(32)
+        secret_key = ctypes.create_string_buffer(64)
+        require(
+            self.library.crypto_sign_seed_keypair(
+                public_key, secret_key, seed
+            )
+            == 0,
+            "libsodium key derivation failed",
+        )
+        signature = ctypes.create_string_buffer(64)
+        signature_size = ctypes.c_ulonglong()
+        require(
+            self.library.crypto_sign_detached(
+                signature,
+                ctypes.byref(signature_size),
+                message,
+                len(message),
+                secret_key,
+            )
+            == 0,
+            "libsodium signing failed",
+        )
+        require(signature_size.value == 64, "wrong signature size")
+        return signature.raw
 
     def verify(
         self, public_key: bytes, message: bytes, signature: bytes
@@ -52,21 +106,26 @@ class Sodium:
             == 0
         )
 
+    def version(self) -> str:
+        return self.library.sodium_version_string().decode("ascii")
 
-def verify_crypto_and_address(values: dict[str, str]) -> None:
+
+def verify_crypto_and_address(
+    values: dict[str, str], sodium: Sodium
+) -> None:
     seed = bytes.fromhex(values["rfc8032.seed"])
     public_key = bytes.fromhex(values["rfc8032.public_key"])
-    private_key = Ed25519PrivateKey.from_private_bytes(seed)
-    derived_public = private_key.public_key().public_bytes(
-        serialization.Encoding.Raw, serialization.PublicFormat.Raw
-    )
+    derived_public = sodium.public_key(seed)
     require(derived_public == public_key, "RFC public key mismatch")
-    empty_signature = private_key.sign(b"")
+    empty_signature = sodium.sign(seed, b"")
     require(
         empty_signature.hex() == values["rfc8032.empty_signature"],
         "RFC signature mismatch",
     )
-    private_key.public_key().verify(empty_signature, b"")
+    require(
+        sodium.verify(public_key, b"", empty_signature),
+        "RFC signature rejected",
+    )
 
     account_id = digest("protocol-stack:v1:account", b"\x01" + public_key)
     require(account_id.hex() == values["account_id"], "account ID mismatch")
@@ -85,9 +144,8 @@ def verify_crypto_and_address(values: dict[str, str]) -> None:
         raise ValueError("bad address checksum accepted")
 
 
-def verify_transaction(values: dict[str, str]) -> None:
+def verify_transaction(values: dict[str, str], sodium: Sodium) -> None:
     seed = bytes.fromhex(values["rfc8032.seed"])
-    private_key = Ed25519PrivateKey.from_private_bytes(seed)
     public_key = bytes.fromhex(values["rfc8032.public_key"])
     unsigned_tx = transfer(values)
     require(unsigned_tx.hex() == values["unsigned_tx"], "transaction bytes")
@@ -95,10 +153,8 @@ def verify_transaction(values: dict[str, str]) -> None:
     require(
         signing_message.hex() == values["signing_message"], "signing message"
     )
-    signature = private_key.sign(signing_message)
+    signature = sodium.sign(seed, signing_message)
     require(signature.hex() == values["signature"], "transaction signature")
-    private_key.public_key().verify(signature, signing_message)
-    sodium = Sodium()
     require(
         sodium.verify(public_key, signing_message, signature),
         "strict transaction signature rejected",
@@ -198,17 +254,21 @@ def verify_trees(values: dict[str, str]) -> None:
 def main() -> int:
     require(len(sys.argv) == 2, "usage: verify.py VECTOR_FILE")
     values = load_values(Path(sys.argv[1]))
-    verify_crypto_and_address(values)
-    verify_transaction(values)
+    sodium = Sodium()
+    verify_crypto_and_address(values, sodium)
+    verify_transaction(values, sodium)
     verify_trees(values)
-    print("Python protocol primitive vectors: passed")
+    print(
+        "Python protocol primitive vectors: passed "
+        f"(libsodium {sodium.version()})"
+    )
     return 0
 
 
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except (KeyError, ValueError, InvalidSignature) as error:
+    except (KeyError, ValueError, OSError) as error:
         print(
             f"Python protocol primitive vectors: failed: {error}",
             file=sys.stderr,

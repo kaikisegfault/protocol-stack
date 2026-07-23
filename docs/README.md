@@ -24,6 +24,8 @@ superseded.
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
 - `engineering/standards.md`: language, modularity, determinism, and dependency
   standards.
+- `engineering/build-toolchain.md`: reproducible build, test, dependency, and
+  cache commands.
 - `engineering/verification.md`: required evidence and quality gates.
 - `engineering/git-workflow.md`: issues, branches, atomic commits, PRs, and
   authorship.

@@ -25,9 +25,7 @@ Adopt the suite specified in
 - sorted account leaves and RFC 9162-style binary Merkle tree shape.
 
 Use numeric algorithm and schema identifiers in every compatibility boundary.
-The prototype vector harness uses the system libsodium runtime. Production
-integration will pin libsodium 1.0.22 or a later reviewed compatible release in
-a dependency-specific ADR.
+ADR 0005 pins libsodium 1.0.22 and the reproducible build integration.
 
 ## Alternatives
 
@@ -44,12 +42,12 @@ The transaction version and algorithm identifier preserve a route to a
 post-quantum or hybrid upgrade. Ed25519 is not claimed to resist a
 cryptographically relevant quantum computer.
 
-The adversarial prototype found that OpenSSL 3.0.20 and its Python
-`cryptography` binding accept an identity-key/identity-`R` forgery allowed by
-cofactored RFC verification. Libsodium's verifier explicitly rejects
-non-canonical and small-order public keys and `R` values. Therefore OpenSSL's
-Ed25519 verifier is not an acceptable consensus adapter without additional
-reviewed point validation.
+The adversarial prototype found that OpenSSL 3.0.20, including through its
+Python `cryptography` binding, accepts an identity-key/identity-`R` forgery
+allowed by cofactored RFC verification. Libsodium's verifier explicitly
+rejects non-canonical and small-order public keys and `R` values. Therefore
+OpenSSL's Ed25519 verifier is not an acceptable consensus adapter without
+additional reviewed point validation.
 
 ### Hashes
 
@@ -93,8 +91,8 @@ key-value proofs are deferred until storage and proof requirements are known.
 - Existing algorithm identifiers can never be reassigned.
 - Any signature, hash, encoding, or state-tree replacement requires a new
   version and fixed migration vectors.
-- Production dependency pinning, provider configuration, and supply values
-  remain separate decisions.
+- Production dependency pinning and provider configuration are governed by
+  ADR 0005. Supply values remain a separate decision.
 
 ## Evidence
 

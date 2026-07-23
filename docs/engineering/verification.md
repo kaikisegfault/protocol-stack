@@ -12,16 +12,26 @@ Before completing F0:
 - inspect the complete staged diff and confirm no secrets or unrelated changes;
 - confirm a clean status after commit and push.
 
-## Future source checks
+## Reproducible entry point
 
-The build bootstrap must provide one clean-clone verification entry point. It
-will orchestrate:
+On supported Linux x86_64 hosts, run:
+
+```sh
+tools/verify.sh
+```
+
+The command installs hash-pinned CMake and Ninja tools in the ignored local
+cache, integrity-checks and builds the pinned libsodium source, configures the
+default GCC preset, and runs all registered C++ and Python tests through
+CTest. See `build-toolchain.md` for host prerequisites, other presets, cache
+behavior, and cleanup.
+
+CI runs GCC and Clang debug builds plus AddressSanitizer and
+UndefinedBehaviorSanitizer builds. As production surfaces are added, this same
+entry point will expand to orchestrate:
 
 - format and static analysis;
-- GCC and Clang builds;
 - unit, property, and integration tests;
-- Python reference-model tests;
-- sanitizer builds;
 - bounded CI fuzz smoke tests;
 - deterministic replay and restart tests.
 

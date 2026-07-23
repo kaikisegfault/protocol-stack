@@ -1,5 +1,7 @@
 #pragma once
 
+#include <sodium.h>
+
 #include <cstdint>
 #include <fstream>
 #include <map>
@@ -7,11 +9,6 @@
 #include <string>
 #include <string_view>
 #include <vector>
-
-extern "C" {
-int crypto_hash_sha256(unsigned char* output, const unsigned char* input,
-                       unsigned long long input_size);
-}
 
 namespace protocol_vectors {
 
