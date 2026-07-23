@@ -2,8 +2,10 @@
 
 #include <array>
 #include <compare>
+#include <cstddef>
 #include <cstdint>
 #include <map>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -11,6 +13,40 @@ namespace protocol::v1 {
 
 using Bytes = std::vector<std::uint8_t>;
 using Hash = std::array<std::uint8_t, 32>;
+
+template <typename Tag>
+class TaggedHash {
+ public:
+  TaggedHash() = default;
+  explicit TaggedHash(Hash value) noexcept : value_(std::move(value)) {}
+
+  auto begin() noexcept { return value_.begin(); }
+  auto begin() const noexcept { return value_.begin(); }
+  auto end() noexcept { return value_.end(); }
+  auto end() const noexcept { return value_.end(); }
+  std::uint8_t* data() noexcept { return value_.data(); }
+  const std::uint8_t* data() const noexcept { return value_.data(); }
+  constexpr std::size_t size() const noexcept { return value_.size(); }
+
+  auto operator<=>(const TaggedHash&) const = default;
+
+ private:
+  Hash value_{};
+};
+
+struct AccountIdTag;
+struct ChainIdTag;
+struct TransactionIdTag;
+struct StateRootTag;
+struct TransactionRootTag;
+struct BlockIdTag;
+
+using AccountId = TaggedHash<AccountIdTag>;
+using ChainId = TaggedHash<ChainIdTag>;
+using TransactionId = TaggedHash<TransactionIdTag>;
+using StateRoot = TaggedHash<StateRootTag>;
+using TransactionRoot = TaggedHash<TransactionRootTag>;
+using BlockId = TaggedHash<BlockIdTag>;
 
 struct Account {
   std::uint64_t balance;
@@ -20,7 +56,7 @@ struct Account {
 };
 
 struct Parameters {
-  Hash chain_id;
+  ChainId chain_id;
   std::uint64_t supply_limit;
   std::uint64_t total_supply;
   std::uint64_t fixed_fee;
@@ -32,7 +68,7 @@ struct State {
   Parameters parameters;
   std::uint64_t height;
   std::uint64_t fee_pool;
-  std::map<Hash, Account> accounts;
+  std::map<AccountId, Account> accounts;
 
   bool operator==(const State&) const = default;
 };
@@ -64,10 +100,10 @@ enum class TransferResult : std::uint8_t {
 };
 
 struct Transfer {
-  Hash sender_id;
-  Hash transaction_id;
+  AccountId sender_id;
+  TransactionId transaction_id;
   std::uint64_t nonce;
-  Hash recipient;
+  AccountId recipient;
   std::uint64_t amount;
   std::uint64_t fee_limit;
   std::uint64_t valid_until;
@@ -76,7 +112,7 @@ struct Transfer {
 using Admission = std::variant<Transfer, AdmissionError>;
 
 struct Receipt {
-  Hash transaction_id;
+  TransactionId transaction_id;
   TransferResult result;
   std::uint64_t fee_charged;
 

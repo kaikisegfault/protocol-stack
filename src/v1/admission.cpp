@@ -34,10 +34,10 @@ std::uint64_t read_u64(std::span<const std::uint8_t> raw,
   return result;
 }
 
-Hash sender_id(std::span<const std::uint8_t> public_key) {
+AccountId sender_id(std::span<const std::uint8_t> public_key) {
   Bytes payload{1};
   payload.insert(payload.end(), public_key.begin(), public_key.end());
-  return hash("protocol-stack:v1:account", payload);
+  return AccountId(hash("protocol-stack:v1:account", payload));
 }
 
 Bytes signing_message(std::span<const std::uint8_t> unsigned_transaction) {
@@ -52,9 +52,9 @@ Bytes signing_message(std::span<const std::uint8_t> unsigned_transaction) {
 }  // namespace
 
 Admission admit_transfer(std::span<const std::uint8_t> raw,
-                         const Hash& expected_chain_id) {
+                         const ChainId& expected_chain_id) {
   if (!valid_shape(raw)) return AdmissionError::malformed_transaction;
-  if (fixed_32(raw, 7) != expected_chain_id) {
+  if (ChainId(fixed_32(raw, 7)) != expected_chain_id) {
     return AdmissionError::wrong_chain;
   }
   const auto public_key = raw.subspan(40, 32);
@@ -64,9 +64,9 @@ Admission admit_transfer(std::span<const std::uint8_t> raw,
   }
   return Transfer{
       sender_id(public_key),
-      hash("protocol-stack:v1:tx-id", raw),
+      TransactionId(hash("protocol-stack:v1:tx-id", raw)),
       read_u64(raw, 72),
-      fixed_32(raw, 80),
+      AccountId(fixed_32(raw, 80)),
       read_u64(raw, 112),
       read_u64(raw, 120),
       read_u64(raw, 128),

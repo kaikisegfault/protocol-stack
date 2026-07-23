@@ -22,7 +22,7 @@ constexpr std::size_t kAccountSize = 48;
 constexpr std::uint32_t kMaximumAccounts = 21'844;
 
 struct GenesisAccount {
-  p::Hash identifier;
+  p::AccountId identifier;
   std::uint64_t balance;
   std::uint64_t nonce;
 };
@@ -33,17 +33,18 @@ void append_u32(p::Bytes& target, std::uint32_t value) {
   }
 }
 
-void append_hash(p::Bytes& target, const p::Hash& value) {
+template <typename Tagged>
+void append_hash(p::Bytes& target, const Tagged& value) {
   target.insert(target.end(), value.begin(), value.end());
 }
 
-p::Hash identifier(std::uint64_t value) {
+p::AccountId identifier(std::uint64_t value) {
   p::Hash result{};
   for (std::size_t index = 0; index < 8; ++index) {
     result[result.size() - 1 - index] =
         static_cast<std::uint8_t>(value >> (index * 8U));
   }
-  return result;
+  return p::AccountId{result};
 }
 
 p::Bytes genesis_prefix(std::uint64_t supply_limit,
@@ -100,11 +101,13 @@ void verify_frozen_genesis(const pv::Values& values) {
   const auto encoded = pv::hex_decode(values.at("genesis"));
   const auto decoded = p::internal::decode_genesis(encoded);
   const auto& state = require_state(decoded, "frozen genesis rejected");
-  p::Hash expected_chain{};
+  p::Hash expected_chain_bytes{};
   const auto chain_bytes = pv::hex_decode(values.at("chain_id"));
-  pv::require(chain_bytes.size() == expected_chain.size(),
+  pv::require(chain_bytes.size() == expected_chain_bytes.size(),
               "frozen chain ID size");
-  std::copy(chain_bytes.begin(), chain_bytes.end(), expected_chain.begin());
+  std::copy(chain_bytes.begin(), chain_bytes.end(),
+            expected_chain_bytes.begin());
+  const p::ChainId expected_chain{expected_chain_bytes};
   pv::require(state.parameters.chain_id == expected_chain, "frozen chain ID");
   pv::require(
       state.parameters.supply_limit == std::stoull(values.at("supply_limit")),

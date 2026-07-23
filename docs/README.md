@@ -11,6 +11,8 @@
 ## Architecture
 
 - `architecture/sovereign-core.md`: system layers and replaceable boundaries.
+- `architecture/ledger-kernel.md`: ledger ownership, atomic block application,
+  canonical outputs, and failure boundaries.
 - `architecture/local-ai-authority.md`: future self-hosted AI control plane.
 
 ## Decisions

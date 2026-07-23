@@ -7,6 +7,6 @@
 namespace protocol::v1 {
 
 Admission admit_transfer(std::span<const std::uint8_t> raw_transaction,
-                         const Hash& expected_chain_id);
+                         const ChainId& expected_chain_id);
 
 }  // namespace protocol::v1

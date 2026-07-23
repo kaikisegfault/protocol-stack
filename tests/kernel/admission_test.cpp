@@ -9,16 +9,17 @@
 namespace pv = protocol_vectors;
 namespace p = protocol::v1;
 
-p::Hash hash_value(const pv::Bytes& bytes) {
+template <typename Tagged>
+Tagged tagged_hash(const pv::Bytes& bytes) {
   pv::require(bytes.size() == 32, "hash size");
   p::Hash result{};
   std::copy(bytes.begin(), bytes.end(), result.begin());
-  return result;
+  return Tagged{result};
 }
 
 void verify_admission_vectors(const pv::Values& values) {
   const auto chain_id =
-      hash_value(pv::hex_decode(values.at("chain_id")));
+      tagged_hash<p::ChainId>(pv::hex_decode(values.at("chain_id")));
   const auto raw_count = std::stoull(values.at("raw_count"));
   for (std::size_t index = 0; index < raw_count; ++index) {
     const auto key = "raw" + std::to_string(index);

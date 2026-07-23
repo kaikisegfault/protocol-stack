@@ -23,28 +23,31 @@ namespace {
 
 constexpr std::uint64_t kBlockHeight = 1;
 
-p::Hash hash_value(const pv::Bytes& bytes, std::size_t offset = 0) {
+template <typename Tagged>
+Tagged tagged_hash(const pv::Bytes& bytes, std::size_t offset = 0) {
   pv::require(offset + 32 <= bytes.size(), "hash size");
   p::Hash result{};
   std::copy_n(bytes.begin() + offset, result.size(), result.begin());
-  return result;
+  return Tagged{result};
 }
 
-void append_hash(pv::Bytes& target, const p::Hash& value) {
+template <typename Tagged>
+void append_hash(pv::Bytes& target, const Tagged& value) {
   target.insert(target.end(), value.begin(), value.end());
 }
 
-std::pair<p::Hash, p::Account> decode_account(std::string_view encoded) {
+std::pair<p::AccountId, p::Account> decode_account(
+    std::string_view encoded) {
   const auto bytes = pv::hex_decode(encoded);
   pv::require(bytes.size() == 48, "account entry size");
   return {
-      hash_value(bytes),
+      tagged_hash<p::AccountId>(bytes),
       p::Account{pv::read_u64(bytes, 32), pv::read_u64(bytes, 40)},
   };
 }
 
 p::State initial_state(const pv::Values& values) {
-  std::map<p::Hash, p::Account> accounts;
+  std::map<p::AccountId, p::Account> accounts;
   for (std::size_t index = 0;; ++index) {
     const auto entry = values.find("genesis.account" + std::to_string(index));
     if (entry == values.end()) break;
@@ -56,7 +59,8 @@ p::State initial_state(const pv::Values& values) {
   pv::require(genesis.size() >= 42, "truncated genesis");
   return p::State{
       p::Parameters{
-          hash_value(pv::hex_decode(values.at("chain_id"))),
+          tagged_hash<p::ChainId>(
+              pv::hex_decode(values.at("chain_id"))),
           std::stoull(values.at("supply_limit")),
           std::stoull(values.at("total_supply")),
           std::stoull(values.at("fixed_fee")),
@@ -107,7 +111,8 @@ void verify_receipt(const p::Receipt& receipt, const p::Transfer& transfer,
   pv::require(expected_bytes[38] == expected_code, "receipt result vector");
   pv::require(receipt.transaction_id == transfer.transaction_id,
               "receipt transaction ID");
-  pv::require(receipt.transaction_id == hash_value(expected_bytes, 6),
+  pv::require(receipt.transaction_id ==
+                  tagged_hash<p::TransactionId>(expected_bytes, 6),
               "receipt transaction ID vector");
   pv::require(static_cast<std::uint8_t>(receipt.result) == expected_code,
               "transfer result");
@@ -190,7 +195,7 @@ void verify_nonce_exhaustion(const pv::Values& values,
   sender->second.nonce = std::numeric_limits<std::uint64_t>::max();
   const p::Transfer transfer{
       sender->first,
-      p::Hash{},
+      p::TransactionId{},
       0,
       recipient->first,
       1,
@@ -229,7 +234,7 @@ void verify_internal_overflow_atomicity(const pv::Values& values) {
   recipient->second.balance = std::numeric_limits<std::uint64_t>::max();
   const p::Transfer recipient_overflow{
       sender->first,
-      p::Hash{},
+      p::TransactionId{},
       1,
       recipient->first,
       1,
@@ -250,7 +255,7 @@ void verify_internal_overflow_atomicity(const pv::Values& values) {
   const auto fee_sender = fee_state.accounts.begin();
   const p::Transfer fee_overflow{
       fee_sender->first,
-      p::Hash{},
+      p::TransactionId{},
       1,
       fee_sender->first,
       1,

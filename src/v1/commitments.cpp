@@ -37,7 +37,8 @@ std::size_t merkle_split(std::size_t count) {
   return split;
 }
 
-std::span<const std::uint8_t> item_bytes(const Hash& value) {
+template <typename Tag>
+std::span<const std::uint8_t> item_bytes(const TaggedHash<Tag>& value) {
   return {value.data(), value.size()};
 }
 
@@ -64,7 +65,7 @@ Hash merkle(std::span<const Item> items, std::string_view empty_label,
   return protocol::v1::hash(node_label, children);
 }
 
-Bytes account_entry(const Hash& identifier, const Account& account) {
+Bytes account_entry(const AccountId& identifier, const Account& account) {
   Bytes entry;
   entry.reserve(48);
   append(entry, identifier);
@@ -122,13 +123,16 @@ StateCommitment state_root(const State& state) {
   }
   append_u64(payload, static_cast<std::uint64_t>(entries.size()));
   append(payload, accounts_root);
-  return protocol::v1::hash("protocol-stack:v1:state-root", payload);
+  return StateRoot(
+      protocol::v1::hash("protocol-stack:v1:state-root", payload));
 }
 
-Hash transaction_root(std::span<const Hash> transaction_ids) {
-  return merkle<Hash>(transaction_ids, "protocol-stack:v1:tx-empty",
-                      "protocol-stack:v1:tx-leaf",
-                      "protocol-stack:v1:tx-node");
+TransactionRoot transaction_root(
+    std::span<const TransactionId> transaction_ids) {
+  return TransactionRoot(
+      merkle<TransactionId>(transaction_ids, "protocol-stack:v1:tx-empty",
+                            "protocol-stack:v1:tx-leaf",
+                            "protocol-stack:v1:tx-node"));
 }
 
 std::optional<Bytes> encode_receipt(const Receipt& receipt,
@@ -149,10 +153,10 @@ std::optional<Bytes> encode_receipt(const Receipt& receipt,
   return encoded;
 }
 
-Bytes encode_block_header(const Hash& chain_id, std::uint64_t height,
-                          const Hash& previous_state_root,
-                          const Hash& transaction_root_value,
-                          const Hash& resulting_state_root,
+Bytes encode_block_header(const ChainId& chain_id, std::uint64_t height,
+                          const StateRoot& previous_state_root,
+                          const TransactionRoot& transaction_root_value,
+                          const StateRoot& resulting_state_root,
                           std::uint32_t transaction_count) {
   Bytes encoded{'P', 'S', 'B', 'L'};
   encoded.reserve(146);
@@ -166,14 +170,14 @@ Bytes encode_block_header(const Hash& chain_id, std::uint64_t height,
   return encoded;
 }
 
-std::optional<Hash> block_id(std::span<const std::uint8_t> header) {
+std::optional<BlockId> block_id(std::span<const std::uint8_t> header) {
   constexpr std::size_t kHeaderSize = 146;
   if (header.size() != kHeaderSize || header[0] != 'P' ||
       header[1] != 'S' || header[2] != 'B' || header[3] != 'L' ||
       header[4] != 0 || header[5] != 1) {
     return std::nullopt;
   }
-  return protocol::v1::hash("protocol-stack:v1:block-id", header);
+  return BlockId(protocol::v1::hash("protocol-stack:v1:block-id", header));
 }
 
 }  // namespace protocol::v1::internal
