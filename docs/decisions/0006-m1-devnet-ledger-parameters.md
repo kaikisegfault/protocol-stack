@@ -31,6 +31,11 @@ deterministic execution receipts in input order. Malformed, wrong-chain, and
 invalid-signature bytes remain outside application receipts and commitments as
 required by ADR 0004.
 
+Retain the generic 1,048,576-byte canonical-object limit from ADR 0004. A
+version-one genesis has a 46-byte fixed prefix and 48 bytes per account, so its
+account count is limited to 21,844. Decoders must reject a larger declared
+count before allocating account storage.
+
 ## Rationale and alternatives
 
 Nine decimal places provide sub-unit granularity while allowing one billion
@@ -59,6 +64,13 @@ observable at the application boundary. Committing malformed or
 invalid-signature bytes would conflict with the primitive specification and
 unnecessarily give meaningless bytes application identity.
 
+Keeping the generic 65,535 list-count ceiling as the account-count bound would
+make the largest genesis 3,145,726 bytes and require an exception to the
+accepted canonical-object limit. Narrowing the count instead preserves the
+existing allocation ceiling and still exceeds any M1 deployment requirement.
+The largest accepted genesis is 1,048,558 bytes; 21,845 accounts would require
+1,048,606 bytes and are rejected.
+
 ## Security, economic, and compatibility effects
 
 - No public operation can mint, burn, issue another asset, or change the
@@ -66,6 +78,9 @@ unnecessarily give meaningless bytes application identity.
 - Checked arithmetic and full-transition atomicity protect conservation.
 - Chain ID, strict signatures, exact next nonces, and expiry heights bound
   replay.
+- Static transaction shape failures are malformed transactions. Public-key,
+  signature-point, scalar-canonicality, small-order, and signature-equation
+  failures all collapse to invalid signature after the chain check.
 - A successful self-transfer charges the same fixed fee and advances replay
   state without changing ownership.
 - The unused difference between genesis supply and the supply limit is not
@@ -80,4 +95,6 @@ Acceptance requires the normative ledger-transition vectors and passing
 independent C++20 and Python harnesses under all compiler and sanitizer
 presets. The first production kernel change must use these vectors unchanged
 and add property and randomized differential sequences rather than replacing
-the decision harness.
+the decision harness. Production genesis-decoder tests must accept a canonical
+21,844-account object and reject a declared count of 21,845 before allocation;
+the existing default and synthetic genesis fixture bytes remain unchanged.

@@ -35,6 +35,10 @@ vectors.
 - ADR 0006 and `ledger-transition-v1.md` define canonical genesis, a
   single-native-asset transfer, fixed fee-pool routing, exact nonce/expiry and
   failure rules, receipts, and ordered atomic block execution.
+- The 1,048,576-byte canonical-object limit bounds version-one genesis to
+  21,844 accounts. Transaction shape errors are malformed, while all strict
+  Ed25519 canonicality, small-order, and equation failures are invalid
+  signatures after the chain check.
 - The M1 devnet uses nine atomic decimal places, a `10^18` atomic supply limit,
   a default `10^17` atomic four-account genesis, a 1,000-atomic fixed fee, and
   no post-genesis issuance.
@@ -84,13 +88,10 @@ vectors.
 
 Continue issue #8:
 
-> Reconcile the generic 1,048,576-byte canonical-object limit with the ledger
-> genesis account-count bound and clarify signature-canonicality admission
-> errors in the accepted specification. Then implement production genesis
-> loading and commitments plus a public state owner that encapsulates immutable
-> parameters, enforces the exact next height, and atomically commits ordered
-> block results against the frozen vectors before fuzz/property and 10,000
-> seeded differential sequences.
+> Implement production genesis loading and commitments plus a public state
+> owner that encapsulates immutable parameters, enforces the exact next height,
+> and atomically commits ordered block results against the frozen vectors
+> before fuzz/property and 10,000 seeded differential sequences.
 
 ## Open autonomous decisions
 
