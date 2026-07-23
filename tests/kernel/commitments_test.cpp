@@ -20,30 +20,39 @@ namespace pc = protocol::v1::internal;
 
 namespace {
 
-p::Hash hash_value(const pv::Bytes& bytes, std::size_t offset = 0) {
+template <typename Tagged>
+Tagged tagged_hash(const pv::Bytes& bytes, std::size_t offset = 0) {
   pv::require(offset + 32 <= bytes.size(), "hash size");
   p::Hash result{};
   std::copy_n(bytes.begin() + offset, result.size(), result.begin());
-  return result;
+  return Tagged{result};
 }
 
-pv::Bytes bytes(const p::Hash& value) {
+template <typename Tagged>
+pv::Bytes bytes(const Tagged& value) {
   return {value.begin(), value.end()};
 }
 
-std::pair<p::Hash, p::Account> decode_account(std::string_view encoded) {
+template <typename To, typename From>
+To retag(const From& value) {
+  p::Hash raw{};
+  std::copy(value.begin(), value.end(), raw.begin());
+  return To{raw};
+}
+
+std::pair<p::AccountId, p::Account> decode_account(
+    std::string_view encoded) {
   const auto entry = pv::hex_decode(encoded);
   pv::require(entry.size() == 48, "account entry size");
   return {
-      hash_value(entry),
+      tagged_hash<p::AccountId>(entry),
       p::Account{pv::read_u64(entry, 32), pv::read_u64(entry, 40)},
   };
 }
 
-std::map<p::Hash, p::Account> load_accounts(const pv::Values& values,
-                                             std::string_view prefix,
-                                             std::size_t count) {
-  std::map<p::Hash, p::Account> accounts;
+std::map<p::AccountId, p::Account> load_accounts(
+    const pv::Values& values, std::string_view prefix, std::size_t count) {
+  std::map<p::AccountId, p::Account> accounts;
   for (std::size_t index = 0; index < count; ++index) {
     const auto key = std::string(prefix) + std::to_string(index);
     pv::require(accounts.emplace(decode_account(values.at(key))).second,
@@ -63,7 +72,8 @@ std::size_t genesis_account_count(const pv::Values& values) {
 
 p::Parameters parameters(const pv::Values& values) {
   return p::Parameters{
-      hash_value(pv::hex_decode(values.at("chain_id"))),
+      tagged_hash<p::ChainId>(
+          pv::hex_decode(values.at("chain_id"))),
       std::stoull(values.at("supply_limit")),
       std::stoull(values.at("total_supply")),
       std::stoull(values.at("fixed_fee")),
@@ -101,7 +111,7 @@ std::vector<pv::Bytes> account_entries(const p::State& state) {
   return entries;
 }
 
-p::Hash expected_state_root(const p::State& state) {
+p::StateRoot expected_state_root(const p::State& state) {
   const auto entries = account_entries(state);
   pv::Bytes payload;
   pv::append_u16(payload, 1);
@@ -112,14 +122,15 @@ p::Hash expected_state_root(const p::State& state) {
   pv::append_u64(payload, state.fee_pool);
   pv::append_u64(payload, entries.size());
   pv::append(payload, pv::merkle(entries, "state"));
-  return hash_value(pv::hash("protocol-stack:v1:state-root", payload));
+  return tagged_hash<p::StateRoot>(
+      pv::hash("protocol-stack:v1:state-root", payload));
 }
 
-p::Hash require_state_root(const p::State& state) {
+p::StateRoot require_state_root(const p::State& state) {
   const auto commitment = pc::state_root(state);
-  pv::require(std::holds_alternative<p::Hash>(commitment),
+  pv::require(std::holds_alternative<p::StateRoot>(commitment),
               "expected state root");
-  return std::get<p::Hash>(commitment);
+  return std::get<p::StateRoot>(commitment);
 }
 
 void require_state_error(const p::State& state, pc::StateError expected) {
@@ -143,16 +154,18 @@ void verify_final_entries(const p::State& state, const pv::Values& values) {
   }
 }
 
-std::vector<p::Hash> verify_receipts(const pv::Values& values) {
+std::vector<p::TransactionId> verify_receipts(
+    const pv::Values& values) {
   const auto count = std::stoull(values.at("admitted_count"));
   const auto fixed_fee = std::stoull(values.at("fixed_fee"));
-  std::vector<p::Hash> transaction_ids;
+  std::vector<p::TransactionId> transaction_ids;
   transaction_ids.reserve(count);
   for (std::size_t index = 0; index < count; ++index) {
     const auto key = "receipt" + std::to_string(index);
     const auto expected = pv::hex_decode(values.at(key));
     pv::require(expected.size() == 47, "receipt vector size");
-    const auto transaction_id = hash_value(expected, 6);
+    const auto transaction_id =
+        tagged_hash<p::TransactionId>(expected, 6);
     const p::Receipt receipt{
         transaction_id,
         static_cast<p::TransferResult>(expected[38]),
@@ -172,17 +185,20 @@ void verify_frozen_commitments(const pv::Values& values) {
   const auto previous_root = require_state_root(previous_state);
   const auto resulting_root = require_state_root(resulting_state);
   pv::require(previous_root ==
-                  hash_value(pv::hex_decode(values.at("previous_state_root"))),
+                  tagged_hash<p::StateRoot>(
+                      pv::hex_decode(values.at("previous_state_root"))),
               "previous state root");
   pv::require(resulting_root ==
-                  hash_value(pv::hex_decode(values.at("resulting_state_root"))),
+                  tagged_hash<p::StateRoot>(
+                      pv::hex_decode(values.at("resulting_state_root"))),
               "resulting state root");
   verify_final_entries(resulting_state, values);
 
   const auto transaction_ids = verify_receipts(values);
   const auto tx_root = pc::transaction_root(transaction_ids);
   pv::require(tx_root ==
-                  hash_value(pv::hex_decode(values.at("transaction_root"))),
+                  tagged_hash<p::TransactionRoot>(
+                      pv::hex_decode(values.at("transaction_root"))),
               "transaction root");
   const auto header = pc::encode_block_header(
       previous_state.parameters.chain_id, 1, previous_root, tx_root,
@@ -193,26 +209,28 @@ void verify_frozen_commitments(const pv::Values& values) {
   const auto encoded_block_id = pc::block_id(header);
   pv::require(encoded_block_id &&
                   *encoded_block_id ==
-                      hash_value(pv::hex_decode(values.at("block_id"))),
+                      tagged_hash<p::BlockId>(
+                          pv::hex_decode(values.at("block_id"))),
               "block ID");
 }
 
-std::vector<p::Hash> sample_ids(std::size_t count = 5) {
-  std::vector<p::Hash> ids(count);
+std::vector<p::TransactionId> sample_ids(std::size_t count = 5) {
+  std::vector<p::TransactionId> ids(count);
   for (std::size_t index = 0; index < ids.size(); ++index) {
     for (std::size_t offset = 0; offset < ids[index].size(); ++offset) {
-      ids[index][offset] =
+      ids[index].data()[offset] =
           static_cast<std::uint8_t>((index + 1) * 17 + offset);
     }
   }
   return ids;
 }
 
-p::Hash expected_transaction_root(std::span<const p::Hash> ids) {
+p::TransactionRoot expected_transaction_root(
+    std::span<const p::TransactionId> ids) {
   std::vector<pv::Bytes> encoded;
   encoded.reserve(ids.size());
   for (const auto& identifier : ids) encoded.push_back(bytes(identifier));
-  return hash_value(pv::merkle(encoded, "tx"));
+  return tagged_hash<p::TransactionRoot>(pv::merkle(encoded, "tx"));
 }
 
 void verify_merkle_shapes() {
@@ -220,7 +238,8 @@ void verify_merkle_shapes() {
   constexpr std::array<std::size_t, 13> counts{
       0, 1, 2, 3, 4, 5, 7, 8, 9, 15, 16, 17, 65'535};
   for (const auto count : counts) {
-    const auto view = std::span<const p::Hash>(ids).first(count);
+    const auto view =
+        std::span<const p::TransactionId>(ids).first(count);
     pv::require(pc::transaction_root(view) ==
                     expected_transaction_root(view),
                 "transaction Merkle shape");
@@ -228,25 +247,28 @@ void verify_merkle_shapes() {
 
   auto reordered = sample_ids();
   std::swap(reordered[1], reordered[3]);
-  const auto first_five = std::span<const p::Hash>(ids).first(5);
+  const auto first_five =
+      std::span<const p::TransactionId>(ids).first(5);
   pv::require(pc::transaction_root(first_five) !=
                   pc::transaction_root(reordered),
               "transaction ordering");
   auto mutated = sample_ids();
-  mutated[2][7] ^= 1U;
+  mutated[2].data()[7] ^= 1U;
   pv::require(pc::transaction_root(first_five) !=
                   pc::transaction_root(mutated),
               "transaction mutation");
 
   for (std::size_t count = 0; count <= 5; ++count) {
     p::State state{
-        p::Parameters{ids.front(), 100, count + 1, 1},
+        p::Parameters{retag<p::ChainId>(ids.front()), 100, count + 1, 1},
         7,
         1,
         {},
     };
     for (std::size_t index = count; index > 0; --index) {
-      state.accounts.emplace(ids[index - 1], p::Account{1, index - 1});
+      state.accounts.emplace(
+          retag<p::AccountId>(ids[index - 1]),
+          p::Account{1, index - 1});
     }
     pv::require(require_state_root(state) == expected_state_root(state),
                 "state Merkle shape");
@@ -256,10 +278,10 @@ void verify_merkle_shapes() {
 void verify_state_errors() {
   auto ids = sample_ids();
   p::State state{
-      p::Parameters{ids.front(), 100, 10, 1},
+      p::Parameters{retag<p::ChainId>(ids.front()), 100, 10, 1},
       0,
       0,
-      {{ids[1], p::Account{10, 0}}},
+      {{retag<p::AccountId>(ids[1]), p::Account{10, 0}}},
   };
 
   auto invalid = state;
@@ -291,7 +313,7 @@ void verify_state_errors() {
 
 void verify_invalid_receipts(const pv::Values& values) {
   const auto fixed_fee = std::stoull(values.at("fixed_fee"));
-  const p::Hash transaction_id{};
+  const p::TransactionId transaction_id{};
   pv::require(
       !pc::encode_receipt(
            p::Receipt{transaction_id, static_cast<p::TransferResult>(9), 0},
@@ -313,15 +335,18 @@ void verify_invalid_receipts(const pv::Values& values) {
       "invalid failed fee");
 
   auto header = pc::encode_block_header(
-      transaction_id, 1, transaction_id, transaction_id, transaction_id, 0);
+      p::ChainId{}, 1, p::StateRoot{}, p::TransactionRoot{},
+      p::StateRoot{}, 0);
   header.pop_back();
   pv::require(!pc::block_id(header), "short block header");
   header = pc::encode_block_header(
-      transaction_id, 1, transaction_id, transaction_id, transaction_id, 0);
+      p::ChainId{}, 1, p::StateRoot{}, p::TransactionRoot{},
+      p::StateRoot{}, 0);
   header[0] = 'X';
   pv::require(!pc::block_id(header), "block header magic");
   header = pc::encode_block_header(
-      transaction_id, 1, transaction_id, transaction_id, transaction_id, 0);
+      p::ChainId{}, 1, p::StateRoot{}, p::TransactionRoot{},
+      p::StateRoot{}, 0);
   header[5] = 2;
   pv::require(!pc::block_id(header), "block header version");
 }

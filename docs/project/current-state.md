@@ -42,9 +42,14 @@ vectors.
 - The M1 devnet uses nine atomic decimal places, a `10^18` atomic supply limit,
   a default `10^17` atomic four-account genesis, a 1,000-atomic fixed fee, and
   no post-genesis issuance.
-- The issue #8 in-memory kernel branch implements strict transaction admission
-  and checked transfer execution. It does not yet implement genesis loading,
-  commitments, ordered block commit, persistence, networking, or deployment.
+- The issue #8 in-memory kernel branch implements strict transaction admission,
+  checked transfer execution, bounded canonical genesis loading, state and
+  transaction commitments, receipts, and atomic ordered block commit behind an
+  owning public `Ledger`.
+- Account IDs, chain IDs, transaction IDs, state roots, transaction roots, and
+  block IDs are distinct tagged C++ types with unchanged canonical 32-byte
+  representations. Persistence, networking, RPC, consensus integration, and
+  deployment remain outside the kernel.
 
 ## Verification evidence
 
@@ -81,17 +86,32 @@ vectors.
   failures and checked recipient/fee-pool invariant failures.
 - All four local presets pass 6/6 CTest tests with the transfer execution
   slice: GCC, GCC ASan+UBSan, Clang, and Clang ASan+UBSan.
-- The execution slice adds no raw-byte entry point; fuzzing remains required
-  when the variable-length production genesis decoder is introduced.
+- The production genesis decoder accepts the full 21,844-account boundary,
+  rejects an oversized declared count before allocation, and covers malformed
+  framing, parameter, account-order, checked-supply, exact-`u64`, and trailing
+  byte failures.
+- Commitment tests reproduce the frozen previous/resulting state roots,
+  ordered transaction root, canonical receipt bytes, block header, and block
+  ID, and independently cover RFC 9162 tree shapes through 65,535 leaves.
+- The public ledger tests run the unchanged frozen vectors through production
+  genesis load and atomic block commit. They cover all five genesis error
+  classes, raw/admitted output alignment, exact receipt bytes, height and
+  65,535-input boundaries, empty and unadmitted blocks, duplicates, ordering,
+  determinism, tentative-copy isolation, and internal execution atomicity.
+- All four local presets pass 9/9 CTest tests with the public block slice: GCC,
+  GCC ASan+UBSan, Clang, and Clang ASan+UBSan.
+- Variable-length genesis and transaction byte entry points are now present;
+  bounded fuzz smoke coverage is required before issue #8 is complete.
 
 ## Exact next action
 
 Continue issue #8:
 
-> Implement production genesis loading and commitments plus a public state
-> owner that encapsulates immutable parameters, enforces the exact next height,
-> and atomically commits ordered block results against the frozen vectors
-> before fuzz/property and 10,000 seeded differential sequences.
+> Add deterministic property/invariant coverage, bounded transaction/genesis
+> fuzz targets with Clang sanitizer CI smoke, and an independent Python model
+> that differentially checks at least 10,000 seeded ordered transaction
+> sequences against the public C++ ledger; then run every repository gate and
+> prepare the coherent issue #8 pull request.
 
 ## Open autonomous decisions
 

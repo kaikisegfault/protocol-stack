@@ -66,18 +66,19 @@ std::variant<GenesisFields, GenesisError> decode_fields(
 std::optional<GenesisError> validate_accounts(
     std::span<const std::uint8_t> canonical_genesis,
     const GenesisFields& fields) {
-  std::optional<Hash> previous_identifier;
+  std::optional<AccountId> previous_identifier;
   std::uint64_t conserved_supply = fields.initial_fee_pool;
   for (std::size_t index = 0; index < fields.account_count; ++index) {
     const auto offset = kGenesisPrefixSize + index * kAccountSize;
-    const auto identifier = read_fixed<32>(canonical_genesis, offset);
+    const auto raw_identifier = read_fixed<32>(canonical_genesis, offset);
     const auto balance = read_u64(canonical_genesis, offset + 32);
     const auto nonce = read_u64(canonical_genesis, offset + 40);
-    if (!identifier || !balance || !nonce) {
+    if (!raw_identifier || !balance || !nonce) {
       return GenesisError::malformed;
     }
+    const AccountId identifier(*raw_identifier);
     if (*balance == 0 || *nonce != 0 ||
-        (previous_identifier && !(*previous_identifier < *identifier))) {
+        (previous_identifier && !(*previous_identifier < identifier))) {
       return GenesisError::invalid_accounts;
     }
     if (*balance >
@@ -85,7 +86,7 @@ std::optional<GenesisError> validate_accounts(
       return GenesisError::invalid_supply;
     }
     conserved_supply += *balance;
-    previous_identifier = *identifier;
+    previous_identifier = identifier;
   }
   if (conserved_supply != fields.total_supply) {
     return GenesisError::invalid_supply;
@@ -93,13 +94,13 @@ std::optional<GenesisError> validate_accounts(
   return std::nullopt;
 }
 
-std::map<Hash, Account> decode_accounts(
+std::map<AccountId, Account> decode_accounts(
     std::span<const std::uint8_t> canonical_genesis,
     std::uint32_t account_count) {
-  std::map<Hash, Account> accounts;
+  std::map<AccountId, Account> accounts;
   for (std::size_t index = 0; index < account_count; ++index) {
     const auto offset = kGenesisPrefixSize + index * kAccountSize;
-    const auto identifier = *read_fixed<32>(canonical_genesis, offset);
+    const AccountId identifier(*read_fixed<32>(canonical_genesis, offset));
     const auto balance = *read_u64(canonical_genesis, offset + 32);
     const auto nonce = *read_u64(canonical_genesis, offset + 40);
     accounts.emplace(identifier, Account{balance, nonce});
@@ -129,7 +130,7 @@ GenesisDecode decode_genesis(
   auto accounts = decode_accounts(canonical_genesis, fields.account_count);
   return State{
       Parameters{
-          hash("protocol-stack:v1:chain-id", canonical_genesis),
+          ChainId(hash("protocol-stack:v1:chain-id", canonical_genesis)),
           fields.supply_limit,
           fields.total_supply,
           fields.fixed_fee,
