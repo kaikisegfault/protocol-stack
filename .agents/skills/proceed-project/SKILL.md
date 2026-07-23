@@ -16,22 +16,26 @@ description: Continue autonomous work in protocol-stack when the owner says "pro
 5. Select the smallest unblocked outcome that advances the active milestone.
    Do not stop after planning when implementation is authorized and safe.
 6. For consensus, tokenomics, encoding, cryptography, authority, or
-   compatibility work, invoke `change-protocol` and specify behavior first.
+   compatibility work, invoke `change-protocol`, research alternatives, record
+   the autonomous decision, and specify behavior first.
 7. Implement the slice, run the relevant `verify-project` gates, inspect the
    full diff, and update affected documentation.
 8. Commit and push each independently complete, verified chunk under the
    configured owner identity. Do not wait for the session to end.
 9. Update `current-state.md` with verified facts, evidence, blockers, and one
    exact next action.
-10. If no owner gate or blocker exists and execution capacity remains, repeat
-    from step 5 with another bounded slice.
+10. While execution capacity remains, repeat from step 5 with another bounded
+    slice. A completed slice is not a reason to yield.
 
 Use meaningful issues, focused branches, and evidence-bearing PRs as defined in
 `AGENTS.md`. Do not manufacture activity with empty commits or vanity issues.
 
-Stop and ask only at an owner gate, for conflicting user work, unavailable
-authority or secrets, or when safe progress is no longer possible. Complete
-independent research and other unblocked work before asking.
+The repository's standing delegation makes owner approval unnecessary. Do not
+pause for technical, product, protocol, dependency, merge, release, or
+deployment approval. Stop only when execution limits are exhausted or progress
+requires unavailable credentials or infrastructure, an independent external
+review, or resolution of conflicting unexplained user work. Complete all other
+unblocked work before reporting such a blocker.
 
 Never use chat history as the authoritative handoff. Never claim continuous
 background execution after the current Codex run ends.

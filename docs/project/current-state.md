@@ -22,7 +22,11 @@ F0 — Agent and project foundation.
 
 ## Foundation status
 
-F0 is complete on `chore/initial-general` and awaits PR review and merge.
+F0 is complete on `chore/initial-general`; PR #3 is clean and mergeable.
+
+On 2026-07-23 the owner granted standing authority for autonomous project
+decisions and repository operations. A `proceed` instruction requires no
+follow-up approval.
 
 Verified foundation evidence:
 
@@ -39,14 +43,14 @@ Verified foundation evidence:
 
 ## Exact next action
 
-After F0 is merged, begin GitHub issue #2:
+Merge PR #3 under the standing delegation, then begin GitHub issue #2:
 
 > Draft the protocol-primitives specification and a decision package comparing
-> candidate signature, hashing, address, and canonical encoding suites. Do not
-> implement consensus-critical encoding or cryptography until the owner accepts
-> that decision.
+> candidate signature, hashing, address, and canonical encoding suites. Record
+> and accept the selected suite in an ADR before consensus-critical
+> implementation.
 
-## Open owner decisions
+## Open autonomous decisions
 
 - Signature and key scheme.
 - Hash function and state-tree construction.
@@ -57,6 +61,5 @@ After F0 is merged, begin GitHub issue #2:
 
 ## Blockers
 
-F0 must be merged to `main` before a clean session created from `main` can
-discover it. The protocol-primitives selection is an owner gate before
-consensus-critical M1 implementation.
+None. Protocol-primitives selection remains a mandatory research, ADR, and
+verification gate before consensus-critical M1 implementation.

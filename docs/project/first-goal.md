@@ -55,12 +55,15 @@ this goal.
 - Production AI authority, distributed AI inference, or model training.
 - Custom consensus, node OS, device, processor, or satellite work.
 
-## Owner decision gates
+## Autonomous decision gates
 
-Implementation must stop for owner acceptance of:
+Before implementing the affected consensus behavior, record and accept an ADR
+under the standing delegation for:
 
 - the cryptographic and hashing suite;
 - canonical encoding and address format;
 - native denomination and constitutional supply values;
 - any change to the single-asset, fee-routing, or AI authority constraints;
 - replacing the proposed initial consensus strategy.
+
+These are mandatory research and evidence gates, not owner-approval pauses.

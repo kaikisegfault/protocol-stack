@@ -13,8 +13,9 @@ roadmap milestone
 ```
 
 Do not create an issue for a trivial typo or manufacture empty activity. Create
-an issue when the work needs acceptance criteria, design discussion, owner
-decisions, dependency tracking, or more than one independently useful commit.
+an issue when the work needs acceptance criteria, design discussion,
+autonomous decision records, dependency tracking, or more than one
+independently useful commit.
 
 ## Branches
 
@@ -60,8 +61,10 @@ Open a PR when the branch forms a coherent reviewable outcome. Include:
 Prefer preserving clean atomic commits with a rebase merge. Squash only when a
 branch contains fixup noise that has no durable review value.
 
-Do not merge, tag, publish a release, or deploy externally without owner
-approval or an explicit accepted automation policy.
+The standing delegation in `AGENTS.md` authorizes merging, tagging, publishing
+releases, and deploying externally once the applicable verification, review,
+security, and production gates pass. Prefer rebase merges for clean atomic
+history. Never weaken an evidence gate to make an autonomous action possible.
 
 ## Authorship
 

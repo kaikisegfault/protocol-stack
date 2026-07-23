@@ -25,5 +25,5 @@ single-asset invariant and capability restrictions.
 - Protocol upgrades carry greater responsibility because application behavior
   cannot be delegated to replaceable public contracts.
 - Application extensibility is deliberately restricted.
-- Exact economic parameters still require specifications, simulations, and
-  owner acceptance before becoming immutable.
+- Exact economic parameters still require specifications, simulations, an
+  accepted ADR, and independent review before becoming immutable.
