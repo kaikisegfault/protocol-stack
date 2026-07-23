@@ -80,6 +80,7 @@ add_library(
     src/v1/admission.cpp
     src/v1/crypto.cpp
     src/v1/execution.cpp
+    src/v1/genesis.cpp
 )
 target_include_directories(
   protocol_kernel
@@ -96,6 +97,11 @@ add_executable(
   tests/kernel/execution_test.cpp
 )
 target_link_libraries(kernel_execution_tests PRIVATE protocol_kernel)
+add_executable(
+  kernel_genesis_tests
+  tests/kernel/genesis_test.cpp
+)
+target_link_libraries(kernel_genesis_tests PRIVATE protocol_kernel)
 
 foreach(
   protocol_stack_target
@@ -105,6 +111,7 @@ foreach(
     protocol_kernel
     kernel_admission_tests
     kernel_execution_tests
+    kernel_genesis_tests
 )
   target_compile_features(${protocol_stack_target} PRIVATE cxx_std_20)
   target_compile_definitions(
@@ -165,6 +172,12 @@ add_test(
   NAME kernel-execution
   COMMAND
     kernel_execution_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
+)
+add_test(
+  NAME kernel-genesis
+  COMMAND
+    kernel_genesis_tests
     "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
 )
 set_tests_properties(
