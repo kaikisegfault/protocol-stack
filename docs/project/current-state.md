@@ -186,9 +186,10 @@ the active roadmap slice.
   exactly with materialized state and metadata. Snapshot rows remain refused.
 - The owner prefers one active delivery branch, cleanup of obsolete
   branches/worktrees/build trees at phase boundaries, focused checks while
-  iterating, one required completion matrix, and runnable vertical outcomes
-  over speculative process work. `AGENTS.md` and the continuation guide record
-  that durable workflow.
+  iterating, GitHub-hosted execution for heavy gates, no detached local work,
+  process and remote-run audits, and removal of reproducible local artifacts
+  after every completed phase. `AGENTS.md`, the project skills, and the
+  engineering guides record that durable workflow.
 - GitHub is the strict durable publication boundary: every retained branch must
   be clean and equal to its upstream at handoff; completed PRs must be merged
   and pruned; local `main` must equal `origin/main`; and only `main` plus one

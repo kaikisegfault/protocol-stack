@@ -32,7 +32,10 @@ PROTOCOL_STACK_PRESET=clang-debug tools/verify.sh
 PROTOCOL_STACK_PRESET=clang-sanitizers tools/verify.sh
 ```
 
-CI runs all four presets.
+CI runs all four presets. This GitHub-hosted matrix is the normal completion
+path. Avoid rebuilding all four presets locally by default; use a focused
+local target only when it materially improves iteration, and reserve a local
+full matrix for workflow changes, unavailable CI, or failure reproduction.
 
 ## What the command does
 
@@ -70,6 +73,20 @@ presets because compiler selections and project instrumentation configurations
 differ. CMake and Ninja wheel downloads may be served from pip's normal user
 download cache, but their contents are still checked against the committed
 hashes.
+
+After a phase's evidence is recorded and no local verification process is
+running, remove the known reproducible repository artifacts:
+
+```sh
+tools/clean-local.sh
+```
+
+The command deletes only the four committed preset trees, the isolated
+repository toolchain, and Python bytecode caches under `tools/` and `tests/`.
+It does not kill processes or delete unexplained files. Audit and resolve those
+separately. GitHub-hosted runners are ephemeral; obsolete or superseded runs
+must still be cancelled, and workflow concurrency should prevent duplicate
+runs for the same branch or pull request.
 
 ## Dependency inventory
 
