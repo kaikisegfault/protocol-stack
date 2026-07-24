@@ -15,8 +15,13 @@ the source of truth.
 2. Read `docs/project/charter.md` and `docs/project/first-goal.md`.
 3. Read only the roadmap, specifications, ADRs, and architecture documents
    relevant to the next action.
-4. Inspect the current branch, recent commits, and working tree before editing.
-5. When the owner says `proceed`, use the `proceed-project` skill.
+4. Verify GitHub authentication, fetch and prune `origin`, then reconcile the
+   current branch, recent commits, working tree, local and remote branches,
+   worktrees, active issues, and pull requests before editing.
+5. Prove every retained local branch has an upstream and identify any
+   divergence or uncommitted work. Do not assume a VS Code branch list or a
+   previous handoff is current.
+6. When the owner says `proceed`, use the `proceed-project` skill.
 
 If repository state disagrees with `current-state.md`, trust Git and verified
 test evidence, then repair the state document.
@@ -36,10 +41,23 @@ test evidence, then repair the state document.
 - Start every clean session by independently reconciling Git, tests, the
   handoff, active issues, branches, worktrees, and generated build directories.
   Do not inherit stale session assumptions merely because they are documented.
-- Keep one active delivery branch whenever practical. At each completed slice
-  or phase boundary, merge verified work and remove obsolete local worktrees
-  and local/remote branches after proving that they contain no required unique
-  work. Never delete unexplained or unmerged work.
+- Treat GitHub as the durable publication boundary. Push every verified atomic
+  commit or tightly coupled pair immediately. Before every handoff, fetch and
+  prune again and prove that `main` equals `origin/main` and every retained
+  feature branch is clean and exactly equals its upstream.
+- Keep at most one active delivery branch. At each completed slice or phase
+  boundary, open its PR, monitor required checks to a terminal result, merge
+  when green, update local `main`, and remove the merged local/remote branch,
+  linked worktree, stale remote-tracking references, and redundant build trees.
+  Never delete unexplained or unmerged work.
+- A clean handoff has no unpushed commits, no unexplained tracked or untracked
+  changes, no merged or obsolete branches, and no stale worktrees. The only
+  remote branches should be `main` and, while genuinely necessary, the one
+  documented active delivery branch.
+- If GitHub authentication, network access, CI, or repository permissions
+  prevent synchronization, preserve the exact commit, record it as the primary
+  blocker, and make publishing and reconciliation the first action when access
+  returns. Do not continue accumulating unpublished slices.
 - Choose the nearest runnable vertical result that materially advances
   `docs/project/first-goal.md`. Before starting a slice, ask whether it moves
   the working application toward that outcome; defer speculative machinery

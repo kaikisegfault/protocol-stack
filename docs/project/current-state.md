@@ -179,6 +179,10 @@ and recovery remain the active roadmap slice.
   iterating, one required completion matrix, and runnable vertical outcomes
   over speculative process work. `AGENTS.md` and the continuation guide record
   that durable workflow.
+- GitHub is the strict durable publication boundary: every retained branch must
+  be clean and equal to its upstream at handoff; completed PRs must be merged
+  and pruned; local `main` must equal `origin/main`; and only `main` plus one
+  documented active delivery branch may remain remotely.
 - Restore tests prove genesis and nonzero-height reconstruction, ordinary and
   restored block-output equivalence, next-block continuation, copy/move
   ownership, live zero-balance accounts with nonzero nonce, intrinsic invariant

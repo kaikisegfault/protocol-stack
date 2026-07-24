@@ -1,5 +1,39 @@
 # Git and GitHub workflow
 
+## Synchronization invariant
+
+GitHub is the durable publication boundary. Local Git state is working state,
+not a second source of truth.
+
+At the start of every session:
+
+1. Verify the configured GitHub identity and repository access.
+2. Fetch and prune `origin`.
+3. Inspect status, upstream divergence, all local and remote branches, linked
+   worktrees, active issues, and open pull requests.
+4. Reconcile any discrepancy before starting another delivery slice.
+
+After every verified atomic commit or tightly coupled pair, push it to its
+upstream. When a branch becomes a coherent outcome, open its pull request,
+monitor required checks to a terminal result, merge it when green, update local
+`main`, and delete the merged remote branch, local branch, and linked worktree.
+
+Before every handoff, fetch and prune again and prove all of the following:
+
+- the primary worktree is clean and local `main` is the same commit as
+  `origin/main`;
+- every retained feature branch is clean, has an upstream at the same commit,
+  and corresponds to the single documented active outcome;
+- there are no stale remote-tracking references, obsolete branches, abandoned
+  worktrees, or unexplained untracked files;
+- GitHub issue and pull-request state agrees with `current-state.md`;
+- remote branches consist only of `main` and, when work is genuinely active,
+  one delivery branch.
+
+If access or CI prevents this invariant, preserve the exact unpublished commit
+and record the failure as the primary blocker. Do not start another slice until
+publication and reconciliation are restored.
+
 ## Traceability
 
 Use this hierarchy:
@@ -44,8 +78,8 @@ type(optional-scope): imperative summary
 The body should explain why when the reason is not obvious and list protocol or
 compatibility effects when applicable. Reference the issue where useful.
 
-Push promptly after each atomic commit or tightly coupled pair of commits so a
-new session can recover from GitHub.
+Push immediately after each atomic commit or tightly coupled pair of commits so
+a new session can recover from GitHub without depending on a local disk.
 
 ## Pull requests
 

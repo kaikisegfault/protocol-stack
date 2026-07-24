@@ -22,8 +22,9 @@ When the owner says `proceed`, the session should:
 
 1. Load `AGENTS.md`, current state, charter, first goal, and relevant accepted
    decisions.
-2. Inspect Git, active issues, branches, worktrees, and generated build
-   directories before assuming the handoff is current.
+2. Verify GitHub access, fetch and prune, then inspect Git divergence, active
+   issues and PRs, branches, worktrees, and generated build directories before
+   assuming the handoff is current.
 3. Reconstruct and repair the handoff if it conflicts with repository or test
    evidence; identify and resolve leftovers from prior sessions.
 4. Select the nearest runnable vertical outcome that materially advances the
@@ -31,12 +32,14 @@ When the owner says `proceed`, the session should:
 5. Write or update a specification before consensus-critical code.
 6. Implement using focused checks, then inspect and document the slice.
 7. Run the required completion matrix once the slice is coherent.
-8. Commit and push each atomic verified chunk when repository policy allows.
+8. Commit and immediately push each atomic verified chunk or tightly coupled
+   pair.
 9. Update `current-state.md` with what works, the remaining gap, and the exact
    next outcome.
-10. Open and merge reviewable PRs when their evidence gates pass, then remove
-    obsolete branches, worktrees, and generated build copies after proving
-    that no required unique work remains.
+10. Open and merge reviewable PRs when their evidence gates pass, update local
+    `main`, then remove merged or obsolete local/remote branches, worktrees,
+    stale refs, and generated build copies after proving that no required
+    unique work remains.
 11. Continue with another bounded slice while time, context, and tools remain.
 
 The owner's 2026-07-23 standing delegation means `proceed` requires no
@@ -82,12 +85,19 @@ gates pass, then delete local and remote branch references and any linked
 worktree unless unique work has been deliberately retained. Keep a branch only
 while its documented outcome remains active.
 
+At handoff, fetch and prune again. Local `main` must equal `origin/main`; every
+retained feature branch must be clean, pushed, and equal to its upstream; and
+the only remote branch besides `main` may be the single documented active
+delivery branch. Any exception is a primary blocker, not routine leftover
+state.
+
 ## Session close
 
 Before yielding:
 
 - run the relevant verification matrix;
 - review `git diff` and `git status`;
+- prove local/remote branch equality and reconcile GitHub issue and PR state;
 - update specifications and ADRs affected by the change;
 - update `current-state.md` using only verified facts;
 - state the exact next action and any genuine external blocker.
