@@ -7,8 +7,9 @@ Last updated: 2026-07-24
 M1 — Sovereign Devnet Alpha. The deterministic in-memory ledger kernel is
 merged and verified. The owning storage adapter can now durably create and
 validate a height-zero ledger, atomically persist a complete block, and reopen
-the identical head through full genesis replay. Multi-block restart coverage,
-snapshots, fault injection, and recovery remain the active roadmap slice.
+the identical head through full genesis replay. Deterministic multi-block
+restart coverage is complete; snapshots, fault injection, and recovery remain
+the active roadmap slice.
 
 ## Verified facts
 
@@ -219,6 +220,11 @@ snapshots, fault injection, and recovery remain the active roadmap slice.
 - Replay rejection coverage proves wrong-genesis precedence at nonzero height,
   missing admitted ordinals, altered transaction and block identifiers, and
   materialized state divergence are refused before publication.
+- A four-block restart harness covers a mixed 15-input block, an empty block,
+  an entirely unadmitted block, and duplicate admitted transactions. It closes
+  and fully reopens before every continued commit, compares each durable
+  `BlockCommit` and head with an independent in-memory kernel, confirms four
+  block rows and 13 admitted rows, and repeats final reopen twice.
 - Clean completion verification passes 16/16 CTest tests in GCC debug, GCC
   ASan+UBSan, and Clang debug, and 19/19 in Clang ASan+UBSan including the
   three existing kernel fuzz smoke tests. Leak detection is disabled only for
@@ -229,10 +235,10 @@ snapshots, fault injection, and recovery remain the active roadmap slice.
 
 Continue issue #11:
 
-> Add a deterministic multi-block and repeated-restart storage harness covering
-> empty and entirely unadmitted blocks, duplicate admitted transactions,
-> continued commits from reopened heads, exact replay after each restart, and
-> materialized-state agreement throughout.
+> Implement canonical version-one snapshot encoding and decoding with
+> overflow-safe bounds and digest verification, persist a verified head
+> snapshot, and independently restore it to the identical ledger head before
+> adding suffix replay.
 
 ## Open autonomous decisions
 

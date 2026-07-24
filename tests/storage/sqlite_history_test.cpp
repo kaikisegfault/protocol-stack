@@ -6,6 +6,7 @@
 #include <sqlite3.h>
 
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <iostream>
 #include <stdexcept>
@@ -279,6 +280,105 @@ void verify_replay_rejection(
       "materialized state diverging from replay accepted");
 }
 
+void verify_multiblock_restarts(
+    const pv::Values& values,
+    const std::filesystem::path& prefix) {
+  DatabaseFiles files(prefix.string() + "-restarts.db");
+  const auto genesis = genesis_bytes(values);
+  const auto full_block = block_transactions(values);
+  const std::vector<p::Bytes> empty_block;
+  const std::vector<p::Bytes> unadmitted{
+      full_block[11], full_block[12], full_block[13], full_block[14]};
+  const std::vector<p::Bytes> duplicates{
+      full_block[0], full_block[0]};
+
+  auto loaded = p::load_genesis(genesis);
+  pv::require(std::holds_alternative<p::Ledger>(loaded.result),
+              "restart fixture genesis rejected");
+  auto expected = std::get<p::Ledger>(std::move(loaded.result));
+  {
+    auto created = take_ledger(
+        ps::create_sqlite_ledger(files.path(), genesis),
+        "restart database create failed");
+    pv::require(created.read_head().state == expected.state(),
+                "restart genesis head mismatch");
+  }
+
+  const auto apply_after_reopen =
+      [&](std::uint64_t height,
+          const std::vector<p::Bytes>& transactions) {
+        auto expected_result =
+            expected.apply_block(height, transactions);
+        pv::require(
+            std::holds_alternative<p::BlockCommit>(expected_result),
+            "expected restart block rejected");
+        auto expected_commit =
+            std::get<p::BlockCommit>(std::move(expected_result));
+        auto reopened = take_ledger(
+            ps::open_sqlite_ledger(files.path(), genesis),
+            "intermediate restart rejected");
+        const auto actual_commit = take_commit(
+            reopened.apply_block(height, transactions),
+            "continued restart block rejected");
+        pv::require(same_commit(actual_commit, expected_commit),
+                    "continued restart output mismatch");
+        pv::require(
+            reopened.read_head() ==
+                ps::LedgerHead{
+                    expected.state(),
+                    expected_commit.resulting_state_root},
+            "continued restart head mismatch");
+        return expected_commit;
+      };
+
+  const auto first = apply_after_reopen(1, full_block);
+  pv::require(first.transaction_ids.size() == 11,
+              "mixed block admitted count mismatch");
+
+  const auto empty = apply_after_reopen(2, empty_block);
+  pv::require(
+      empty.admissions.empty() && empty.transaction_ids.empty(),
+      "empty block stored application inputs");
+
+  const auto omitted = apply_after_reopen(3, unadmitted);
+  pv::require(omitted.transaction_ids.empty(),
+              "unadmitted block entered journal");
+  for (const auto& admission : omitted.admissions) {
+    pv::require(admission.has_value(),
+                "unadmitted block accepted an input");
+  }
+
+  const auto duplicate = apply_after_reopen(4, duplicates);
+  pv::require(
+      duplicate.transaction_ids.size() == 2 &&
+          duplicate.transaction_ids[0] == duplicate.transaction_ids[1] &&
+          duplicate.receipts[0].result ==
+              p::TransferResult::expired &&
+          duplicate.receipts[1].result ==
+              p::TransferResult::expired,
+      "duplicate admitted journal behavior changed");
+
+  pv::require(
+      raw_scalar_text(files.path(), "SELECT count(*) FROM blocks") == "4",
+      "multi-block history count mismatch");
+  pv::require(
+      raw_scalar_text(
+          files.path(),
+          "SELECT count(*) FROM admitted_transactions") == "13",
+      "multi-block admitted count mismatch");
+
+  for (int restart = 0; restart < 2; ++restart) {
+    auto reopened = take_ledger(
+        ps::open_sqlite_ledger(files.path(), genesis),
+        "repeated final restart rejected");
+    pv::require(
+        reopened.read_head() ==
+            ps::LedgerHead{
+                expected.state(), duplicate.resulting_state_root},
+        "repeated final restart head mismatch");
+  }
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -291,6 +391,7 @@ int main(int argc, char** argv) {
     const std::filesystem::path prefix(argv[2]);
     verify_durable_block(values, prefix);
     verify_replay_rejection(values, prefix);
+    verify_multiblock_restarts(values, prefix);
     std::cout << "SQLite history tests: passed\n";
     return 0;
   } catch (const std::exception& error) {
