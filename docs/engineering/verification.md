@@ -31,6 +31,21 @@ UndefinedBehaviorSanitizer builds. The current suite includes unit and boundary
 tests, deterministic properties, 10,000 seeded differential sequences, and
 bounded libFuzzer smoke under the Clang sanitizer preset.
 
+## Execution policy
+
+GitHub-hosted Actions on the exact pushed commit are the default completion
+site for full builds, compiler and sanitizer matrices, fuzzing, simulations,
+packaging, and other resource-heavy gates. Locally, run only the lightweight
+or focused checks needed for prompt feedback. Do not duplicate a green remote
+matrix locally unless the workflow is unavailable or under change, or a remote
+failure must be reproduced; document that exception.
+
+Do not detach local repository commands or leave persistent check watchers,
+servers, or helpers. Use bounded GitHub status queries. At every completed
+phase, confirm the exact remote jobs are terminal, cancel obsolete runs, audit
+local processes, preserve evidence, and run `tools/clean-local.sh`. Inspect
+unexplained processes or files individually rather than deleting them.
+
 As production surfaces are added, this same entry point will expand to
 orchestrate:
 
@@ -44,7 +59,7 @@ documented.
 
 ## Evidence rule
 
-Do not claim a check passed without running it in the current working state.
-Record the exact command and concise result in the relevant PR or
-`current-state.md`. If a required check cannot run, describe why and do not
-silently downgrade the definition of done.
+Do not claim a check passed without exact local output or a terminal GitHub
+check on the current commit. Record the exact command or check and concise
+result in the relevant PR or `current-state.md`. If a required check cannot
+run, describe why and do not silently downgrade the definition of done.

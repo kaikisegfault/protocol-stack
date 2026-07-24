@@ -30,15 +30,18 @@ When the owner says `proceed`, the session should:
 4. Select the nearest runnable vertical outcome that materially advances the
    first operational goal.
 5. Write or update a specification before consensus-critical code.
-6. Implement using focused checks, then inspect and document the slice.
-7. Run the required completion matrix once the slice is coherent.
-8. Commit and immediately push each atomic verified chunk or tightly coupled
-   pair.
-9. Update `current-state.md` with what works, the remaining gap, and the exact
+6. Implement using focused local checks, then inspect and document the slice.
+7. Update `current-state.md` with what works, the remaining gap, and the exact
    next outcome.
-10. Open and merge reviewable PRs when their evidence gates pass, update local
-    `main`, then remove merged or obsolete local/remote branches, worktrees,
-    stale refs, and generated build copies after proving that no required
+8. Commit and immediately push each clean atomic candidate or tightly coupled
+   pair.
+9. Run the required heavy completion matrix on GitHub-hosted Actions for that
+   exact commit, record its terminal results in the pull request, and repair
+   any failure.
+10. Merge reviewable PRs when their evidence gates pass, update local `main`,
+    cancel obsolete remote runs, audit local repository processes, then remove
+    merged or obsolete local/remote branches, worktrees, stale refs, temporary
+    files, caches, and generated build copies after proving that no required
     unique work remains.
 11. Continue with another bounded slice while time, context, and tools remain.
 
@@ -74,11 +77,16 @@ outcome. Prefer production code and runnable integration over speculative
 frameworks, redundant test environments, or documentation that does not
 clarify implemented behavior.
 
-Use the smallest relevant build and test while iterating. The repository's
-compiler and sanitizer matrix remains a completion gate, but it should run
-after a slice is coherent rather than after every small edit. Once evidence is
-recorded, remove redundant build trees and dependency caches that can be
-reproduced by `tools/verify.sh`.
+Use the smallest relevant local check while iterating. The repository's
+compiler and sanitizer matrix remains a completion gate, but GitHub-hosted
+Actions on the exact candidate commit are its default execution site. Do not
+duplicate the heavy matrix locally without a concrete workflow or diagnostic
+reason.
+
+Never detach repository work or leave a local watcher, server, build, test, or
+helper running across a phase boundary. Once evidence is recorded, use bounded
+status checks, cancel obsolete GitHub runs, audit local processes, and run
+`tools/clean-local.sh`. Resolve unexplained artifacts individually.
 
 A finished branch is not durable project state. Merge it when its evidence
 gates pass, then delete local and remote branch references and any linked

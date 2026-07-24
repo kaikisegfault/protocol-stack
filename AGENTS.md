@@ -17,7 +17,8 @@ the source of truth.
    relevant to the next action.
 4. Verify GitHub authentication, fetch and prune `origin`, then reconcile the
    current branch, recent commits, working tree, local and remote branches,
-   worktrees, active issues, and pull requests before editing.
+   worktrees, active issues, pull requests, GitHub Actions runs, repository
+   processes, and generated directories before editing.
 5. Prove every retained local branch has an upstream and identify any
    divergence or uncommitted work. Do not assume a VS Code branch list or a
    previous handoff is current.
@@ -65,13 +66,23 @@ test evidence, then repair the state document.
 - Prioritize implementation and integration over process artifacts. Add only
   the design record and risk-proportionate tests needed to make behavior
   auditable and safe.
-- During implementation, iterate with the smallest relevant build and focused
-  tests. Run the complete required compiler/sanitizer matrix once the slice is
-  ready to commit or merge rather than repeatedly rebuilding every environment.
-  Required completion gates remain mandatory.
-- Remove redundant generated build trees and caches after their evidence has
-  been recorded. Report handoffs as: what works now, the nearest actual
-  outcome, and the remaining gap.
+- During implementation, use only lightweight or focused local checks needed
+  for prompt feedback. Push a clean candidate and use GitHub-hosted Actions on
+  that exact commit as the default execution site for full builds, compiler and
+  sanitizer matrices, fuzzing, simulations, packaging, and other heavy work.
+  Run a heavy gate locally only when the workflow is unavailable or under
+  change, or when reproducing a failure requires it; record why. Do not
+  duplicate the full remote matrix locally by default. Required completion
+  gates remain mandatory.
+- Never launch repository work as a detached or unattended local process.
+  Prefer bounded GitHub status queries over persistent local watchers. Before
+  each phase boundary and handoff, prove no repository build, test, monitor,
+  server, or helper process remains; cancel obsolete remote runs; and remove
+  reproducible build trees, caches, temporary files, merged branches, and stale
+  worktrees. Use `tools/clean-local.sh` after preserving required evidence and
+  inspect anything outside its narrow known-path scope rather than deleting it
+  blindly. Report handoffs as: what works now, the nearest actual outcome, and
+  the remaining gap.
 
 ## Architectural constraints
 
