@@ -424,7 +424,7 @@ void verify_state_and_integrity_rejection(
   require_error(
       ps::open_sqlite_ledger(history.path(), genesis),
       ps::SQLiteLedgerError::state_mismatch,
-      "nonzero height history accepted by height-zero adapter");
+      "incomplete nonzero-height history accepted");
 
   DatabaseFiles foreign(prefix.string() + "-foreign.db");
   create_and_close(foreign.path(), genesis);

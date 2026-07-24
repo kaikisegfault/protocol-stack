@@ -9,17 +9,29 @@ remain authoritative.
 
 ## Implemented outcome
 
-`create_sqlite_ledger` now creates a brand-new database at height zero and
-commits the caller-configured canonical genesis state. `open_sqlite_ledger`
-reopens only that closed-world height-zero form. It rejects any database with
-block, admitted-transaction, or snapshot rows until replay and recovery are
-implemented.
+`create_sqlite_ledger` creates a brand-new database at height zero and commits
+the caller-configured canonical genesis state. `SQLiteLedger::apply_block`
+copy-constructs an independent kernel candidate, applies the complete ordered
+raw-input block, persists the resulting materialized state and canonical
+history in one transaction, commits, and publishes the candidate through a
+non-throwing pointer swap. A kernel block rejection never starts a storage
+transaction.
+
+`open_sqlite_ledger` performs full genesis replay of every retained block
+before publishing a live ledger. It admits only the stored 200-byte journal
+rows, in explicit height and ordinal order, and compares every replayed
+transaction ID, receipt, root, application header, and block ID with the
+stored canonical output. The replay head must then exactly equal metadata,
+materialized accounts, the fee pool, and the public ledger root. Snapshot rows
+remain refused until independent snapshot recovery is implemented.
 
 The public header exposes no SQLite handle or SQL type. `SQLiteLedger` is
 move-constructible but not copyable or assignable. It owns the live
 `protocol::v1::Ledger`, serialized connection, normalized path, exact canonical
 genesis bytes, and cached state root. `read_head` returns owned state and root
 values while holding the adapter mutex; callers receive no borrowed view.
+`apply_block` returns one of the exact kernel `BlockCommit`, the deterministic
+kernel `BlockError`, or an operational `SQLiteLedgerError`.
 
 ## Trusted creation input
 
@@ -76,10 +88,17 @@ rowid, and foreign-key metadata; unknown or modified objects are refused.
 
 Opening requires a single successful `integrity_check` result and an empty
 `foreign_key_check`. It exact-compares the persisted canonical genesis with
-the independently trusted caller value, bounds account loading by the trusted
-genesis account count, reconstructs an owned state, and calls
+the independently trusted caller value, replays contiguous block and admitted
+transaction rows from genesis, bounds materialized account loading by the
+verified replay account count, reconstructs an owned state, and calls
 `restore_ledger` with caller-derived immutable parameters and the stored root.
-The result must exactly equal the independently loaded genesis state and root.
+The result must exactly equal the independently replayed state and root.
+
+Admission failures are absent from the journal. Empty and entirely unadmitted
+blocks still have a block row and advance height. Duplicate admitted
+transactions retain separate contiguous ordinals. Database projections never
+replace canonical transaction, receipt, header, or identifier bytes as the
+replay authority.
 
 ## Error and lifetime behavior
 
@@ -96,8 +115,7 @@ before the completed adapter is returned.
 
 ## Remaining issue 11 work
 
-The current boundary deliberately cannot apply or replay a block. The next
-vertical result is one atomic durable block commit followed by validated clean
-reopen and full genesis replay. Snapshot recovery, portable export/import,
-fault injection around commit phases, long restart sequences, and final issue
-closure follow that working block path.
+The ordinary durable commit and full-genesis-replay path is implemented.
+Snapshot recovery, portable export/import, automatic reopen after an ambiguous
+commit result, fault injection around every commit phase, long seeded restart
+sequences, and final issue closure remain.

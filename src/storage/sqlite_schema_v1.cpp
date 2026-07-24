@@ -501,11 +501,6 @@ void validate_foreign_keys(Connection& connection, const TableSpec& table) {
   require_done(keys, SQLiteLedgerError::schema_mismatch);
 }
 
-void require_empty_table(Connection& connection, const char* sql) {
-  Statement rows = connection.prepare(sql);
-  require_done(rows, SQLiteLedgerError::state_mismatch);
-}
-
 std::map<pv1::AccountId, pv1::Account> load_accounts(
     Connection& connection,
     std::size_t expected_count) {
@@ -592,12 +587,41 @@ void validate_schema_v1(Connection& connection) {
   }
 }
 
-pv1::Ledger load_height_zero(
+void validate_stored_genesis(
     Connection& connection,
     std::span<const std::uint8_t> expected_genesis,
     const pv1::Ledger& trusted_genesis_ledger,
     const pv1::StateRoot& trusted_genesis_root) {
   require_trusted_genesis(
+      expected_genesis, trusted_genesis_ledger, trusted_genesis_root);
+  Statement metadata = connection.prepare(
+      "SELECT singleton, canonical_genesis "
+      "FROM ledger_meta ORDER BY singleton");
+  require_row(metadata, SQLiteLedgerError::state_mismatch);
+  if (metadata.column_count() != 2 ||
+      !integer_column(metadata, 0, 1) ||
+      metadata.column_type(1) != SQLITE_BLOB) {
+    fail(SQLiteLedgerError::state_mismatch);
+  }
+  const auto stored_genesis = metadata.column_blob(1);
+  if (stored_genesis.size() != expected_genesis.size() ||
+      !std::equal(
+          stored_genesis.begin(), stored_genesis.end(),
+          expected_genesis.begin())) {
+    fail(SQLiteLedgerError::genesis_mismatch);
+  }
+  require_done(metadata, SQLiteLedgerError::state_mismatch);
+}
+
+pv1::Ledger load_materialized_ledger(
+    Connection& connection,
+    std::span<const std::uint8_t> expected_genesis,
+    const pv1::Ledger& trusted_genesis_ledger,
+    const pv1::StateRoot& trusted_genesis_root,
+    const pv1::Ledger& expected_ledger,
+    const pv1::StateRoot& expected_root) {
+  validate_stored_genesis(
+      connection,
       expected_genesis, trusted_genesis_ledger, trusted_genesis_root);
 
   Statement metadata = connection.prepare(
@@ -634,14 +658,6 @@ pv1::Ledger load_height_zero(
   const auto stored_root = decode_tagged_hash<pv1::StateRoot>(
       metadata, 8, SQLiteLedgerError::state_mismatch);
   require_done(metadata, SQLiteLedgerError::state_mismatch);
-  if (height != 0) fail(SQLiteLedgerError::state_mismatch);
-
-  require_empty_table(
-      connection, "SELECT 1 FROM blocks LIMIT 1");
-  require_empty_table(
-      connection, "SELECT 1 FROM admitted_transactions LIMIT 1");
-  require_empty_table(
-      connection, "SELECT 1 FROM snapshots LIMIT 1");
 
   pv1::State persisted_state{
       pv1::Parameters{
@@ -653,7 +669,7 @@ pv1::Ledger load_height_zero(
       height,
       fee_pool,
       load_accounts(
-          connection, trusted_genesis_ledger.state().accounts.size()),
+          connection, expected_ledger.state().accounts.size()),
   };
   auto restored = pv1::restore_ledger(
       std::move(persisted_state),
@@ -663,11 +679,11 @@ pv1::Ledger load_height_zero(
     fail(SQLiteLedgerError::state_mismatch);
   }
   auto ledger = std::get<pv1::Ledger>(std::move(restored.result));
-  if (stored_root != trusted_genesis_root ||
-      ledger.state() != trusted_genesis_ledger.state() ||
+  if (stored_root != expected_root ||
+      ledger.state() != expected_ledger.state() ||
       require_current_root(
           ledger, SQLiteLedgerError::state_mismatch) !=
-          trusted_genesis_root) {
+          expected_root) {
     fail(SQLiteLedgerError::state_mismatch);
   }
   return ledger;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "protocol/v1/types.hpp"
+#include "protocol/v1/ledger.hpp"
 
 #include <cstdint>
 #include <filesystem>
@@ -33,6 +33,11 @@ struct LedgerHead {
 
 struct SQLiteLedgerResult;
 
+using SQLiteBlockResult = std::variant<
+    protocol::v1::BlockCommit,
+    protocol::v1::BlockError,
+    SQLiteLedgerError>;
+
 class SQLiteLedger {
  public:
   ~SQLiteLedger() noexcept;
@@ -43,6 +48,9 @@ class SQLiteLedger {
   SQLiteLedger& operator=(SQLiteLedger&&) = delete;
 
   LedgerHead read_head() const;
+  SQLiteBlockResult apply_block(
+      std::uint64_t height,
+      std::span<const protocol::v1::Bytes> raw_transactions);
 
  private:
   struct Impl;
