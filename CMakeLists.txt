@@ -160,6 +160,25 @@ target_include_directories(
   PUBLIC
     "${PROJECT_SOURCE_DIR}/include"
 )
+add_library(
+  protocol_storage
+  STATIC
+    src/storage/sqlite_connection.cpp
+    src/storage/sqlite_ledger.cpp
+    src/storage/sqlite_schema_v1.cpp
+)
+target_include_directories(
+  protocol_storage
+  PUBLIC
+    "${PROJECT_SOURCE_DIR}/include"
+)
+target_link_libraries(
+  protocol_storage
+  PUBLIC
+    protocol_kernel
+  PRIVATE
+    protocol_stack_sqlite
+)
 add_executable(
   kernel_primitive_tests
   tests/kernel/primitives_test.cpp
@@ -210,12 +229,23 @@ add_executable(
   tests/storage/sqlite_dependency_test.cpp
 )
 target_link_libraries(sqlite_dependency_tests PRIVATE protocol_stack_sqlite)
+add_executable(
+  storage_sqlite_ledger_tests
+  tests/storage/sqlite_ledger_test.cpp
+)
+target_link_libraries(
+  storage_sqlite_ledger_tests
+  PRIVATE
+    protocol_storage
+    protocol_stack_sqlite
+)
 
 set(
   PROTOCOL_STACK_TARGETS
   protocol_primitive_vectors
   ledger_transition_vectors
   protocol_kernel
+  protocol_storage
   kernel_primitive_tests
   kernel_admission_tests
   kernel_execution_tests
@@ -226,6 +256,7 @@ set(
   kernel_property_tests
   kernel_differential_runner
   sqlite_dependency_tests
+  storage_sqlite_ledger_tests
 )
 if(PROTOCOL_STACK_ENABLE_FUZZING)
   add_library(
@@ -404,6 +435,13 @@ add_test(
   COMMAND
     sqlite_dependency_tests
     "${CMAKE_CURRENT_BINARY_DIR}/sqlite-dependency-test.db"
+)
+add_test(
+  NAME storage-sqlite-ledger
+  COMMAND
+    storage_sqlite_ledger_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
+    "${CMAKE_CURRENT_BINARY_DIR}/storage-sqlite-ledger-test"
 )
 set_tests_properties(
   protocol-primitives-python
