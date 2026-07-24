@@ -1,12 +1,13 @@
 # Current state
 
-Last updated: 2026-07-23
+Last updated: 2026-07-24
 
 ## Phase
 
 M1 — Sovereign Devnet Alpha. The deterministic in-memory ledger kernel is
-merged and verified. Atomic persistence, replay, snapshots, and recovery are
-the active roadmap slice.
+merged and verified. The owning storage adapter can now durably create and
+validate a height-zero ledger. Atomic block persistence, replay, snapshots,
+and recovery remain the active roadmap slice.
 
 ## Verified facts
 
@@ -160,22 +161,54 @@ the active roadmap slice.
   expected root, and constructs no ledger on any typed failure. The parameter
   anchor closes the version-one state root's intentional omission of
   `fixed_fee` without changing frozen commitment bytes or transitions.
+- The public move-only `SQLiteLedger` owns the live kernel ledger, hardened
+  SQLite connection, trusted canonical-genesis copy, and cached root behind a
+  mutex. It exposes only an owned coherent head and no SQLite handle or
+  borrowed state.
+- Creation prevalidates genesis before exclusively reserving an absolute local
+  path, installs the exact five-table version-one schema, commits genesis
+  accounts and metadata, and retains lifetime single-writer ownership.
+  Reopening never creates or changes journal mode and publishes no ledger
+  unless integrity, foreign keys, exact schema, caller-trusted genesis,
+  materialized state, and root all agree.
+- The current adapter is deliberately closed at height zero. Any block,
+  admitted-transaction, or snapshot row is rejected until complete replay and
+  recovery validation are implemented.
+- The owner prefers one active delivery branch, cleanup of obsolete
+  branches/worktrees/build trees at phase boundaries, focused checks while
+  iterating, one required completion matrix, and runnable vertical outcomes
+  over speculative process work. `AGENTS.md` and the continuation guide record
+  that durable workflow.
 - Restore tests prove genesis and nonzero-height reconstruction, ordinary and
   restored block-output equivalence, next-block continuation, copy/move
   ownership, live zero-balance accounts with nonzero nonce, intrinsic invariant
   rejection, every parameter mismatch, stale roots, and error precedence.
   GCC debug, GCC ASan+UBSan, and Clang debug pass 14/14 CTest tests; Clang
   ASan+UBSan passes 17/17 including all three fuzz targets.
+- Clean verification of the height-zero storage slice passes 15/15 CTest tests
+  with GCC debug and Clang debug. GCC and Clang ASan+UBSan pass 15/15 and
+  18/18 respectively with leak detection disabled because the managed
+  execution sandbox traces processes and LeakSanitizer refuses to run under
+  `ptrace`; Clang includes all three fuzz smoke tests. Before that sandbox
+  transition, the exact focused `storage-sqlite-ledger` test also passed the
+  unmodified GCC sanitizer preset with LeakSanitizer enabled.
+- Storage coverage proves exclusive creation, private permissions, independent
+  and repeated reopen, owned reads and moves, cross-process and in-process
+  lock exclusion, no-overwrite/no-create failures, symlink and hard-link
+  rejection, unexpected-WAL preservation, exact schema and version refusal,
+  wrong genesis, materialized-state and root corruption, immutable-fee
+  projection corruption, foreign-key damage, truncated files, and refusal of
+  unvalidated history.
 
 ## Exact next action
 
 Continue issue #11:
 
-> Implement the owning SQLite adapter's database-creation and height-zero reopen
-> boundary: accept caller-trusted canonical genesis, create a new path
-> exclusively, install the exact version-one schema and durability settings,
-> commit genesis state, and reject an existing database unless integrity,
-> schema, genesis, materialized state, and root validation all agree.
+> Implement one end-to-end durable block: apply ordered raw inputs to an
+> independent ledger candidate, atomically persist materialized state, exact
+> admitted bytes and kernel outputs, commit, publish with a non-throwing
+> ownership transfer, then cleanly reopen by full genesis replay to the
+> identical head.
 
 ## Open autonomous decisions
 
@@ -184,7 +217,3 @@ Continue issue #11:
 ## Blockers
 
 None.
-
-The remote `protocol/6-ledger-transition-spec` branch is not a project blocker,
-but it contains the unique pre-existing `protocol-stack.code-workspace` commit
-and must not be deleted until that file is deliberately retained or discarded.

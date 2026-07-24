@@ -31,6 +31,30 @@ test evidence, then repair the state document.
 - Do not end after a plan when an authorized, unblocked implementation step is
   available.
 
+## Owner execution preferences
+
+- Start every clean session by independently reconciling Git, tests, the
+  handoff, active issues, branches, worktrees, and generated build directories.
+  Do not inherit stale session assumptions merely because they are documented.
+- Keep one active delivery branch whenever practical. At each completed slice
+  or phase boundary, merge verified work and remove obsolete local worktrees
+  and local/remote branches after proving that they contain no required unique
+  work. Never delete unexplained or unmerged work.
+- Choose the nearest runnable vertical result that materially advances
+  `docs/project/first-goal.md`. Before starting a slice, ask whether it moves
+  the working application toward that outcome; defer speculative machinery
+  that does not.
+- Prioritize implementation and integration over process artifacts. Add only
+  the design record and risk-proportionate tests needed to make behavior
+  auditable and safe.
+- During implementation, iterate with the smallest relevant build and focused
+  tests. Run the complete required compiler/sanitizer matrix once the slice is
+  ready to commit or merge rather than repeatedly rebuilding every environment.
+  Required completion gates remain mandatory.
+- Remove redundant generated build trees and caches after their evidence has
+  been recorded. Report handoffs as: what works now, the nearest actual
+  outcome, and the remaining gap.
+
 ## Architectural constraints
 
 - Consensus-critical application logic is original C++20.

@@ -13,6 +13,8 @@
 - `architecture/sovereign-core.md`: system layers and replaceable boundaries.
 - `architecture/ledger-kernel.md`: ledger ownership, atomic block application,
   canonical outputs, and failure boundaries.
+- `architecture/sqlite-ledger.md`: owning persistence boundary, durable
+  height-zero creation, and validated reopen behavior.
 - `architecture/local-ai-authority.md`: future self-hosted AI control plane.
 
 ## Decisions
