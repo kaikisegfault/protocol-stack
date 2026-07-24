@@ -164,6 +164,8 @@ add_library(
   protocol_storage
   STATIC
     src/storage/sqlite_connection.cpp
+    src/storage/sqlite_block_store_v1.cpp
+    src/storage/sqlite_history_replay_v1.cpp
     src/storage/sqlite_ledger.cpp
     src/storage/sqlite_schema_v1.cpp
 )
@@ -233,8 +235,18 @@ add_executable(
   storage_sqlite_ledger_tests
   tests/storage/sqlite_ledger_test.cpp
 )
+add_executable(
+  storage_sqlite_history_tests
+  tests/storage/sqlite_history_test.cpp
+)
 target_link_libraries(
   storage_sqlite_ledger_tests
+  PRIVATE
+    protocol_storage
+    protocol_stack_sqlite
+)
+target_link_libraries(
+  storage_sqlite_history_tests
   PRIVATE
     protocol_storage
     protocol_stack_sqlite
@@ -257,6 +269,7 @@ set(
   kernel_differential_runner
   sqlite_dependency_tests
   storage_sqlite_ledger_tests
+  storage_sqlite_history_tests
 )
 if(PROTOCOL_STACK_ENABLE_FUZZING)
   add_library(
@@ -442,6 +455,13 @@ add_test(
     storage_sqlite_ledger_tests
     "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
     "${CMAKE_CURRENT_BINARY_DIR}/storage-sqlite-ledger-test"
+)
+add_test(
+  NAME storage-sqlite-history
+  COMMAND
+    storage_sqlite_history_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
+    "${CMAKE_CURRENT_BINARY_DIR}/storage-sqlite-history-test"
 )
 set_tests_properties(
   protocol-primitives-python

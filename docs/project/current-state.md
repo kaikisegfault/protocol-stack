@@ -6,8 +6,9 @@ Last updated: 2026-07-24
 
 M1 — Sovereign Devnet Alpha. The deterministic in-memory ledger kernel is
 merged and verified. The owning storage adapter can now durably create and
-validate a height-zero ledger. Atomic block persistence, replay, snapshots,
-and recovery remain the active roadmap slice.
+validate a height-zero ledger, atomically persist a complete block, and reopen
+the identical head through full genesis replay. Multi-block restart coverage,
+snapshots, fault injection, and recovery remain the active roadmap slice.
 
 ## Verified facts
 
@@ -171,9 +172,17 @@ and recovery remain the active roadmap slice.
   Reopening never creates or changes journal mode and publishes no ledger
   unless integrity, foreign keys, exact schema, caller-trusted genesis,
   materialized state, and root all agree.
-- The current adapter is deliberately closed at height zero. Any block,
-  admitted-transaction, or snapshot row is rejected until complete replay and
-  recovery validation are implemented.
+- `SQLiteLedger::apply_block` applies ordered raw inputs to an independent
+  ledger candidate, writes changed and created accounts, exact admitted
+  transaction bytes and kernel outputs, the block row, and head metadata in
+  one SQLite transaction, durably commits, and publishes through a
+  non-throwing owning-pointer swap. Kernel block rejection never opens a
+  storage transaction.
+- Opening validates caller-trusted genesis before history, then full-replays
+  contiguous block and admitted-transaction rows in explicit height and
+  ordinal order. Every replayed transaction ID, receipt, root, application
+  header, and block ID must equal storage before the replay head is compared
+  exactly with materialized state and metadata. Snapshot rows remain refused.
 - The owner prefers one active delivery branch, cleanup of obsolete
   branches/worktrees/build trees at phase boundaries, focused checks while
   iterating, one required completion matrix, and runnable vertical outcomes
@@ -203,16 +212,27 @@ and recovery remain the active roadmap slice.
   wrong genesis, materialized-state and root corruption, immutable-fee
   projection corruption, foreign-key damage, truncated files, and refusal of
   unvalidated history.
+- The frozen 15-input ledger block now passes through durable storage with the
+  exact kernel `BlockCommit`, 11 admitted journal rows, three omitted
+  admission failures, unchanged head on a rejected repeated height, clean
+  close, full genesis replay, and an identical owned head.
+- Replay rejection coverage proves wrong-genesis precedence at nonzero height,
+  missing admitted ordinals, altered transaction and block identifiers, and
+  materialized state divergence are refused before publication.
+- Clean completion verification passes 16/16 CTest tests in GCC debug, GCC
+  ASan+UBSan, and Clang debug, and 19/19 in Clang ASan+UBSan including the
+  three existing kernel fuzz smoke tests. Leak detection is disabled only for
+  sanitizer completion runs because the managed execution sandbox traces
+  processes and LeakSanitizer refuses to run under `ptrace`.
 
 ## Exact next action
 
 Continue issue #11:
 
-> Implement one end-to-end durable block: apply ordered raw inputs to an
-> independent ledger candidate, atomically persist materialized state, exact
-> admitted bytes and kernel outputs, commit, publish with a non-throwing
-> ownership transfer, then cleanly reopen by full genesis replay to the
-> identical head.
+> Add a deterministic multi-block and repeated-restart storage harness covering
+> empty and entirely unadmitted blocks, duplicate admitted transactions,
+> continued commits from reopened heads, exact replay after each restart, and
+> materialized-state agreement throughout.
 
 ## Open autonomous decisions
 
