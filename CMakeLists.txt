@@ -168,6 +168,8 @@ add_library(
     src/storage/sqlite_history_replay_v1.cpp
     src/storage/sqlite_ledger.cpp
     src/storage/sqlite_schema_v1.cpp
+    src/storage/sqlite_snapshot_v1.cpp
+    src/storage/snapshot_v1.cpp
 )
 target_include_directories(
   protocol_storage
@@ -239,6 +241,10 @@ add_executable(
   storage_sqlite_history_tests
   tests/storage/sqlite_history_test.cpp
 )
+add_executable(
+  storage_snapshot_v1_tests
+  tests/storage/snapshot_v1_test.cpp
+)
 target_link_libraries(
   storage_sqlite_ledger_tests
   PRIVATE
@@ -247,6 +253,12 @@ target_link_libraries(
 )
 target_link_libraries(
   storage_sqlite_history_tests
+  PRIVATE
+    protocol_storage
+    protocol_stack_sqlite
+)
+target_link_libraries(
+  storage_snapshot_v1_tests
   PRIVATE
     protocol_storage
     protocol_stack_sqlite
@@ -270,6 +282,7 @@ set(
   sqlite_dependency_tests
   storage_sqlite_ledger_tests
   storage_sqlite_history_tests
+  storage_snapshot_v1_tests
 )
 if(PROTOCOL_STACK_ENABLE_FUZZING)
   add_library(
@@ -296,6 +309,30 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     kernel_genesis_fuzz
     tests/fuzz/genesis_fuzz.cpp
   )
+  add_library(
+    protocol_storage_fuzz
+    STATIC
+      src/storage/snapshot_v1.cpp
+  )
+  target_include_directories(
+    protocol_storage_fuzz
+    PUBLIC
+      "${PROJECT_SOURCE_DIR}/include"
+  )
+  target_link_libraries(
+    protocol_storage_fuzz
+    PUBLIC
+      protocol_kernel_fuzz
+  )
+  add_executable(
+    storage_snapshot_fuzz
+    tests/fuzz/snapshot_fuzz.cpp
+  )
+  target_link_libraries(
+    storage_snapshot_fuzz
+    PRIVATE
+      protocol_storage_fuzz
+  )
   target_link_libraries(kernel_genesis_fuzz PRIVATE protocol_kernel_fuzz)
   list(
     APPEND
@@ -304,6 +341,8 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     kernel_admission_fuzz
     kernel_address_fuzz
     kernel_genesis_fuzz
+    protocol_storage_fuzz
+    storage_snapshot_fuzz
   )
 endif()
 
@@ -338,6 +377,8 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       kernel_admission_fuzz
       kernel_address_fuzz
       kernel_genesis_fuzz
+      protocol_storage_fuzz
+      storage_snapshot_fuzz
   )
     target_compile_options(
       ${protocol_stack_fuzz_target}
@@ -351,6 +392,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       kernel_admission_fuzz
       kernel_address_fuzz
       kernel_genesis_fuzz
+      storage_snapshot_fuzz
   )
     target_link_options(
       ${protocol_stack_fuzz_executable}
@@ -463,6 +505,13 @@ add_test(
     "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
     "${CMAKE_CURRENT_BINARY_DIR}/storage-sqlite-history-test"
 )
+add_test(
+  NAME storage-snapshot-v1
+  COMMAND
+    storage_snapshot_v1_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
+    "${CMAKE_CURRENT_BINARY_DIR}/storage-snapshot-v1-test"
+)
 set_tests_properties(
   protocol-primitives-python
   ledger-transition-python
@@ -503,10 +552,20 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       -max_len=256
       -len_control=0
   )
+  add_test(
+    NAME storage-snapshot-fuzz-smoke
+    COMMAND
+      storage_snapshot_fuzz
+      -seed=824311
+      -runs=512
+      -max_len=4096
+      -len_control=0
+  )
   set_tests_properties(
     kernel-admission-fuzz-smoke
     kernel-address-fuzz-smoke
     kernel-genesis-fuzz-smoke
+    storage-snapshot-fuzz-smoke
     PROPERTIES
       LABELS fuzz
       TIMEOUT 60

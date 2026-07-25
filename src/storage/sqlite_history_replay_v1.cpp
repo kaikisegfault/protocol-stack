@@ -1,4 +1,5 @@
 #include "sqlite_history_v1.hpp"
+#include "sqlite_snapshot_v1.hpp"
 
 #include <sqlite3.h>
 
@@ -149,6 +150,22 @@ void require_replay_match(
   }
 }
 
+bool require_snapshot_match(
+    const std::optional<DecodedSnapshotV1>& snapshot,
+    const pv1::Ledger& ledger) {
+  if (!snapshot ||
+      snapshot->ledger.state().height != ledger.state().height) {
+    return false;
+  }
+  auto root = ledger.current_state_root();
+  if (!std::holds_alternative<pv1::StateRoot>(root) ||
+      snapshot->ledger.state() != ledger.state() ||
+      snapshot->state_root != std::get<pv1::StateRoot>(root)) {
+    fail(SQLiteLedgerError::state_mismatch);
+  }
+  return true;
+}
+
 void replay_block_row(
     Connection& connection,
     Statement& blocks,
@@ -189,28 +206,28 @@ void replay_block_row(
       resulting_root, header, block_id);
 }
 
-void require_no_snapshots(Connection& connection) {
-  Statement snapshots =
-      connection.prepare("SELECT 1 FROM snapshots LIMIT 1");
-  if (checked_step(snapshots) != SQLITE_DONE) {
-    fail(SQLiteLedgerError::state_mismatch);
-  }
-}
-
 }  // namespace
 
 pv1::Ledger replay_history_v1(
     Connection& connection,
     const pv1::Ledger& trusted_genesis_ledger) {
   pv1::Ledger ledger(trusted_genesis_ledger);
+  const auto snapshot = load_snapshot_v1(
+      connection, trusted_genesis_ledger.state().parameters);
+  bool snapshot_matched = require_snapshot_match(snapshot, ledger);
   Statement blocks = connection.prepare(
       "SELECT height, previous_state_root, transaction_root, "
       "resulting_state_root, admitted_count, header, block_id "
       "FROM blocks ORDER BY height");
   while (checked_step(blocks) == SQLITE_ROW) {
     replay_block_row(connection, blocks, ledger);
+    if (require_snapshot_match(snapshot, ledger)) {
+      snapshot_matched = true;
+    }
   }
-  require_no_snapshots(connection);
+  if (snapshot && !snapshot_matched) {
+    fail(SQLiteLedgerError::state_mismatch);
+  }
   return ledger;
 }
 

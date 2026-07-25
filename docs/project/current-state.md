@@ -231,15 +231,36 @@ the active roadmap slice.
   three existing kernel fuzz smoke tests. Leak detection is disabled only for
   sanitizer completion runs because the managed execution sandbox traces
   processes and LeakSanitizer refuses to run under `ptrace`.
+- The public engine-independent snapshot codec implements the exact ADR 0007
+  `PSSN` version-one bytes, rejects unsupported versions and non-exact lengths
+  before allocation, checks host-size arithmetic, verifies the domain-separated
+  digest, requires strict account ordering, anchors immutable parameters to the
+  caller-trusted genesis, and restores only a state with matching invariants
+  and root.
+- `SQLiteLedger::create_snapshot` serializes with block application, confirms
+  the durable metadata head, independently decodes the candidate, atomically
+  retains one latest snapshot, and returns its exact bytes. Full genesis replay
+  independently restores and exact-compares a retained snapshot at its recorded
+  height, including when later blocks have advanced the durable head.
+- Focused GCC debug verification passes the new `storage-snapshot-v1` test plus
+  the existing `storage-sqlite-ledger` and `storage-sqlite-history` tests. The
+  snapshot suite freezes the genesis digest; covers deterministic round trips,
+  truncation, trailing bytes, count overflow, wrong magic/version/digest,
+  parameter, ordering, conservation and root failures; replaces a height-zero
+  snapshot at height two; reopens across an older snapshot; and rejects corrupt
+  row projections or multiple retained snapshots.
+- The Clang sanitizer preset now includes a fourth bounded libFuzzer smoke
+  target for raw and structured snapshot bytes with a valid seed. Its
+  completion evidence is pending the exact-commit GitHub matrix.
 
 ## Exact next action
 
 Continue issue #11:
 
-> Implement canonical version-one snapshot encoding and decoding with
-> overflow-safe bounds and digest verification, persist a verified head
-> snapshot, and independently restore it to the identical ledger head before
-> adding suffix replay.
+> Start recovery from the latest independently verified snapshot, replay only
+> its retained journal suffix, compare every suffix output and the final head
+> with authoritative full-genesis replay, and add restart coverage for
+> snapshots before and at the current head.
 
 ## Open autonomous decisions
 
