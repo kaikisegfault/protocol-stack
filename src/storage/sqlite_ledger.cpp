@@ -3,7 +3,9 @@
 #include "sqlite_connection.hpp"
 #include "sqlite_history_v1.hpp"
 #include "sqlite_schema_v1.hpp"
+#include "sqlite_snapshot_v1.hpp"
 
+#include "protocol/storage/snapshot_v1.hpp"
 #include "protocol/v1/ledger.hpp"
 
 #include <mutex>
@@ -111,6 +113,7 @@ struct SQLiteLedger::Impl {
 static_assert(std::is_nothrow_move_constructible_v<SQLiteLedger>);
 static_assert(std::is_nothrow_destructible_v<SQLiteLedger>);
 static_assert(std::is_nothrow_move_constructible_v<SQLiteBlockResult>);
+static_assert(std::is_nothrow_move_constructible_v<SQLiteSnapshotResult>);
 static_assert(std::is_nothrow_swappable_v<std::unique_ptr<Ledger>>);
 static_assert(std::is_nothrow_copy_assignable_v<StateRoot>);
 
@@ -179,6 +182,51 @@ SQLiteBlockResult SQLiteLedger::apply_block(
     return result;
   } catch (const internal::Failure& failure) {
     return SQLiteBlockResult(
+        std::in_place_type<SQLiteLedgerError>, failure.error);
+  }
+}
+
+SQLiteSnapshotResult SQLiteLedger::create_snapshot() {
+  const std::lock_guard<std::mutex> lock(implementation_->mutex);
+  if (implementation_->poisoned) {
+    return SQLiteSnapshotResult(
+        std::in_place_type<SQLiteLedgerError>,
+        SQLiteLedgerError::storage_failure);
+  }
+
+  auto encoded = encode_snapshot_v1(*implementation_->ledger);
+  if (!std::holds_alternative<EncodedSnapshotV1>(encoded)) {
+    return SQLiteSnapshotResult(
+        std::in_place_type<SQLiteLedgerError>,
+        SQLiteLedgerError::state_mismatch);
+  }
+  auto snapshot =
+      std::get<EncodedSnapshotV1>(std::move(encoded));
+
+  try {
+    auto& connection = implementation_->resources.connection;
+    internal::verify_stable_path(
+        implementation_->resources, implementation_->path);
+    internal::begin_exclusive(connection);
+    try {
+      internal::persist_snapshot_v1(
+          connection, *implementation_->ledger, snapshot);
+      internal::verify_stable_path(
+          implementation_->resources, implementation_->path);
+    } catch (...) {
+      internal::rollback_or_terminate(connection);
+      throw;
+    }
+    try {
+      internal::commit(connection);
+    } catch (...) {
+      implementation_->poisoned = true;
+      throw;
+    }
+    return SQLiteSnapshotResult(
+        std::in_place_type<Bytes>, std::move(snapshot.payload));
+  } catch (const internal::Failure& failure) {
+    return SQLiteSnapshotResult(
         std::in_place_type<SQLiteLedgerError>, failure.error);
   }
 }

@@ -22,8 +22,22 @@ before publishing a live ledger. It admits only the stored 200-byte journal
 rows, in explicit height and ordinal order, and compares every replayed
 transaction ID, receipt, root, application header, and block ID with the
 stored canonical output. The replay head must then exactly equal metadata,
-materialized accounts, the fee pool, and the public ledger root. Snapshot rows
-remain refused until independent snapshot recovery is implemented.
+materialized accounts, the fee pool, and the public ledger root.
+
+The public engine-independent snapshot codec implements ADR 0007's exact
+`PSSN` version-one bytes. Decoding verifies framing and the exact total length
+before account allocation, checks the SHA-256 domain-separated digest, requires
+strict account ordering, validates caller-trusted immutable parameters, and
+restores through the kernel's state-invariant and root checks.
+
+`SQLiteLedger::create_snapshot` serializes with reads and block application,
+verifies that the durable metadata head equals the owned ledger, independently
+decodes the candidate bytes, and atomically replaces the one retained snapshot.
+It returns the exact durably stored payload. Opening independently decodes that
+snapshot and compares its complete state and root at the same height reached by
+authoritative full-genesis replay. A retained snapshot may precede the current
+head after later blocks; suffix replay from that snapshot remains a separate
+recovery path.
 
 The public header exposes no SQLite handle or SQL type. `SQLiteLedger` is
 move-constructible but not copyable or assignable. It owns the live
@@ -115,7 +129,9 @@ before the completed adapter is returned.
 
 ## Remaining issue 11 work
 
-The ordinary durable commit and full-genesis-replay path is implemented.
-Snapshot recovery, portable export/import, automatic reopen after an ambiguous
-commit result, fault injection around every commit phase, long seeded restart
-sequences, and final issue closure remain.
+The ordinary durable commit, full-genesis-replay path, canonical snapshot
+codec, atomic latest-snapshot persistence, and independent snapshot validation
+at its recorded replay height are implemented. Snapshot-plus-suffix recovery,
+portable export/import, automatic reopen after an ambiguous commit result,
+fault injection around every commit phase, long seeded restart sequences, and
+final issue closure remain.
