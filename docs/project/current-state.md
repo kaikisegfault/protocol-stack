@@ -8,8 +8,9 @@ M1 — Sovereign Devnet Alpha. The deterministic in-memory ledger kernel is
 merged and verified. The owning storage adapter can now durably create and
 validate a height-zero ledger, atomically persist a complete block, and reopen
 the identical head through full genesis replay. Deterministic multi-block
-restart coverage is complete; snapshots, fault injection, and recovery remain
-the active roadmap slice.
+restart, snapshot recovery, and portable export are complete; archive import,
+fault injection, and ambiguous-commit recovery remain the active roadmap
+slice.
 
 ## Verified facts
 
@@ -263,14 +264,40 @@ the active roadmap slice.
   current-head snapshots, including nonempty and empty suffixes. Focused GCC
   debug verification passes this path together with both existing SQLite test
   targets, 3/3.
+- PR #16 merged snapshot-plus-suffix recovery as `3102adf`; exact-candidate
+  Actions run 30164373238 and post-merge `main` run 30164507913 both passed GCC
+  and Clang debug plus ASan/UBSan. The first three jobs passed 17/17 tests and
+  Clang ASan/UBSan passed 21/21 including all four fuzz targets.
+- The public engine-independent archive codec implements ADR 0007's exact
+  `PSAR` version-one framing. It bounds hostile lengths and counts before
+  allocation or advancement, verifies the domain-separated digest, loads
+  canonical genesis, replays every admitted block, exact-compares transaction
+  IDs, receipts, headers and block IDs, and requires the head snapshot to
+  equal the replayed state and root.
+- `SQLiteLedger::export_archive` serializes with block application and holds
+  one read transaction while it fully validates the durable ledger against
+  caller-trusted genesis and the owned head, creates a fresh head snapshot,
+  reads history in explicit height and ordinal order with exact projection
+  checks, and semantically validates the projected archive before returning
+  bytes. Export does not alter the retained database snapshot.
+- Focused GCC debug verification passes the archive codec/export test together
+  with the existing SQLite ledger, history, and snapshot targets, 4/4. The
+  archive suite freezes a 3,745-byte one-block fixture and digest; covers
+  deterministic zero-block, empty-block, and populated-block round trips,
+  truncation, trailing bytes, hostile counts and lengths, wrong
+  magic/version/digest, history and snapshot corruption; and proves
+  deterministic multi-block export across repeated calls and reopen. The Clang
+  sanitizer configuration exposes a fifth bounded libFuzzer target with raw,
+  structured, and valid archive seeds.
 
 ## Exact next action
 
 Continue issue #11:
 
-> Implement the canonical version-one portable archive codec and serialized
-> export from one verified database head, with overflow-safe framing, digest
-> verification, and exact history-plus-snapshot projections before import.
+> Implement portable archive import only into a new database: validate the
+> complete archive before touching the target path, persist its exact history,
+> materialized head, and snapshot atomically, then reopen through full replay
+> and prove byte-identical export.
 
 ## Open autonomous decisions
 

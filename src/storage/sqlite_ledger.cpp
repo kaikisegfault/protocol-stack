@@ -1,10 +1,12 @@
 #include "protocol/storage/sqlite_ledger.hpp"
 
+#include "sqlite_archive_v1.hpp"
 #include "sqlite_connection.hpp"
 #include "sqlite_history_v1.hpp"
 #include "sqlite_schema_v1.hpp"
 #include "sqlite_snapshot_v1.hpp"
 
+#include "protocol/storage/archive_v1.hpp"
 #include "protocol/storage/snapshot_v1.hpp"
 #include "protocol/v1/ledger.hpp"
 
@@ -114,6 +116,7 @@ static_assert(std::is_nothrow_move_constructible_v<SQLiteLedger>);
 static_assert(std::is_nothrow_destructible_v<SQLiteLedger>);
 static_assert(std::is_nothrow_move_constructible_v<SQLiteBlockResult>);
 static_assert(std::is_nothrow_move_constructible_v<SQLiteSnapshotResult>);
+static_assert(std::is_nothrow_move_constructible_v<SQLiteArchiveResult>);
 static_assert(std::is_nothrow_swappable_v<std::unique_ptr<Ledger>>);
 static_assert(std::is_nothrow_copy_assignable_v<StateRoot>);
 
@@ -227,6 +230,66 @@ SQLiteSnapshotResult SQLiteLedger::create_snapshot() {
         std::in_place_type<Bytes>, std::move(snapshot.payload));
   } catch (const internal::Failure& failure) {
     return SQLiteSnapshotResult(
+        std::in_place_type<SQLiteLedgerError>, failure.error);
+  }
+}
+
+SQLiteArchiveResult SQLiteLedger::export_archive() {
+  const std::lock_guard<std::mutex> lock(implementation_->mutex);
+  if (implementation_->poisoned) {
+    return SQLiteArchiveResult(
+        std::in_place_type<SQLiteLedgerError>,
+        SQLiteLedgerError::storage_failure);
+  }
+
+  try {
+    auto trusted = load_trusted_genesis(
+        bytes_view(implementation_->canonical_genesis));
+    auto& connection = implementation_->resources.connection;
+    internal::verify_stable_path(
+        implementation_->resources, implementation_->path);
+    internal::begin_read(connection);
+    EncodedArchiveV1 archive;
+    try {
+      const auto genesis = bytes_view(
+          implementation_->canonical_genesis);
+      auto durable = validate_durable_ledger(
+          connection, genesis, trusted.ledger,
+          trusted.state_root);
+      const auto durable_root = require_root(
+          durable, SQLiteLedgerError::state_mismatch);
+      if (durable.state() != implementation_->ledger->state() ||
+          durable_root != implementation_->state_root) {
+        throw internal::Failure{SQLiteLedgerError::state_mismatch};
+      }
+
+      auto snapshot_result = encode_snapshot_v1(durable);
+      if (!std::holds_alternative<EncodedSnapshotV1>(
+              snapshot_result)) {
+        throw internal::Failure{SQLiteLedgerError::state_mismatch};
+      }
+      const auto snapshot =
+          std::get<EncodedSnapshotV1>(
+              std::move(snapshot_result));
+      auto archive_data = internal::load_archive_v1(
+          connection, genesis, snapshot);
+      auto encoded = encode_archive_v1(archive_data);
+      if (!std::holds_alternative<EncodedArchiveV1>(encoded)) {
+        throw internal::Failure{SQLiteLedgerError::state_mismatch};
+      }
+      archive =
+          std::get<EncodedArchiveV1>(std::move(encoded));
+      internal::verify_stable_path(
+          implementation_->resources, implementation_->path);
+      internal::commit(connection);
+    } catch (...) {
+      internal::rollback_or_terminate(connection);
+      throw;
+    }
+    return SQLiteArchiveResult(
+        std::in_place_type<Bytes>, std::move(archive.payload));
+  } catch (const internal::Failure& failure) {
+    return SQLiteArchiveResult(
         std::in_place_type<SQLiteLedgerError>, failure.error);
   }
 }

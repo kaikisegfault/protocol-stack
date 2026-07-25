@@ -547,6 +547,16 @@ void acquire_lifetime_lock(Connection& connection) {
       connection, "PRAGMA main.locking_mode", "exclusive");
 }
 
+void begin_read(Connection& connection) {
+  if (!connection.autocommit()) {
+    fail(SQLiteLedgerError::storage_failure);
+  }
+  connection.execute("BEGIN");
+  if (connection.autocommit()) {
+    fail(SQLiteLedgerError::storage_failure);
+  }
+}
+
 void begin_exclusive(Connection& connection) {
   if (!connection.autocommit()) {
     fail(SQLiteLedgerError::storage_failure);

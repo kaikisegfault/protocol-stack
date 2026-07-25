@@ -30,6 +30,17 @@ before account allocation, checks the SHA-256 domain-separated digest, requires
 strict account ordering, validates caller-trusted immutable parameters, and
 restores through the kernel's state-invariant and root checks.
 
+The public engine-independent archive codec implements ADR 0007's exact
+`PSAR` version-one bytes. The encoder accepts canonical genesis, contiguous
+canonical block outputs and admitted transaction records, plus a head
+snapshot. It independently loads genesis, replays every admitted block through
+the kernel, exact-compares transaction IDs, receipts, headers and block IDs,
+and requires the decoded snapshot to equal the replayed head before emitting
+bytes. The decoder bounds all attacker-controlled lengths and counts before
+allocation or advancement, never reserves from the declared block count,
+rejects non-exact framing, verifies the archive digest, and performs the same
+complete semantic replay.
+
 `SQLiteLedger::create_snapshot` serializes with reads and block application,
 verifies that the durable metadata head equals the owned ledger, independently
 decodes the candidate bytes, and atomically replaces the one retained snapshot.
@@ -41,6 +52,14 @@ journal rows, compares every suffix transaction ID, receipt, root, header, and
 block ID, and requires the recovered state and root to equal authoritative full
 replay. A snapshot at the current head exercises the same path with an empty
 suffix.
+
+`SQLiteLedger::export_archive` holds the adapter guard and one SQLite read
+transaction while it fully validates the durable ledger against
+caller-trusted genesis and the owned head. It creates a fresh snapshot of that
+verified head, then reads every block and admitted transaction in explicit
+height and ordinal order with exact width, count, and contiguity checks. The
+public codec replays that independently projected archive before export
+returns. Export does not change the retained database snapshot.
 
 The public header exposes no SQLite handle or SQL type. `SQLiteLedger` is
 move-constructible but not copyable or assignable. It owns the live
@@ -132,10 +151,9 @@ before the completed adapter is returned.
 
 ## Remaining issue 11 work
 
-The ordinary durable commit, full-genesis-replay path, canonical snapshot
-codec, atomic latest-snapshot persistence, and independent snapshot validation
-at its recorded replay height are implemented. Independent snapshot-plus-suffix
-recovery reaches the identical authoritative head. Portable export/import,
-automatic reopen after an ambiguous commit result, fault injection around
-every commit phase, long seeded restart sequences, and final issue closure
-remain.
+The ordinary durable commit, full-genesis-replay path, canonical snapshot and
+archive codecs, atomic latest-snapshot persistence, independent
+snapshot-plus-suffix recovery, and portable export are implemented. Portable
+import into a new database, automatic reopen after an ambiguous commit result,
+fault injection around every commit phase, long seeded restart sequences, and
+final issue closure remain.

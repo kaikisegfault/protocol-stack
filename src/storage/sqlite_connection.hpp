@@ -107,6 +107,7 @@ void configure_connection(Connection& connection);
 void set_creation_journal_mode(Connection& connection);
 void require_existing_journal_mode(Connection& connection);
 void acquire_lifetime_lock(Connection& connection);
+void begin_read(Connection& connection);
 void begin_exclusive(Connection& connection);
 void commit(Connection& connection);
 void rollback_or_terminate(Connection& connection) noexcept;

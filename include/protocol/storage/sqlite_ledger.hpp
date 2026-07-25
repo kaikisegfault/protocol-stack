@@ -40,6 +40,9 @@ using SQLiteBlockResult = std::variant<
 using SQLiteSnapshotResult = std::variant<
     protocol::v1::Bytes,
     SQLiteLedgerError>;
+using SQLiteArchiveResult = std::variant<
+    protocol::v1::Bytes,
+    SQLiteLedgerError>;
 
 class SQLiteLedger {
  public:
@@ -55,6 +58,7 @@ class SQLiteLedger {
       std::uint64_t height,
       std::span<const protocol::v1::Bytes> raw_transactions);
   SQLiteSnapshotResult create_snapshot();
+  SQLiteArchiveResult export_archive();
 
  private:
   struct Impl;
