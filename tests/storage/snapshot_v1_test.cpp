@@ -384,9 +384,20 @@ void verify_persistence(
   {
     auto reopened = take_sqlite_ledger(
         ps::open_sqlite_ledger(files.path(), genesis),
-        "older snapshot plus full replay rejected");
+        "genesis snapshot suffix replay rejected");
     pv::require(reopened.read_head() == ledger_head(expected),
-                "older snapshot changed replay head");
+                "genesis snapshot suffix changed replay head");
+    const auto height_one_snapshot = take_snapshot(
+        reopened.create_snapshot(),
+        "height-one snapshot persistence failed");
+    const auto expected_height_one_snapshot = take_encoded(
+        ps::encode_snapshot_v1(expected),
+        "expected height-one snapshot failed");
+    pv::require(
+        height_one_snapshot ==
+            expected_height_one_snapshot.payload,
+        "height-one snapshot bytes changed");
+
     const std::vector<p::Bytes> empty;
     auto expected_block = expected.apply_block(2, empty);
     pv::require(
@@ -396,6 +407,14 @@ void verify_persistence(
     pv::require(
         std::holds_alternative<p::BlockCommit>(actual_block),
         "stored empty block rejected");
+  }
+
+  {
+    auto reopened = take_sqlite_ledger(
+        ps::open_sqlite_ledger(files.path(), genesis),
+        "height-one snapshot suffix replay rejected");
+    pv::require(reopened.read_head() == ledger_head(expected),
+                "height-one snapshot suffix changed replay head");
     const auto payload = take_snapshot(
         reopened.create_snapshot(), "head snapshot replacement failed");
     const auto expected_snapshot = take_encoded(

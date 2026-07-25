@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-07-24
+Last updated: 2026-07-25
 
 ## Phase
 
@@ -249,18 +249,28 @@ the active roadmap slice.
   parameter, ordering, conservation and root failures; replaces a height-zero
   snapshot at height two; reopens across an older snapshot; and rejects corrupt
   row projections or multiple retained snapshots.
-- The Clang sanitizer preset now includes a fourth bounded libFuzzer smoke
-  target for raw and structured snapshot bytes with a valid seed. Its
-  completion evidence is pending the exact-commit GitHub matrix.
+- The Clang sanitizer preset includes a fourth bounded libFuzzer smoke target
+  for raw and structured snapshot bytes with a valid seed. PR #15 merged the
+  snapshot slice as `63ff68f`; exact-candidate Actions run 30163985474 and
+  post-merge `main` run 30164137810 both passed GCC and Clang debug plus
+  ASan/UBSan. The first three jobs passed 17/17 tests and Clang ASan/UBSan
+  passed 21/21 including all four fuzz targets.
+- Opening now starts a second recovery ledger from the independently decoded
+  latest snapshot, re-queries and replays only its later block and journal
+  rows, compares every suffix transaction ID, receipt, root, header, and block
+  ID, and requires the recovered state and root to equal authoritative full
+  genesis replay. Restart coverage exercises genesis, behind-head, and
+  current-head snapshots, including nonempty and empty suffixes. Focused GCC
+  debug verification passes this path together with both existing SQLite test
+  targets, 3/3.
 
 ## Exact next action
 
 Continue issue #11:
 
-> Start recovery from the latest independently verified snapshot, replay only
-> its retained journal suffix, compare every suffix output and the final head
-> with authoritative full-genesis replay, and add restart coverage for
-> snapshots before and at the current head.
+> Implement the canonical version-one portable archive codec and serialized
+> export from one verified database head, with overflow-safe framing, digest
+> verification, and exact history-plus-snapshot projections before import.
 
 ## Open autonomous decisions
 
