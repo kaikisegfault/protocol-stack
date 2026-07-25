@@ -206,6 +206,39 @@ void replay_block_row(
       resulting_root, header, block_id);
 }
 
+void require_same_head(
+    const pv1::Ledger& recovered,
+    const pv1::Ledger& authoritative) {
+  const auto recovered_root = recovered.current_state_root();
+  const auto authoritative_root =
+      authoritative.current_state_root();
+  if (recovered.state() != authoritative.state() ||
+      !std::holds_alternative<pv1::StateRoot>(recovered_root) ||
+      !std::holds_alternative<pv1::StateRoot>(authoritative_root) ||
+      std::get<pv1::StateRoot>(recovered_root) !=
+          std::get<pv1::StateRoot>(authoritative_root)) {
+    fail(SQLiteLedgerError::state_mismatch);
+  }
+}
+
+void replay_snapshot_suffix(
+    Connection& connection,
+    const DecodedSnapshotV1& snapshot,
+    const pv1::Ledger& authoritative) {
+  pv1::Ledger recovered(snapshot.ledger);
+  Statement blocks = connection.prepare(
+      "SELECT height, previous_state_root, transaction_root, "
+      "resulting_state_root, admitted_count, header, block_id "
+      "FROM blocks WHERE height>? ORDER BY height");
+  const auto snapshot_height =
+      encode_u64(snapshot.ledger.state().height);
+  blocks.bind_blob(1, snapshot_height);
+  while (checked_step(blocks) == SQLITE_ROW) {
+    replay_block_row(connection, blocks, recovered);
+  }
+  require_same_head(recovered, authoritative);
+}
+
 }  // namespace
 
 pv1::Ledger replay_history_v1(
@@ -227,6 +260,9 @@ pv1::Ledger replay_history_v1(
   }
   if (snapshot && !snapshot_matched) {
     fail(SQLiteLedgerError::state_mismatch);
+  }
+  if (snapshot) {
+    replay_snapshot_suffix(connection, *snapshot, ledger);
   }
   return ledger;
 }

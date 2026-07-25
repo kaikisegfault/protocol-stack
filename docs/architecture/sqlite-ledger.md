@@ -35,9 +35,12 @@ verifies that the durable metadata head equals the owned ledger, independently
 decodes the candidate bytes, and atomically replaces the one retained snapshot.
 It returns the exact durably stored payload. Opening independently decodes that
 snapshot and compares its complete state and root at the same height reached by
-authoritative full-genesis replay. A retained snapshot may precede the current
-head after later blocks; suffix replay from that snapshot remains a separate
-recovery path.
+authoritative full-genesis replay. It then starts a second ledger from that
+independently restored snapshot, re-queries and replays only later block and
+journal rows, compares every suffix transaction ID, receipt, root, header, and
+block ID, and requires the recovered state and root to equal authoritative full
+replay. A snapshot at the current head exercises the same path with an empty
+suffix.
 
 The public header exposes no SQLite handle or SQL type. `SQLiteLedger` is
 move-constructible but not copyable or assignable. It owns the live
@@ -131,7 +134,8 @@ before the completed adapter is returned.
 
 The ordinary durable commit, full-genesis-replay path, canonical snapshot
 codec, atomic latest-snapshot persistence, and independent snapshot validation
-at its recorded replay height are implemented. Snapshot-plus-suffix recovery,
-portable export/import, automatic reopen after an ambiguous commit result,
-fault injection around every commit phase, long seeded restart sequences, and
-final issue closure remain.
+at its recorded replay height are implemented. Independent snapshot-plus-suffix
+recovery reaches the identical authoritative head. Portable export/import,
+automatic reopen after an ambiguous commit result, fault injection around
+every commit phase, long seeded restart sequences, and final issue closure
+remain.
