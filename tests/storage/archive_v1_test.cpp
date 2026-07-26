@@ -392,6 +392,13 @@ ps::SQLiteLedger take_ledger(
   return std::get<ps::SQLiteLedger>(std::move(result.result));
 }
 
+ps::LedgerHead take_head(
+    ps::SQLiteHeadResult result,
+    std::string_view message) {
+  pv::require(std::holds_alternative<ps::LedgerHead>(result), message);
+  return std::get<ps::LedgerHead>(std::move(result));
+}
+
 void require_ledger_error(
     ps::SQLiteLedgerResult result,
     ps::SQLiteLedgerError expected,
@@ -531,7 +538,8 @@ void verify_import(
         ps::import_sqlite_archive(
             imported_files.path(), encoded.payload),
         "archive import failed");
-    const auto head = imported.read_head();
+    const auto head =
+        take_head(imported.read_head(), "imported head read failed");
     const auto expected_root = expected.ledger.current_state_root();
     pv::require(
         head.state == expected.ledger.state() &&
@@ -569,7 +577,10 @@ void verify_import(
           genesis_files.path(), genesis_encoded.payload),
       "genesis archive import failed");
   pv::require(
-      genesis_import.read_head().state == genesis_fixture.ledger.state() &&
+      take_head(
+          genesis_import.read_head(),
+          "genesis import head read failed").state ==
+          genesis_fixture.ledger.state() &&
           take_export(
               genesis_import.export_archive(),
               "genesis import export failed") ==

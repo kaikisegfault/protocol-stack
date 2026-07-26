@@ -69,6 +69,13 @@ ps::SQLiteLedger take_ledger(
   return std::get<ps::SQLiteLedger>(std::move(result.result));
 }
 
+ps::LedgerHead take_head(
+    ps::SQLiteHeadResult result,
+    std::string_view message) {
+  pv::require(std::holds_alternative<ps::LedgerHead>(result), message);
+  return std::get<ps::LedgerHead>(std::move(result));
+}
+
 p::BlockCommit take_commit(
     ps::SQLiteBlockResult result,
     std::string_view message) {
@@ -203,13 +210,17 @@ void verify_durable_block(
         stored.apply_block(1, transactions), "durable block rejected");
     pv::require(same_commit(commit, expected_commit),
                 "durable output changed");
-    pv::require(stored.read_head() == expected,
+    pv::require(
+        take_head(stored.read_head(), "published head read failed") ==
+            expected,
                 "published head mismatch");
     require_block_error(
         stored.apply_block(1, transactions),
         p::BlockError::invalid_height,
         "rejected block returned wrong error");
-    pv::require(stored.read_head() == expected,
+    pv::require(
+        take_head(stored.read_head(), "rejected head read failed") ==
+            expected,
                 "rejected block changed head");
   }
 
@@ -226,7 +237,9 @@ void verify_durable_block(
   auto reopened = take_ledger(
       ps::open_sqlite_ledger(files.path(), genesis),
       "full genesis replay rejected");
-  pv::require(reopened.read_head() == expected,
+  pv::require(
+      take_head(reopened.read_head(), "replayed head read failed") ==
+          expected,
               "replayed head mismatch");
 }
 
@@ -300,7 +313,9 @@ void verify_multiblock_restarts(
     auto created = take_ledger(
         ps::create_sqlite_ledger(files.path(), genesis),
         "restart database create failed");
-    pv::require(created.read_head().state == expected.state(),
+    pv::require(
+        take_head(created.read_head(), "restart genesis read failed").state ==
+            expected.state(),
                 "restart genesis head mismatch");
   }
 
@@ -323,7 +338,9 @@ void verify_multiblock_restarts(
         pv::require(same_commit(actual_commit, expected_commit),
                     "continued restart output mismatch");
         pv::require(
-            reopened.read_head() ==
+            take_head(
+                reopened.read_head(),
+                "continued restart head read failed") ==
                 ps::LedgerHead{
                     expected.state(),
                     expected_commit.resulting_state_root},
@@ -372,7 +389,9 @@ void verify_multiblock_restarts(
         ps::open_sqlite_ledger(files.path(), genesis),
         "repeated final restart rejected");
     pv::require(
-        reopened.read_head() ==
+        take_head(
+            reopened.read_head(),
+            "repeated restart head read failed") ==
             ps::LedgerHead{
                 expected.state(), duplicate.resulting_state_root},
         "repeated final restart head mismatch");

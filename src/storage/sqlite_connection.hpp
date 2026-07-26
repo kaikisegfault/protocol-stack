@@ -68,6 +68,7 @@ class Connection {
 
   sqlite3* get() const noexcept { return database_; }
   bool autocommit() const noexcept;
+  void close();
 
   void execute(const char* sql);
   std::int64_t scalar_integer(const char* sql);

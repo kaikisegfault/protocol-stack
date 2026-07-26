@@ -79,6 +79,13 @@ ps::SQLiteLedger take_ledger(
   return std::get<ps::SQLiteLedger>(std::move(result.result));
 }
 
+ps::LedgerHead take_head(
+    ps::SQLiteHeadResult result,
+    std::string_view message) {
+  pv::require(std::holds_alternative<ps::LedgerHead>(result), message);
+  return std::get<ps::LedgerHead>(std::move(result));
+}
+
 void require_error(ps::SQLiteLedgerResult result,
                    ps::SQLiteLedgerError expected,
                    std::string_view message) {
@@ -149,7 +156,9 @@ void create_and_close(
   auto ledger = take_ledger(
       ps::create_sqlite_ledger(path, genesis),
       "baseline create failed");
-  pv::require(ledger.read_head() == expected_head(genesis),
+  pv::require(
+      take_head(ledger.read_head(), "baseline head read failed") ==
+          expected_head(genesis),
               "baseline head mismatch");
 }
 
@@ -195,15 +204,22 @@ void verify_create_reopen_and_lock(
     auto created = take_ledger(
         ps::create_sqlite_ledger(files.path(), genesis),
         "valid database creation rejected");
-    pv::require(created.read_head() == expected,
+    pv::require(
+        take_head(created.read_head(), "created head read failed") ==
+            expected,
                 "created head mismatch");
-    auto caller_copy = created.read_head();
+    auto caller_copy =
+        take_head(created.read_head(), "caller-copy head read failed");
     caller_copy.state.accounts.clear();
-    pv::require(created.read_head() == expected,
+    pv::require(
+        take_head(created.read_head(), "repeated head read failed") ==
+            expected,
                 "read head exposed borrowed state");
 
     ps::SQLiteLedger moved(std::move(created));
-    pv::require(moved.read_head() == expected, "move changed head");
+    pv::require(
+        take_head(moved.read_head(), "moved head read failed") == expected,
+        "move changed head");
     require_lock_probe(
         executable, vector_path, files.path());
     require_error(
@@ -226,13 +242,17 @@ void verify_create_reopen_and_lock(
     auto reopened = take_ledger(
         ps::open_sqlite_ledger(files.path(), genesis),
         "clean reopen rejected");
-    pv::require(reopened.read_head() == expected,
+    pv::require(
+        take_head(reopened.read_head(), "reopened head read failed") ==
+            expected,
                 "reopened head mismatch");
   }
   auto repeated = take_ledger(
       ps::open_sqlite_ledger(files.path(), genesis),
       "repeated reopen rejected");
-  pv::require(repeated.read_head() == expected,
+  pv::require(
+      take_head(repeated.read_head(), "repeated reopen head read failed") ==
+          expected,
               "repeated reopen head mismatch");
 }
 
