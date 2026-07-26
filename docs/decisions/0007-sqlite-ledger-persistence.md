@@ -358,6 +358,15 @@ The hook after a successful durable commit and before publication is only for
 a non-returning subprocess termination test; a recoverable callback or
 exception must never simulate that interval.
 
+The VFS test double wraps the registered default VFS and delegates its
+rollback-mode file and VFS methods. One operation is armed at a block boundary
+and consumed once: partial journal write reported as `SQLITE_IOERR_WRITE`,
+`SQLITE_FULL`, write I/O, sync, truncate, or journal-delete failure. It is
+registered only inside the dedicated test process and is restored before that
+process exits. These injections verify adapter behavior; they do not replace
+SQLite's production filesystem implementation or weaken the
+truthful-local-filesystem assumption.
+
 ## Alternatives
 
 ### LMDB 1.0
@@ -422,8 +431,12 @@ Acceptance requires all four compiler/sanitizer presets plus:
   rollback failure; the durable-commit-before-publication interval is tested
   only by a non-returning subprocess kill hook, never by a recoverable callback
   or exception;
-- SQLite VFS injection for short writes, disk-full, I/O, sync, truncate, and
-  delete failures, plus subprocess termination around commit boundaries;
+- one-shot VFS injection for partial write, disk-full, write I/O, sync,
+  truncate, and delete failures, accepting only a fully validated old or new
+  durable head before continuation and external reopen;
+- subprocess termination before transaction, after transaction begin, during
+  persistence, and before commit; the durable-commit-before-publication kill
+  is already covered;
 - Clang sanitizer fuzz targets for snapshot and archive decoding, with
   structured valid seeds and malformed length, count, overflow, truncation, and
   trailing-byte cases;
