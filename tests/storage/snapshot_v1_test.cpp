@@ -277,6 +277,13 @@ ps::SQLiteLedger take_sqlite_ledger(
   return std::get<ps::SQLiteLedger>(std::move(result.result));
 }
 
+ps::LedgerHead take_head(
+    ps::SQLiteHeadResult result,
+    std::string_view message) {
+  pv::require(std::holds_alternative<ps::LedgerHead>(result), message);
+  return std::get<ps::LedgerHead>(std::move(result));
+}
+
 p::Bytes take_snapshot(
     ps::SQLiteSnapshotResult result,
     std::string_view message) {
@@ -385,7 +392,9 @@ void verify_persistence(
     auto reopened = take_sqlite_ledger(
         ps::open_sqlite_ledger(files.path(), genesis),
         "genesis snapshot suffix replay rejected");
-    pv::require(reopened.read_head() == ledger_head(expected),
+    pv::require(
+        take_head(reopened.read_head(), "genesis suffix head read failed") ==
+            ledger_head(expected),
                 "genesis snapshot suffix changed replay head");
     const auto height_one_snapshot = take_snapshot(
         reopened.create_snapshot(),
@@ -413,7 +422,10 @@ void verify_persistence(
     auto reopened = take_sqlite_ledger(
         ps::open_sqlite_ledger(files.path(), genesis),
         "height-one snapshot suffix replay rejected");
-    pv::require(reopened.read_head() == ledger_head(expected),
+    pv::require(
+        take_head(
+            reopened.read_head(), "height-one suffix head read failed") ==
+            ledger_head(expected),
                 "height-one snapshot suffix changed replay head");
     const auto payload = take_snapshot(
         reopened.create_snapshot(), "head snapshot replacement failed");
@@ -437,7 +449,9 @@ void verify_persistence(
   auto reopened = take_sqlite_ledger(
       ps::open_sqlite_ledger(files.path(), genesis),
       "head snapshot restore rejected");
-  pv::require(reopened.read_head() == ledger_head(expected),
+  pv::require(
+      take_head(reopened.read_head(), "head snapshot read failed") ==
+          ledger_head(expected),
               "head snapshot restore changed state");
 }
 

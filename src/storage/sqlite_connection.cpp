@@ -361,6 +361,14 @@ bool Connection::autocommit() const noexcept {
   return database_ == nullptr || sqlite3_get_autocommit(database_) != 0;
 }
 
+void Connection::close() {
+  if (database_ == nullptr) return;
+  if (sqlite3_close(database_) != SQLITE_OK) {
+    fail(SQLiteLedgerError::storage_failure);
+  }
+  database_ = nullptr;
+}
+
 void Connection::execute(const char* sql) {
   auto statement = prepare(sql);
   require_done(statement.step());

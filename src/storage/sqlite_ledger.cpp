@@ -2,6 +2,7 @@
 
 #include "sqlite_archive_v1.hpp"
 #include "sqlite_connection.hpp"
+#include "sqlite_fault_injection.hpp"
 #include "sqlite_history_v1.hpp"
 #include "sqlite_schema_v1.hpp"
 #include "sqlite_snapshot_v1.hpp"
@@ -114,7 +115,7 @@ void persist_import_database(
 struct SQLiteLedger::Impl {
   std::filesystem::path path;
   Bytes canonical_genesis;
-  internal::SQLiteResources resources;
+  std::unique_ptr<internal::SQLiteResources> resources;
   mutable std::mutex mutex;
   std::unique_ptr<Ledger> ledger;
   StateRoot state_root;
@@ -123,7 +124,7 @@ struct SQLiteLedger::Impl {
   Impl(
       std::filesystem::path normalized_path,
       Bytes exact_genesis,
-      internal::SQLiteResources sqlite_resources,
+      std::unique_ptr<internal::SQLiteResources> sqlite_resources,
       std::unique_ptr<Ledger> live_ledger,
       StateRoot verified_root) noexcept
       : path(std::move(normalized_path)),
@@ -132,11 +133,50 @@ struct SQLiteLedger::Impl {
         ledger(std::move(live_ledger)),
         state_root(std::move(verified_root)),
         poisoned(false) {}
+
+  bool recover_durable_head() noexcept {
+    try {
+      if (!resources) return false;
+      resources->connection.close();
+      resources.reset();
+      if (internal::invoke_sqlite_block_fault(
+              internal::SQLiteBlockFaultPoint::before_recovery_open,
+              nullptr)) {
+        throw internal::Failure{SQLiteLedgerError::storage_failure};
+      }
+
+      auto trusted =
+          load_trusted_genesis(bytes_view(canonical_genesis));
+      auto replacement =
+          std::make_unique<internal::SQLiteResources>(
+              internal::open_sqlite_database(path));
+      internal::configure_connection(replacement->connection);
+      internal::acquire_lifetime_lock(replacement->connection);
+      internal::require_existing_journal_mode(replacement->connection);
+      internal::verify_stable_path(*replacement, path);
+      auto recovered = validate_durable_ledger(
+          replacement->connection, bytes_view(canonical_genesis),
+          trusted.ledger, trusted.state_root);
+      const auto recovered_root = require_root(
+          recovered, SQLiteLedgerError::state_mismatch);
+      auto recovered_ledger =
+          std::make_unique<Ledger>(std::move(recovered));
+
+      resources.swap(replacement);
+      ledger.swap(recovered_ledger);
+      state_root = recovered_root;
+      poisoned = false;
+      return true;
+    } catch (...) {
+      return false;
+    }
+  }
 };
 
 static_assert(std::is_nothrow_move_constructible_v<SQLiteLedger>);
 static_assert(std::is_nothrow_destructible_v<SQLiteLedger>);
 static_assert(std::is_nothrow_move_constructible_v<SQLiteBlockResult>);
+static_assert(std::is_nothrow_move_constructible_v<SQLiteHeadResult>);
 static_assert(std::is_nothrow_move_constructible_v<SQLiteSnapshotResult>);
 static_assert(std::is_nothrow_move_constructible_v<SQLiteArchiveResult>);
 static_assert(std::is_nothrow_swappable_v<std::unique_ptr<Ledger>>);
@@ -149,12 +189,19 @@ SQLiteLedger::SQLiteLedger(
 SQLiteLedger::~SQLiteLedger() noexcept = default;
 SQLiteLedger::SQLiteLedger(SQLiteLedger&&) noexcept = default;
 
-LedgerHead SQLiteLedger::read_head() const {
+SQLiteHeadResult SQLiteLedger::read_head() const {
   const std::lock_guard<std::mutex> lock(implementation_->mutex);
-  return LedgerHead{
-      implementation_->ledger->state(),
-      implementation_->state_root,
-  };
+  if (implementation_->poisoned) {
+    return SQLiteHeadResult(
+        std::in_place_type<SQLiteLedgerError>,
+        SQLiteLedgerError::storage_failure);
+  }
+  return SQLiteHeadResult(
+      std::in_place_type<LedgerHead>,
+      LedgerHead{
+          implementation_->ledger->state(),
+          implementation_->state_root,
+      });
 }
 
 SQLiteBlockResult SQLiteLedger::apply_block(
@@ -181,29 +228,58 @@ SQLiteBlockResult SQLiteLedger::apply_block(
   const auto& commit = std::get<protocol::v1::BlockCommit>(result);
 
   try {
-    auto& connection = implementation_->resources.connection;
+    auto& resources = *implementation_->resources;
+    auto& connection = resources.connection;
     internal::verify_stable_path(
-        implementation_->resources, implementation_->path);
+        resources, implementation_->path);
+    if (internal::invoke_sqlite_block_fault(
+            internal::SQLiteBlockFaultPoint::before_transaction,
+            connection.get())) {
+      throw internal::Failure{SQLiteLedgerError::storage_failure};
+    }
     internal::begin_exclusive(connection);
     try {
+      if (internal::invoke_sqlite_block_fault(
+              internal::SQLiteBlockFaultPoint::after_transaction_begin,
+              connection.get())) {
+        throw internal::Failure{SQLiteLedgerError::storage_failure};
+      }
       internal::persist_block_v1(
           connection, implementation_->ledger->state(),
           candidate->state(), raw_transactions, commit);
+      if (internal::invoke_sqlite_block_fault(
+              internal::SQLiteBlockFaultPoint::after_persistence,
+              connection.get())) {
+        throw internal::Failure{SQLiteLedgerError::storage_failure};
+      }
       internal::verify_stable_path(
-          implementation_->resources, implementation_->path);
+          resources, implementation_->path);
+      if (internal::invoke_sqlite_block_fault(
+              internal::SQLiteBlockFaultPoint::before_commit,
+              connection.get())) {
+        throw internal::Failure{SQLiteLedgerError::storage_failure};
+      }
     } catch (...) {
       internal::rollback_or_terminate(connection);
       throw;
     }
     try {
       internal::commit(connection);
-    } catch (...) {
+    } catch (const internal::Failure& failure) {
       implementation_->poisoned = true;
-      throw;
+      (void)implementation_->recover_durable_head();
+      return SQLiteBlockResult(
+          std::in_place_type<SQLiteLedgerError>, failure.error);
     }
+    (void)internal::invoke_sqlite_block_fault(
+        internal::SQLiteBlockFaultPoint::after_commit_before_publication,
+        connection.get());
 
     implementation_->ledger.swap(candidate);
     implementation_->state_root = commit.resulting_state_root;
+    (void)internal::invoke_sqlite_block_fault(
+        internal::SQLiteBlockFaultPoint::after_publication,
+        connection.get());
     return result;
   } catch (const internal::Failure& failure) {
     return SQLiteBlockResult(
@@ -229,24 +305,27 @@ SQLiteSnapshotResult SQLiteLedger::create_snapshot() {
       std::get<EncodedSnapshotV1>(std::move(encoded));
 
   try {
-    auto& connection = implementation_->resources.connection;
+    auto& resources = *implementation_->resources;
+    auto& connection = resources.connection;
     internal::verify_stable_path(
-        implementation_->resources, implementation_->path);
+        resources, implementation_->path);
     internal::begin_exclusive(connection);
     try {
       internal::persist_snapshot_v1(
           connection, *implementation_->ledger, snapshot);
       internal::verify_stable_path(
-          implementation_->resources, implementation_->path);
+          resources, implementation_->path);
     } catch (...) {
       internal::rollback_or_terminate(connection);
       throw;
     }
     try {
       internal::commit(connection);
-    } catch (...) {
+    } catch (const internal::Failure& failure) {
       implementation_->poisoned = true;
-      throw;
+      (void)implementation_->recover_durable_head();
+      return SQLiteSnapshotResult(
+          std::in_place_type<SQLiteLedgerError>, failure.error);
     }
     return SQLiteSnapshotResult(
         std::in_place_type<Bytes>, std::move(snapshot.payload));
@@ -267,9 +346,10 @@ SQLiteArchiveResult SQLiteLedger::export_archive() {
   try {
     auto trusted = load_trusted_genesis(
         bytes_view(implementation_->canonical_genesis));
-    auto& connection = implementation_->resources.connection;
+    auto& resources = *implementation_->resources;
+    auto& connection = resources.connection;
     internal::verify_stable_path(
-        implementation_->resources, implementation_->path);
+        resources, implementation_->path);
     internal::begin_read(connection);
     EncodedArchiveV1 archive;
     try {
@@ -302,7 +382,7 @@ SQLiteArchiveResult SQLiteLedger::export_archive() {
       archive =
           std::get<EncodedArchiveV1>(std::move(encoded));
       internal::verify_stable_path(
-          implementation_->resources, implementation_->path);
+          resources, implementation_->path);
       internal::commit(connection);
     } catch (...) {
       internal::rollback_or_terminate(connection);
@@ -322,10 +402,12 @@ SQLiteLedgerResult create_sqlite_ledger(
   try {
     auto trusted = load_trusted_genesis(canonical_genesis);
     auto normalized = internal::normalize_database_path(path);
-    auto resources = internal::reserve_sqlite_database(normalized);
-    internal::configure_connection(resources.connection);
-    internal::acquire_lifetime_lock(resources.connection);
-    internal::set_creation_journal_mode(resources.connection);
+    auto resources =
+        std::make_unique<internal::SQLiteResources>(
+            internal::reserve_sqlite_database(normalized));
+    internal::configure_connection(resources->connection);
+    internal::acquire_lifetime_lock(resources->connection);
+    internal::set_creation_journal_mode(resources->connection);
 
     auto live = std::make_unique<Ledger>(std::move(trusted.ledger));
     auto implementation = std::make_unique<SQLiteLedger::Impl>(
@@ -334,7 +416,7 @@ SQLiteLedgerResult create_sqlite_ledger(
         std::move(resources),
         std::move(live),
         trusted.state_root);
-    auto& connection = implementation->resources.connection;
+    auto& connection = implementation->resources->connection;
     const auto stored_genesis =
         bytes_view(implementation->canonical_genesis);
 
@@ -348,7 +430,7 @@ SQLiteLedgerResult create_sqlite_ledger(
           implementation->state_root);
       (void)validation;
       internal::verify_stable_path(
-          implementation->resources, implementation->path);
+          *implementation->resources, implementation->path);
     } catch (...) {
       internal::rollback_or_terminate(connection);
       throw;
@@ -356,7 +438,7 @@ SQLiteLedgerResult create_sqlite_ledger(
     internal::commit(connection);
 
     internal::verify_stable_path(
-        implementation->resources, implementation->path);
+        *implementation->resources, implementation->path);
     auto durable_validation = validate_durable_ledger(
         connection, stored_genesis, *implementation->ledger,
         implementation->state_root);
@@ -378,14 +460,16 @@ SQLiteLedgerResult open_sqlite_ledger(
   try {
     auto trusted = load_trusted_genesis(canonical_genesis);
     auto normalized = internal::normalize_database_path(path);
-    auto resources = internal::open_sqlite_database(normalized);
-    internal::configure_connection(resources.connection);
-    internal::acquire_lifetime_lock(resources.connection);
-    internal::require_existing_journal_mode(resources.connection);
-    internal::verify_stable_path(resources, normalized);
+    auto resources =
+        std::make_unique<internal::SQLiteResources>(
+            internal::open_sqlite_database(normalized));
+    internal::configure_connection(resources->connection);
+    internal::acquire_lifetime_lock(resources->connection);
+    internal::require_existing_journal_mode(resources->connection);
+    internal::verify_stable_path(*resources, normalized);
 
     auto live = validate_durable_ledger(
-        resources.connection, bytes_view(trusted.canonical_bytes),
+        resources->connection, bytes_view(trusted.canonical_bytes),
         trusted.ledger, trusted.state_root);
     const auto live_root =
         require_root(live, SQLiteLedgerError::state_mismatch);

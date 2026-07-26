@@ -8,9 +8,9 @@ M1 — Sovereign Devnet Alpha. The deterministic in-memory ledger kernel is
 merged and verified. The owning storage adapter can now durably create and
 validate a height-zero ledger, atomically persist a complete block, and reopen
 the identical head through full genesis replay. Deterministic multi-block
-restart, snapshot recovery, portable export, and new-database archive import
-are complete; fault injection and ambiguous-commit recovery remain the active
-roadmap slice.
+restart, snapshot recovery, portable export, new-database archive import, and
+fail-closed ambiguous-commit reopen are complete; VFS fault injection and long
+seeded recovery sequences remain the active roadmap slice.
 
 ## Verified facts
 
@@ -305,14 +305,37 @@ roadmap slice.
 - `PROTOCOL_STACK_PRESET=gcc-debug tools/verify.sh` passes 18/18 CTest tests
   after the import implementation. After adding the height-zero import
   boundary, the rebuilt focused `storage-archive-v1` test passes 1/1.
+- PR #18 merged portable archive import as `d840902`; exact-candidate Actions
+  run 30209529359 and post-merge `main` run 30209691096 both passed GCC and
+  Clang debug plus ASan/UBSan. The first three jobs passed 18/18 tests and
+  Clang ASan/UBSan passed 23/23 including all five fuzz smoke targets.
+- Head reads now return either one owned verified head or a typed storage
+  error. Once commit processing reports an error, the adapter withholds the
+  candidate, explicitly closes the connection, reopens through integrity,
+  schema, full-genesis, snapshot-suffix, and materialized-state validation,
+  then non-throwingly publishes only the recovered old or new durable head.
+  A close or reopen failure leaves the instance terminal; stale cached state
+  is unavailable and later block application fails closed.
+- An internal test-only block hook observes transaction begin, persistence,
+  pre-commit, post-commit/pre-publication, publication, and recovery-open
+  boundaries. Coverage proves ordinary pre-commit rollback, an actual SQLite
+  commit-hook rejection followed by old-head automatic recovery and continued
+  commit, terminal recovery refusal without stale reads or later heights, and
+  external reopen of that old durable database.
+- A non-returning subprocess terminates after SQLite reports durable commit
+  but before in-memory publication. The parent fully reopens the new durable
+  head and successfully commits its next block. No recoverable callback or
+  exception simulates the durable-commit/pre-publication interval.
+- `PROTOCOL_STACK_PRESET=gcc-debug tools/verify.sh` passes 19/19 CTest tests
+  with the focused recovery suite.
 
 ## Exact next action
 
 Continue issue #11:
 
-> Add explicit storage fault-injection seams around block commit and implement
-> fail-closed automatic reopen after an ambiguous commit result, returning only
-> the fully replayed old or new durable head before accepting another height.
+> Add SQLite VFS injection for short writes, disk-full, I/O, sync, truncate,
+> and delete failures around every commit phase, expand subprocess termination
+> coverage, then run long seeded commit/restart/recovery sequences.
 
 ## Open autonomous decisions
 

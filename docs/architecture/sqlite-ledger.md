@@ -80,8 +80,10 @@ after reservation.
 The public header exposes no SQLite handle or SQL type. `SQLiteLedger` is
 move-constructible but not copyable or assignable. It owns the live
 `protocol::v1::Ledger`, serialized connection, normalized path, exact canonical
-genesis bytes, and cached state root. `read_head` returns owned state and root
-values while holding the adapter mutex; callers receive no borrowed view.
+genesis bytes, and cached state root. `read_head` returns either owned state
+and root values or a typed storage error while holding the adapter mutex;
+callers receive no borrowed view, and a poisoned instance never exposes its
+possibly stale pre-commit cache.
 `apply_block` returns one of the exact kernel `BlockCommit`, the deterministic
 kernel `BlockError`, or an operational `SQLiteLedgerError`.
 
@@ -161,15 +163,32 @@ genesis mismatch, materialized-state mismatch, or generic storage failure.
 Allocation exceptions remain local C++ operational failures.
 
 Statements, the SQLite connection, and the creation reservation descriptor use
-RAII. A close failure terminates rather than publishing an uncertain storage
-state. No fallible allocation occurs after durable creation validation and
-before the completed adapter is returned.
+RAII. A destructor-time close failure terminates rather than silently
+discarding an uncertain connection; an explicit recovery-time close failure
+leaves the instance terminal and still owning that connection. No fallible
+allocation occurs after durable creation validation and before the completed
+adapter is returned.
+
+Any error once commit processing begins poisons the live instance and withholds
+the candidate. The adapter explicitly closes the owning connection, reopens
+through the ordinary integrity, schema, genesis, full-history, snapshot-suffix,
+and materialized-head checks, then atomically publishes the recovered old or
+new durable head. The failed block call remains an operational error so the
+caller must read and reconcile the recovered height. If close or reopen fails,
+head reads and later block calls return `storage_failure`.
+
+An internal test-only hook observes the transaction-begin, persistence,
+pre-commit, post-commit/pre-publication, and publication boundaries. Tests may
+use it to make SQLite reject a commit. The post-commit boundary accepts only a
+non-returning child-process termination test; normal execution performs no
+fallible work there.
 
 ## Remaining issue 11 work
 
 The ordinary durable commit, full-genesis-replay path, canonical snapshot and
 archive codecs, atomic latest-snapshot persistence, independent
 snapshot-plus-suffix recovery, portable export, and portable import are
-implemented. Automatic reopen after an ambiguous commit result, fault
-injection around every commit phase, long seeded restart sequences, and final
-issue closure remain.
+implemented. Automatic close/reopen after an ambiguous commit result and the
+block-phase injection boundary are also implemented. SQLite VFS failure
+injection, expanded subprocess termination coverage, long seeded restart
+sequences, and final issue closure remain.

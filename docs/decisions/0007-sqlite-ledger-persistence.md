@@ -324,6 +324,8 @@ potentially ambiguous. The adapter then:
 
 - withholds and discards the candidate;
 - marks the instance poisoned;
+- refuses both head reads and later block application while no verified
+  replacement head is published;
 - accepts no next height;
 - finalizes every owned statement, incremental-BLOB handle, and backup handle,
   then requires `sqlite3_close` to return success without claiming a head;
@@ -341,6 +343,20 @@ The recovered database may be at the old or new height. The caller must
 reconcile from the recovered height rather than blindly retrying. Storage
 errors are typed operational errors, never protocol receipts or consensus
 rejection codes.
+
+The public head read therefore returns either one owned verified head or a
+typed storage error. After an ambiguous commit result, automatic in-instance
+recovery is preferred to requiring the caller to destroy and replace the
+adapter: the owning connection can prove that every statement is finalized,
+require a real `sqlite3_close`, reacquire exclusive ownership, and reuse the
+same startup validator before any caller can observe a head. If close or reopen
+fails, the instance remains terminal and exposes no stale pre-commit head.
+
+An internal process-global test hook may observe the block-write phases and
+install SQLite or VFS failures. It is not a public runtime extension point.
+The hook after a successful durable commit and before publication is only for
+a non-returning subprocess termination test; a recoverable callback or
+exception must never simulate that interval.
 
 ## Alternatives
 

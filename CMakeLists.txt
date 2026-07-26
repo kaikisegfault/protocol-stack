@@ -167,6 +167,7 @@ add_library(
     src/storage/sqlite_archive_import_v1.cpp
     src/storage/sqlite_archive_v1.cpp
     src/storage/sqlite_connection.cpp
+    src/storage/sqlite_fault_injection.cpp
     src/storage/sqlite_block_store_v1.cpp
     src/storage/sqlite_history_replay_v1.cpp
     src/storage/sqlite_ledger.cpp
@@ -245,6 +246,10 @@ add_executable(
   tests/storage/sqlite_history_test.cpp
 )
 add_executable(
+  storage_sqlite_recovery_tests
+  tests/storage/sqlite_recovery_test.cpp
+)
+add_executable(
   storage_snapshot_v1_tests
   tests/storage/snapshot_v1_test.cpp
 )
@@ -260,6 +265,12 @@ target_link_libraries(
 )
 target_link_libraries(
   storage_sqlite_history_tests
+  PRIVATE
+    protocol_storage
+    protocol_stack_sqlite
+)
+target_link_libraries(
+  storage_sqlite_recovery_tests
   PRIVATE
     protocol_storage
     protocol_stack_sqlite
@@ -295,6 +306,7 @@ set(
   sqlite_dependency_tests
   storage_sqlite_ledger_tests
   storage_sqlite_history_tests
+  storage_sqlite_recovery_tests
   storage_snapshot_v1_tests
   storage_archive_v1_tests
 )
@@ -531,6 +543,13 @@ add_test(
     storage_sqlite_history_tests
     "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
     "${CMAKE_CURRENT_BINARY_DIR}/storage-sqlite-history-test"
+)
+add_test(
+  NAME storage-sqlite-recovery
+  COMMAND
+    storage_sqlite_recovery_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
+    "${CMAKE_CURRENT_BINARY_DIR}/storage-sqlite-recovery-test"
 )
 add_test(
   NAME storage-snapshot-v1

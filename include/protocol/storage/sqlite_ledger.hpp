@@ -38,6 +38,9 @@ using SQLiteBlockResult = std::variant<
     protocol::v1::BlockCommit,
     protocol::v1::BlockError,
     SQLiteLedgerError>;
+using SQLiteHeadResult = std::variant<
+    LedgerHead,
+    SQLiteLedgerError>;
 using SQLiteSnapshotResult = std::variant<
     protocol::v1::Bytes,
     SQLiteLedgerError>;
@@ -54,7 +57,7 @@ class SQLiteLedger {
   SQLiteLedger& operator=(const SQLiteLedger&) = delete;
   SQLiteLedger& operator=(SQLiteLedger&&) = delete;
 
-  LedgerHead read_head() const;
+  SQLiteHeadResult read_head() const;
   SQLiteBlockResult apply_block(
       std::uint64_t height,
       std::span<const protocol::v1::Bytes> raw_transactions);
