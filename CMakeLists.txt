@@ -164,6 +164,7 @@ add_library(
   protocol_storage
   STATIC
     src/storage/archive_v1.cpp
+    src/storage/sqlite_archive_import_v1.cpp
     src/storage/sqlite_archive_v1.cpp
     src/storage/sqlite_connection.cpp
     src/storage/sqlite_block_store_v1.cpp

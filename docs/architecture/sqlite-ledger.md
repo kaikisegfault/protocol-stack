@@ -61,6 +61,22 @@ height and ordinal order with exact width, count, and contiguity checks. The
 public codec replays that independently projected archive before export
 returns. Export does not change the retained database snapshot.
 
+`import_sqlite_archive` accepts an untrusted `PSAR` version-one payload and a
+new target pathname. It decodes, digest-checks, and semantically replays the
+complete archive before normalizing or reserving the target. Any archive
+framing, genesis, history, projection, snapshot, or digest failure returns
+`SQLiteLedgerError::invalid_archive` and creates no target artifact.
+
+After validation, import exclusively reserves the target and installs the
+schema, exact admitted history, materialized head, metadata, and exact archive
+snapshot in one SQLite transaction. It closes that creation connection,
+reopens through the ordinary full-genesis replay and snapshot-plus-suffix
+validation path using the archive's canonical genesis, and requires a fresh
+export to be byte-identical to the input before returning the live ledger.
+Import never overwrites an existing path, performs no in-place migration, and
+leaves a reserved artifact for diagnosis if an operational failure occurs
+after reservation.
+
 The public header exposes no SQLite handle or SQL type. `SQLiteLedger` is
 move-constructible but not copyable or assignable. It owns the live
 `protocol::v1::Ledger`, serialized connection, normalized path, exact canonical
@@ -153,7 +169,7 @@ before the completed adapter is returned.
 
 The ordinary durable commit, full-genesis-replay path, canonical snapshot and
 archive codecs, atomic latest-snapshot persistence, independent
-snapshot-plus-suffix recovery, and portable export are implemented. Portable
-import into a new database, automatic reopen after an ambiguous commit result,
-fault injection around every commit phase, long seeded restart sequences, and
-final issue closure remain.
+snapshot-plus-suffix recovery, portable export, and portable import are
+implemented. Automatic reopen after an ambiguous commit result, fault
+injection around every commit phase, long seeded restart sequences, and final
+issue closure remain.

@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-07-25
+Last updated: 2026-07-26
 
 ## Phase
 
@@ -8,9 +8,9 @@ M1 — Sovereign Devnet Alpha. The deterministic in-memory ledger kernel is
 merged and verified. The owning storage adapter can now durably create and
 validate a height-zero ledger, atomically persist a complete block, and reopen
 the identical head through full genesis replay. Deterministic multi-block
-restart, snapshot recovery, and portable export are complete; archive import,
-fault injection, and ambiguous-commit recovery remain the active roadmap
-slice.
+restart, snapshot recovery, portable export, and new-database archive import
+are complete; fault injection and ambiguous-commit recovery remain the active
+roadmap slice.
 
 ## Verified facts
 
@@ -289,15 +289,30 @@ slice.
   deterministic multi-block export across repeated calls and reopen. The Clang
   sanitizer configuration exposes a fifth bounded libFuzzer target with raw,
   structured, and valid archive seeds.
+- `import_sqlite_archive` decodes and semantically replays an untrusted archive
+  before path normalization or reservation, maps every archive rejection to
+  `invalid_archive`, and never overwrites an existing target. After validation
+  it writes the version-one schema, exact admitted history, materialized head,
+  metadata, and exact head snapshot in one transaction, closes creation,
+  reopens through full genesis and snapshot recovery, and requires a
+  byte-identical fresh export before returning the live ledger.
+- Import coverage proves deterministic height-zero and three-block round
+  trips, including an empty block and duplicate admitted transactions; exact
+  head and retained snapshot recovery; malformed and semantic-corruption
+  refusal without creating a target; validation-before-path error precedence;
+  and preservation of an existing target. The existing bounded archive fuzz
+  target covers the only untrusted-byte parser used by import.
+- `PROTOCOL_STACK_PRESET=gcc-debug tools/verify.sh` passes 18/18 CTest tests
+  after the import implementation. After adding the height-zero import
+  boundary, the rebuilt focused `storage-archive-v1` test passes 1/1.
 
 ## Exact next action
 
 Continue issue #11:
 
-> Implement portable archive import only into a new database: validate the
-> complete archive before touching the target path, persist its exact history,
-> materialized head, and snapshot atomically, then reopen through full replay
-> and prove byte-identical export.
+> Add explicit storage fault-injection seams around block commit and implement
+> fail-closed automatic reopen after an ambiguous commit result, returning only
+> the fully replayed old or new durable head before accepting another height.
 
 ## Open autonomous decisions
 

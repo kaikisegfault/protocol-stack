@@ -14,4 +14,8 @@ ArchiveV1Data load_archive_v1(
     std::span<const std::uint8_t> canonical_genesis,
     const EncodedSnapshotV1& head_snapshot);
 
+void persist_archive_v1(
+    Connection& connection,
+    const DecodedArchiveV1& archive);
+
 }  // namespace protocol::storage::internal
