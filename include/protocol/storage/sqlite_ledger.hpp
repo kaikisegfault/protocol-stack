@@ -22,6 +22,7 @@ enum class SQLiteLedgerError : std::uint8_t {
   genesis_mismatch = 9,
   state_mismatch = 10,
   storage_failure = 11,
+  invalid_archive = 12,
 };
 
 struct LedgerHead {
@@ -87,5 +88,9 @@ SQLiteLedgerResult create_sqlite_ledger(
 SQLiteLedgerResult open_sqlite_ledger(
     const std::filesystem::path& path,
     std::span<const std::uint8_t> canonical_genesis);
+
+SQLiteLedgerResult import_sqlite_archive(
+    const std::filesystem::path& path,
+    std::span<const std::uint8_t> archive);
 
 }  // namespace protocol::storage

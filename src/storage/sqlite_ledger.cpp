@@ -10,6 +10,7 @@
 #include "protocol/storage/snapshot_v1.hpp"
 #include "protocol/v1/ledger.hpp"
 
+#include <algorithm>
 #include <mutex>
 #include <type_traits>
 #include <utility>
@@ -85,6 +86,27 @@ SQLiteLedgerResult error_result(SQLiteLedgerError error) {
       std::variant<SQLiteLedger, SQLiteLedgerError>(
           std::in_place_type<SQLiteLedgerError>, error),
   };
+}
+
+void persist_import_database(
+    const std::filesystem::path& path,
+    const DecodedArchiveV1& archive) {
+  auto resources = internal::reserve_sqlite_database(path);
+  internal::configure_connection(resources.connection);
+  internal::acquire_lifetime_lock(resources.connection);
+  internal::set_creation_journal_mode(resources.connection);
+  auto& connection = resources.connection;
+
+  internal::begin_exclusive(connection);
+  try {
+    internal::persist_archive_v1(connection, archive);
+    internal::verify_stable_path(resources, path);
+  } catch (...) {
+    internal::rollback_or_terminate(connection);
+    throw;
+  }
+  internal::commit(connection);
+  internal::verify_stable_path(resources, path);
 }
 
 }  // namespace
@@ -378,6 +400,45 @@ SQLiteLedgerResult open_sqlite_ledger(
         std::variant<SQLiteLedger, SQLiteLedgerError>(
             std::in_place_type<SQLiteLedger>,
             SQLiteLedger(std::move(implementation))),
+    };
+  } catch (const internal::Failure& failure) {
+    return error_result(failure.error);
+  }
+}
+
+SQLiteLedgerResult import_sqlite_archive(
+    const std::filesystem::path& path,
+    std::span<const std::uint8_t> archive) {
+  auto decoded_result = decode_archive_v1(archive);
+  if (!std::holds_alternative<DecodedArchiveV1>(decoded_result)) {
+    return error_result(SQLiteLedgerError::invalid_archive);
+  }
+  auto decoded =
+      std::get<DecodedArchiveV1>(std::move(decoded_result));
+
+  try {
+    auto normalized = internal::normalize_database_path(path);
+    persist_import_database(normalized, decoded);
+
+    auto opened = open_sqlite_ledger(
+        normalized, bytes_view(decoded.data.canonical_genesis));
+    if (!std::holds_alternative<SQLiteLedger>(opened.result)) {
+      return opened;
+    }
+    auto ledger =
+        std::get<SQLiteLedger>(std::move(opened.result));
+    auto exported = ledger.export_archive();
+    if (std::holds_alternative<SQLiteLedgerError>(exported)) {
+      return error_result(std::get<SQLiteLedgerError>(exported));
+    }
+    const auto& payload = std::get<Bytes>(exported);
+    if (payload.size() != archive.size() ||
+        !std::equal(payload.begin(), payload.end(), archive.begin())) {
+      return error_result(SQLiteLedgerError::state_mismatch);
+    }
+    return SQLiteLedgerResult{
+        std::variant<SQLiteLedger, SQLiteLedgerError>(
+            std::in_place_type<SQLiteLedger>, std::move(ledger)),
     };
   } catch (const internal::Failure& failure) {
     return error_result(failure.error);

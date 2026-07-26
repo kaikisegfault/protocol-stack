@@ -392,6 +392,16 @@ ps::SQLiteLedger take_ledger(
   return std::get<ps::SQLiteLedger>(std::move(result.result));
 }
 
+void require_ledger_error(
+    ps::SQLiteLedgerResult result,
+    ps::SQLiteLedgerError expected,
+    std::string_view message) {
+  pv::require(
+      std::holds_alternative<ps::SQLiteLedgerError>(result.result) &&
+          std::get<ps::SQLiteLedgerError>(result.result) == expected,
+      message);
+}
+
 p::Bytes take_export(
     ps::SQLiteArchiveResult result,
     std::string_view message) {
@@ -502,6 +512,127 @@ void verify_export(
       "reopened archive export changed bytes");
 }
 
+void verify_import(
+    const pv::Values& values,
+    const std::filesystem::path& prefix) {
+  const auto genesis = genesis_bytes(values);
+  const auto transactions = block_transactions(values);
+  auto expected = block_archive(values);
+  const std::vector<p::Bytes> empty_block;
+  append_block(expected, empty_block);
+  append_block(expected, transactions);
+  const auto encoded = take_encoded(
+      ps::encode_archive_v1(expected.data),
+      "import fixture encoding failed");
+
+  DatabaseFiles imported_files(prefix.string() + "-import.db");
+  {
+    auto imported = take_ledger(
+        ps::import_sqlite_archive(
+            imported_files.path(), encoded.payload),
+        "archive import failed");
+    const auto head = imported.read_head();
+    const auto expected_root = expected.ledger.current_state_root();
+    pv::require(
+        head.state == expected.ledger.state() &&
+            std::holds_alternative<p::StateRoot>(expected_root) &&
+            head.state_root == std::get<p::StateRoot>(expected_root),
+        "imported archive head changed");
+    pv::require(
+        take_export(
+            imported.export_archive(),
+            "imported archive export failed") == encoded.payload,
+        "imported archive export bytes changed");
+  }
+  pv::require(
+      raw_scalar_text(
+          imported_files.path(),
+          "SELECT hex(height) FROM snapshots") ==
+          "0000000000000003",
+      "import did not retain the exact head snapshot");
+  auto reopened = take_ledger(
+      ps::open_sqlite_ledger(imported_files.path(), genesis),
+      "imported archive reopen failed");
+  pv::require(
+      take_export(
+          reopened.export_archive(),
+          "reopened import export failed") == encoded.payload,
+      "reopened import export bytes changed");
+
+  auto genesis_fixture = genesis_archive(genesis);
+  const auto genesis_encoded = take_encoded(
+      ps::encode_archive_v1(genesis_fixture.data),
+      "genesis import fixture encoding failed");
+  DatabaseFiles genesis_files(prefix.string() + "-genesis-import.db");
+  auto genesis_import = take_ledger(
+      ps::import_sqlite_archive(
+          genesis_files.path(), genesis_encoded.payload),
+      "genesis archive import failed");
+  pv::require(
+      genesis_import.read_head().state == genesis_fixture.ledger.state() &&
+          take_export(
+              genesis_import.export_archive(),
+              "genesis import export failed") ==
+              genesis_encoded.payload,
+      "genesis archive import changed the height-zero ledger");
+
+  auto invalid = encoded.payload;
+  invalid.back() ^= 1U;
+  DatabaseFiles invalid_files(prefix.string() + "-invalid-import.db");
+  require_ledger_error(
+      ps::import_sqlite_archive(invalid_files.path(), invalid),
+      ps::SQLiteLedgerError::invalid_archive,
+      "invalid archive did not return invalid_archive");
+  pv::require(
+      !std::filesystem::exists(invalid_files.path()),
+      "invalid archive touched the target path");
+
+  auto semantic_corruption = encoded.payload;
+  const auto first_block_offset = 18 + genesis.size();
+  semantic_corruption[
+      first_block_offset + kBlockFixedSize + 200] ^= 1U;
+  resign(semantic_corruption);
+  DatabaseFiles semantic_files(
+      prefix.string() + "-semantic-import.db");
+  require_ledger_error(
+      ps::import_sqlite_archive(
+          semantic_files.path(), semantic_corruption),
+      ps::SQLiteLedgerError::invalid_archive,
+      "semantically invalid archive did not fail import");
+  pv::require(
+      !std::filesystem::exists(semantic_files.path()),
+      "semantic archive failure touched the target path");
+
+  DatabaseFiles existing_files(prefix.string() + "-existing-import.db");
+  p::Bytes existing_export;
+  {
+    auto existing = take_ledger(
+        ps::create_sqlite_ledger(existing_files.path(), genesis),
+        "existing import target create failed");
+    existing_export = take_export(
+        existing.export_archive(),
+        "existing import target export failed");
+  }
+  require_ledger_error(
+      ps::import_sqlite_archive(
+          existing_files.path(), encoded.payload),
+      ps::SQLiteLedgerError::path_already_exists,
+      "valid archive overwrote an existing target");
+  require_ledger_error(
+      ps::import_sqlite_archive(existing_files.path(), invalid),
+      ps::SQLiteLedgerError::invalid_archive,
+      "target path handling preceded archive validation");
+  auto existing = take_ledger(
+      ps::open_sqlite_ledger(existing_files.path(), genesis),
+      "existing import target reopen failed");
+  pv::require(
+      take_export(
+          existing.export_archive(),
+          "existing import target re-export failed") ==
+          existing_export,
+      "failed import changed an existing target");
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -514,6 +645,7 @@ int main(int argc, char** argv) {
     const std::filesystem::path prefix(argv[2]);
     verify_codec(values);
     verify_export(values, prefix);
+    verify_import(values, prefix);
     std::cout << "Storage archive v1 tests: passed\n";
     return 0;
   } catch (const std::exception& error) {
