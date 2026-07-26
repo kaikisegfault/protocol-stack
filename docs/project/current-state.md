@@ -9,8 +9,8 @@ merged and verified. The owning storage adapter can now durably create and
 validate a height-zero ledger, atomically persist a complete block, and reopen
 the identical head through full genesis replay. Deterministic multi-block
 restart, snapshot recovery, portable export, new-database archive import, and
-fail-closed ambiguous-commit reopen are complete; VFS fault injection and long
-seeded recovery sequences remain the active roadmap slice.
+fail-closed ambiguous-commit reopen are complete; expanded interruption and
+long seeded recovery sequences remain the active roadmap slice.
 
 ## Verified facts
 
@@ -328,14 +328,28 @@ seeded recovery sequences remain the active roadmap slice.
   exception simulates the durable-commit/pre-publication interval.
 - `PROTOCOL_STACK_PRESET=gcc-debug tools/verify.sh` passes 19/19 CTest tests
   with the focused recovery suite.
+- PR #19 merged fail-closed ambiguous-commit recovery as `8787ca4`;
+  exact-candidate Actions run 30210623514 passed GCC debug 19/19, GCC
+  ASan/UBSan 19/19, Clang debug 19/19, and Clang ASan/UBSan 24/24 including
+  all five fuzz smoke targets. Post-merge `main` run 30210783762 passed all
+  four jobs on that rebased commit.
+- A test-only wrapper around SQLite's registered default VFS delegates
+  ordinary behavior and injects one armed journal failure at a block boundary.
+  The focused suite reaches and verifies partial write, disk-full, write I/O,
+  sync, truncate, and delete failures. Pre-commit failures retain the old head;
+  ambiguous commit or cleanup failures expose only a fully validated old or
+  new durable head, continue at the corresponding next height, and survive an
+  external reopen.
+- The dedicated VFS failure test and the existing recovery test pass 2/2 after
+  a warning-clean GCC debug rebuild. The complete local suite passes 20/20.
 
 ## Exact next action
 
 Continue issue #11:
 
-> Add SQLite VFS injection for short writes, disk-full, I/O, sync, truncate,
-> and delete failures around every commit phase, expand subprocess termination
-> coverage, then run long seeded commit/restart/recovery sequences.
+> Expand subprocess termination across the remaining block-write phases, then
+> run long fixed-seed commit/snapshot/restart/recovery sequences and close
+> issue #11 when the full hosted matrix remains green.
 
 ## Open autonomous decisions
 

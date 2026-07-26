@@ -183,12 +183,21 @@ use it to make SQLite reject a commit. The post-commit boundary accepts only a
 non-returning child-process termination test; normal execution performs no
 fallible work there.
 
+A separate test executable registers a wrapper around SQLite's ordinary
+default VFS. The wrapper delegates unchanged behavior except for one armed,
+one-shot journal operation. It covers a deliberately partial write reported as
+`SQLITE_IOERR_WRITE`, `SQLITE_FULL`, ordinary write I/O error, sync error,
+truncate error, and delete error. Pre-commit write failures must retain the old
+head. Commit and cleanup failures may recover either the old or new durable
+head, but the adapter must validate that head before continuing; every case
+then closes and reopens through the ordinary validator.
+
 ## Remaining issue 11 work
 
 The ordinary durable commit, full-genesis-replay path, canonical snapshot and
 archive codecs, atomic latest-snapshot persistence, independent
 snapshot-plus-suffix recovery, portable export, and portable import are
 implemented. Automatic close/reopen after an ambiguous commit result and the
-block-phase injection boundary are also implemented. SQLite VFS failure
-injection, expanded subprocess termination coverage, long seeded restart
-sequences, and final issue closure remain.
+block-phase and SQLite VFS injection boundaries are also implemented. Expanded
+subprocess termination coverage, long seeded restart sequences, and final issue
+closure remain.
