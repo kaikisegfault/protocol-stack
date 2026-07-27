@@ -74,8 +74,9 @@ struct CommittedHead {
   bool operator==(const CommittedHead&) const = default;
 };
 
-using EmptyResult = std::variant<std::monostate, ApplicationError>;
 using InfoResult = std::variant<ApplicationInfo, ApplicationError>;
+using InitChainResult =
+    std::variant<protocol::v1::StateRoot, ApplicationError>;
 using TransactionCheckResult =
     std::variant<TransactionResult, ApplicationError>;
 using PrepareProposalResult =
@@ -97,7 +98,7 @@ class ApplicationV1 {
   ApplicationV1& operator=(ApplicationV1&&) = delete;
 
   InfoResult info() const;
-  EmptyResult init_chain(
+  InitChainResult init_chain(
       const protocol::v1::ChainId& chain_id,
       std::uint64_t initial_height,
       std::span<const std::uint8_t> app_state);
