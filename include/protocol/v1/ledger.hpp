@@ -35,6 +35,8 @@ struct BlockCommit {
   StateRoot resulting_state_root;
   Bytes header;
   BlockId block_id;
+
+  bool operator==(const BlockCommit&) const = default;
 };
 
 struct LedgerLoad;

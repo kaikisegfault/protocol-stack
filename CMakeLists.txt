@@ -175,6 +175,23 @@ add_library(
     src/storage/sqlite_snapshot_v1.cpp
     src/storage/snapshot_v1.cpp
 )
+add_library(
+  protocol_application
+  STATIC
+    src/application/application_block_v1.cpp
+    src/application/application_v1.cpp
+    src/application/wire_v1.cpp
+)
+target_include_directories(
+  protocol_application
+  PUBLIC
+    "${PROJECT_SOURCE_DIR}/include"
+)
+target_link_libraries(
+  protocol_application
+  PUBLIC
+    protocol_storage
+)
 target_include_directories(
   protocol_storage
   PUBLIC
@@ -266,6 +283,14 @@ add_executable(
   storage_archive_v1_tests
   tests/storage/archive_v1_test.cpp
 )
+add_executable(
+  application_v1_tests
+  tests/application/application_v1_test.cpp
+)
+add_executable(
+  application_wire_v1_tests
+  tests/application/wire_v1_test.cpp
+)
 target_link_libraries(
   storage_sqlite_ledger_tests
   PRIVATE
@@ -308,6 +333,16 @@ target_link_libraries(
     protocol_storage
     protocol_stack_sqlite
 )
+target_link_libraries(
+  application_v1_tests
+  PRIVATE
+    protocol_application
+)
+target_link_libraries(
+  application_wire_v1_tests
+  PRIVATE
+    protocol_application
+)
 
 set(
   PROTOCOL_STACK_TARGETS
@@ -315,6 +350,7 @@ set(
   ledger_transition_vectors
   protocol_kernel
   protocol_storage
+  protocol_application
   kernel_primitive_tests
   kernel_admission_tests
   kernel_execution_tests
@@ -332,6 +368,8 @@ set(
   storage_sqlite_vfs_failure_tests
   storage_snapshot_v1_tests
   storage_archive_v1_tests
+  application_v1_tests
+  application_wire_v1_tests
 )
 if(PROTOCOL_STACK_ENABLE_FUZZING)
   add_library(
@@ -364,6 +402,16 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       src/storage/archive_v1.cpp
       src/storage/snapshot_v1.cpp
   )
+  add_library(
+    protocol_application_wire_fuzz
+    STATIC
+      src/application/wire_v1.cpp
+  )
+  target_include_directories(
+    protocol_application_wire_fuzz
+    PUBLIC
+      "${PROJECT_SOURCE_DIR}/include"
+  )
   target_include_directories(
     protocol_storage_fuzz
     PUBLIC
@@ -382,6 +430,10 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     storage_archive_fuzz
     tests/fuzz/archive_fuzz.cpp
   )
+  add_executable(
+    application_wire_fuzz
+    tests/fuzz/application_wire_fuzz.cpp
+  )
   target_link_libraries(
     storage_archive_fuzz
     PRIVATE
@@ -391,6 +443,11 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     storage_snapshot_fuzz
     PRIVATE
       protocol_storage_fuzz
+  )
+  target_link_libraries(
+    application_wire_fuzz
+    PRIVATE
+      protocol_application_wire_fuzz
   )
   target_link_libraries(kernel_genesis_fuzz PRIVATE protocol_kernel_fuzz)
   list(
@@ -403,6 +460,8 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     protocol_storage_fuzz
     storage_snapshot_fuzz
     storage_archive_fuzz
+    protocol_application_wire_fuzz
+    application_wire_fuzz
   )
 endif()
 
@@ -440,6 +499,8 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       protocol_storage_fuzz
       storage_snapshot_fuzz
       storage_archive_fuzz
+      protocol_application_wire_fuzz
+      application_wire_fuzz
   )
     target_compile_options(
       ${protocol_stack_fuzz_target}
@@ -455,6 +516,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       kernel_genesis_fuzz
       storage_snapshot_fuzz
       storage_archive_fuzz
+      application_wire_fuzz
   )
     target_link_options(
       ${protocol_stack_fuzz_executable}
@@ -603,6 +665,17 @@ add_test(
     "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
     "${CMAKE_CURRENT_BINARY_DIR}/storage-archive-v1-test"
 )
+add_test(
+  NAME application-v1
+  COMMAND
+    application_v1_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
+    "${CMAKE_CURRENT_BINARY_DIR}/application-v1-test"
+)
+add_test(
+  NAME application-wire-v1
+  COMMAND application_wire_v1_tests
+)
 set_tests_properties(
   protocol-primitives-python
   ledger-transition-python
@@ -661,12 +734,22 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       -max_len=16384
       -len_control=0
   )
+  add_test(
+    NAME application-wire-fuzz-smoke
+    COMMAND
+      application_wire_fuzz
+      -seed=824311
+      -runs=512
+      -max_len=65536
+      -len_control=0
+  )
   set_tests_properties(
     kernel-admission-fuzz-smoke
     kernel-address-fuzz-smoke
     kernel-genesis-fuzz-smoke
     storage-snapshot-fuzz-smoke
     storage-archive-fuzz-smoke
+    application-wire-fuzz-smoke
     PROPERTIES
       LABELS fuzz
       TIMEOUT 60
