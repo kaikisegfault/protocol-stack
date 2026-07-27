@@ -192,12 +192,17 @@ head. Commit and cleanup failures may recover either the old or new durable
 head, but the adapter must validate that head before continuing; every case
 then closes and reopens through the ordinary validator.
 
-## Remaining issue 11 work
+## Issue 11 completion candidate
 
 The ordinary durable commit, full-genesis-replay path, canonical snapshot and
 archive codecs, atomic latest-snapshot persistence, independent
-snapshot-plus-suffix recovery, portable export, and portable import are
-implemented. Automatic close/reopen after an ambiguous commit result and the
-block-phase and SQLite VFS injection boundaries are also implemented. Expanded
-subprocess termination coverage, long seeded restart sequences, and final issue
-closure remain.
+snapshot-plus-suffix recovery, portable export, portable import, and automatic
+close/reopen after an ambiguous commit result are implemented.
+
+The recovery suite now terminates a non-returning child at every observable
+block boundary and proves the expected old or new durable head reopens,
+continues, and survives another reopen. A fixed-seed 256-block sequence
+independently compares every stored commit and head with the kernel while
+retaining ten snapshots and reopening twenty times through genesis,
+snapshot-plus-suffix, and current-head recovery. Only the required hosted
+compiler/sanitizer matrix and issue closure remain for issue #11.

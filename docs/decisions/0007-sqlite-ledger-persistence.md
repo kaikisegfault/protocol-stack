@@ -443,6 +443,20 @@ Acceptance requires all four compiler/sanitizer presets plus:
 - unchanged frozen ledger vectors through commit, reopen, snapshot restore,
   and replay.
 
+The completion suite executes a non-returning child at all six observable
+block boundaries: before the transaction, after transaction begin, after
+persistence, before commit, after durable commit but before publication, and
+after publication. Each database must reopen at the boundary's expected old or
+new durable head, continue at the corresponding next height, and survive a
+second external reopen.
+
+The long recovery sequence uses fixed SplitMix64 seed
+`0x53514c4954452d31` for 256 blocks of newly signed transfers, execution
+failures, malformed inputs, wrong-chain inputs, and invalid signatures. It
+compares every stored commit and head with an independent in-memory ledger,
+retains ten snapshots, and performs twenty reopen validations spanning genesis,
+behind-head, and current-head snapshot recovery.
+
 ## Update and removal path
 
 An SQLite update requires a new exact archive pin and integrity review, release
