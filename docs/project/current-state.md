@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-07-26
+Last updated: 2026-07-27
 
 ## Phase
 
@@ -9,8 +9,9 @@ merged and verified. The owning storage adapter can now durably create and
 validate a height-zero ledger, atomically persist a complete block, and reopen
 the identical head through full genesis replay. Deterministic multi-block
 restart, snapshot recovery, portable export, new-database archive import, and
-fail-closed ambiguous-commit reopen are complete; expanded interruption and
-long seeded recovery sequences remain the active roadmap slice.
+fail-closed ambiguous-commit reopen are complete. Expanded interruption and
+long seeded recovery sequences pass focused verification; the hosted completion
+matrix and issue #11 closure remain the active roadmap slice.
 
 ## Verified facts
 
@@ -342,14 +343,29 @@ long seeded recovery sequences remain the active roadmap slice.
   external reopen.
 - The dedicated VFS failure test and the existing recovery test pass 2/2 after
   a warning-clean GCC debug rebuild. The complete local suite passes 20/20.
+- A parametrized non-returning subprocess now terminates at all six observable
+  block boundaries: before transaction, after transaction begin, after
+  persistence, before commit, after durable commit before publication, and
+  after publication. Each case reopens at the expected old or new durable head,
+  commits the corresponding next height, closes, and successfully reopens
+  again.
+- A fixed SplitMix64-seed sequence applies 256 newly signed and malformed
+  transaction blocks to both the in-memory kernel and durable adapter, compares
+  every `BlockCommit` and owned head, retains ten snapshots, and performs twenty
+  reopen validations. It covers empty and entirely unadmitted blocks, all three
+  admission errors, successful transfers, self-transfers, zero amount, low fee,
+  expiry, and nonce mismatch while exercising genesis, behind-head, and
+  current-head snapshot recovery.
+- Focused GCC debug verification passes the recovery and seeded-sequence tests
+  together, 2/2. The sequence reports 256 blocks, ten snapshots, and twenty
+  reopens.
 
 ## Exact next action
 
-Continue issue #11:
-
-> Expand subprocess termination across the remaining block-write phases, then
-> run long fixed-seed commit/snapshot/restart/recovery sequences and close
-> issue #11 when the full hosted matrix remains green.
+Open the issue #11 completion PR, require the full hosted compiler/sanitizer
+matrix on its exact candidate, merge and close the issue when green, then
+record the final CometBFT decision and specify the smallest runnable ABCI
+application-adapter slice.
 
 ## Open autonomous decisions
 
