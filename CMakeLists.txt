@@ -728,7 +728,7 @@ add_test(
   COMMAND
     application_unix_server_v1_tests
     "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
-    "${CMAKE_CURRENT_BINARY_DIR}/application-unix-server-v1-test"
+    "${CMAKE_CURRENT_BINARY_DIR}/au-v1"
 )
 add_test(
   NAME application-headless-process
@@ -737,7 +737,7 @@ add_test(
     "${PROJECT_SOURCE_DIR}/tests/application/headless_process_test.py"
     "$<TARGET_FILE:protocol_application_server>"
     "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
-    "${CMAKE_CURRENT_BINARY_DIR}/application-headless-process-test"
+    "${CMAKE_CURRENT_BINARY_DIR}/ah-v1"
 )
 set_tests_properties(
   protocol-primitives-python
