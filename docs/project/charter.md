@@ -17,8 +17,9 @@ security claims.
 - Native protocol modules for all root economics.
 - Replaceable adapters for consensus, peer networking, storage, cryptography,
   and future execution environments.
-- CometBFT is the proposed initial consensus and P2P adapter for the first
-  devnet; it is not part of the sovereign state-transition rules.
+- Pinned CometBFT `v0.39.3` is the accepted initial consensus and P2P adapter
+  for the first devnet; it is not part of the sovereign state-transition
+  rules.
 - No Cosmos SDK dependency.
 - No public contract deployment or EVM in the first milestone.
 - A deterministic resource meter and fee path exist even when applications

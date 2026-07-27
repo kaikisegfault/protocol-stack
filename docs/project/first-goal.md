@@ -64,6 +64,6 @@ under the standing delegation for:
 - canonical encoding and address format;
 - native denomination and constitutional supply values;
 - any change to the single-asset, fee-routing, or AI authority constraints;
-- replacing the proposed initial consensus strategy.
+- replacing the accepted initial consensus strategy.
 
 These are mandatory research and evidence gates, not owner-approval pauses.

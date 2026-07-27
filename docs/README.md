@@ -44,3 +44,5 @@ immutable; compatible changes require a new version.
   cryptography, identifiers, addresses, transactions, and commitments.
 - `specifications/ledger-transition-v1.md`: M1 genesis, native transfer, fee,
   receipt, and ordered block semantics.
+- `specifications/consensus-application-v1.md`: adapter-neutral ordering
+  lifecycle, application results, durable commit, restart, and local framing.
