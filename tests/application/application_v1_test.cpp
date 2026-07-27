@@ -148,9 +148,20 @@ void require_error(
 
 void initialize(
     pa::ApplicationV1& application,
+    const p::ChainId& chain_id,
+    const p::StateRoot& expected_root) {
+  pv::require(
+      take<p::StateRoot>(
+          application.init_chain(chain_id, 1, kAppState),
+          "valid InitChain") == expected_root,
+      "valid InitChain rejected");
+}
+
+void initialize(
+    pa::ApplicationV1& application,
     const p::ChainId& chain_id) {
   pv::require(
-      std::holds_alternative<std::monostate>(
+      std::holds_alternative<p::StateRoot>(
           application.init_chain(chain_id, 1, kAppState)),
       "valid InitChain rejected");
 }
@@ -217,8 +228,8 @@ void verify_lifecycle(
       application.check_transaction(transactions.front()),
       pa::ApplicationError::sequence_failure,
       "CheckTx before InitChain");
-  initialize(application, chain_id);
-  initialize(application, chain_id);
+  initialize(application, chain_id, initial_root);
+  initialize(application, chain_id, initial_root);
 
   for (std::size_t index = 0; index < transactions.size(); ++index) {
     const auto checked = take<pa::TransactionResult>(

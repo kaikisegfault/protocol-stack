@@ -14,8 +14,8 @@ long seeded recovery sequences are merged and pass the hosted completion
 matrix. Issue #22 is the active roadmap slice: accept the replaceable
 CometBFT boundary, then deliver the smallest runnable single-node ABCI++
 vertical without moving ledger authority out of C++. The contract is merged;
-the C++ staged application lifecycle and bounded local request decoder are the
-active implementation candidate.
+the C++ staged application lifecycle and bounded local request decoder are
+merged, and the headless C++ transport is the active implementation candidate.
 
 ## Verified facts
 
@@ -403,13 +403,36 @@ active implementation candidate.
   rejection. Wire tests cover every request kind and hostile frame/payload
   boundaries. Focused Clang ASan/UBSan verification also passes the application
   lifecycle, wire decoder, and 512-run wire fuzz smoke tests.
+- PR #24 merged the deterministic application core and bounded request decoder
+  into `main` as `750ab4b`. Exact-candidate Actions run 30258258356 and
+  post-merge run 30258530334 both passed GCC and Clang debug plus ASan/UBSan.
+  The first three jobs passed 23/23 tests and Clang ASan/UBSan passed 29/29
+  including all six fuzz smoke targets.
+- Branch `feat/22-application-transport` contains the locally verified
+  transport candidate: exact success/error serialization and typed dispatch
+  for all seven methods, owner-only Unix-socket serving with synchronous
+  request handling and nonzero/nonreused request IDs, and the headless
+  `protocol-application` executable. Startup reads at most 1 MiB from an
+  absolute regular genesis file, validates it before listening, and
+  exclusively opens or creates the absolute SQLite path.
+- The transport preserves occupied non-socket and live-socket paths, removes
+  only a same-owner connection-refused stale socket after rechecking its
+  identity, cleans its own socket on orderly shutdown and exception unwinding,
+  and closes truncated, malformed, direction-invalid, zero-ID, and reused-ID
+  connections. The process test commits an empty height-one block, restarts
+  through SIGTERM and then SIGKILL, replaces the stale socket, and exposes the
+  same durable height and root.
+- The current candidate passes the complete GCC debug suite 26/26. Focused
+  Clang ASan/UBSan passes the application lifecycle, request/response codec,
+  Unix server, headless restart process, and 512-run wire fuzzer together,
+  6/6.
 
 ## Exact next action
 
-Open the C++ application-core PR for issue #22, require the hosted
-compiler/sanitizer/fuzz matrix on its exact candidate, merge when green, then
-implement response encoding, request dispatch, and the private Unix-socket
-headless process before adding the thin Go ABCI++ bridge.
+Self-review the complete `feat/22-application-transport` diff, publish its
+verified commit and PR, require the hosted compiler/sanitizer/fuzz matrix on
+that exact candidate, and merge when green. After the clean phase boundary,
+continue issue #22 with the pinned thin Go ABCI++ bridge.
 
 ## Open autonomous decisions
 

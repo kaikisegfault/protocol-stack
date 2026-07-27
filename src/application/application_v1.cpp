@@ -95,7 +95,7 @@ InfoResult ApplicationV1::info() const {
   };
 }
 
-EmptyResult ApplicationV1::init_chain(
+InitChainResult ApplicationV1::init_chain(
     const protocol::v1::ChainId& chain_id,
     std::uint64_t initial_height,
     std::span<const std::uint8_t> app_state) {
@@ -116,7 +116,7 @@ EmptyResult ApplicationV1::init_chain(
     return implementation_->fail(ApplicationError::invalid_request);
   }
   implementation_->ready = true;
-  return std::monostate{};
+  return std::get<LedgerHead>(head).state_root;
 }
 
 TransactionCheckResult ApplicationV1::check_transaction(

@@ -180,6 +180,10 @@ add_library(
   STATIC
     src/application/application_block_v1.cpp
     src/application/application_v1.cpp
+    src/application/dispatcher_v1.cpp
+    src/application/response_v1.cpp
+    src/application/unix_connection_v1.cpp
+    src/application/unix_server_v1.cpp
     src/application/wire_v1.cpp
 )
 target_include_directories(
@@ -191,6 +195,20 @@ target_link_libraries(
   protocol_application
   PUBLIC
     protocol_storage
+)
+add_executable(
+  protocol_application_server
+  src/application/main.cpp
+)
+set_target_properties(
+  protocol_application_server
+  PROPERTIES
+    OUTPUT_NAME protocol-application
+)
+target_link_libraries(
+  protocol_application_server
+  PRIVATE
+    protocol_application
 )
 target_include_directories(
   protocol_storage
@@ -291,6 +309,14 @@ add_executable(
   application_wire_v1_tests
   tests/application/wire_v1_test.cpp
 )
+add_executable(
+  application_response_v1_tests
+  tests/application/response_v1_test.cpp
+)
+add_executable(
+  application_unix_server_v1_tests
+  tests/application/unix_server_v1_test.cpp
+)
 target_link_libraries(
   storage_sqlite_ledger_tests
   PRIVATE
@@ -343,6 +369,17 @@ target_link_libraries(
   PRIVATE
     protocol_application
 )
+target_link_libraries(
+  application_response_v1_tests
+  PRIVATE
+    protocol_application
+)
+target_link_libraries(
+  application_unix_server_v1_tests
+  PRIVATE
+    protocol_application
+    Threads::Threads
+)
 
 set(
   PROTOCOL_STACK_TARGETS
@@ -351,6 +388,7 @@ set(
   protocol_kernel
   protocol_storage
   protocol_application
+  protocol_application_server
   kernel_primitive_tests
   kernel_admission_tests
   kernel_execution_tests
@@ -370,6 +408,8 @@ set(
   storage_archive_v1_tests
   application_v1_tests
   application_wire_v1_tests
+  application_response_v1_tests
+  application_unix_server_v1_tests
 )
 if(PROTOCOL_STACK_ENABLE_FUZZING)
   add_library(
@@ -675,6 +715,29 @@ add_test(
 add_test(
   NAME application-wire-v1
   COMMAND application_wire_v1_tests
+)
+add_test(
+  NAME application-response-v1
+  COMMAND
+    application_response_v1_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
+    "${CMAKE_CURRENT_BINARY_DIR}/application-response-v1-test.db"
+)
+add_test(
+  NAME application-unix-server-v1
+  COMMAND
+    application_unix_server_v1_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
+    "${CMAKE_CURRENT_BINARY_DIR}/application-unix-server-v1-test"
+)
+add_test(
+  NAME application-headless-process
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/application/headless_process_test.py"
+    "$<TARGET_FILE:protocol_application_server>"
+    "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
+    "${CMAKE_CURRENT_BINARY_DIR}/application-headless-process-test"
 )
 set_tests_properties(
   protocol-primitives-python
