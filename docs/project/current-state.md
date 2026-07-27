@@ -13,7 +13,9 @@ fail-closed ambiguous-commit reopen are complete. Expanded interruption and
 long seeded recovery sequences are merged and pass the hosted completion
 matrix. Issue #22 is the active roadmap slice: accept the replaceable
 CometBFT boundary, then deliver the smallest runnable single-node ABCI++
-vertical without moving ledger authority out of C++.
+vertical without moving ledger authority out of C++. The contract is merged;
+the C++ staged application lifecycle and bounded local request decoder are the
+active implementation candidate.
 
 ## Verified facts
 
@@ -38,6 +40,11 @@ vertical without moving ledger authority out of C++.
   frame encoding, resource bounds, unsupported M1 features, and compatibility
   gates. The Go bridge may translate official ABCI++ fields but holds no
   canonical state or ledger policy.
+- PR #23 merged accepted ADR 0001 and the application contract as `4a935c8`.
+  Exact-candidate Actions run 30256434283 and post-merge run 30256703880 both
+  passed GCC and Clang debug plus ASan/UBSan. The first three jobs passed
+  21/21 tests and Clang ASan/UBSan passed 26/26 including all five existing
+  fuzz smoke targets.
 - ADR 0007 selects the official SQLite 3.53.3 autoconf archive at SHA-256
   `c917d7db16648ec95f714974ace5e5dcf46b7dc70e26600a0a102a3141125db0`
   as the replaceable M1 persistence engine. The adapter requires local
@@ -378,13 +385,31 @@ vertical without moving ledger authority out of C++.
   plus ASan/UBSan. The first three jobs passed 21/21 tests and Clang
   ASan/UBSan passed 26/26 including all five fuzz smoke targets. Issue #11 is
   closed.
+- `ApplicationV1` now owns one `SQLiteLedger`, performs stateless CheckTx
+  admission, deterministic bounded proposal handling, non-durable
+  next-height preview, byte-identical duplicate FinalizeBlock replay, exact
+  preview-versus-durable Commit comparison, and fail-closed terminal errors.
+  The frozen 15-input block maps all three admission errors and every reachable
+  execution result to the specified raw-aligned code/data response.
+- The adapter-neutral `PSAP` decoder checks the exact 20-byte header, version,
+  direction, kind, nonzero request ID, 32 MiB outer payload, per-transaction
+  and 16 MiB block totals, counts, truncation, and trailing bytes. Its separate
+  sanitizer-backed fuzz target includes a valid structured seed.
+- Focused GCC debug verification passes the complete 23/23 test suite. New
+  application coverage proves height-zero initialization, admission-only
+  checks, proposal prefixing, staged Info isolation, duplicate Finalize,
+  durable Commit, restart replay, continued next-height commit, fatal sequence
+  errors, maximum 65,535-input blocks, exact 16 MiB blocks, and one-byte-over
+  rejection. Wire tests cover every request kind and hostile frame/payload
+  boundaries. Focused Clang ASan/UBSan verification also passes the application
+  lifecycle, wire decoder, and 512-run wire fuzz smoke tests.
 
 ## Exact next action
 
-Review and merge the accepted ADR 0001 and
-`consensus-application-v1.md` contract for issue #22, then implement the
-versioned C++ application core and its bounded local frame decoder before
-adding the thin Go ABCI++ bridge.
+Open the C++ application-core PR for issue #22, require the hosted
+compiler/sanitizer/fuzz matrix on its exact candidate, merge when green, then
+implement response encoding, request dispatch, and the private Unix-socket
+headless process before adding the thin Go ABCI++ bridge.
 
 ## Open autonomous decisions
 
