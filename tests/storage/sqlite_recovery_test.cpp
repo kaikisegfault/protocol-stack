@@ -29,14 +29,19 @@ namespace p = protocol::v1;
 
 namespace {
 
-constexpr int kPostCommitExit = 73;
+constexpr int kTerminationExit = 73;
 
 enum class FaultMode {
   none,
-  before_commit,
+  failure_after_persistence,
   commit_rollback,
   terminal_recovery,
-  post_commit_exit,
+  terminate_before_transaction,
+  terminate_after_transaction_begin,
+  terminate_after_persistence,
+  terminate_before_commit,
+  terminate_after_commit_before_publication,
+  terminate_after_publication,
 };
 
 FaultMode fault_mode = FaultMode::none;
@@ -45,11 +50,37 @@ int reject_commit(void*) noexcept {
   return 1;
 }
 
+bool terminates_at(
+    FaultMode mode,
+    psi::SQLiteBlockFaultPoint point) noexcept {
+  switch (mode) {
+    case FaultMode::terminate_before_transaction:
+      return point == psi::SQLiteBlockFaultPoint::before_transaction;
+    case FaultMode::terminate_after_transaction_begin:
+      return point ==
+             psi::SQLiteBlockFaultPoint::after_transaction_begin;
+    case FaultMode::terminate_after_persistence:
+      return point == psi::SQLiteBlockFaultPoint::after_persistence;
+    case FaultMode::terminate_before_commit:
+      return point == psi::SQLiteBlockFaultPoint::before_commit;
+    case FaultMode::terminate_after_commit_before_publication:
+      return point ==
+             psi::SQLiteBlockFaultPoint::after_commit_before_publication;
+    case FaultMode::terminate_after_publication:
+      return point == psi::SQLiteBlockFaultPoint::after_publication;
+    default:
+      return false;
+  }
+}
+
 bool block_fault_hook(
     psi::SQLiteBlockFaultPoint point,
     sqlite3* database) noexcept {
+  if (terminates_at(fault_mode, point)) {
+    ::_exit(kTerminationExit);
+  }
   if (point == psi::SQLiteBlockFaultPoint::after_persistence &&
-      fault_mode == FaultMode::before_commit) {
+      fault_mode == FaultMode::failure_after_persistence) {
     fault_mode = FaultMode::none;
     return true;
   }
@@ -65,11 +96,6 @@ bool block_fault_hook(
       fault_mode == FaultMode::terminal_recovery) {
     fault_mode = FaultMode::none;
     return true;
-  }
-  if (point ==
-          psi::SQLiteBlockFaultPoint::after_commit_before_publication &&
-      fault_mode == FaultMode::post_commit_exit) {
-    ::_exit(kPostCommitExit);
   }
   return false;
 }
@@ -191,6 +217,15 @@ p::Ledger load_ledger(const p::Bytes& genesis, std::string_view message) {
   return std::get<p::Ledger>(std::move(loaded.result));
 }
 
+ps::LedgerHead ledger_head(
+    const p::Ledger& ledger,
+    std::string_view message) {
+  auto root = ledger.current_state_root();
+  pv::require(std::holds_alternative<p::StateRoot>(root), message);
+  return ps::LedgerHead{
+      ledger.state(), std::get<p::StateRoot>(std::move(root))};
+}
+
 void create_and_close(
     const std::filesystem::path& path,
     const p::Bytes& genesis) {
@@ -215,7 +250,7 @@ void verify_commit_error_recovery(
       take_head(stored.read_head(), "recovery old head read failed");
 
   FaultHook hook;
-  fault_mode = FaultMode::before_commit;
+  fault_mode = FaultMode::failure_after_persistence;
   require_storage_error(
       stored.apply_block(1, transactions),
       "pre-commit failure returned wrong result");
@@ -275,35 +310,66 @@ void verify_commit_error_recovery(
       "external reopen did not find old durable head");
 }
 
-int post_commit_kill_probe(
+FaultMode termination_mode(std::string_view name) {
+  if (name == "before-transaction") {
+    return FaultMode::terminate_before_transaction;
+  }
+  if (name == "after-transaction-begin") {
+    return FaultMode::terminate_after_transaction_begin;
+  }
+  if (name == "after-persistence") {
+    return FaultMode::terminate_after_persistence;
+  }
+  if (name == "before-commit") {
+    return FaultMode::terminate_before_commit;
+  }
+  if (name == "after-commit-before-publication") {
+    return FaultMode::terminate_after_commit_before_publication;
+  }
+  if (name == "after-publication") {
+    return FaultMode::terminate_after_publication;
+  }
+  pv::require(false, "unknown termination point");
+  return FaultMode::none;
+}
+
+int termination_probe(
     const std::filesystem::path& path,
     const p::Bytes& genesis,
-    const std::vector<p::Bytes>& transactions) {
+    const std::vector<p::Bytes>& transactions,
+    FaultMode mode) {
   auto stored = take_ledger(
       ps::open_sqlite_ledger(path, genesis),
-      "post-commit child open failed");
+      "termination child open failed");
   FaultHook hook;
-  fault_mode = FaultMode::post_commit_exit;
+  fault_mode = mode;
   (void)stored.apply_block(1, transactions);
   return 91;
 }
 
-void verify_post_commit_termination(
+struct TerminationCase {
+  const char* name;
+  bool committed;
+};
+
+void verify_termination_case(
     const pv::Values& values,
     const std::filesystem::path& prefix,
     const char* executable,
-    const char* vector_path) {
+    const char* vector_path,
+    const TerminationCase& test_case) {
   const auto genesis = genesis_bytes(values);
   const auto transactions = block_transactions(values);
-  DatabaseFiles files(prefix.string() + "-post-commit.db");
+  DatabaseFiles files(
+      prefix.string() + "-" + test_case.name + ".db");
   create_and_close(files.path(), genesis);
 
   const auto child = ::fork();
-  pv::require(child >= 0, "post-commit fork failed");
+  pv::require(child >= 0, "termination fork failed");
   if (child == 0) {
     ::execl(
-        executable, executable, "--post-commit-kill",
-        vector_path, files.path().c_str(),
+        executable, executable, "--termination-probe",
+        vector_path, files.path().c_str(), test_case.name,
         static_cast<char*>(nullptr));
     ::_exit(127);
   }
@@ -311,50 +377,89 @@ void verify_post_commit_termination(
   pv::require(
       ::waitpid(child, &status, 0) == child &&
           WIFEXITED(status) &&
-          WEXITSTATUS(status) == kPostCommitExit,
-      "child did not exit at post-commit boundary");
+          WEXITSTATUS(status) == kTerminationExit,
+      "child did not exit at block boundary");
 
   auto expected =
-      load_ledger(genesis, "post-commit fixture genesis rejected");
-  const auto expected_result = expected.apply_block(1, transactions);
-  pv::require(
-      std::holds_alternative<p::BlockCommit>(expected_result),
-      "post-commit fixture block rejected");
-  const auto expected_commit =
-      std::get<p::BlockCommit>(expected_result);
+      load_ledger(genesis, "termination fixture genesis rejected");
+  if (test_case.committed) {
+    const auto committed = expected.apply_block(1, transactions);
+    pv::require(
+        std::holds_alternative<p::BlockCommit>(committed),
+        "termination fixture block rejected");
+  }
+  const std::vector<p::Bytes> empty_block;
+  {
+    auto reopened = take_ledger(
+        ps::open_sqlite_ledger(files.path(), genesis),
+        "terminated database reopen failed");
+    pv::require(
+        take_head(reopened.read_head(), "terminated head read failed") ==
+            ledger_head(expected, "expected termination root failed"),
+        "termination recovered the wrong durable head");
+
+    const auto next_height = expected.state().height + 1;
+    const auto& next_transactions =
+        test_case.committed ? empty_block : transactions;
+    auto expected_next =
+        expected.apply_block(next_height, next_transactions);
+    pv::require(
+        std::holds_alternative<p::BlockCommit>(expected_next),
+        "termination continuation fixture rejected");
+    const auto expected_commit =
+        std::get<p::BlockCommit>(std::move(expected_next));
+    const auto actual_commit = take_commit(
+        reopened.apply_block(next_height, next_transactions),
+        "terminated ledger did not continue");
+    pv::require(
+        same_commit(actual_commit, expected_commit) &&
+            take_head(
+                reopened.read_head(),
+                "termination continuation head read failed") ==
+                ledger_head(
+                    expected, "termination continuation root failed"),
+        "termination continuation diverged");
+  }
+
   auto reopened = take_ledger(
       ps::open_sqlite_ledger(files.path(), genesis),
-      "post-commit durable head reopen failed");
+      "termination continuation external reopen failed");
   pv::require(
-      take_head(reopened.read_head(), "post-commit head read failed") ==
-          ps::LedgerHead{
-              expected.state(), expected_commit.resulting_state_root},
-      "post-commit termination lost durable new head");
+      take_head(reopened.read_head(), "final termination head read failed") ==
+          ledger_head(expected, "final expected root failed"),
+      "termination continuation did not survive reopen");
+}
 
-  const std::vector<p::Bytes> empty_block;
-  const auto expected_next = expected.apply_block(2, empty_block);
-  pv::require(
-      std::holds_alternative<p::BlockCommit>(expected_next),
-      "post-commit continuation fixture rejected");
-  const auto actual_next = take_commit(
-      reopened.apply_block(2, empty_block),
-      "post-commit recovered ledger did not continue");
-  pv::require(
-      same_commit(
-          actual_next, std::get<p::BlockCommit>(expected_next)),
-      "post-commit continuation output changed");
+void verify_block_boundary_terminations(
+    const pv::Values& values,
+    const std::filesystem::path& prefix,
+    const char* executable,
+    const char* vector_path) {
+  constexpr TerminationCase kCases[]{
+      {"before-transaction", false},
+      {"after-transaction-begin", false},
+      {"after-persistence", false},
+      {"before-commit", false},
+      {"after-commit-before-publication", true},
+      {"after-publication", true},
+  };
+  for (const auto& test_case : kCases) {
+    verify_termination_case(
+        values, prefix, executable, vector_path, test_case);
+  }
 }
 
 }  // namespace
 
 int main(int argc, char** argv) {
   try {
-    if (argc == 4 &&
-        std::string_view(argv[1]) == "--post-commit-kill") {
+    if (argc == 5 &&
+        std::string_view(argv[1]) == "--termination-probe") {
       pv::require(sodium_init() >= 0, "libsodium initialization");
       const auto values = pv::load_values(argv[2]);
-      return post_commit_kill_probe(
-          argv[3], genesis_bytes(values), block_transactions(values));
+      return termination_probe(
+          argv[3], genesis_bytes(values), block_transactions(values),
+          termination_mode(argv[4]));
     }
     pv::require(
         argc == 3,
@@ -363,7 +468,7 @@ int main(int argc, char** argv) {
     const auto values = pv::load_values(argv[1]);
     const std::filesystem::path prefix(argv[2]);
     verify_commit_error_recovery(values, prefix);
-    verify_post_commit_termination(
+    verify_block_boundary_terminations(
         values, prefix, argv[0], argv[1]);
     std::cout << "SQLite recovery tests: passed\n";
     return 0;
