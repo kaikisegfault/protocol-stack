@@ -250,6 +250,10 @@ add_executable(
   tests/storage/sqlite_recovery_test.cpp
 )
 add_executable(
+  storage_sqlite_sequence_tests
+  tests/storage/sqlite_sequence_test.cpp
+)
+add_executable(
   storage_sqlite_vfs_failure_tests
   tests/storage/sqlite_vfs_failure_test.cpp
   tests/storage/sqlite_fault_vfs.cpp
@@ -276,6 +280,12 @@ target_link_libraries(
 )
 target_link_libraries(
   storage_sqlite_recovery_tests
+  PRIVATE
+    protocol_storage
+    protocol_stack_sqlite
+)
+target_link_libraries(
+  storage_sqlite_sequence_tests
   PRIVATE
     protocol_storage
     protocol_stack_sqlite
@@ -318,6 +328,7 @@ set(
   storage_sqlite_ledger_tests
   storage_sqlite_history_tests
   storage_sqlite_recovery_tests
+  storage_sqlite_sequence_tests
   storage_sqlite_vfs_failure_tests
   storage_snapshot_v1_tests
   storage_archive_v1_tests
@@ -562,6 +573,14 @@ add_test(
     storage_sqlite_recovery_tests
     "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
     "${CMAKE_CURRENT_BINARY_DIR}/storage-sqlite-recovery-test"
+)
+add_test(
+  NAME storage-sqlite-sequence
+  COMMAND
+    storage_sqlite_sequence_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
+    "${PROJECT_SOURCE_DIR}/test-vectors/protocol-primitives-v1.txt"
+    "${CMAKE_CURRENT_BINARY_DIR}/storage-sqlite-sequence-test.db"
 )
 add_test(
   NAME storage-sqlite-vfs-failures
