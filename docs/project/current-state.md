@@ -15,7 +15,8 @@ matrix. Issue #22 is the active roadmap slice: accept the replaceable
 CometBFT boundary, then deliver the smallest runnable single-node ABCI++
 vertical without moving ledger authority out of C++. The contract is merged;
 the C++ staged application lifecycle and bounded local request decoder are
-merged, and the headless C++ transport is the active implementation candidate.
+merged, and the headless C++ transport is merged and fully verified. The next
+unblocked slice is the pinned thin Go ABCI++ bridge.
 
 ## Verified facts
 
@@ -408,10 +409,10 @@ merged, and the headless C++ transport is the active implementation candidate.
   post-merge run 30258530334 both passed GCC and Clang debug plus ASan/UBSan.
   The first three jobs passed 23/23 tests and Clang ASan/UBSan passed 29/29
   including all six fuzz smoke targets.
-- Branch `feat/22-application-transport` contains the locally verified
-  transport candidate: exact success/error serialization and typed dispatch
-  for all seven methods, owner-only Unix-socket serving with synchronous
-  request handling and nonzero/nonreused request IDs, and the headless
+- PR #25 merged the headless application transport into `main` as `0552799`.
+  It provides exact success/error serialization and typed dispatch for all
+  seven methods, owner-only Unix-socket serving with synchronous request
+  handling and nonzero/nonreused request IDs, and the headless
   `protocol-application` executable. Startup reads at most 1 MiB from an
   absolute regular genesis file, validates it before listening, and
   exclusively opens or creates the absolute SQLite path.
@@ -422,17 +423,20 @@ merged, and the headless C++ transport is the active implementation candidate.
   connections. The process test commits an empty height-one block, restarts
   through SIGTERM and then SIGKILL, replaces the stale socket, and exposes the
   same durable height and root.
-- The current candidate passes the complete GCC debug suite 26/26. Focused
-  Clang ASan/UBSan passes the application lifecycle, request/response codec,
-  Unix server, headless restart process, and 512-run wire fuzzer together,
-  6/6.
+- Exact-candidate Actions run 30267692161 and post-merge run 30267995467 both
+  passed GCC and Clang debug plus ASan/UBSan. The first three jobs passed
+  26/26 tests and Clang ASan/UBSan passed 32/32 including all six fuzz smoke
+  targets. The complete locally focused GCC suite passed 26/26, and the
+  application lifecycle, request/response codec, Unix server, headless restart
+  process, and 512-run wire fuzzer passed focused Clang ASan/UBSan checks 6/6.
 
 ## Exact next action
 
-Self-review the complete `feat/22-application-transport` diff, publish its
-verified commit and PR, require the hosted compiler/sanitizer/fuzz matrix on
-that exact candidate, and merge when green. After the clean phase boundary,
-continue issue #22 with the pinned thin Go ABCI++ bridge.
+Continue issue #22 on one focused branch with the pinned Go `1.25.10` thin
+ABCI++ bridge for CometBFT `v0.39.3`. Implement exact local-frame translation,
+ABCI result conversion, unsupported-method failure, and cross-connection
+serialization without cgo or canonical state, then prove those boundaries
+with focused Go tests before the single-node process integration slice.
 
 ## Open autonomous decisions
 
