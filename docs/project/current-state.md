@@ -10,8 +10,10 @@ validate a height-zero ledger, atomically persist a complete block, and reopen
 the identical head through full genesis replay. Deterministic multi-block
 restart, snapshot recovery, portable export, new-database archive import, and
 fail-closed ambiguous-commit reopen are complete. Expanded interruption and
-long seeded recovery sequences pass focused verification; the hosted completion
-matrix and issue #11 closure remain the active roadmap slice.
+long seeded recovery sequences are merged and pass the hosted completion
+matrix. Issue #22 is the active roadmap slice: accept the replaceable
+CometBFT boundary, then deliver the smallest runnable single-node ABCI++
+vertical without moving ledger authority out of C++.
 
 ## Verified facts
 
@@ -23,8 +25,19 @@ matrix and issue #11 closure remain the active roadmap slice.
   compiler/sanitizer jobs passed.
 - The complete issue #8 in-memory kernel merged through PR #10 on 2026-07-23;
   all four GitHub compiler/sanitizer jobs passed.
-- Issue #11 defines the next M1 slice for replaceable atomic persistence,
-  reopen/replay, snapshots, corruption detection, and crash recovery.
+- Issue #11 completed the M1 replaceable atomic persistence, reopen/replay,
+  snapshot, corruption-detection, and crash-recovery slice through PR #21.
+- Issue #22 tracks the replaceable CometBFT ABCI++ application boundary and
+  the first runnable single-node networked vertical.
+- ADR 0001 accepts CometBFT `v0.39.3` at source commit
+  `49b82838fcca442b2445f76605c101609ed04130`, ABCI `2.0.0`, and the official
+  Go `1.25.10` Linux x86-64 toolchain. The exact Go module, module-file,
+  toolchain, and inspected Apache-2.0 license checksums are recorded there.
+- `consensus-application-v1.md` fixes the adapter-neutral lifecycle, ABCI
+  admission/execution mapping, preview/commit split, restart handshake, local
+  frame encoding, resource bounds, unsupported M1 features, and compatibility
+  gates. The Go bridge may translate official ABCI++ fields but holds no
+  canonical state or ledger policy.
 - ADR 0007 selects the official SQLite 3.53.3 autoconf archive at SHA-256
   `c917d7db16648ec95f714974ace5e5dcf46b7dc70e26600a0a102a3141125db0`
   as the replaceable M1 persistence engine. The adapter requires local
@@ -359,17 +372,24 @@ matrix and issue #11 closure remain the active roadmap slice.
 - Focused GCC debug verification passes the recovery and seeded-sequence tests
   together, 2/2. The sequence reports 256 blocks, ten snapshots, and twenty
   reopens.
+- PR #21 merged expanded non-returning interruption and long seeded SQLite
+  recovery coverage into `main` as `704f5e2`. Exact-candidate Actions run
+  30254773770 and post-merge run 30255023986 both passed GCC and Clang debug
+  plus ASan/UBSan. The first three jobs passed 21/21 tests and Clang
+  ASan/UBSan passed 26/26 including all five fuzz smoke targets. Issue #11 is
+  closed.
 
 ## Exact next action
 
-Open the issue #11 completion PR, require the full hosted compiler/sanitizer
-matrix on its exact candidate, merge and close the issue when green, then
-record the final CometBFT decision and specify the smallest runnable ABCI
-application-adapter slice.
+Review and merge the accepted ADR 0001 and
+`consensus-application-v1.md` contract for issue #22, then implement the
+versioned C++ application core and its bounded local frame decoder before
+adding the thin Go ABCI++ bridge.
 
 ## Open autonomous decisions
 
-- Final acceptance of CometBFT as the replaceable M1 consensus/P2P adapter.
+- None for the accepted issue #22 contract. Implementation details that do not
+  change the normative boundary remain local engineering choices.
 
 ## Blockers
 

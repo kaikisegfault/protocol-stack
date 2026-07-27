@@ -1,0 +1,384 @@
+# Consensus application contract v1
+
+Status: Accepted for M1
+
+This document is normative for the version-one boundary between an ordering
+engine and the persistent protocol application. It does not change the
+canonical genesis, transaction, execution, receipt, block, or state-root rules
+in `protocol-primitives-v1.md` and `ledger-transition-v1.md`.
+
+This is an adapter-only compatibility contract. The ordering adapter supplies a
+height and ordered raw transaction bytes. The C++ application remains the only
+authority for admission, execution, receipts, application hashes, and durable
+state.
+
+## Invariants
+
+The boundary preserves all version-one ledger invariants:
+
+1. there is exactly one protocol-native asset and total supply is conserved;
+2. transaction signatures, chain binding, nonces, and ordered execution retain
+   their specified replay protection;
+3. the adapter cannot create a transaction, receipt, account write, fee, state
+   root, or block result;
+4. adapter metadata cannot enter canonical state;
+5. failed admission and execution retain their specified atomicity;
+6. no application state is durable before Commit;
+7. Commit does not report success before the complete SQLite block transaction
+   is durable;
+8. one decided height is applied at most once;
+9. restart exposes only a fully validated old or new durable head;
+10. replacing the consensus adapter does not change canonical ledger bytes.
+
+Proposer identity, block hash, vote data, timestamps, wall-clock values,
+validator metadata, RPC metadata, connection order, and thread scheduling are
+not application transition inputs.
+
+## Deployment identity
+
+The C++ application is configured with:
+
+- an absolute SQLite database path;
+- the exact canonical genesis byte file;
+- an absolute local Unix-socket path.
+
+Before listening, it loads and validates canonical genesis, derives the
+32-byte protocol chain ID, and exclusively creates or opens the configured
+SQLite ledger. A new database starts at height zero. An existing database must
+pass the complete `SQLiteLedger::open` validation and recovery path.
+
+The CometBFT genesis values are:
+
+- `chain_id`: ASCII `ps-` followed by the RFC 4648 URL-safe base64 encoding of
+  the derived 32-byte protocol chain ID, with no padding; this is exactly 46
+  characters and preserves all 256 bits within CometBFT's 50-character limit;
+- `initial_height`: decimal `1`;
+- `app_hash`: the 64 uppercase hexadecimal characters of the version-one
+  height-zero state root;
+- `app_state`: the exact UTF-8 JSON string bytes `"protocol-stack-v1"`,
+  including the two quote bytes.
+
+The node launcher derives all four values from the same validated canonical
+genesis and refuses an existing CometBFT genesis file that differs. ABCI
+InitChain does not carry the configured genesis application hash. The Go
+bridge therefore enforces the chain string's exact prefix, length, URL-safe
+alphabet, absent padding, and canonical re-encoding, then passes its decoded
+bytes to C++; C++ compares those bytes, the initial height, and the exact
+application-state bytes, then returns its independently computed height-zero
+root. Repeated initialization before the first committed block is idempotent
+and performs no state write. Initialization after a nonzero durable height is
+a sequence failure.
+
+## Application lifecycle
+
+The C++ process owns one live `SQLiteLedger` and, at most, one staged block.
+The durable head contains a height and 32-byte state root. A staged block
+contains its height, exact ordered raw inputs, raw-aligned application results,
+candidate `BlockCommit`, and candidate ledger head.
+
+All application operations are serialized. The Go bridge may serve CometBFT's
+separate ABCI connections, but exactly one request may cross the local
+application boundary at a time. Read-only admission is serialized with
+Finalize and Commit so no response observes a partially changed lifecycle.
+
+### Info
+
+Info returns:
+
+- application data: ASCII `protocol-stack`;
+- application version: ASCII `1.0.0`;
+- application protocol version: unsigned integer `1`;
+- the last durable block height;
+- the exact 32-byte durable state root as the last application hash.
+
+The Go bridge requires the request's ABCI version to be exactly `2.0.0`.
+An incompatible request is fatal rather than a downgraded response.
+
+Info never exposes a staged candidate. After a process restart it opens and
+validates SQLite before returning the old or new durable head. This is the
+authoritative recovery handshake with the ordering engine.
+The bridge cannot represent an application height above signed 64-bit maximum
+and fails closed if one is ever observed.
+
+### Check transaction
+
+CheckTx invokes only the four ordered admission operations in
+`ledger-transition-v1.md`: exact decoding, chain comparison, sender derivation,
+and strict signature verification. It performs no execution-state read,
+reservation, nonce prediction, fee check, or write.
+
+The raw CheckTx byte string is limited to 1,048,576 bytes before allocation or
+admission. A larger request is an adapter request failure, not a transaction
+admission result.
+
+The response mapping is:
+
+| Admission outcome | ABCI code | Codespace |
+| --- | ---: | --- |
+| admitted | `0` | empty |
+| malformed transaction | `1` | `protocol-stack-v1` |
+| wrong chain | `2` | `protocol-stack-v1` |
+| invalid signature | `3` | `protocol-stack-v1` |
+
+Data, log, info, and events are empty. Gas wanted and gas used are zero. New
+and recheck requests have identical application meaning.
+
+A code-zero CheckTx response means only that the signed bytes pass admission.
+FinalizeBlock remains authoritative for nonce, balance, expiry, fee, ordering,
+and every other state-dependent result.
+
+### Prepare proposal
+
+Given the adapter's ordered candidate list and nonnegative `max_tx_bytes`,
+PrepareProposal returns the longest exact prefix for which:
+
+- the raw count is at most 65,535;
+- each raw input is at most 1,048,576 bytes;
+- the sum of raw input lengths is at most both `max_tx_bytes` and 16,777,216.
+
+Selection stops before the first input or sum that would violate a bound.
+Bytes are neither decoded nor reordered. A negative `max_tx_bytes`, an
+unrepresentable sum, or a malformed list container is a request failure.
+Proposal selection is not canonical ledger state.
+
+### Process proposal
+
+ProcessProposal deterministically accepts if and only if:
+
+- no staged block exists;
+- the proposed height is the durable height plus one without overflow;
+- the proposed height is at most 9,223,372,036,854,775,807;
+- the raw count is at most 65,535;
+- every input length is at most 1,048,576 bytes;
+- the checked sum of input lengths is at most 16,777,216 bytes.
+
+It does not decode or execute transactions. Malformed, wrong-chain, invalidly
+signed, or state-invalid transaction bytes do not reject a structurally
+bounded proposal because FinalizeBlock has deterministic result rules for
+them.
+
+### Finalize block
+
+FinalizeBlock accepts only the next durable height and a structurally bounded
+ordered raw list. It constructs an independent in-memory ledger from the owned
+durable head and calls the unchanged version-one ordered block transition.
+It does not open a SQLite write transaction and does not modify the durable
+ledger.
+
+For every raw input, in the same position, it returns exactly one application
+result:
+
+| Kernel outcome | ABCI code | Data |
+| --- | ---: | --- |
+| admitted and execution success | `0` | exact 47-byte receipt |
+| malformed transaction | `1` | empty |
+| wrong chain | `2` | empty |
+| invalid signature | `3` | empty |
+| admitted, `ZERO_AMOUNT` | `257` | exact 47-byte receipt |
+| admitted, `FEE_LIMIT_TOO_LOW` | `258` | exact 47-byte receipt |
+| admitted, `EXPIRED` | `259` | exact 47-byte receipt |
+| admitted, `SENDER_NOT_FOUND` | `260` | exact 47-byte receipt |
+| admitted, `NONCE_EXHAUSTED` | `261` | exact 47-byte receipt |
+| admitted, `NONCE_MISMATCH` | `262` | exact 47-byte receipt |
+| admitted, `DEBIT_OVERFLOW` | `263` | exact 47-byte receipt |
+| admitted, `INSUFFICIENT_BALANCE` | `264` | exact 47-byte receipt |
+
+Codes `257` through `264` are `256 +` the one-byte canonical transfer result.
+This keeps admission codes distinct without changing receipt bytes.
+
+Code zero uses an empty codespace. Every nonzero code uses
+`protocol-stack-v1`. Log, info, events, gas wanted, and gas used are empty or
+zero for every result. An admitted result always contains its exact canonical
+receipt, including failures; an admission failure never contains a receipt.
+
+The response application hash is the exact 32-byte resulting state root.
+Validator updates, consensus-parameter updates, and events are empty. The next
+block begins according to the pinned CometBFT configuration; M1 sets
+`timeout_commit = "3s"` and `skip_timeout_commit = false`. Timing is not an
+application response or canonical ledger state.
+
+An internal block failure, invalid next height, count violation, length
+violation, arithmetic failure, or inability to construct the candidate is a
+fatal application error. It is never converted to a transaction result or
+partial block.
+
+After a successful response, the application retains the exact stage. A
+byte-identical repeated FinalizeBlock request returns the byte-identical staged
+response. Any different FinalizeBlock or proposal request while a stage exists
+is a sequence failure.
+
+### Commit
+
+Commit requires one staged block. It calls `SQLiteLedger::apply_block` with the
+exact staged height and raw byte sequence. The resulting durable `BlockCommit`
+and owned head must exactly equal the staged preview before success is
+returned.
+
+SQLite commits the whole block before the application publishes its new owned
+head. Only after successful publication does the application clear the stage
+and return success. The ABCI Commit response contains no application hash in
+ABCI `2.0.0`; its retain height is zero. The next Info response exposes the
+durable height and root.
+
+A kernel rejection, preview mismatch, storage error, close error, recovery
+error, missing stage, or duplicate Commit is fatal. The application never
+advances to another height after a terminal storage failure.
+
+## Crash, disconnect, and replay
+
+The ordering engine persists a decided block before calling FinalizeBlock.
+FinalizeBlock itself is non-durable. These cases are required:
+
+| Interruption point | Durable application head after restart |
+| --- | --- |
+| before or during FinalizeBlock | old head |
+| after FinalizeBlock, before Commit | old head |
+| before SQLite durable commit | old head |
+| after SQLite durable commit, before response | new head |
+| after Commit response | new head |
+
+No staged state survives process termination. When the durable head is old,
+the ordering engine may replay the same height and the application must
+reproduce byte-identical transaction results and application hash. When the
+durable head is new, Info reports it and the decided height is not applied
+again.
+
+SQLite's fail-closed ambiguous-commit recovery governs interruptions inside
+Commit. The process reports neither a stale cached head nor a speculative
+stage after a commit error. A bridge disconnect closes the affected request;
+it does not cancel or roll back a durable C++ commit. CometBFT and the
+application must be restarted and reconciled through Info after an ambiguous
+transport failure.
+
+A CometBFT block store behind the application's durable height, a different
+chain ID or genesis, a different application hash at an equal height, or a
+noncontiguous replay is operator-visible divergence and fails closed.
+
+## Local application protocol
+
+The local protocol is operational framing, not canonical ledger encoding. Its
+version-one byte order is nevertheless exact so the untrusted decoder can be
+bounded and independently tested.
+
+### Primitive encoding
+
+- integers are unsigned fixed-width big-endian unless named `i64`;
+- `i64` is an eight-byte two's-complement big-endian integer;
+- `bytes32` is exactly 32 bytes;
+- `blob` is `length:u32 || bytes[length]`;
+- `blob_list` is `count:u32 || blob[count]`;
+- Boolean is one byte and accepts only `0` or `1`;
+- no field has padding and no payload permits trailing bytes.
+
+The maximum outer payload is 33,554,432 bytes. A decoder checks the fixed
+header, payload length, field counts, individual lengths, checked sums, exact
+payload consumption, and message-specific limits before allocation.
+
+### Frame
+
+Every frame is:
+
+```text
+magic[4] || protocol_version:u16 || direction:u8 || kind:u8 ||
+request_id:u64 || payload_length:u32 || payload[payload_length]
+```
+
+The magic is ASCII `PSAP`, protocol version is `1`, and direction is `0` for a
+request or `1` for a response. Request IDs are chosen by the bridge, are
+nonzero, and responses echo the exact ID and kind. Only one request is
+outstanding. EOF within a frame, unknown direction or kind, zero or reused
+request ID, oversized length, and trailing bytes close the connection.
+
+Every response payload begins with `status:u16 || message:blob`. Status zero
+requires an empty message and is followed by the kind-specific success
+payload. Nonzero status permits a UTF-8 diagnostic of at most 4,096 bytes and
+no following bytes:
+
+| Status | Meaning |
+| ---: | --- |
+| `1` | invalid request |
+| `2` | unsupported operation or version |
+| `3` | application sequence failure |
+| `4` | kernel block failure |
+| `5` | storage or recovery failure |
+| `6` | internal application failure |
+
+Diagnostics are operational only. The bridge converts every nonzero status to
+an ABCI exception and does not place its text in a consensus result.
+
+### Message kinds and payloads
+
+| Kind | Name | Request success fields | Response success fields |
+| ---: | --- | --- | --- |
+| `1` | Info | empty | `app_version:u64 || height:u64 || root:bytes32` |
+| `2` | InitChain | `chain_id:bytes32 || initial_height:u64 || app_state:blob` | `root:bytes32` |
+| `3` | CheckTx | `tx:blob` | `code:u32` |
+| `4` | PrepareProposal | `max_tx_bytes:i64 || txs:blob_list` | `txs:blob_list` |
+| `5` | ProcessProposal | `height:u64 || txs:blob_list` | `accept:Boolean` |
+| `6` | FinalizeBlock | `height:u64 || txs:blob_list` | `root:bytes32 || result_count:u32 || result[result_count]` |
+| `7` | Commit | empty | `height:u64 || root:bytes32` |
+
+Each FinalizeBlock result is
+`code:u32 || data:blob`. Its count must equal the request raw count.
+Code/data combinations must match the normative result table exactly.
+
+The chain ID in InitChain is decoded from the exact `ps-` plus unpadded
+base64url CometBFT string by the Go bridge. The app-state blob is passed without
+normalization. The bridge rejects a negative ABCI height, an application
+height above signed 64-bit maximum, a noncanonical chain string, and an ABCI
+response that cannot be represented exactly by this table.
+
+## Unsupported ABCI features
+
+M1 configuration disables the application mempool, vote extensions, state
+sync, application snapshots, validator changes, and consensus-parameter
+changes.
+
+CometBFT configuration requires `mempool.type = "flood"` and
+`p2p.libp2p.enabled = false`. The bridge fails if CometBFT invokes InsertTx or
+ReapTxs, proving the application-mempool mode was not silently enabled. Query
+returns code `1`, codespace `protocol-stack-v1`, and no state data. ExtendVote
+returns empty bytes, and VerifyVoteExtension accepts only empty bytes; the
+genesis consensus parameters must keep vote extensions disabled. State-sync
+listing returns no snapshots, and offer, load, or apply requests are rejected.
+The application never exposes its engine-independent SQLite snapshots through
+ABCI v1.
+
+## Versioning and migration
+
+Application protocol version `1`, local frame version `1`, codespace
+`protocol-stack-v1`, and every result code in this document are frozen for the
+M1 network.
+
+A replacement bridge may change transport implementation but must reproduce
+this lifecycle and result mapping. A change to ordered input meaning, result
+codes, application hashes, commit atomicity, or replay behavior requires a new
+accepted application-contract version and coordinated activation. A database
+or canonical ledger migration follows the separate storage and transition
+compatibility rules.
+
+## Required evidence
+
+Before this contract is considered implemented:
+
+- fixed C++ vectors cover every admission and execution result mapping;
+- preview output equals durable kernel output for populated, empty, and
+  entirely unadmitted blocks;
+- duplicate Finalize, conflicting Finalize, missing Commit, duplicate Commit,
+  wrong height, overflow, maximum count, maximum length, and total-length
+  boundaries are covered;
+- process termination covers every row in the crash table and continued next
+  commit after reopen;
+- decoder tests cover truncation at every field, trailing bytes, unknown
+  version/direction/kind/status, zero/reused IDs, hostile counts and lengths,
+  invalid Boolean, arithmetic overflow, and disconnects;
+- a bounded sanitizer-backed fuzzer exercises raw and structured frames with
+  valid seeds;
+- Go tests prove exact ABCI conversion, unsupported-method failure, concurrent
+  connection serialization, and lossless byte transport;
+- the pinned CometBFT binary starts from a clean home, commits a signed native
+  transfer, exposes the C++ application hash, stops, restarts, and continues at
+  the next durable height;
+- existing GCC, Clang, AddressSanitizer, UndefinedBehaviorSanitizer, primitive,
+  ledger, differential, persistence, snapshot, archive, recovery, and fuzz
+  gates remain green.

@@ -59,13 +59,31 @@ the behavior it is intended to verify.
 
 ## Initial consensus boundary
 
-CometBFT is proposed for the first devnet because it can order transactions and
-replicate an external application without owning that application's state
-transition. The C++ kernel remains the authoritative application.
+ADR 0001 selects the pinned CometBFT `v0.39.3` release for the first devnet
+because it can order transactions and replicate an external application
+without owning that application's state transition. The C++ kernel remains the
+authoritative application.
 
-The adapter must not leak CometBFT-specific types into kernel modules. A future
-consensus engine should be replaceable without migrating account or economic
-state merely because transport changed.
+The reference composition has three process roles:
+
+1. the C++ application exclusively owns SQLite, block preview, durable commit,
+   canonical results, and the current application hash;
+2. a stateless Go bridge translates official ABCI++ messages to the versioned
+   local application protocol without cgo;
+3. CometBFT owns agreement, validator P2P, its block store, and the initial
+   broadcast and health RPCs.
+
+FinalizeBlock previews one exact next-height transition in memory. Commit
+durably applies only that staged height and ordered byte sequence. Restart
+reconciles the independently durable CometBFT and application heads through
+ABCI Info; neither process treats an uncommitted preview as state.
+
+The normative lifecycle, result mapping, resource limits, local framing, and
+replay rules are in `../specifications/consensus-application-v1.md`.
+CometBFT protobuf, Go, validator, proposer, timestamp, RPC, and transport types
+must not leak into kernel or storage modules. A future consensus engine should
+be replaceable without migrating account or economic state merely because
+transport changed.
 
 ## Determinism boundary
 
