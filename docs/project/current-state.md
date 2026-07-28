@@ -469,6 +469,10 @@ branch requires hosted matrix and dependency-alert evidence before merge.
   passed checksum verification, the no-DTLS-v2 package-closure gate, Go tests,
   vet, and the cgo-free node build. GitHub's exact branch dependency comparison
   reported zero vulnerabilities on bot commit `bf1668b`.
+- PR #30 exact `v0.39.4` code candidate `0f3ad7d` passed hosted Actions run
+  30385969246. GCC and Clang debug plus both ASan/UBSan jobs passed, including
+  the live transfer/restart integration. The repeated exact branch dependency
+  comparison reported zero vulnerabilities.
 - `AGENTS.md` and `docs/engineering/verification.md` now treat the owner
   machine as resource-constrained: full verification, expanded dependency
   resolution, direct VCS module retrieval, and large reproducible cache
@@ -478,10 +482,9 @@ branch requires hosted matrix and dependency-alert evidence before merge.
 
 ## Exact next action
 
-Complete issue #22 from `feat/22-cometbft-single-node`: commit and push the
-verified `v0.39.4` compatibility amendment, require the exact hosted compiler
-and sanitizer matrix plus a repeated zero-vulnerability branch dependency
-comparison, then merge PR #30 and reconcile `main`. The next roadmap slice is
+Merge PR #30 after the documentation-only head check passes, fetch and
+fast-forward local `main`, remove the merged branch and reproducible artifacts,
+and prove local/remote reconciliation. Then open and execute the next M1 slice:
 the documented four-validator local devnet lifecycle required by
 `first-goal.md`.
 
