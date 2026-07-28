@@ -4,21 +4,15 @@ Last updated: 2026-07-28
 
 ## Phase
 
-M1 — Sovereign Devnet Alpha. The deterministic in-memory ledger kernel is
-merged and verified. The owning storage adapter can now durably create and
-validate a height-zero ledger, atomically persist a complete block, and reopen
-the identical head through full genesis replay. Deterministic multi-block
-restart, snapshot recovery, portable export, new-database archive import, and
-fail-closed ambiguous-commit reopen are complete. Expanded interruption and
-long seeded recovery sequences are merged and pass the hosted completion
-matrix. Issue #22 is the active roadmap slice: deliver the smallest runnable
-single-node ABCI++ vertical without moving ledger authority out of C++. The
-accepted contract, C++ staged application lifecycle, bounded local protocol,
-headless transport, stateless Go bridge, dependency security floors, strict
-CometBFT home initializer, and pinned node wrapper are implemented. Local
-verification now starts the real node, commits a signed transfer, restarts all
-three processes, and continues at the next durable height. The active delivery
-branch requires hosted matrix and dependency-alert evidence before merge.
+M1 — Sovereign Devnet Alpha. The deterministic C++ ledger kernel, owning
+SQLite storage adapter, restart/replay and recovery paths, headless application
+process, stateless Go ABCI++ bridge, and pinned CometBFT single-node vertical
+are merged and verified. The real integration commits two independently
+modelled signed transfers across a complete node, bridge, and application
+restart, then confirms the exact height-two C++ durable root and ABCI
+receipts. Issue #22 and PR #30 are closed with no active delivery branch. The
+nearest incomplete M1 evidence is the documented four-validator local devnet
+lifecycle required by `first-goal.md`.
 
 ## Verified facts
 
@@ -32,8 +26,8 @@ branch requires hosted matrix and dependency-alert evidence before merge.
   all four GitHub compiler/sanitizer jobs passed.
 - Issue #11 completed the M1 replaceable atomic persistence, reopen/replay,
   snapshot, corruption-detection, and crash-recovery slice through PR #21.
-- Issue #22 tracks the replaceable CometBFT ABCI++ application boundary and
-  the first runnable single-node networked vertical.
+- Issue #22 completed the replaceable CometBFT ABCI++ application boundary and
+  first runnable single-node networked vertical through PR #30.
 - ADR 0001 accepts CometBFT `v0.39.4` at source commit
   `f96ff7cc244bfa97f399527d917f22ad81414d25`, ABCI `2.0.0`, and the official
   Go `1.25.10` Linux x86-64 toolchain. The exact Go module, module-file,
@@ -444,8 +438,8 @@ branch requires hosted matrix and dependency-alert evidence before merge.
   Exact-candidate run 30378111004 and post-merge verification run 30378470647
   passed all four jobs; dependency-graph run 30378472171 passed and the
   refreshed open Dependabot alert count was zero.
-- The active single-node implementation adds a C++ canonical-genesis identity
-  mode, strict fixed-time CometBFT genesis/configuration initialization,
+- The completed single-node implementation adds a C++ canonical-genesis
+  identity mode, strict fixed-time CometBFT genesis/configuration initialization,
   validator and node key persistence, a pinned official full-node start
   wrapper, and refusal of mismatched repeated initialization. The runtime
   fixes the flood mempool, disables libp2p, PEX, state sync, vote extensions,
@@ -473,6 +467,12 @@ branch requires hosted matrix and dependency-alert evidence before merge.
   30385969246. GCC and Clang debug plus both ASan/UBSan jobs passed, including
   the live transfer/restart integration. The repeated exact branch dependency
   comparison reported zero vulnerabilities.
+- PR #30 merged the completed issue #22 vertical into `main` as `e886465`.
+  Exact-head candidate run 30386416963 and post-merge run 30386965030 passed
+  GCC and Clang debug plus both ASan/UBSan jobs, including the live
+  transfer/restart integration. Resolver run 30386416975 and post-merge
+  dependency-graph run 30386963131 passed; the final open Dependabot alert
+  count was zero.
 - `AGENTS.md` and `docs/engineering/verification.md` now treat the owner
   machine as resource-constrained: full verification, expanded dependency
   resolution, direct VCS module retrieval, and large reproducible cache
@@ -482,16 +482,18 @@ branch requires hosted matrix and dependency-alert evidence before merge.
 
 ## Exact next action
 
-Merge PR #30 after the documentation-only head check passes, fetch and
-fast-forward local `main`, remove the merged branch and reproducible artifacts,
-and prove local/remote reconciliation. Then open and execute the next M1 slice:
-the documented four-validator local devnet lifecycle required by
-`first-goal.md`.
+From clean synchronized `main`, create and map the smallest remaining M1 issue
+for the four-validator local devnet lifecycle required by `first-goal.md`.
+Specify the fixed topology and start, health, signed-transfer, stop, and
+restart acceptance procedure before implementing it on one delivery branch.
+Use focused local checks only and run the full compiler, sanitizer, and live
+integration completion gates on GitHub-hosted runners.
 
 ## Open autonomous decisions
 
-- None for the accepted issue #22 contract. Implementation details that do not
-  change the normative boundary remain local engineering choices.
+- None. Issue #22 is complete; any consequential topology or compatibility
+  choice discovered in the four-validator slice must follow the normal
+  specification or ADR evidence gate.
 
 ## Blockers
 
