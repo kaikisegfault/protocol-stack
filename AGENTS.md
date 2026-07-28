@@ -74,6 +74,14 @@ test evidence, then repair the state document.
   change, or when reproducing a failure requires it; record why. Do not
   duplicate the full remote matrix locally by default. Required completion
   gates remain mandatory.
+- Treat the owner's local machine as resource-constrained. Do not run the full
+  verifier, populate large build/module/VCS caches, use direct VCS dependency
+  retrieval, or resolve expanded dependency graphs locally when a
+  GitHub-hosted job can do the work. Generate dependency locks and other large
+  reproducible artifacts on GitHub-hosted runners, retrieve only the small
+  reviewed result, and keep local checks narrowly focused. If an exceptional
+  local heavy operation is unavoidable, state the expected resource cost
+  first, bound it, and remove its reproducible artifacts immediately afterward.
 - Never launch repository work as a detached or unattended local process.
   Prefer bounded GitHub status queries over persistent local watchers. Before
   each phase boundary and handoff, prove no repository build, test, monitor,
