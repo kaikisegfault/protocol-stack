@@ -44,11 +44,15 @@ The script checks the supported platform and host prerequisites, creates
 `.cache/toolchain-linux-x86_64`, and uses hash-checked requirements to install
 the exact CMake and Ninja wheels. It downloads the official Go 1.25.10 Linux
 x86-64 archive, verifies the SHA-256 accepted in ADR 0001, verifies the pinned
-Go module graph, and runs the CometBFT bridge tests with cgo disabled. CMake
-then downloads the official libsodium 1.0.22 and SQLite 3.53.3 archives,
+Go module graph, runs all CometBFT adapter tests and vet, and builds the bridge,
+strict initializer, and pinned node commands with cgo disabled. CMake then
+downloads the official libsodium 1.0.22 and SQLite 3.53.3 archives,
 verifies their committed SHA-256 digests, builds them within the selected
 preset, builds the C++20 verification targets, and runs the C++ and Python
-suite through CTest.
+suite through CTest. Finally, a process integration starts the real CometBFT
+node, bridge, and C++ application, commits a signed transfer, restarts the
+complete stack, commits the next height, and checks the durable application
+root.
 
 The Python tests use only the standard library and the exact libsodium shared
 library produced by that build. They do not inspect or modify the user's
@@ -66,12 +70,12 @@ protocol-stack test harnesses.
 
 ## Cache and cleanup
 
-Tool wheels, the isolated virtual environment, the pinned Go toolchain, and
-the Go module cache live under `.cache/`. Each preset's configuration,
-downloaded dependency sources, compiled dependencies, and test artifacts live
-under `out/build/<preset>/`. Both roots are ignored by Git and may be deleted
-safely; the next verification run reconstructs them from committed versions
-and hashes.
+Tool wheels, the isolated virtual environment, the pinned Go toolchain, Go
+module and build caches, and the three integration binaries live under
+`.cache/`. Each preset's configuration, downloaded dependency sources,
+compiled dependencies, and test artifacts live under `out/build/<preset>/`.
+Both roots are ignored by Git and may be deleted safely; the next verification
+run reconstructs them from committed versions and hashes.
 
 The bootstrap deliberately does not share compiled dependency trees between
 presets because compiler selections and project instrumentation configurations
@@ -86,12 +90,13 @@ running, remove the known reproducible repository artifacts:
 tools/clean-local.sh
 ```
 
-The command deletes only the four committed preset trees, the isolated
-repository toolchain, and Python bytecode caches under `tools/` and `tests/`.
-It does not kill processes or delete unexplained files. Audit and resolve those
-separately. GitHub-hosted runners are ephemeral; obsolete or superseded runs
-must still be cancelled, and workflow concurrency should prevent duplicate
-runs for the same branch or pull request.
+The command deletes only the four committed preset trees, isolated repository
+toolchain, Go toolchain/module/build caches and integration binaries, and
+Python bytecode caches under `tools/` and `tests/`. It does not kill processes
+or delete unexplained files. Audit and resolve those separately.
+GitHub-hosted runners are ephemeral; obsolete or superseded runs must still be
+cancelled, and workflow concurrency should prevent duplicate runs for the same
+branch or pull request.
 
 ## Dependency inventory
 

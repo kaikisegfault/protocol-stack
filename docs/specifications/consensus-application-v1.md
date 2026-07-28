@@ -100,6 +100,14 @@ authoritative recovery handshake with the ordering engine.
 The bridge cannot represent an application height above signed 64-bit maximum
 and fails closed if one is ever observed.
 
+CometBFT exposes this current durable result through `/abci_info`. Its
+`/status` `latest_app_hash` has different, historical meaning: block header
+height `H` contains the application hash produced after height `H - 1`.
+Therefore the first block header contains the configured height-zero root,
+while Info after committing height one contains the resulting height-one root.
+Both views must be checked independently; neither value is recomputed by the
+adapter.
+
 ### Check transaction
 
 CheckTx invokes only the four ordered admission operations in
@@ -377,8 +385,9 @@ Before this contract is considered implemented:
 - Go tests prove exact ABCI conversion, unsupported-method failure, concurrent
   connection serialization, and lossless byte transport;
 - the pinned CometBFT binary starts from a clean home, commits a signed native
-  transfer, exposes the C++ application hash, stops, restarts, and continues at
-  the next durable height;
+  transfer, exposes the current C++ application hash through Info and the
+  prior-height hash through the latest block header, stops, restarts, and
+  continues at the next durable height;
 - existing GCC, Clang, AddressSanitizer, UndefinedBehaviorSanitizer, primitive,
   ledger, differential, persistence, snapshot, archive, recovery, and fuzz
   gates remain green.

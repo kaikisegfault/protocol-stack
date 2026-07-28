@@ -24,8 +24,8 @@ verified unit of work with:
 proceed
 ```
 
-On a supported Linux x86_64 development host, configure, build, and test the
-current implementation with:
+On a supported Linux x86_64 development host, configure, build, test, and run
+the single-node CometBFT transfer/restart integration with:
 
 ```sh
 tools/verify.sh

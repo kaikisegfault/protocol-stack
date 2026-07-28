@@ -26,6 +26,8 @@ clean_tree "$repo_root/out/build/clang-sanitizers"
 clean_tree "$repo_root/.cache/toolchain-linux-x86_64"
 clean_tree "$repo_root/.cache/go-bootstrap"
 clean_tree "$repo_root/.cache/go1.25.10"
+clean_tree "$repo_root/.cache/go-build"
+clean_tree "$repo_root/.cache/go-bin"
 clean_read_only_tree "$repo_root/.cache/go-mod"
 
 for python_root in "$repo_root/tools" "$repo_root/tests"; do

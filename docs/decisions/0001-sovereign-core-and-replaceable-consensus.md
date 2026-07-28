@@ -60,6 +60,12 @@ the experimental libp2p transport, application mempool, vote extensions, state
 sync, validator updates, consensus-parameter updates, and application
 snapshots for M1.
 
+The repository builds a narrow node wrapper around CometBFT's official
+`DefaultNewNode` start path. Its separate version command reports the accepted
+module pin because CometBFT `v0.39.3` retains an older fallback core-version
+constant. The built binary's Go metadata remains authoritative for the module
+identity and must contain `github.com/cometbft/cometbft v0.39.3`.
+
 ## Compatibility and updates
 
 The CometBFT project treats minor `0.x` releases as potentially breaking and
@@ -73,6 +79,13 @@ change, P2P/block protocol change, result-field semantic change, or enabled
 experimental subsystem requires an ADR amendment and a coordinated
 compatibility plan. No dependency update may silently alter canonical
 application results.
+
+Building the official full-node path compiles its dependency closure,
+including alternate database and disabled experimental transport
+implementations. Their presence in the module graph does not enable those
+features: the accepted initializer requires the flood mempool and writes
+`p2p.libp2p.enabled = false`. Security alerts nevertheless apply to every
+compiled dependency and must be zero before the node candidate merges.
 
 Security maintenance may raise a transitive module above the version selected
 by CometBFT without changing the CometBFT pin. Such an override must select at
@@ -101,6 +114,12 @@ application lifecycle, ordered raw transaction input, committed height,
 application hash, result mapping, and crash-recovery contract. Canonical
 genesis, transaction, receipt, state, snapshot, and archive bytes do not
 change merely because the adapter changes.
+
+CometBFT block header `H` contains the application hash produced after height
+`H - 1`; consequently `/status` reports that historical header value. ABCI
+Info, exposed through `/abci_info`, reports the current durable C++ height and
+root. This one-height presentation difference is verified by integration and
+does not alter either application hash.
 
 ## Alternatives considered
 
@@ -172,6 +191,14 @@ GHSA-jppx-rxg9-jmrx, GHSA-x527-x647-q7gg, GHSA-5cgq-3rg8-m6cv,
 GHSA-rm3j-f69w-wqmq, GHSA-89gr-r52h-f8rx, GHSA-w879-237q-wc7r,
 GHSA-vgwf-h737-ff37, GHSA-qpw4-5x99-6vjp, GHSA-78mq-xcr3-xm33,
 GHSA-45gg-vh54-h5m9, and GHSA-q4h4-gmj2-qvw2.
+
+The single-node implementation derives protocol chain and height-zero root
+identities through the C++ kernel, initializes an exact fixed-time CometBFT
+genesis, starts the official node path, commits a signed transfer, stops all
+three processes, repeats strict initialization, reconciles through Info, and
+commits the next height. The integration independently compares ABCI results,
+the current `/abci_info` root, the one-height-lagged `/status` header hash, and
+the durable C++ root.
 
 ## Research references
 
