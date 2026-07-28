@@ -55,13 +55,22 @@ jobs:
           cd adapter/cometbft
           GOTOOLCHAIN=local CGO_ENABLED=0 GOSUMDB=sum.golang.org \
             "$go_bin" get "${requested_modules[@]}"
+          GOTOOLCHAIN=local CGO_ENABLED=0 "$go_bin" mod edit \
+            -replace=github.com/pion/dtls/v2=./third_party/disabled-pion-dtls-v2
           GOTOOLCHAIN=local CGO_ENABLED=0 GOSUMDB=sum.golang.org \
             "$go_bin" mod tidy
           GOTOOLCHAIN=local CGO_ENABLED=0 GOSUMDB=sum.golang.org \
             "$go_bin" mod verify
-          if GOTOOLCHAIN=local CGO_ENABLED=0 "$go_bin" list -m all |
-              grep -q '^github.com/pion/dtls/v2 '; then
-            echo "Unpatched github.com/pion/dtls/v2 remains selected." >&2
+          replacement=$(GOTOOLCHAIN=local CGO_ENABLED=0 "$go_bin" list -m \
+            -f '{{with .Replace}}{{.Dir}}{{end}}' github.com/pion/dtls/v2)
+          if [[ "$replacement" != "$PWD/third_party/disabled-pion-dtls-v2" ]]; then
+            echo "DTLS v2 is not replaced by the empty local module." >&2
+            exit 1
+          fi
+          node_packages=$(GOTOOLCHAIN=local CGO_ENABLED=0 "$go_bin" list \
+            -deps ./cmd/protocol-cometbft-node)
+          if grep -q '^github.com/pion/dtls/v2' <<<"$node_packages"; then
+            echo "The node still compiles a DTLS v2 package." >&2
             exit 1
           fi
           GOTOOLCHAIN=local CGO_ENABLED=0 "$go_bin" test ./...
