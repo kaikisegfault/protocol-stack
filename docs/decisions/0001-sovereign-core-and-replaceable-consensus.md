@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-07-27
+- Last amended: 2026-07-28
 
 ## Context
 
@@ -73,6 +74,28 @@ experimental subsystem requires an ADR amendment and a coordinated
 compatibility plan. No dependency update may silently alter canonical
 application results.
 
+Security maintenance may raise a transitive module above the version selected
+by CometBFT without changing the CometBFT pin. Such an override must select at
+least the first patched version from the applicable published advisory, remain
+compatible with the pinned Go toolchain, preserve the ABCI surface, record the
+resolved graph in `go.mod` and `go.sum`, and pass the focused bridge suite plus
+the complete hosted compiler and sanitizer matrix.
+
+The initial bridge graph applies that rule to modules reached through the
+official CometBFT packages:
+
+- `golang.org/x/crypto v0.52.0`, reached through CometBFT cryptography;
+- `golang.org/x/net v0.55.0`, reached through the gRPC package compiled by the
+  official ABCI server package;
+- `google.golang.org/grpc v1.82.1`, compiled by that ABCI server package.
+
+These are dependency security floors, not new application capabilities. The
+bridge still selects the socket server at runtime, exposes no gRPC listener,
+and keeps CometBFT `v0.39.3` and ABCI `2.0.0` unchanged. Go's minimum-version
+selection also raises the supporting `x/sys`, `x/text`, Google RPC, and
+OpenTelemetry modules recorded in the checked-in module graph. Every selected
+module declares compatibility with Go 1.25.
+
 Removing CometBFT requires a replacement engine to reproduce the same
 application lifecycle, ordered raw transaction input, committed height,
 application hash, result mapping, and crash-recovery contract. Canonical
@@ -138,6 +161,18 @@ verification are normative in `consensus-application-v1.md`. This evidence
 satisfies the original acceptance condition; implementation remains subject to
 the tests and hosted gates defined there.
 
+On 2026-07-28, repository dependency alerts identified patched floors of
+`v0.52.0` for `x/crypto`, `v0.55.0` for `x/net`, and `v1.82.1` for gRPC. Module
+path analysis confirmed that all three enter the bridge graph through the
+official CometBFT packages described above. Applying the fixed floors with the
+pinned Go resolver retained CometBFT `v0.39.3`, ABCI `2.0.0`, and the socket
+runtime while producing the committed checksums in `go.sum`. The `x/crypto`
+alert set was GHSA-9m57-25v3-79x9, GHSA-f5wc-c3c7-36mc,
+GHSA-jppx-rxg9-jmrx, GHSA-x527-x647-q7gg, GHSA-5cgq-3rg8-m6cv,
+GHSA-rm3j-f69w-wqmq, GHSA-89gr-r52h-f8rx, GHSA-w879-237q-wc7r,
+GHSA-vgwf-h737-ff37, GHSA-qpw4-5x99-6vjp, GHSA-78mq-xcr3-xm33,
+GHSA-45gg-vh54-h5m9, and GHSA-q4h4-gmj2-qvw2.
+
 ## Research references
 
 - [CometBFT v0.39.3 release](https://github.com/cometbft/cometbft/releases/tag/v0.39.3)
@@ -146,4 +181,9 @@ the tests and hosted gates defined there.
 - [ABCI++ application requirements](https://github.com/cometbft/cometbft/blob/v0.39.3/spec/abci/abci%2B%2B_app_requirements.md)
 - [ABCI++ expected behavior](https://github.com/cometbft/cometbft/blob/v0.39.3/spec/abci/abci%2B%2B_comet_expected_behavior.md)
 - [Official Go downloads](https://go.dev/dl/)
+- [Go module version selection](https://go.dev/ref/mod#minimal-version-selection)
+- [x/crypto advisory GHSA-f5wc-c3c7-36mc](https://github.com/advisories/GHSA-f5wc-c3c7-36mc)
+- [gRPC advisory GHSA-p77j-4mvh-x3m3](https://github.com/advisories/GHSA-p77j-4mvh-x3m3)
+- [gRPC advisory GHSA-hrxh-6v49-42gf](https://github.com/advisories/GHSA-hrxh-6v49-42gf)
+- [x/net advisory GHSA-5cv4-jp36-h3mw](https://github.com/advisories/GHSA-5cv4-jp36-h3mw)
 - [Malachite project status](https://github.com/circlefin/malachite)
