@@ -43,6 +43,14 @@ or focused checks needed for prompt feedback. Do not duplicate a green remote
 matrix locally unless the workflow is unavailable or under change, or a remote
 failure must be reproduced; document that exception.
 
+The owner machine is resource-constrained. Dependency graph resolution,
+lock-file generation for expanded graphs, full verification, direct VCS module
+retrieval, and other operations that populate large reproducible caches belong
+on GitHub-hosted runners. Retrieve only the reviewed manifest, patch, or small
+artifact needed to continue locally. When a local exception is unavoidable,
+announce its expected disk/CPU/memory cost first, bound it, and run
+`tools/clean-local.sh` immediately after preserving evidence.
+
 Do not detach local repository commands or leave persistent check watchers,
 servers, or helpers. Use bounded GitHub status queries. At every completed
 phase, confirm the exact remote jobs are terminal, cancel obsolete runs, audit

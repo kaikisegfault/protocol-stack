@@ -1,0 +1,81 @@
+name: Resolve Go dependencies
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/resolve-go-dependencies.yml
+      - adapter/cometbft/dependency-update.txt
+
+permissions:
+  contents: write
+
+concurrency:
+  group: resolve-go-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  resolve:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out feature head
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Resolve, verify, and publish lock files
+        env:
+          TARGET_BRANCH: ${{ github.head_ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          request=adapter/cometbft/dependency-update.txt
+          if [[ ! -f "$request" ]]; then
+            echo "No dependency update request remains."
+            exit 0
+          fi
+
+          mapfile -t requested_modules \
+            < <(grep -Ev '^[[:space:]]*(#|$)' "$request")
+          if [[ ${#requested_modules[@]} -eq 0 ]]; then
+            echo "The dependency update request is empty." >&2
+            exit 1
+          fi
+          for requested_module in "${requested_modules[@]}"; do
+            if [[ "$requested_module" == -* ||
+                  "$requested_module" == *[[:space:]]* ||
+                  "$requested_module" != *@v* ]]; then
+              echo "Invalid module request: $requested_module" >&2
+              exit 1
+            fi
+          done
+
+          go_bin=$(tools/bootstrap-go.sh)
+          cd adapter/cometbft
+          GOTOOLCHAIN=local CGO_ENABLED=0 GOSUMDB=sum.golang.org \
+            "$go_bin" get "${requested_modules[@]}"
+          GOTOOLCHAIN=local CGO_ENABLED=0 GOSUMDB=sum.golang.org \
+            "$go_bin" mod tidy
+          GOTOOLCHAIN=local CGO_ENABLED=0 GOSUMDB=sum.golang.org \
+            "$go_bin" mod verify
+          if GOTOOLCHAIN=local CGO_ENABLED=0 "$go_bin" list -m all |
+              grep -q '^github.com/pion/dtls/v2 '; then
+            echo "Unpatched github.com/pion/dtls/v2 remains selected." >&2
+            exit 1
+          fi
+          GOTOOLCHAIN=local CGO_ENABLED=0 "$go_bin" test ./...
+          GOTOOLCHAIN=local CGO_ENABLED=0 "$go_bin" vet ./...
+          GOTOOLCHAIN=local CGO_ENABLED=0 "$go_bin" build \
+            -buildvcs=false -trimpath \
+            ./cmd/protocol-cometbft-node
+          cd ../..
+
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
+          git add adapter/cometbft/go.mod adapter/cometbft/go.sum
+          git rm "$request"
+          git commit -m "build(deps): resolve hosted Go module graph"
+          git push origin "HEAD:$TARGET_BRANCH"
