@@ -22,16 +22,16 @@ Implement the canonical state-transition kernel and the owning persistent
 application in C++20. Place consensus and P2P behind the versioned application
 contract in `consensus-application-v1.md`.
 
-Use CometBFT `v0.39.3` as the initial M1 ordering and networking adapter:
+Use CometBFT `v0.39.4` as the initial M1 ordering and networking adapter:
 
 - tag and source commit:
-  `49b82838fcca442b2445f76605c101609ed04130`;
+  `f96ff7cc244bfa97f399527d917f22ad81414d25`;
 - Go module:
-  `github.com/cometbft/cometbft v0.39.3`;
+  `github.com/cometbft/cometbft v0.39.4`;
 - module checksum:
-  `h1:UegHXskZNomsijmm29nL5NkeXtnzkme6fg+q1hPQnEI=`;
+  `h1:Bm7xbN18VfNueEd7cZumACbvVE+Lf9N58sz3oBOVPbw=`;
 - module-file checksum:
-  `h1:PmNfvtw256BC41ad0FABts236CSZnvZ0kjPOciBwTdM=`;
+  `h1:KcZvZTqdLgOisktAoWwwcS2fgO4E110r44KxEGyq8SI=`;
 - ABCI protocol version: `2.0.0`;
 - license: Apache-2.0; the inspected source license has SHA-256
   `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30`.
@@ -61,16 +61,15 @@ sync, validator updates, consensus-parameter updates, and application
 snapshots for M1.
 
 The repository builds a narrow node wrapper around CometBFT's official
-`DefaultNewNode` start path. Its separate version command reports the accepted
-module pin because CometBFT `v0.39.3` retains an older fallback core-version
-constant. The built binary's Go metadata remains authoritative for the module
-identity and must contain `github.com/cometbft/cometbft v0.39.3`.
+`DefaultNewNode` start path. Its version command reports the accepted module
+pin, and the built binary's Go metadata remains authoritative for dependency
+identity and must contain `github.com/cometbft/cometbft v0.39.4`.
 
 ## Compatibility and updates
 
 The CometBFT project treats minor `0.x` releases as potentially breaking and
 patch releases as its compatibility line. The node therefore accepts only
-ABCI `2.0.0` and the pinned `v0.39.3` dependency.
+ABCI `2.0.0` and the pinned `v0.39.4` dependency.
 
 A later `v0.39.z` patch may replace this pin only after its source identity,
 module checksums, license, changelog, Go requirement, focused bridge tests, and
@@ -104,10 +103,21 @@ official CometBFT packages:
 
 These are dependency security floors, not new application capabilities. The
 bridge still selects the socket server at runtime, exposes no gRPC listener,
-and keeps CometBFT `v0.39.3` and ABCI `2.0.0` unchanged. Go's minimum-version
+and keeps ABCI `2.0.0` unchanged. Go's minimum-version
 selection also raises the supporting `x/sys`, `x/text`, Google RPC, and
 OpenTelemetry modules recorded in the checked-in module graph. Every selected
 module declares compatibility with Go 1.25.
+
+The full-node graph selects `go-libp2p v0.49.0`, Pion DTLS `v3.1.2`,
+`quic-go v0.60.0`, and `webtransport-go v0.11.1`. The last two are at or above
+the first patched versions for GHSA-vvgj-x9jq-8cj9 and
+GHSA-g35j-m5xg-vh3q.
+CometBFT `v0.39.4` retains an unused manifest edge to unpatched
+`github.com/pion/dtls/v2 v2.2.12`. The root module replaces that path with an
+intentionally empty local module. Hosted resolution requires that exact
+replacement and proves the node package closure imports no DTLS v2 package;
+any future import fails compilation because the replacement contains no code.
+The experimental libp2p runtime remains disabled.
 
 Removing CometBFT requires a replacement engine to reproduce the same
 application lifecycle, ordered raw transaction input, committed height,
@@ -167,12 +177,19 @@ tested and replaced independently.
 
 ## Evidence for acceptance
 
-The selection was checked against the official CometBFT `v0.39.3` source,
-release process, changelog, ABCI++ specification, application interface,
-socket-server serialization, module manifest, and license. The selected patch
-includes the prior `v0.39.2` ABCI socket panic-recovery fix and height
-validation. The official Go download manifest provides the pinned toolchain
-digest, and the public Go checksum database provides both module checksums.
+The initial selection was checked against the official CometBFT `v0.39.3`
+source, release process, changelog, ABCI++ specification, application
+interface, socket-server serialization, module manifest, and license. The
+official Go download manifest provides the pinned toolchain digest, and the
+public Go checksum database provides module checksums.
+
+On 2026-07-28, `v0.39.4` replaced the initial patch after inspection of its
+signed tag, exact source commit, release notes, changelog delta, module
+manifest, Go `1.25.0` requirement, and unchanged license digest. The patch
+retains ABCI `2.0.0`, P2P protocol `8`, and block protocol `11`, and includes
+ABCI deadlock, blocksync validation, mempool amplification/race, consensus
+locking/double-sign, node cleanup, and quic advisory fixes. Its module and
+module-file checksums are committed above.
 
 The adapter-neutral lifecycle, exact result mapping, resource bounds,
 durability boundary, replay rules, unsupported features, and required
@@ -200,15 +217,24 @@ commits the next height. The integration independently compares ABCI results,
 the current `/abci_info` root, the one-height-lagged `/status` header hash, and
 the durable C++ root.
 
+The hosted resolver run 30385565279 used the public checksum database, removed
+the DTLS v2 code path, verified the empty replacement, proved the node package
+closure contains no DTLS v2 package, and passed all Go tests, vet, and the
+cgo-free node build. GitHub's branch dependency comparison then reported zero
+vulnerabilities across the resolved `go.mod` delta.
+
 ## Research references
 
-- [CometBFT v0.39.3 release](https://github.com/cometbft/cometbft/releases/tag/v0.39.3)
-- [CometBFT release policy](https://github.com/cometbft/cometbft/blob/v0.39.3/RELEASES.md)
-- [CometBFT v0.39.3 changelog](https://github.com/cometbft/cometbft/blob/v0.39.3/CHANGELOG.md)
-- [ABCI++ application requirements](https://github.com/cometbft/cometbft/blob/v0.39.3/spec/abci/abci%2B%2B_app_requirements.md)
-- [ABCI++ expected behavior](https://github.com/cometbft/cometbft/blob/v0.39.3/spec/abci/abci%2B%2B_comet_expected_behavior.md)
+- [CometBFT v0.39.4 release](https://github.com/cometbft/cometbft/releases/tag/v0.39.4)
+- [CometBFT release policy](https://github.com/cometbft/cometbft/blob/v0.39.4/RELEASES.md)
+- [CometBFT v0.39.4 changelog](https://github.com/cometbft/cometbft/blob/v0.39.4/CHANGELOG.md)
+- [ABCI++ application requirements](https://github.com/cometbft/cometbft/blob/v0.39.4/spec/abci/abci%2B%2B_app_requirements.md)
+- [ABCI++ expected behavior](https://github.com/cometbft/cometbft/blob/v0.39.4/spec/abci/abci%2B%2B_comet_expected_behavior.md)
 - [Official Go downloads](https://go.dev/dl/)
 - [Go module version selection](https://go.dev/ref/mod#minimal-version-selection)
+- [Pion DTLS advisory GHSA-9f3f-wv7r-qc8r](https://github.com/advisories/GHSA-9f3f-wv7r-qc8r)
+- [quic-go advisory GHSA-vvgj-x9jq-8cj9](https://github.com/advisories/GHSA-vvgj-x9jq-8cj9)
+- [webtransport-go advisory GHSA-g35j-m5xg-vh3q](https://github.com/advisories/GHSA-g35j-m5xg-vh3q)
 - [x/crypto advisory GHSA-f5wc-c3c7-36mc](https://github.com/advisories/GHSA-f5wc-c3c7-36mc)
 - [gRPC advisory GHSA-p77j-4mvh-x3m3](https://github.com/advisories/GHSA-p77j-4mvh-x3m3)
 - [gRPC advisory GHSA-hrxh-6v49-42gf](https://github.com/advisories/GHSA-hrxh-6v49-42gf)

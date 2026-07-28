@@ -59,7 +59,7 @@ the behavior it is intended to verify.
 
 ## Initial consensus boundary
 
-ADR 0001 selects the pinned CometBFT `v0.39.3` release for the first devnet
+ADR 0001 selects the pinned CometBFT `v0.39.4` release for the first devnet
 because it can order transactions and replicate an external application
 without owning that application's state transition. The C++ kernel remains the
 authoritative application.

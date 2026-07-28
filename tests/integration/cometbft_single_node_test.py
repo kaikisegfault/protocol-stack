@@ -184,8 +184,8 @@ def verify(
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
-    if version.stdout != b"0.39.3\n":
-        raise RuntimeError("node does not report pinned CometBFT v0.39.3")
+    if version.stdout != b"0.39.4\n":
+        raise RuntimeError("node does not report pinned CometBFT v0.39.4")
 
     sodium = Sodium(str(sodium_library))
     fixture = make_fixture(sodium)

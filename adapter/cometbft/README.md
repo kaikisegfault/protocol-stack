@@ -1,6 +1,6 @@
 # CometBFT node adapter
 
-This Go module contains the replaceable adapter between CometBFT `v0.39.3`
+This Go module contains the replaceable adapter between CometBFT `v0.39.4`
 and the headless C++ application. It implements the accepted version-one
 contract in
 [`consensus-application-v1.md`](../../docs/specifications/consensus-application-v1.md).

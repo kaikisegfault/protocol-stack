@@ -34,8 +34,8 @@ branch requires hosted matrix and dependency-alert evidence before merge.
   snapshot, corruption-detection, and crash-recovery slice through PR #21.
 - Issue #22 tracks the replaceable CometBFT ABCI++ application boundary and
   the first runnable single-node networked vertical.
-- ADR 0001 accepts CometBFT `v0.39.3` at source commit
-  `49b82838fcca442b2445f76605c101609ed04130`, ABCI `2.0.0`, and the official
+- ADR 0001 accepts CometBFT `v0.39.4` at source commit
+  `f96ff7cc244bfa97f399527d917f22ad81414d25`, ABCI `2.0.0`, and the official
   Go `1.25.10` Linux x86-64 toolchain. The exact Go module, module-file,
   toolchain, and inspected Apache-2.0 license checksums are recorded there.
 - `consensus-application-v1.md` fixes the adapter-neutral lifecycle, ABCI
@@ -458,14 +458,32 @@ branch requires hosted matrix and dependency-alert evidence before merge.
   node/bridge/application restart, verifies exact ABCI receipts, distinguishes
   the prior-height block-header hash from current `/abci_info`, and directly
   confirms the durable C++ height-two root.
+- PR #30 candidate `9b6180f` passed exact hosted Actions run 30383120033:
+  GCC and Clang debug plus ASan/UBSan all completed successfully with the real
+  single-node integration.
+- The expanded node graph initially exposed three moderate branch dependency
+  advisories in disabled transport dependencies. Hosted resolver run
+  30385565279 upgraded to CometBFT `v0.39.4`, libp2p `v0.49.0`, DTLS
+  `v3.1.2`, quic `v0.60.0`, and webtransport `v0.11.1`; replaced CometBFT's
+  unused unpatched DTLS v2 manifest edge with an empty fail-closed module; and
+  passed checksum verification, the no-DTLS-v2 package-closure gate, Go tests,
+  vet, and the cgo-free node build. GitHub's exact branch dependency comparison
+  reported zero vulnerabilities on bot commit `bf1668b`.
+- `AGENTS.md` and `docs/engineering/verification.md` now treat the owner
+  machine as resource-constrained: full verification, expanded dependency
+  resolution, direct VCS module retrieval, and large reproducible cache
+  creation belong on GitHub-hosted runners. The 2.7 GB local cache/build
+  footprint created during diagnosis was fully removed with
+  `tools/clean-local.sh`.
 
 ## Exact next action
 
-Complete issue #22 from `feat/22-cometbft-single-node`: inspect and commit the
-single-node implementation, push its PR, require the exact hosted compiler and
-sanitizer matrix plus a refreshed zero-open dependency-alert result, then
-merge and reconcile `main`. The next roadmap slice is the documented
-four-validator local devnet lifecycle required by `first-goal.md`.
+Complete issue #22 from `feat/22-cometbft-single-node`: commit and push the
+verified `v0.39.4` compatibility amendment, require the exact hosted compiler
+and sanitizer matrix plus a repeated zero-vulnerability branch dependency
+comparison, then merge PR #30 and reconcile `main`. The next roadmap slice is
+the documented four-validator local devnet lifecycle required by
+`first-goal.md`.
 
 ## Open autonomous decisions
 
