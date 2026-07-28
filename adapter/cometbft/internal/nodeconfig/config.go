@@ -21,7 +21,7 @@ import (
 const (
 	appState = `"protocol-stack-v1"`
 	// CometBFTVersion is the exact accepted module release.
-	CometBFTVersion = "0.39.3"
+	CometBFTVersion = "0.39.4"
 )
 
 type Hash [32]byte

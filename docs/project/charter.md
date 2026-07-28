@@ -17,7 +17,7 @@ security claims.
 - Native protocol modules for all root economics.
 - Replaceable adapters for consensus, peer networking, storage, cryptography,
   and future execution environments.
-- Pinned CometBFT `v0.39.3` is the accepted initial consensus and P2P adapter
+- Pinned CometBFT `v0.39.4` is the accepted initial consensus and P2P adapter
   for the first devnet; it is not part of the sovereign state-transition
   rules.
 - No Cosmos SDK dependency.
