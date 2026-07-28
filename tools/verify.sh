@@ -11,7 +11,7 @@ if [ "$platform" != "Linux" ] || [ "$architecture" != "x86_64" ]; then
   exit 1
 fi
 
-for command_name in python3 make; do
+for command_name in python3 make tar; do
   if ! command -v "$command_name" >/dev/null 2>&1; then
     echo "missing host prerequisite: $command_name" >&2
     exit 1
@@ -21,6 +21,7 @@ done
 preset=${PROTOCOL_STACK_PRESET:-gcc-debug}
 toolchain_dir="$repo_root/.cache/toolchain-linux-x86_64"
 requirements="$repo_root/tools/toolchain/requirements-linux-x86_64.txt"
+go_bin=$("$repo_root/tools/bootstrap-go.sh")
 
 if [ ! -x "$toolchain_dir/bin/python" ]; then
   python3 -m venv "$toolchain_dir"
@@ -33,6 +34,22 @@ fi
 
 PATH="$toolchain_dir/bin:$PATH"
 export PATH
+
+(
+  cd "$repo_root/adapter/cometbft"
+  GOTOOLCHAIN=local \
+    CGO_ENABLED=0 \
+    GOMODCACHE="$repo_root/.cache/go-mod" \
+    "$go_bin" mod download
+  GOTOOLCHAIN=local \
+    CGO_ENABLED=0 \
+    GOMODCACHE="$repo_root/.cache/go-mod" \
+    "$go_bin" mod verify
+  GOTOOLCHAIN=local \
+    CGO_ENABLED=0 \
+    GOMODCACHE="$repo_root/.cache/go-mod" \
+    "$go_bin" test ./...
+)
 
 cmake --preset "$preset" -S "$repo_root"
 cmake --build --preset "$preset"
