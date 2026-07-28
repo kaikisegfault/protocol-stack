@@ -10,6 +10,15 @@ clean_tree() {
   fi
 }
 
+clean_read_only_tree() {
+  target=$1
+  if [ -d "$target" ]; then
+    find "$target" -type d -exec chmod u+rwx {} +
+    find "$target" -type f -exec chmod u+rw {} +
+  fi
+  clean_tree "$target"
+}
+
 clean_tree "$repo_root/out/build/gcc-debug"
 clean_tree "$repo_root/out/build/gcc-sanitizers"
 clean_tree "$repo_root/out/build/clang-debug"
@@ -17,7 +26,7 @@ clean_tree "$repo_root/out/build/clang-sanitizers"
 clean_tree "$repo_root/.cache/toolchain-linux-x86_64"
 clean_tree "$repo_root/.cache/go-bootstrap"
 clean_tree "$repo_root/.cache/go1.25.10"
-clean_tree "$repo_root/.cache/go-mod"
+clean_read_only_tree "$repo_root/.cache/go-mod"
 
 for python_root in "$repo_root/tools" "$repo_root/tests"; do
   find "$python_root" -type f \
