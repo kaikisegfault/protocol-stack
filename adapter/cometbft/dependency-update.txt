@@ -1,4 +1,4 @@
-# Resolve this compatibility-tested, alert-free full-node closure.
+# Resolve this closure; the workflow separately tombstones unused DTLS v2.
 github.com/cometbft/cometbft@v0.39.4
 github.com/libp2p/go-libp2p@v0.49.0
 github.com/quic-go/webtransport-go@v0.11.1
