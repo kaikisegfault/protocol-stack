@@ -20,11 +20,12 @@ On supported Linux x86_64 hosts, run:
 tools/verify.sh
 ```
 
-The command installs hash-pinned CMake and Ninja tools in the ignored local
-cache, integrity-checks and builds the pinned libsodium source, configures the
-default GCC preset, and runs all registered C++ and Python tests through
-CTest. See `build-toolchain.md` for host prerequisites, other presets, cache
-behavior, and cleanup.
+The command installs hash-pinned CMake, Ninja, and Go tools in the ignored
+local cache, verifies the pinned Go module graph, runs the CometBFT bridge
+tests with cgo disabled, integrity-checks and builds the pinned libsodium and
+SQLite sources, configures the default GCC preset, and runs all registered C++
+and Python tests through CTest. See `build-toolchain.md` for host
+prerequisites, other presets, cache behavior, and cleanup.
 
 CI runs GCC and Clang debug builds plus AddressSanitizer and
 UndefinedBehaviorSanitizer builds. The current suite includes unit and boundary

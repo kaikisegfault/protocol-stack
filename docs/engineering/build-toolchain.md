@@ -7,6 +7,7 @@ needs:
 
 - Python 3.11 or newer with the standard `venv` module;
 - GNU Make;
+- `tar`;
 - GCC for the default preset;
 - Clang as well when running the complete compiler matrix;
 - outbound HTTPS on the first run.
@@ -41,10 +42,13 @@ full matrix for workflow changes, unavailable CI, or failure reproduction.
 
 The script checks the supported platform and host prerequisites, creates
 `.cache/toolchain-linux-x86_64`, and uses hash-checked requirements to install
-the exact CMake and Ninja wheels. CMake then downloads the official libsodium
-1.0.22 and SQLite 3.53.3 archives, verifies their committed SHA-256 digests,
-builds them within the selected preset, builds the C++20 verification targets,
-and runs the C++ and Python suite through CTest.
+the exact CMake and Ninja wheels. It downloads the official Go 1.25.10 Linux
+x86-64 archive, verifies the SHA-256 accepted in ADR 0001, verifies the pinned
+Go module graph, and runs the CometBFT bridge tests with cgo disabled. CMake
+then downloads the official libsodium 1.0.22 and SQLite 3.53.3 archives,
+verifies their committed SHA-256 digests, builds them within the selected
+preset, builds the C++20 verification targets, and runs the C++ and Python
+suite through CTest.
 
 The Python tests use only the standard library and the exact libsodium shared
 library produced by that build. They do not inspect or modify the user's
@@ -62,11 +66,12 @@ protocol-stack test harnesses.
 
 ## Cache and cleanup
 
-Tool wheels and the isolated virtual environment live under `.cache/`. Each
-preset's configuration, downloaded dependency sources, compiled dependencies,
-and test artifacts live under `out/build/<preset>/`. Both roots are ignored by
-Git and may be deleted safely; the next verification run reconstructs them
-from committed versions and hashes.
+Tool wheels, the isolated virtual environment, the pinned Go toolchain, and
+the Go module cache live under `.cache/`. Each preset's configuration,
+downloaded dependency sources, compiled dependencies, and test artifacts live
+under `out/build/<preset>/`. Both roots are ignored by Git and may be deleted
+safely; the next verification run reconstructs them from committed versions
+and hashes.
 
 The bootstrap deliberately does not share compiled dependency trees between
 presets because compiler selections and project instrumentation configurations
