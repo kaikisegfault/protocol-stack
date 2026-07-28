@@ -150,6 +150,41 @@ def remove_outputs(paths: list[pathlib.Path]) -> None:
             pass
 
 
+def verify_genesis_identity(
+    executable: pathlib.Path,
+    genesis: pathlib.Path,
+    chain_id: bytes,
+    initial_root: bytes,
+) -> None:
+    inspected = subprocess.run(
+        [executable, "--genesis-identity", genesis],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    expected = (
+        f"chain_id={chain_id.hex().upper()}\n"
+        f"app_hash={initial_root.hex().upper()}\n"
+    ).encode("ascii")
+    if inspected.returncode != 0 or inspected.stdout != expected:
+        error = inspected.stderr.decode("utf-8", "replace")
+        raise RuntimeError(f"genesis identity mismatch: {error}")
+
+    malformed = genesis.with_suffix(".malformed")
+    malformed.write_bytes(b"not-canonical-genesis")
+    try:
+        rejected = subprocess.run(
+            [executable, "--genesis-identity", malformed],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        if rejected.returncode == 0 or rejected.stdout:
+            raise RuntimeError("malformed genesis identity was accepted")
+    finally:
+        malformed.unlink()
+
+
 def verify_process(
     executable: pathlib.Path,
     vectors: pathlib.Path,
@@ -172,6 +207,9 @@ def verify_process(
     ]
     remove_outputs(outputs)
     genesis.write_bytes(genesis_bytes)
+    verify_genesis_identity(
+        executable, genesis, chain_id, initial_root
+    )
 
     first = start(executable, database, genesis, socket_path)
     try:

@@ -21,11 +21,13 @@ tools/verify.sh
 ```
 
 The command installs hash-pinned CMake, Ninja, and Go tools in the ignored
-local cache, verifies the pinned Go module graph, runs the CometBFT bridge
-tests with cgo disabled, integrity-checks and builds the pinned libsodium and
-SQLite sources, configures the default GCC preset, and runs all registered C++
-and Python tests through CTest. See `build-toolchain.md` for host
-prerequisites, other presets, cache behavior, and cleanup.
+local cache, verifies the pinned Go module graph, tests and vets the CometBFT
+adapter, and builds its bridge, initializer, and node commands with cgo
+disabled. It then integrity-checks and builds the pinned libsodium and SQLite
+sources, configures the selected CMake preset, runs all registered C++ and
+Python tests through CTest, and runs a real single-node CometBFT
+transfer/restart/continued-height integration. See `build-toolchain.md` for
+host prerequisites, other presets, cache behavior, and cleanup.
 
 CI runs GCC and Clang debug builds plus AddressSanitizer and
 UndefinedBehaviorSanitizer builds. The current suite includes unit and boundary
@@ -47,12 +49,9 @@ phase, confirm the exact remote jobs are terminal, cancel obsolete runs, audit
 local processes, preserve evidence, and run `tools/clean-local.sh`. Inspect
 unexplained processes or files individually rather than deleting them.
 
-As production surfaces are added, this same entry point will expand to
-orchestrate:
-
-- format and static analysis;
-- integration tests;
-- deterministic replay and restart tests.
+The entry point already includes Go static analysis and single-node process,
+transfer, deterministic replay, and restart integration. It will expand with
+the four-validator operational devnet and further production surfaces.
 
 Long-running fuzzing, economic simulations, and multi-platform reproducibility
 checks may run separately, but their commands and latest evidence must be

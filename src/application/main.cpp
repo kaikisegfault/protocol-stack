@@ -7,8 +7,11 @@
 #include <exception>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <span>
+#include <string>
 #include <string_view>
 #include <sys/signalfd.h>
 #include <unistd.h>
@@ -90,11 +93,48 @@ int fail(std::string_view message) {
   return 1;
 }
 
+template <typename Hash>
+std::string uppercase_hex(const Hash& value) {
+  std::ostringstream output;
+  output << std::hex << std::uppercase << std::setfill('0');
+  for (const auto byte : value) {
+    output << std::setw(2) << static_cast<unsigned>(byte);
+  }
+  return output.str();
+}
+
+int print_genesis_identity(const std::filesystem::path& genesis_path) {
+  auto genesis = read_genesis(genesis_path);
+  if (!std::holds_alternative<pv1::Bytes>(genesis)) {
+    return fail(std::get<std::string_view>(genesis));
+  }
+  auto ledger = pv1::load_genesis(std::get<pv1::Bytes>(genesis));
+  if (!std::holds_alternative<pv1::Ledger>(ledger.result)) {
+    return fail("failed to validate canonical genesis");
+  }
+  const auto& loaded = std::get<pv1::Ledger>(ledger.result);
+  const auto root = loaded.current_state_root();
+  if (!std::holds_alternative<pv1::StateRoot>(root)) {
+    return fail("failed to derive the height-zero state root");
+  }
+  std::cout
+      << "chain_id=" << uppercase_hex(loaded.state().parameters.chain_id)
+      << '\n'
+      << "app_hash=" << uppercase_hex(std::get<pv1::StateRoot>(root))
+      << '\n';
+  return 0;
+}
+
 int run_application(int argc, char** argv) {
+  if (argc == 3 &&
+      std::string_view(argv[1]) == "--genesis-identity") {
+    return print_genesis_identity(std::filesystem::path(argv[2]));
+  }
   if (argc != 4) {
     return fail(
-        "usage: protocol-application "
-        "<absolute-database> <absolute-genesis> <absolute-socket>");
+        "usage: protocol-application <absolute-database> "
+        "<absolute-genesis> <absolute-socket> | "
+        "protocol-application --genesis-identity <absolute-genesis>");
   }
   const std::filesystem::path database_path(argv[1]);
   const std::filesystem::path genesis_path(argv[2]);

@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-07-27
+Last updated: 2026-07-28
 
 ## Phase
 
@@ -11,12 +11,14 @@ the identical head through full genesis replay. Deterministic multi-block
 restart, snapshot recovery, portable export, new-database archive import, and
 fail-closed ambiguous-commit reopen are complete. Expanded interruption and
 long seeded recovery sequences are merged and pass the hosted completion
-matrix. Issue #22 is the active roadmap slice: accept the replaceable
-CometBFT boundary, then deliver the smallest runnable single-node ABCI++
-vertical without moving ledger authority out of C++. The contract is merged;
-the C++ staged application lifecycle and bounded local request decoder are
-merged, and the headless C++ transport is merged and fully verified. The next
-unblocked slice is the pinned thin Go ABCI++ bridge.
+matrix. Issue #22 is the active roadmap slice: deliver the smallest runnable
+single-node ABCI++ vertical without moving ledger authority out of C++. The
+accepted contract, C++ staged application lifecycle, bounded local protocol,
+headless transport, stateless Go bridge, dependency security floors, strict
+CometBFT home initializer, and pinned node wrapper are implemented. Local
+verification now starts the real node, commits a signed transfer, restarts all
+three processes, and continues at the next durable height. The active delivery
+branch requires hosted matrix and dependency-alert evidence before merge.
 
 ## Verified facts
 
@@ -429,14 +431,41 @@ unblocked slice is the pinned thin Go ABCI++ bridge.
   targets. The complete locally focused GCC suite passed 26/26, and the
   application lifecycle, request/response codec, Unix server, headless restart
   process, and 512-run wire fuzzer passed focused Clang ASan/UBSan checks 6/6.
+- PR #27 merged the cgo-free stateless Go ABCI++ bridge into `main` as
+  `c5c909a`. Exact-candidate Actions run 30376288034 passed all four compiler
+  and sanitizer jobs. Focused Go tests prove exact result conversion,
+  unsupported-method failure, byte-preserving transport, and serialization
+  across CometBFT connections.
+- PR #28 merged read-only Go module-cache cleanup as `816ccc8`.
+  Exact-candidate Actions run 30376836615 and post-merge run 30377182497
+  passed all four jobs.
+- PR #29 merged the alert-patched `x/crypto v0.52.0`, `x/net v0.55.0`, and
+  gRPC `v1.82.1` floors with their ADR evidence into `main` as `e8baeb4`.
+  Exact-candidate run 30378111004 and post-merge verification run 30378470647
+  passed all four jobs; dependency-graph run 30378472171 passed and the
+  refreshed open Dependabot alert count was zero.
+- The active single-node implementation adds a C++ canonical-genesis identity
+  mode, strict fixed-time CometBFT genesis/configuration initialization,
+  validator and node key persistence, a pinned official full-node start
+  wrapper, and refusal of mismatched repeated initialization. The runtime
+  fixes the flood mempool, disables libp2p, PEX, state sync, vote extensions,
+  validator changes, and empty blocks, and retains the three-second commit
+  interval.
+- `PROTOCOL_STACK_PRESET=gcc-debug tools/verify.sh` passes Go module
+  verification, all adapter tests, vet, three cgo-free command builds, 26/26
+  CTest targets, and the real CometBFT integration. The integration commits two
+  independently modelled signed transfers across a complete
+  node/bridge/application restart, verifies exact ABCI receipts, distinguishes
+  the prior-height block-header hash from current `/abci_info`, and directly
+  confirms the durable C++ height-two root.
 
 ## Exact next action
 
-Continue issue #22 on one focused branch with the pinned Go `1.25.10` thin
-ABCI++ bridge for CometBFT `v0.39.3`. Implement exact local-frame translation,
-ABCI result conversion, unsupported-method failure, and cross-connection
-serialization without cgo or canonical state, then prove those boundaries
-with focused Go tests before the single-node process integration slice.
+Complete issue #22 from `feat/22-cometbft-single-node`: inspect and commit the
+single-node implementation, push its PR, require the exact hosted compiler and
+sanitizer matrix plus a refreshed zero-open dependency-alert result, then
+merge and reconcile `main`. The next roadmap slice is the documented
+four-validator local devnet lifecycle required by `first-goal.md`.
 
 ## Open autonomous decisions
 
