@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from .types import State, checked_add
+from .domain import State, checked_add
 
 
 @dataclass

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from .operations import Outcome, credit_account, failure, success
-from .types import (
+from .domain import (
     MAX_U64,
     Escrow,
     Manifest,

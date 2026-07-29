@@ -8,7 +8,7 @@ import re
 from pathlib import Path
 from typing import Any, Callable
 
-from .types import (
+from .domain import (
     MAX_U64,
     Authorities,
     Genesis,

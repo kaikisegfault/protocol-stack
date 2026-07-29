@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from .types import MAX_U64
+from .domain import MAX_U64
 from .validation import MANIFEST_SCHEMA
 
 _GOLDEN_GAMMA = 0x9E3779B97F4A7C15

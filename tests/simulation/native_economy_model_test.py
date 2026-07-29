@@ -10,7 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from simulation.native_economy import simulate
-from simulation.native_economy.types import canonical_json
+from simulation.native_economy.domain import canonical_json
 from tests.simulation.common import fixture
 
 
