@@ -1,18 +1,19 @@
 # Current state
 
-Last updated: 2026-07-28
+Last updated: 2026-07-29
 
 ## Phase
 
 M1 — Sovereign Devnet Alpha. The deterministic C++ ledger kernel, owning
 SQLite storage adapter, restart/replay and recovery paths, headless application
 process, stateless Go ABCI++ bridge, and pinned CometBFT single-node vertical
-are merged and verified. The real integration commits two independently
-modelled signed transfers across a complete node, bridge, and application
-restart, then confirms the exact height-two C++ durable root and ABCI
-receipts. Issue #22 and PR #30 are closed with no active delivery branch. The
-nearest incomplete M1 evidence is the documented four-validator local devnet
-lifecycle required by `first-goal.md`.
+are merged and verified. Issue #32 and draft PR #33 now contain the remaining
+four-validator operational vertical on the one active delivery branch
+`feat/32-four-validator-devnet`. Exact code candidate `28d2404` passed the full
+hosted compiler, sanitizer, differential, persistence, single-node, and
+four-validator matrix in Actions run 30450433782. The final documentation head
+still requires the same hosted gate before PR #33 is marked ready and merged;
+M1 is not recorded complete until that merge and its post-merge evidence pass.
 
 ## Verified facts
 
@@ -28,6 +29,17 @@ lifecycle required by `first-goal.md`.
   snapshot, corruption-detection, and crash-recovery slice through PR #21.
 - Issue #22 completed the replaceable CometBFT ABCI++ application boundary and
   first runnable single-node networked vertical through PR #30.
+- Issue #32 and PR #33 define and implement the fixed M1 four-validator
+  topology: four equal-power validators with distinct retained validator and
+  node keys, one byte-identical common genesis, a static loopback full mesh,
+  independent C++ application/SQLite replicas, and strict refusal of partial
+  or changed retained state.
+- The foreground `protocol-cometbft-devnet` supervisor owns all twelve child
+  processes, uses a short owner-only ephemeral Unix-socket namespace, requires
+  converged non-catching-up health, submits caller-supplied exact transaction
+  bytes, tears down in reverse phase order, and preserves every home and
+  ledger for restart. `tools/devnet.sh` is the documented clean-clone operator
+  path.
 - ADR 0001 accepts CometBFT `v0.39.4` at source commit
   `f96ff7cc244bfa97f399527d917f22ad81414d25`, ABCI `2.0.0`, and the official
   Go `1.25.10` Linux x86-64 toolchain. The exact Go module, module-file,
@@ -479,21 +491,39 @@ lifecycle required by `first-goal.md`.
   creation belong on GitHub-hosted runners. The 2.7 GB local cache/build
   footprint created during diagnosis was fully removed with
   `tools/clean-local.sh`.
+- Four-validator code candidate `28d2404` passed exact hosted Actions run
+  30450433782. GCC and Clang debug each passed 26/26 CTest targets; GCC
+  ASan/UBSan passed 26/26 and Clang ASan/UBSan passed 32/32 including bounded
+  fuzz smoke. All four jobs passed Go tests and vet, four cgo-free command
+  builds, the existing single-node transfer/restart integration, and the new
+  four-validator integration.
+- The four-validator integration starts four independent replicas, validates
+  the exact peers and validator set, commits two independently modelled signed
+  transfers, stops and restarts every process, and after each stop opens all
+  four SQLite ledgers through independent C++ application processes. All eight
+  durable audits matched the modelled height and root. Intervening empty blocks
+  are replayed by the independent model at their observed heights.
+- Lightweight local checks passed `git diff --check`,
+  `python3 -m py_compile
+  tests/integration/cometbft_four_validator_test.py`, and `sh -n
+  tools/devnet.sh tools/verify.sh`. The host's non-pinned libsodium was
+  correctly rejected for local fixture execution; no unpinned result was used
+  as evidence, and the hosted jobs used the integrity-pinned libsodium 1.0.22
+  build.
 
 ## Exact next action
 
-From clean synchronized `main`, create and map the smallest remaining M1 issue
-for the four-validator local devnet lifecycle required by `first-goal.md`.
-Specify the fixed topology and start, health, signed-transfer, stop, and
-restart acceptance procedure before implementing it on one delivery branch.
-Use focused local checks only and run the full compiler, sanitizer, and live
-integration completion gates on GitHub-hosted runners.
+Push this final PR #33 state-documentation head and require all four hosted
+jobs to pass on its exact commit. Then mark PR #33 ready, rebase-merge it,
+update local `main`, verify the post-merge Actions run, remove the merged
+branch and reproducible artifacts, and record the clean M1 completion handoff
+with the smallest first M2 specification/simulator slice as the next action.
 
 ## Open autonomous decisions
 
-- None. Issue #22 is complete; any consequential topology or compatibility
-  choice discovered in the four-validator slice must follow the normal
-  specification or ADR evidence gate.
+- None. The four-validator topology, lifecycle, socket placement, readiness,
+  and durability-audit choices are recorded in ADR 0001 and
+  `consensus-application-v1.md`.
 
 ## Blockers
 
