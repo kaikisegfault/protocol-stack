@@ -69,6 +69,80 @@ root. Repeated initialization before the first committed block is idempotent
 and performs no state write. Initialization after a nonzero durable height is
 a sequence failure.
 
+For the M1 four-validator network, the CometBFT genesis additionally contains
+exactly four validators:
+
+- node indices are the integers `0` through `3`;
+- every validator has voting power `10`;
+- validator entries appear in ascending node-index order;
+- each entry uses the public key from that node's retained private-validator
+  key;
+- all four homes contain byte-identical genesis files.
+
+Validator keys and node keys are generated once using the pinned CometBFT
+implementation, stored only in their owning home with owner-only permissions,
+and retained across restart. Repeated initialization loads and validates all
+eight keys before accepting the existing common genesis. Missing, duplicated,
+inconsistent, or replaced key material, a different validator order or power,
+or any other genesis difference is fatal and is never repaired in place.
+
+## M1 four-validator local topology
+
+Every validator is an independent replica with its own:
+
+- CometBFT home, block store, node key, and private-validator state;
+- stateless Go ABCI bridge;
+- C++ application process and absolute Unix-socket path;
+- SQLite ledger database opened against the same canonical genesis bytes.
+
+The four legacy CometBFT P2P nodes form a complete loopback-only persistent-peer
+mesh. For node `i`, `persistent_peers` contains the other three entries in
+ascending node-index order as
+`node_id@127.0.0.1:p2p_port`. The configuration requires
+`allow_duplicate_ip = true`, `addr_book_strict = false`, `pex = false`, and
+`p2p.libp2p.enabled = false`.
+
+With default base P2P port `27656`, node `i` uses:
+
+```text
+p2p  = 27656 + (10 * i)
+rpc  = p2p + 1
+abci = p2p + 2
+```
+
+An operator-selected base port is valid only if all twelve derived ports are
+distinct, within `1..65535`, and bound to `127.0.0.1`. The base-port choice,
+peer ordering, validator identities, and all connection metadata are
+deployment configuration, not application transition inputs.
+
+One foreground supervisor exact-validates or creates the complete topology
+before starting any child. It starts and readiness-checks all four
+applications, then all four bridges, then all four CometBFT nodes. An
+unexpected child exit is fatal and triggers bounded teardown of the remaining
+children. SIGINT and SIGTERM perform orderly bounded teardown in the reverse
+phase order. The supervisor does not daemonize, write a detached process ID,
+or report readiness while a replica is unavailable.
+
+Network health requires all of the following at one observation point:
+
+- all four RPC `/health` requests succeed;
+- all nodes report the same chain ID, block height, block-header application
+  hash, ABCI Info height, and current application root;
+- every node reports direct connections to the other three node IDs;
+- every node reports the exact four-validator equal-power set;
+- every application root is exactly 32 bytes.
+
+A transaction operation submits caller-supplied exact raw transaction bytes to
+one selected validator through `broadcast_tx_commit`. It reports the committed
+height and exact CheckTx, FinalizeBlock, and receipt fields without signing,
+rewriting, or interpreting canonical transaction bytes.
+
+Stop preserves all four homes and databases. Restart repeats strict
+initialization, starts the same topology, and requires health at the previously
+durable height and root before another transaction is accepted. After every
+committed height, all four ABCI Info heads and all four directly queried C++
+application heads must converge to the same height and root.
+
 ## Application lifecycle
 
 The C++ process owns one live `SQLiteLedger` and, at most, one staged block.
@@ -388,6 +462,15 @@ Before this contract is considered implemented:
   transfer, exposes the current C++ application hash through Info and the
   prior-height hash through the latest block header, stops, restarts, and
   continues at the next durable height;
+- the foreground devnet command initializes four distinct validators with one
+  byte-identical genesis and exact full-mesh peers, starts twelve independent
+  child processes, passes the normative health checks, commits an independently
+  modelled signed transfer through one validator, exposes the same current C++
+  height and root on all four replicas, stops, restarts the retained homes and
+  databases, and continues with a second transfer at the next height;
+- unit coverage rejects partial homes, duplicate keys or endpoints, invalid
+  derived port ranges, changed topology or genesis, and repeated initialization
+  that is not byte-identical;
 - existing GCC, Clang, AddressSanitizer, UndefinedBehaviorSanitizer, primitive,
   ledger, differential, persistence, snapshot, archive, recovery, and fuzz
   gates remain green.

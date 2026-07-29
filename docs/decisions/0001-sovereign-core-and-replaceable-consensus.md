@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-07-27
-- Last amended: 2026-07-28
+- Last amended: 2026-07-29
 
 ## Context
 
@@ -64,6 +64,37 @@ The repository builds a narrow node wrapper around CometBFT's official
 `DefaultNewNode` start path. Its version command reports the accepted module
 pin, and the built binary's Go metadata remains authoritative for dependency
 identity and must contain `github.com/cometbft/cometbft v0.39.4`.
+
+The M1 operational network contains exactly four validator replicas. Each
+replica owns a distinct CometBFT node key, private-validator key and signing
+state, stateless ABCI bridge, C++ application process, and SQLite database.
+All four share one byte-identical CometBFT genesis containing the validators in
+node-index order with equal voting power `10`. No replica shares application
+state or private key material with another.
+
+The local topology is a complete static loopback mesh. Every node lists the
+other three node IDs as persistent peers in node-index order, PEX remains
+disabled, duplicate loopback IPs are explicitly allowed, and the experimental
+libp2p transport remains disabled. The default node-indexed ports are:
+
+| Node | P2P | RPC | ABCI |
+| ---: | ---: | ---: | ---: |
+| `0` | `27656` | `27657` | `27658` |
+| `1` | `27666` | `27667` | `27668` |
+| `2` | `27676` | `27677` | `27678` |
+| `3` | `27686` | `27687` | `27688` |
+
+An alternate base P2P port may move the whole test topology without changing
+its relative layout. Ports, peers, validator keys, process timing, and
+CometBFT metadata remain adapter-only deployment data and never enter
+canonical application state.
+
+One foreground supervisor initializes or exact-validates all four homes before
+starting any long-running child. It starts all applications, then all bridges,
+then all CometBFT nodes, waits for each phase to become ready, and terminates
+the complete network if any child exits unexpectedly. SIGINT or SIGTERM stops
+nodes, bridges, and applications in reverse phase order. Restart reuses the
+same four homes and databases and reconciles every replica through ABCI Info.
 
 ## Compatibility and updates
 
@@ -161,6 +192,37 @@ couple lifecycle and failure containment to the adapter. A separate C++ owner
 preserves exclusive SQLite ownership and permits each process boundary to be
 tested and replaced independently.
 
+### Upstream generic testnet generator
+
+CometBFT's `testnet` command can generate validator homes and persistent-peer
+configuration. It is deliberately generic, however, and does not derive the
+protocol chain ID and height-zero application root from the C++ canonical
+genesis, enforce this repository's disabled-feature profile, or provision one
+independent C++ application and bridge per validator. A narrow initializer
+using the same accepted CometBFT key and genesis types preserves those checks
+without adding another configuration authority.
+
+### Seed discovery or PEX
+
+A seed node with PEX would reduce the explicit peer list, but would re-enable a
+subsystem intentionally disabled for M1 and make readiness depend on discovery
+convergence. The four-node test network is small enough that explicit
+persistent peers are simpler to inspect and reproduce.
+
+### Ring or partial static topology
+
+A ring uses fewer connections and can still connect all validators, but a
+single missing edge can partition or delay the smallest BFT network. Six
+undirected loopback connections are negligible, and the full mesh makes the
+health requirement exact: every validator directly observes the other three.
+
+### Shared application process
+
+Four consensus processes could share one application and database, but that
+would not prove deterministic replicated execution or independent recovery.
+Separate application owners are required so equal roots are evidence rather
+than a consequence of shared memory or storage.
+
 ## Consequences
 
 - The ecosystem owns monetary, execution, receipt, persistence, and
@@ -174,6 +236,11 @@ tested and replaced independently.
   require dedicated negative and fuzz coverage.
 - State sync and validator-set changes are deliberately unavailable in the M1
   application boundary.
+- A local four-validator run owns twelve long-running child processes and four
+  independent durable ledgers; foreground supervision and bounded teardown are
+  part of the tested operational contract.
+- Complete-mesh loopback topology is an M1 operational default, not a
+  production network architecture or validator-admission policy.
 
 ## Evidence for acceptance
 
@@ -217,6 +284,17 @@ commits the next height. The integration independently compares ABCI results,
 the current `/abci_info` root, the one-height-lagged `/status` header hash, and
 the durable C++ root.
 
+For the four-validator amendment, the accepted `v0.39.4` configuration source
+was inspected for persistent-peer, duplicate-IP, PEX, and libp2p behavior; the
+accepted genesis and upstream testnet-generator sources were inspected for
+validator-set validation, key generation, common-genesis construction, and
+peer population. CometBFT's operator documentation confirms that four
+validators are the minimum set that can tolerate one validator failure and
+documents the `nodeID@host:port` persistent-peer form. Static full mesh was
+selected over the alternatives above because it retains the existing
+fail-closed feature profile and gives the smallest local network an exact,
+directly observable readiness condition.
+
 The hosted resolver run 30385565279 used the public checksum database, removed
 the DTLS v2 code path, verified the empty replacement, proved the node package
 closure contains no DTLS v2 package, and passed all Go tests, vet, and the
@@ -230,6 +308,10 @@ vulnerabilities across the resolved `go.mod` delta.
 - [CometBFT v0.39.4 changelog](https://github.com/cometbft/cometbft/blob/v0.39.4/CHANGELOG.md)
 - [ABCI++ application requirements](https://github.com/cometbft/cometbft/blob/v0.39.4/spec/abci/abci%2B%2B_app_requirements.md)
 - [ABCI++ expected behavior](https://github.com/cometbft/cometbft/blob/v0.39.4/spec/abci/abci%2B%2B_comet_expected_behavior.md)
+- [CometBFT v0.39.4 configuration source](https://github.com/cometbft/cometbft/blob/v0.39.4/config/config.go)
+- [CometBFT v0.39.4 genesis validation](https://github.com/cometbft/cometbft/blob/v0.39.4/types/genesis.go)
+- [CometBFT v0.39.4 testnet generator](https://github.com/cometbft/cometbft/blob/v0.39.4/cmd/cometbft/commands/testnet.go)
+- [CometBFT validator-network operator guidance](https://docs.cometbft.com/v0.38/core/using-cometbft)
 - [Official Go downloads](https://go.dev/dl/)
 - [Go module version selection](https://go.dev/ref/mod#minimal-version-selection)
 - [Pion DTLS advisory GHSA-9f3f-wv7r-qc8r](https://github.com/advisories/GHSA-9f3f-wv7r-qc8r)
