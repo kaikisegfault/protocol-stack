@@ -5,9 +5,11 @@ and the headless C++ application. It implements the accepted version-one
 contract in
 [`consensus-application-v1.md`](../../docs/specifications/consensus-application-v1.md).
 
-The module provides three cgo-free commands:
+The module provides four cgo-free commands:
 
 - `protocol-cometbft-bridge`, the stateless ABCI++ socket bridge;
+- `protocol-cometbft-devnet`, the strict four-replica initializer, foreground
+  supervisor, health checker, and transaction submitter;
 - `protocol-cometbft-init`, the strict single-node home initializer;
 - `protocol-cometbft-node`, the pinned CometBFT node process.
 
@@ -27,8 +29,8 @@ The adapter:
 
 The repository verifier bootstraps the integrity-pinned Go 1.25.10 Linux
 x86-64 toolchain, verifies `go.sum`, tests and vets all packages, builds all
-three commands with cgo disabled, and runs the real single-node restart
-integration:
+four commands with cgo disabled, and runs the real single-node compatibility
+and four-validator restart integrations:
 
 ```sh
 tools/verify.sh
@@ -41,6 +43,55 @@ cd adapter/cometbft
 GOTOOLCHAIN=local CGO_ENABLED=0 \
   ../../.cache/go1.25.10/bin/go test ./...
 ```
+
+## Four-validator lifecycle
+
+From a clean clone on supported Linux x86-64, the repository wrapper builds
+only the missing pinned runtime binaries, decodes the public synthetic genesis,
+strictly initializes four independent homes, and remains in the foreground
+while supervising all twelve children:
+
+```sh
+tools/devnet.sh start
+```
+
+The first build downloads the pinned CMake, Ninja, Go, libsodium, SQLite, and
+Go-module inputs into ignored local caches. The persistent default network is
+under `.local/devnet`; its generated unencrypted validator keys are for local
+development only.
+
+In another terminal, require four healthy RPCs, a complete three-peer view at
+every validator, one equal-power validator set, and identical CometBFT, ABCI,
+and direct C++ application heads:
+
+```sh
+tools/devnet.sh health
+```
+
+Submit caller-supplied exact transaction bytes by naming a hexadecimal file.
+The command does not sign or rewrite them. The bundled first transaction uses
+nonce `1` against the bundled genesis:
+
+```sh
+tools/devnet.sh transaction examples/devnet/transaction-1.hex
+```
+
+Press Ctrl-C in the start terminal. The supervisor stops all CometBFT nodes,
+then bridges, then applications, and preserves every home and database. Start
+again with the same command in that foreground terminal. In another terminal,
+confirm health at the retained height and root, then submit the nonce-`2`
+fixture through validator `1`:
+
+```sh
+tools/devnet.sh health
+tools/devnet.sh transaction examples/devnet/transaction-2.hex 1
+```
+
+Use a different absolute `PROTOCOL_STACK_DEVNET_ROOT` to initialize a new
+network without deleting retained evidence. Set
+`PROTOCOL_STACK_DEVNET_BASE_P2P_PORT` when the default `27656..27688` loopback
+block is occupied. Every repeated start refuses partial homes, changed keys,
+changed genesis, or changed configuration.
 
 ## Single-node lifecycle
 

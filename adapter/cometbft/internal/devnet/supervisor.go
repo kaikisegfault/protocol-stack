@@ -138,16 +138,19 @@ func validateInputs(genesis string, binaries Binaries) error {
 	if err := requireRegularFile(genesis, false); err != nil {
 		return fmt.Errorf("canonical genesis: %w", err)
 	}
-	for name, path := range map[string]string{
-		"application": binaries.Application,
-		"bridge":      binaries.Bridge,
-		"node":        binaries.Node,
+	for _, binary := range []struct {
+		name string
+		path string
+	}{
+		{"application", binaries.Application},
+		{"bridge", binaries.Bridge},
+		{"node", binaries.Node},
 	} {
-		if !filepath.IsAbs(path) {
-			return fmt.Errorf("%s binary path must be absolute", name)
+		if !filepath.IsAbs(binary.path) {
+			return fmt.Errorf("%s binary path must be absolute", binary.name)
 		}
-		if err := requireRegularFile(path, true); err != nil {
-			return fmt.Errorf("%s binary: %w", name, err)
+		if err := requireRegularFile(binary.path, true); err != nil {
+			return fmt.Errorf("%s binary: %w", binary.name, err)
 		}
 	}
 	return nil

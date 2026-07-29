@@ -145,6 +145,16 @@ func runTransaction(arguments []string) error {
 	if err != nil {
 		return err
 	}
+	transactionInfo, err := os.Stat(transactionPath)
+	if err != nil {
+		return fmt.Errorf("inspect transaction: %w", err)
+	}
+	if !transactionInfo.Mode().IsRegular() ||
+		transactionInfo.Size() < 1 ||
+		transactionInfo.Size() > 1_048_576 {
+		return errors.New(
+			"transaction file must be regular and contain 1..1048576 bytes")
+	}
 	transaction, err := os.ReadFile(transactionPath)
 	if err != nil {
 		return fmt.Errorf("read transaction: %w", err)
