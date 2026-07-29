@@ -23,6 +23,7 @@ type statusResult struct {
 	SyncInfo struct {
 		LatestBlockHeight string `json:"latest_block_height"`
 		LatestAppHash     string `json:"latest_app_hash"`
+		CatchingUp        bool   `json:"catching_up"`
 	} `json:"sync_info"`
 }
 

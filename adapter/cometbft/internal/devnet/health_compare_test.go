@@ -105,6 +105,13 @@ func TestCompareNetworkRejectsDivergence(t *testing.T) {
 			t.Fatal("accepted invalid header application hash")
 		}
 	})
+	t.Run("catching-up", func(t *testing.T) {
+		statuses, infos, _, _ := healthyFixtures()
+		statuses[1].SyncInfo.CatchingUp = true
+		if _, err := compareHeads(statuses, infos); err == nil {
+			t.Fatal("accepted a catching-up validator")
+		}
+	})
 	t.Run("peer", func(t *testing.T) {
 		statuses, _, networks, _ := healthyFixtures()
 		networks[2].Peers = networks[2].Peers[:2]

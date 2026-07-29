@@ -179,23 +179,30 @@ def run_transaction(
 ) -> SubmittedTransaction:
     transaction_path = workspace / f"transaction-{node_index}.bin"
     transaction_path.write_bytes(transaction)
-    result = subprocess.run(
-        [
-            network.devnet,
-            "transaction",
-            *network.common_arguments(),
-            "-node-index",
-            str(node_index),
-            "-tx-file",
-            transaction_path,
-            "-timeout",
-            "45s",
-        ],
-        check=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        timeout=50,
-    )
+    try:
+        result = subprocess.run(
+            [
+                network.devnet,
+                "transaction",
+                *network.common_arguments(),
+                "-node-index",
+                str(node_index),
+                "-tx-file",
+                transaction_path,
+                "-timeout",
+                "45s",
+            ],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=50,
+        )
+    except subprocess.CalledProcessError as error:
+        raise RuntimeError(
+            "devnet transaction failed:\n"
+            f"stdout:\n{error.stdout.decode('utf-8', errors='replace')}\n"
+            f"stderr:\n{error.stderr.decode('utf-8', errors='replace')}"
+        ) from error
     values: dict[str, str] = {}
     for line in result.stdout.decode("ascii").splitlines():
         key, value = line.split("=", 1)
