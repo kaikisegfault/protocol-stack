@@ -4,16 +4,16 @@ Last updated: 2026-07-29
 
 ## Phase
 
-M1 — Sovereign Devnet Alpha. The deterministic C++ ledger kernel, owning
-SQLite storage adapter, restart/replay and recovery paths, headless application
-process, stateless Go ABCI++ bridge, and pinned CometBFT single-node vertical
-are merged and verified. Issue #32 and draft PR #33 now contain the remaining
-four-validator operational vertical on the one active delivery branch
-`feat/32-four-validator-devnet`. Exact code candidate `28d2404` passed the full
-hosted compiler, sanitizer, differential, persistence, single-node, and
-four-validator matrix in Actions run 30450433782. The final documentation head
-still requires the same hosted gate before PR #33 is marked ready and merged;
-M1 is not recorded complete until that merge and its post-merge evidence pass.
+M2 — Native economy specification and simulator. M1 — Sovereign Devnet Alpha
+is complete: the deterministic C++ ledger, SQLite persistence, headless
+application, stateless ABCI++ bridge, pinned CometBFT node, and reproducible
+four-validator foreground devnet are merged and verified. Issue #32 closed
+through PR #33 as `141482c`; exact final-head Actions run 30450907381 and
+post-merge run 30451381375 passed the full compiler, sanitizer, differential,
+persistence, single-node, and four-validator matrix. No M1 implementation
+branch remains. The nearest outcome is a simulation-first specification of the
+native economy's canonical value-flow model and simulator contract before any
+numerical parameter or C++ economic implementation is accepted.
 
 ## Verified facts
 
@@ -40,6 +40,9 @@ M1 is not recorded complete until that merge and its post-merge evidence pass.
   bytes, tears down in reverse phase order, and preserves every home and
   ledger for restart. `tools/devnet.sh` is the documented clean-clone operator
   path.
+- PR #33 rebase-merged the completed issue #32 vertical into `main` as
+  `141482c` on 2026-07-29. Issue #32 is closed, PR #33 is merged, and its
+  delivery branch and remote-tracking reference are removed.
 - ADR 0001 accepts CometBFT `v0.39.4` at source commit
   `f96ff7cc244bfa97f399527d917f22ad81414d25`, ABCI `2.0.0`, and the official
   Go `1.25.10` Linux x86-64 toolchain. The exact Go module, module-file,
@@ -510,20 +513,30 @@ M1 is not recorded complete until that merge and its post-merge evidence pass.
   correctly rejected for local fixture execution; no unpinned result was used
   as evidence, and the hosted jobs used the integrity-pinned libsodium 1.0.22
   build.
+- Final PR #33 head `9b45994` passed exact hosted Actions run 30450907381,
+  repeating GCC and Clang debug plus both ASan/UBSan jobs with both live
+  integrations. The rebase-merged `main` commit `141482c` passed the same four
+  post-merge jobs in run 30451381375.
 
 ## Exact next action
 
-Push this final PR #33 state-documentation head and require all four hosted
-jobs to pass on its exact commit. Then mark PR #33 ready, rebase-merge it,
-update local `main`, verify the post-merge Actions run, remove the merged
-branch and reproducible artifacts, and record the clean M1 completion handoff
-with the smallest first M2 specification/simulator slice as the next action.
+From clean synchronized `main`, create and map the first M2 issue for a
+simulation-first native-economy contract. Specify the canonical economic state
+inventory and conserved value-flow equation across accounts, authorized
+issuance, fee pool, treasury, escrows, bonded stake, validator/node rewards,
+and penalties; define deterministic integer/time inputs, authority boundaries,
+simulation trace/scenario/metric outputs, and compatibility rules. Research
+credible accounting and distribution alternatives, record the selected
+defaults and consequences before implementation, and deliberately leave all
+production allocations, rates, curves, and thresholds unresolved.
 
 ## Open autonomous decisions
 
-- None. The four-validator topology, lifecycle, socket placement, readiness,
-  and durability-audit choices are recorded in ADR 0001 and
-  `consensus-application-v1.md`.
+- M2 economic bucket ownership, authorized issuance, fee distribution,
+  reward-claim versus direct-payout mechanics, epoch/height scheduling,
+  penalty disposition, and simulator scenario/metric design are unresolved.
+  Resolve them through research, a specification, ADR evidence, and the
+  independent simulator before accepting numerical parameters or C++ behavior.
 
 ## Blockers
 
