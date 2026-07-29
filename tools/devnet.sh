@@ -3,6 +3,7 @@ set -eu
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 state_root=${PROTOCOL_STACK_DEVNET_ROOT:-"$repo_root/.local/devnet"}
+socket_root=${PROTOCOL_STACK_DEVNET_SOCKET_ROOT:-}
 preset=${PROTOCOL_STACK_PRESET:-gcc-debug}
 base_port=${PROTOCOL_STACK_DEVNET_BASE_P2P_PORT:-27656}
 toolchain_dir="$repo_root/.cache/toolchain-linux-x86_64"
@@ -136,9 +137,11 @@ case "$command_name" in
     decode_hex_once \
       "$repo_root/examples/devnet/protocol.genesis.hex" \
       "$genesis"
-    exec "$devnet" start \
-      -root "$state_root" \
-      -base-p2p-port "$base_port" \
+    set -- -root "$state_root" -base-p2p-port "$base_port"
+    if [ -n "$socket_root" ]; then
+      set -- "$@" -socket-root "$socket_root"
+    fi
+    exec "$devnet" start "$@" \
       -genesis "$genesis" \
       -application "$application" \
       -bridge "$bridge" \
@@ -150,9 +153,11 @@ case "$command_name" in
       exit 1
     fi
     ensure_binaries
-    exec "$devnet" health \
-      -root "$state_root" \
-      -base-p2p-port "$base_port"
+    set -- -root "$state_root" -base-p2p-port "$base_port"
+    if [ -n "$socket_root" ]; then
+      set -- "$@" -socket-root "$socket_root"
+    fi
+    exec "$devnet" health "$@"
     ;;
   transaction)
     if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
@@ -175,9 +180,11 @@ try:
 except (OSError, ValueError) as error:
     raise SystemExit(f"decode {source}: {error}") from error
 PY
-    "$devnet" transaction \
-      -root "$state_root" \
-      -base-p2p-port "$base_port" \
+    set -- -root "$state_root" -base-p2p-port "$base_port"
+    if [ -n "$socket_root" ]; then
+      set -- "$@" -socket-root "$socket_root"
+    fi
+    "$devnet" transaction "$@" \
       -node-index "$node_index" \
       -tx-file "$transaction_file"
     ;;

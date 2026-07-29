@@ -108,7 +108,12 @@ mesh. For node `i`, `persistent_peers` contains the other three entries in
 ascending node-index order as
 `node_id@127.0.0.1:p2p_port`. The configuration requires
 `allow_duplicate_ip = true`, `addr_book_strict = false`, `pex = false`, and
-`p2p.libp2p.enabled = false`.
+`p2p.libp2p.enabled = false`. `create_empty_blocks = false` suppresses
+unnecessary proposals, but CometBFT may still commit an empty block after an
+application-hash change. Because canonical state commits its height, every
+such block changes the application root; operational checks therefore use the
+observed committed height and independently replay any intervening empty
+blocks rather than assuming transfers land at fixed heights.
 
 With default base P2P port `27656`, node `i` uses:
 
@@ -146,11 +151,14 @@ height and exact CheckTx, FinalizeBlock, and receipt fields without signing,
 rewriting, or interpreting canonical transaction bytes.
 
 Stop preserves all four homes and databases. Restart repeats strict
-initialization, starts the same topology, and requires health at the previously
-durable height and root before another transaction is accepted. Orderly stop
-removes all application sockets and their ephemeral directory. After every
-committed height, all four ABCI Info heads and all four directly queried C++
-application heads must converge to the same height and root.
+initialization, starts the same topology, and requires a converged health
+observation at or after the previously durable height before another
+transaction is accepted. Orderly stop removes all application sockets and
+their ephemeral directory. While running, all four ABCI Info heads must
+converge to the same height and root. The hosted restart integration
+independently replays any intervening empty blocks, then opens every stopped
+ledger through an independent C++ application process and requires all four
+durable heads to match before restart and after the continued transfer.
 
 ## Application lifecycle
 
@@ -476,7 +484,8 @@ Before this contract is considered implemented:
   child processes, passes the normative health checks, commits an independently
   modelled signed transfer through one validator, exposes the same current C++
   height and root on all four replicas, stops, restarts the retained homes and
-  databases, and continues with a second transfer at the next height;
+  databases, audits every stopped ledger directly through the C++ process, and
+  continues with a second transfer at a later committed height;
 - unit coverage rejects partial homes, duplicate keys or endpoints, invalid
   derived port ranges, changed topology or genesis, and repeated initialization
   that is not byte-identical;

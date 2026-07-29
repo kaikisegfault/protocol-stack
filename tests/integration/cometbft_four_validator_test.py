@@ -17,10 +17,10 @@ from cases import make_fixture, transfer  # noqa: E402
 from cometbft_process import (  # noqa: E402
     ManagedProcess,
     application_info,
+    await_unix_socket,
     start_process,
 )
-from cometbft_rpc import abci_info, status  # noqa: E402
-from model import ReferenceLedger  # noqa: E402
+from model import BlockCommit, ReferenceLedger, state_root  # noqa: E402
 from pinned_sodium import Sodium  # noqa: E402
 
 NODE_COUNT = 4
@@ -57,6 +57,13 @@ class Network:
 
     def rpc_port(self, index: int) -> int:
         return self.base_port + index * 10 + 1
+
+
+@dataclass(frozen=True)
+class SubmittedTransaction:
+    height: int
+    receipt: bytes
+    application_root: bytes
 
 
 def reserve_port_block() -> int:
@@ -167,11 +174,8 @@ def run_transaction(
     workspace: pathlib.Path,
     node_index: int,
     transaction: bytes,
-    expected_height: int,
-    expected_receipt: bytes,
-    expected_root: bytes,
-) -> None:
-    transaction_path = workspace / f"transaction-{expected_height}.bin"
+) -> SubmittedTransaction:
+    transaction_path = workspace / f"transaction-{node_index}.bin"
     transaction_path.write_bytes(transaction)
     result = subprocess.run(
         [
@@ -203,43 +207,101 @@ def run_transaction(
             "receipt",
             "app_hash",
         }
-        or int(values["height"]) != expected_height
         or values["check_code"] != "0"
         or values["finalize_code"] != "0"
-        or bytes.fromhex(values["receipt"]) != expected_receipt
-        or bytes.fromhex(values["app_hash"]) != expected_root
     ):
         raise RuntimeError("devnet transaction command returned wrong result")
+    height = int(values["height"])
+    receipt = bytes.fromhex(values["receipt"])
+    application_root = bytes.fromhex(values["app_hash"])
+    if height < 1 or len(application_root) != 32:
+        raise RuntimeError("devnet transaction returned an invalid head")
+    return SubmittedTransaction(height, receipt, application_root)
 
 
-def require_heads(
+def advance_empty_blocks(
+    reference: ReferenceLedger,
+    target_height: int,
+    latest: BlockCommit | None,
+) -> BlockCommit | None:
+    if target_height < reference.state.height:
+        raise RuntimeError("observed devnet height moved backwards")
+    while reference.state.height < target_height:
+        latest = reference.apply_block(reference.state.height + 1, [])
+    return latest
+
+
+def synchronize_reference(
+    reference: ReferenceLedger,
+    health: dict[str, str],
+    latest: BlockCommit | None,
+) -> BlockCommit | None:
+    height = int(health["height"])
+    latest = advance_empty_blocks(reference, height, latest)
+    header_root = b"" if latest is None else latest.previous_state_root
+    if (
+        int(health["header_height"]) != height
+        or bytes.fromhex(health["header_app_hash"]) != header_root
+        or bytes.fromhex(health["app_hash"]) != state_root(reference.state)
+    ):
+        raise RuntimeError("health command differs from reference state")
+    return latest
+
+
+def apply_submitted_transaction(
+    reference: ReferenceLedger,
+    transaction: bytes,
+    result: SubmittedTransaction,
+    latest: BlockCommit | None,
+) -> BlockCommit:
+    if result.height <= reference.state.height:
+        raise RuntimeError("transaction did not advance the devnet height")
+    advance_empty_blocks(reference, result.height - 1, latest)
+    commit = reference.apply_block(result.height, [transaction])
+    if (
+        result.receipt != commit.encoded_receipts[0]
+        or result.application_root != commit.resulting_state_root
+    ):
+        raise RuntimeError("transaction result differs from reference model")
+    return commit
+
+
+def audit_durable_heads(
     network: Network,
+    workspace: pathlib.Path,
     expected_height: int,
-    expected_header_root: bytes,
     expected_application_root: bytes,
 ) -> None:
-    health = run_health(network)
-    if (
-        int(health["height"]) != expected_height
-        or bytes.fromhex(health["app_hash"]) != expected_application_root
-        or int(health["header_height"]) != expected_height
-        or bytes.fromhex(health["header_app_hash"]) != expected_header_root
-    ):
-        raise RuntimeError("health command returned unexpected network head")
-    for index in range(NODE_COUNT):
-        rpc_port = network.rpc_port(index)
-        if status(rpc_port) != (expected_height, expected_header_root):
-            raise RuntimeError(f"node {index} block-header head mismatch")
-        if abci_info(rpc_port) != (
-            expected_height,
-            expected_application_root,
-        ):
-            raise RuntimeError(f"node {index} ABCI head mismatch")
-        if application_info(network.application_socket(index)) != (
-            expected_height,
-            expected_application_root,
-        ):
-            raise RuntimeError(f"node {index} durable C++ head mismatch")
+    network.socket_root.mkdir(mode=0o700)
+    try:
+        for index in range(NODE_COUNT):
+            socket_path = network.application_socket(index)
+            process = start_process(
+                f"node{index}-durable-audit-{expected_height}",
+                [
+                    network.application,
+                    network.root / f"node{index}" / "ledger.db",
+                    network.genesis,
+                    socket_path,
+                ],
+                workspace,
+            )
+            try:
+                await_unix_socket(process, socket_path)
+                if application_info(socket_path) != (
+                    expected_height,
+                    expected_application_root,
+                ):
+                    raise RuntimeError(
+                        f"node {index} durable C++ head mismatch"
+                    )
+            finally:
+                try:
+                    process.stop()
+                finally:
+                    process.kill()
+    finally:
+        network.socket_root.rmdir()
 
 
 def stop_network(process: ManagedProcess, network: Network) -> None:
@@ -267,9 +329,7 @@ def verify(
     fixture = make_fixture(sodium)
     reference = ReferenceLedger(fixture.genesis, sodium)
     transaction_one = transfer(sodium, fixture, 0, 1, 1, 10_000)
-    commit_one = reference.apply_block(1, [transaction_one])
     transaction_two = transfer(sodium, fixture, 0, 2, 2, 20_000)
-    commit_two = reference.apply_block(2, [transaction_two])
     for relative_path, expected in (
         ("protocol.genesis.hex", fixture.genesis),
         ("transaction-1.hex", transaction_one),
@@ -306,61 +366,62 @@ def verify(
         first = start_network(network, workspace)
         try:
             initial_health = run_health(network)
-            if (
-                int(initial_health["height"]) != 0
-                or bytes.fromhex(initial_health["app_hash"])
-                != commit_one.previous_state_root
-            ):
-                raise RuntimeError("initial four-validator head mismatch")
-            run_transaction(
+            latest = synchronize_reference(reference, initial_health, None)
+            first_result = run_transaction(
                 network,
                 workspace,
                 0,
                 transaction_one,
-                1,
-                commit_one.encoded_receipts[0],
-                commit_one.resulting_state_root,
             )
-            require_heads(
-                network,
-                1,
-                commit_one.previous_state_root,
-                commit_one.resulting_state_root,
+            latest = apply_submitted_transaction(
+                reference,
+                transaction_one,
+                first_result,
+                latest,
             )
             stop_network(first, network)
         finally:
             first.kill()
+        audit_durable_heads(
+            network,
+            workspace,
+            latest.height,
+            latest.resulting_state_root,
+        )
 
         second = start_network(network, workspace)
         try:
-            require_heads(
-                network,
-                1,
-                commit_one.previous_state_root,
-                commit_one.resulting_state_root,
+            latest = synchronize_reference(
+                reference,
+                run_health(network),
+                latest,
             )
-            run_transaction(
+            second_result = run_transaction(
                 network,
                 workspace,
                 1,
                 transaction_two,
-                2,
-                commit_two.encoded_receipts[0],
-                commit_two.resulting_state_root,
             )
-            require_heads(
-                network,
-                2,
-                commit_one.resulting_state_root,
-                commit_two.resulting_state_root,
+            latest = apply_submitted_transaction(
+                reference,
+                transaction_two,
+                second_result,
+                latest,
             )
             stop_network(second, network)
         finally:
             second.kill()
+        audit_durable_heads(
+            network,
+            workspace,
+            latest.height,
+            latest.resulting_state_root,
+        )
 
     print(
         "CometBFT four-validator integration: passed "
-        "(4 independent replicas, 2 signed transfers, full restart at height 1)"
+        "(4 independent replicas, 2 signed transfers, full restart, "
+        "4 durable C++ audits per stop)"
     )
 
 

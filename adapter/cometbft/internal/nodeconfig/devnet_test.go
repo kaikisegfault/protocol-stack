@@ -25,6 +25,10 @@ func TestNewDevnet(t *testing.T) {
 		) {
 		t.Fatalf("unexpected socket root %q", devnet.SocketRoot)
 	}
+	repeated, err := NewDevnet(root, DefaultDevnetBaseP2PPort)
+	if err != nil || repeated.SocketRoot != devnet.SocketRoot {
+		t.Fatalf("repeated socket root = %q, %v", repeated.SocketRoot, err)
+	}
 	for index, node := range devnet.Nodes {
 		p2pPort := DefaultDevnetBaseP2PPort + index*devnetPortStride
 		if node.Index != index ||
@@ -54,6 +58,18 @@ func TestNewDevnet(t *testing.T) {
 		DefaultDevnetBaseP2PPort,
 	); err == nil || !strings.Contains(err.Error(), "exceeds") {
 		t.Fatalf("overlong socket root error = %v", err)
+	}
+	for _, invalidSocketRoot := range []string{
+		"relative",
+		string(filepath.Separator),
+	} {
+		if _, err := NewDevnetWithSocketRoot(
+			root,
+			invalidSocketRoot,
+			DefaultDevnetBaseP2PPort,
+		); err == nil {
+			t.Fatalf("accepted invalid socket root %q", invalidSocketRoot)
+		}
 	}
 
 	for _, values := range []struct {
@@ -292,6 +308,19 @@ func TestEnsureDevnetRejectsPartialOrDuplicateKeys(t *testing.T) {
 		if err == nil || !strings.Contains(
 			err.Error(), "ledger without a validator home") {
 			t.Fatalf("orphan-ledger error = %v", err)
+		}
+	})
+	t.Run("incomplete-ledger-set", func(t *testing.T) {
+		devnet := mustDevnet(t)
+		identity := testIdentity()
+		if err := devnet.Ensure(identity); err != nil {
+			t.Fatalf("fresh ensure: %v", err)
+		}
+		writeTestFile(t, devnet.Nodes[0].Database, []byte("not-a-ledger"))
+		err := devnet.Ensure(identity)
+		if err == nil || !strings.Contains(
+			err.Error(), "incomplete set of replica ledgers") {
+			t.Fatalf("incomplete-ledger error = %v", err)
 		}
 	})
 

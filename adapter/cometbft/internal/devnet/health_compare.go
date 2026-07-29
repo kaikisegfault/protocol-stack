@@ -15,7 +15,6 @@ import (
 func compareHeads(
 	statuses []statusResult,
 	infos [nodeconfig.DevnetNodeCount]abciInfoResult,
-	heads []ApplicationHead,
 ) (NetworkHealth, error) {
 	var expected NetworkHealth
 	for index := range nodeconfig.DevnetNodeCount {
@@ -40,10 +39,11 @@ func compareHeads(
 			return NetworkHealth{}, fmt.Errorf(
 				"node %d returned invalid ABCI application root", index)
 		}
-		if heads[index].Height != infoHeight ||
-			!bytes.Equal(heads[index].Root[:], infoRoot) {
+		if statusHeight != infoHeight ||
+			(statusHeight == 0 && len(headerHash) != 0) ||
+			(statusHeight > 0 && len(headerHash) != len(nodeconfig.Hash{})) {
 			return NetworkHealth{}, fmt.Errorf(
-				"node %d ABCI and C++ heads differ", index)
+				"node %d returned inconsistent head metadata", index)
 		}
 		var root nodeconfig.Hash
 		copy(root[:], infoRoot)
