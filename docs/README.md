@@ -7,6 +7,8 @@
 - `project/first-goal.md`: first operational outcome and acceptance evidence.
 - `project/roadmap.md`: ordered milestones.
 - `project/current-state.md`: verified handoff between sessions.
+- `project/native-economy-simulation-report-v1.md`: reproducible M2 seeded
+  accounting study and its explicitly non-production interpretation.
 
 ## Architecture
 
@@ -49,3 +51,6 @@ immutable; compatible changes require a new version.
 - `specifications/native-economy-simulation-v1.md`: versioned integer-only
   accounting, authority, event, trace, and metric contract for the independent
   M2 research simulator; it is not a consensus transition.
+
+The corresponding executable research tool and reviewed fixture live in
+`../simulation/native_economy/`.

@@ -1,0 +1,40 @@
+{
+  "authorities": {
+    "clock": "clock",
+    "escrow": "escrow",
+    "fee_allocation": "fee_allocator",
+    "issuance": "issuer",
+    "penalty": "penalty",
+    "reward": "reward",
+    "treasury": "treasury"
+  },
+  "genesis": {
+    "accounts": {
+      "alice": 400,
+      "bob": 300
+    },
+    "fee_pool": 0,
+    "height": 0,
+    "issued_supply": 1000,
+    "penalty_pool": 0,
+    "reward_pool": 0,
+    "treasury": 300
+  },
+  "parameters": {
+    "epoch_length": 2,
+    "fee_reward_parts": 3,
+    "fee_split_denominator": 10,
+    "supply_limit": 10000,
+    "unbonding_epochs": 1
+  },
+  "participants": {
+    "nodes": {
+      "node_a": "bob"
+    },
+    "validators": {
+      "validator_a": "alice"
+    }
+  },
+  "research_only": true,
+  "schema": "protocol-stack/native-economy-simulation-manifest/v1"
+}

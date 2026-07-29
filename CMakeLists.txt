@@ -739,6 +739,24 @@ add_test(
     "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
     "${CMAKE_CURRENT_BINARY_DIR}/ah-v1"
 )
+add_test(
+  NAME native-economy-model
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/native_economy_model_test.py"
+)
+add_test(
+  NAME native-economy-errors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/native_economy_errors_test.py"
+)
+add_test(
+  NAME native-economy-scenarios
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/native_economy_scenario_test.py"
+)
 set_tests_properties(
   protocol-primitives-python
   ledger-transition-python

@@ -1,0 +1,198 @@
+[
+  {
+    "actor": "issuer",
+    "amount": 50,
+    "height": 0,
+    "id": "issue_1",
+    "kind": "issue"
+  },
+  {
+    "actor": "treasury",
+    "amount": 25,
+    "height": 0,
+    "id": "grant_1",
+    "kind": "treasury_grant",
+    "recipient": "carol"
+  },
+  {
+    "actor": "alice",
+    "amount": 20,
+    "destination": "bob",
+    "height": 0,
+    "id": "transfer_1",
+    "kind": "transfer",
+    "source": "alice"
+  },
+  {
+    "account": "alice",
+    "actor": "alice",
+    "amount": 11,
+    "height": 0,
+    "id": "fee_1",
+    "kind": "charge_fee"
+  },
+  {
+    "actor": "fee_allocator",
+    "amount": 11,
+    "height": 0,
+    "id": "allocate_fees_1",
+    "kind": "allocate_fees"
+  },
+  {
+    "actor": "treasury",
+    "amount": 97,
+    "height": 0,
+    "id": "fund_rewards_1",
+    "kind": "fund_rewards"
+  },
+  {
+    "actor": "reward",
+    "amount": 40,
+    "height": 0,
+    "id": "validator_reward_1",
+    "kind": "allocate_reward",
+    "participant": "validator_a",
+    "role": "validator"
+  },
+  {
+    "actor": "reward",
+    "amount": 30,
+    "height": 0,
+    "id": "node_reward_1",
+    "kind": "allocate_reward",
+    "participant": "node_a",
+    "role": "node"
+  },
+  {
+    "actor": "alice",
+    "amount": 15,
+    "height": 0,
+    "id": "validator_claim_1",
+    "kind": "claim_reward",
+    "participant": "validator_a",
+    "role": "validator"
+  },
+  {
+    "actor": "bob",
+    "amount": 30,
+    "height": 0,
+    "id": "node_claim_1",
+    "kind": "claim_reward",
+    "participant": "node_a",
+    "role": "node"
+  },
+  {
+    "actor": "alice",
+    "amount": 30,
+    "beneficiary": "carol",
+    "escrow_id": "escrow_general_1",
+    "escrow_kind": "general",
+    "height": 0,
+    "id": "open_escrow_1",
+    "kind": "open_escrow",
+    "source": "alice",
+    "source_kind": "account",
+    "unlock_epoch": 1
+  },
+  {
+    "actor": "treasury",
+    "amount": 40,
+    "beneficiary": "bob",
+    "escrow_id": "escrow_venture_1",
+    "escrow_kind": "venture",
+    "height": 0,
+    "id": "open_escrow_2",
+    "kind": "open_escrow",
+    "source": "treasury",
+    "source_kind": "treasury",
+    "unlock_epoch": 1
+  },
+  {
+    "actor": "alice",
+    "amount": 100,
+    "bond_id": "bond_1",
+    "height": 0,
+    "id": "bond_event_1",
+    "kind": "bond",
+    "owner": "alice",
+    "validator": "validator_a"
+  },
+  {
+    "actor": "penalty",
+    "amount": 10,
+    "height": 0,
+    "id": "penalty_bond_1",
+    "kind": "penalize",
+    "position_id": "bond_1",
+    "source_kind": "bond"
+  },
+  {
+    "actor": "alice",
+    "amount": 40,
+    "bond_id": "bond_1",
+    "height": 0,
+    "id": "unbond_start_1",
+    "kind": "begin_unbond",
+    "unbonding_id": "unbonding_1"
+  },
+  {
+    "actor": "penalty",
+    "amount": 5,
+    "height": 0,
+    "id": "penalty_unbonding_1",
+    "kind": "penalize",
+    "position_id": "unbonding_1",
+    "source_kind": "unbonding"
+  },
+  {
+    "actor": "clock",
+    "height": 0,
+    "id": "height_1",
+    "kind": "advance_height",
+    "to_height": 1
+  },
+  {
+    "actor": "clock",
+    "height": 1,
+    "id": "height_2",
+    "kind": "advance_height",
+    "to_height": 2
+  },
+  {
+    "actor": "escrow",
+    "escrow_id": "escrow_general_1",
+    "height": 2,
+    "id": "release_escrow_1",
+    "kind": "release_escrow"
+  },
+  {
+    "actor": "escrow",
+    "escrow_id": "escrow_venture_1",
+    "height": 2,
+    "id": "release_escrow_2",
+    "kind": "release_escrow"
+  },
+  {
+    "actor": "alice",
+    "height": 2,
+    "id": "unbond_complete_1",
+    "kind": "complete_unbond",
+    "unbonding_id": "unbonding_1"
+  },
+  {
+    "actor": "penalty",
+    "amount": 15,
+    "height": 2,
+    "id": "route_penalty_1",
+    "kind": "route_penalty"
+  },
+  {
+    "actor": "alice",
+    "amount": 25,
+    "height": 2,
+    "id": "validator_claim_2",
+    "kind": "claim_reward",
+    "participant": "validator_a",
+    "role": "validator"
+  }
+]
