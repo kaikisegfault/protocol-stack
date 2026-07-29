@@ -24,8 +24,36 @@ verified unit of work with:
 proceed
 ```
 
-On a supported Linux x86_64 development host, configure, build, test, and run
-the single-node CometBFT transfer/restart integration with:
+On a supported Linux x86_64 development host, one foreground command builds
+the required pinned binaries on first use, initializes four independent local
+validators, and starts the M1 devnet:
+
+```sh
+tools/devnet.sh start
+```
+
+In another terminal, inspect the exact four-replica height and root or submit
+the first public synthetic signed transfer:
+
+```sh
+tools/devnet.sh health
+tools/devnet.sh transaction examples/devnet/transaction-1.hex
+```
+
+Press Ctrl-C in the start terminal for an orderly stop. Run the same start
+command to restart the retained homes and SQLite ledgers; the second fixture
+then continues with nonce `2`:
+
+```sh
+tools/devnet.sh transaction examples/devnet/transaction-2.hex 1
+```
+
+The fixtures have public development keys and must never hold real value.
+`PROTOCOL_STACK_DEVNET_ROOT` selects a different persistent network directory,
+and `PROTOCOL_STACK_DEVNET_BASE_P2P_PORT` moves the fixed local port block.
+
+Configure, build, test, and run both the single-node compatibility integration
+and the complete four-validator lifecycle with:
 
 ```sh
 tools/verify.sh

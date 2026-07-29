@@ -99,25 +99,35 @@ def start_network(network: Network, workspace: pathlib.Path) -> ManagedProcess:
     try:
         run_health(network)
         return process
-    except Exception:
+    except Exception as error:
+        process.log_file.flush()
+        output = process.log_path.read_text(encoding="utf-8", errors="replace")
         process.kill()
-        raise process.failure()
+        raise RuntimeError(
+            f"devnet readiness failed: {error}\n"
+            f"supervisor output:\n{output}"
+        ) from error
 
 
 def run_health(network: Network) -> dict[str, str]:
-    result = subprocess.run(
-        [
-            network.devnet,
-            "health",
-            *network.common_arguments(),
-            "-timeout",
-            "45s",
-        ],
-        check=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        timeout=50,
-    )
+    try:
+        result = subprocess.run(
+            [
+                network.devnet,
+                "health",
+                *network.common_arguments(),
+                "-timeout",
+                "45s",
+            ],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=50,
+        )
+    except subprocess.CalledProcessError as error:
+        raise RuntimeError(
+            error.stderr.decode("utf-8", errors="replace").strip()
+        ) from error
     values: dict[str, str] = {}
     for line in result.stdout.decode("ascii").splitlines():
         key, value = line.split("=", 1)

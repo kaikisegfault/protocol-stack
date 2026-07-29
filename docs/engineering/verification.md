@@ -22,12 +22,13 @@ tools/verify.sh
 
 The command installs hash-pinned CMake, Ninja, and Go tools in the ignored
 local cache, verifies the pinned Go module graph, tests and vets the CometBFT
-adapter, and builds its bridge, initializer, and node commands with cgo
-disabled. It then integrity-checks and builds the pinned libsodium and SQLite
-sources, configures the selected CMake preset, runs all registered C++ and
-Python tests through CTest, and runs a real single-node CometBFT
-transfer/restart/continued-height integration. See `build-toolchain.md` for
-host prerequisites, other presets, cache behavior, and cleanup.
+adapter, and builds its bridge, devnet supervisor, single-node initializer, and
+node commands with cgo disabled. It then integrity-checks and builds the pinned
+libsodium and SQLite sources, configures the selected CMake preset, runs all
+registered C++ and Python tests through CTest, and runs both the real
+single-node CometBFT compatibility integration and the four-validator
+transfer/stop/restart/continued-height integration. See `build-toolchain.md`
+for host prerequisites, other presets, cache behavior, and cleanup.
 
 CI runs GCC and Clang debug builds plus AddressSanitizer and
 UndefinedBehaviorSanitizer builds. The current suite includes unit and boundary
@@ -57,9 +58,12 @@ phase, confirm the exact remote jobs are terminal, cancel obsolete runs, audit
 local processes, preserve evidence, and run `tools/clean-local.sh`. Inspect
 unexplained processes or files individually rather than deleting them.
 
-The entry point already includes Go static analysis and single-node process,
-transfer, deterministic replay, and restart integration. It will expand with
-the four-validator operational devnet and further production surfaces.
+The entry point includes Go static analysis, the single-node compatibility
+path, and a four-validator full-mesh integration. The latter supervises twelve
+processes, checks all direct peers and validator sets, commits independently
+modelled signed transfers, compares every ABCI and direct durable C++ head,
+stops cleanly, restarts the retained network at height one, and continues at
+height two.
 
 Long-running fuzzing, economic simulations, and multi-platform reproducibility
 checks may run separately, but their commands and latest evidence must be
