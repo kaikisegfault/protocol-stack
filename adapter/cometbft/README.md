@@ -63,8 +63,8 @@ directory below the platform temporary directory and are removed after orderly
 shutdown.
 
 In another terminal, require four healthy RPCs, a complete three-peer view at
-every validator, one equal-power validator set, and identical CometBFT, ABCI,
-and application heads:
+every validator, no catching-up replica, one equal-power validator set, and
+identical CometBFT, ABCI, and application heads:
 
 ```sh
 tools/devnet.sh health

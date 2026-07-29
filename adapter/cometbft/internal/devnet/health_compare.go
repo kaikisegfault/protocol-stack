@@ -18,6 +18,10 @@ func compareHeads(
 ) (NetworkHealth, error) {
 	var expected NetworkHealth
 	for index := range nodeconfig.DevnetNodeCount {
+		if statuses[index].SyncInfo.CatchingUp {
+			return NetworkHealth{}, fmt.Errorf(
+				"node %d is still catching up", index)
+		}
 		statusHeight, err := parseUint(
 			"latest block height", statuses[index].SyncInfo.LatestBlockHeight)
 		if err != nil {

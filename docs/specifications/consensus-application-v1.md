@@ -139,6 +139,7 @@ or report readiness while a replica is unavailable.
 Network health requires all of the following at one observation point:
 
 - all four RPC `/health` requests succeed;
+- every node reports that it is no longer catching up;
 - all nodes report the same chain ID, block height, block-header application
   hash, ABCI Info height, and current application root;
 - every node reports direct connections to the other three node IDs;
