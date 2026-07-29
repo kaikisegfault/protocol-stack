@@ -1,4 +1,4 @@
-"""Value types, canonical serialization, and invariants."""
+"""Economic value types, canonical serialization, and invariants."""
 
 from __future__ import annotations
 

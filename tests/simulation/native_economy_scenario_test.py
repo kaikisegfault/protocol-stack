@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT))
 from simulation.native_economy import generate_scenario, simulate
 from simulation.native_economy.scenario import SplitMix64
 from simulation.native_economy.study import run_study
-from simulation.native_economy.types import canonical_json
+from simulation.native_economy.domain import canonical_json
 
 
 class NativeEconomyScenarioTest(unittest.TestCase):

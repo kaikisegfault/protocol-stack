@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from typing import Any
 
-from .types import Manifest, State
+from .domain import Manifest, State
 
 _FLOW_KEYS = {
     "issuance": 0,

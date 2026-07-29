@@ -13,7 +13,7 @@ if __package__ in {None, ""}:
 
 from simulation.native_economy.engine import simulate
 from simulation.native_economy.scenario import generate_scenario
-from simulation.native_economy.types import MAX_U64, domain_digest
+from simulation.native_economy.domain import MAX_U64, domain_digest
 
 
 def run_study(seed_start: int, seed_count: int, rounds: int) -> dict:

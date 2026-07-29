@@ -12,7 +12,7 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from simulation.native_economy.scenario import generate_scenario
-from simulation.native_economy.types import MAX_U64
+from simulation.native_economy.domain import MAX_U64
 
 
 def _u64(text: str) -> int:

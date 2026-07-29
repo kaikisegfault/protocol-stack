@@ -8,7 +8,7 @@ from .handlers_positions import HANDLERS as POSITION_HANDLERS
 from .handlers_value import HANDLERS as VALUE_HANDLERS
 from .metrics import build_metrics
 from .operations import Outcome, failure
-from .types import (
+from .domain import (
     Manifest,
     State,
     assert_invariants,
