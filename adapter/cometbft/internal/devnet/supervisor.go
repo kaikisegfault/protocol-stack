@@ -36,6 +36,16 @@ func Run(
 	if err := devnet.Ensure(identity); err != nil {
 		return fmt.Errorf("initialize devnet: %w", err)
 	}
+	if err := ensureSocketRoot(devnet.SocketRoot); err != nil {
+		return fmt.Errorf("prepare socket root: %w", err)
+	}
+	defer func() {
+		if err := os.Remove(devnet.SocketRoot); err != nil &&
+			!errors.Is(err, os.ErrNotExist) &&
+			runError == nil {
+			runError = fmt.Errorf("remove socket root: %w", err)
+		}
+	}()
 
 	events := make(chan childExit, nodeconfig.DevnetNodeCount*3)
 	phases := make([][]*childProcess, 3)
@@ -129,6 +139,27 @@ func Run(
 		return fmt.Errorf("%s exited unexpectedly: %v",
 			event.child.name, event.err)
 	}
+}
+
+func ensureSocketRoot(path string) error {
+	info, err := os.Lstat(path)
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		if err := os.Mkdir(path, 0o700); err != nil {
+			return err
+		}
+	case err != nil:
+		return err
+	case info.Mode()&os.ModeSymlink != 0:
+		return errors.New("path is a symbolic link")
+	case !info.IsDir():
+		return errors.New("path is not a directory")
+	case info.Mode().Perm() != 0o700:
+		if err := os.Chmod(path, 0o700); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func validateInputs(genesis string, binaries Binaries) error {

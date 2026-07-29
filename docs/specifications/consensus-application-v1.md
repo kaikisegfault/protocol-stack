@@ -95,6 +95,14 @@ Every validator is an independent replica with its own:
 - C++ application process and absolute Unix-socket path;
 - SQLite ledger database opened against the same canonical genesis bytes.
 
+Application sockets are ephemeral deployment state. By default their
+owner-only directory is a deterministic, short path below the platform
+temporary directory, keyed by the absolute persistent devnet root; an operator
+may instead provide another absolute short-lived directory. The complete
+socket path must fit the platform Unix-domain address limit. Homes, databases,
+keys, and logs remain under the persistent root, and no socket path enters
+canonical application state.
+
 The four legacy CometBFT P2P nodes form a complete loopback-only persistent-peer
 mesh. For node `i`, `persistent_peers` contains the other three entries in
 ascending node-index order as
@@ -139,7 +147,8 @@ rewriting, or interpreting canonical transaction bytes.
 
 Stop preserves all four homes and databases. Restart repeats strict
 initialization, starts the same topology, and requires health at the previously
-durable height and root before another transaction is accepted. After every
+durable height and root before another transaction is accepted. Orderly stop
+removes all application sockets and their ephemeral directory. After every
 committed height, all four ABCI Info heads and all four directly queried C++
 application heads must converge to the same height and root.
 

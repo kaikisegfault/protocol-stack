@@ -95,6 +95,10 @@ then all CometBFT nodes, waits for each phase to become ready, and terminates
 the complete network if any child exits unexpectedly. SIGINT or SIGTERM stops
 nodes, bridges, and applications in reverse phase order. Restart reuses the
 same four homes and databases and reconciles every replica through ABCI Info.
+Application sockets instead live in an owner-only, short-lived directory below
+the platform temporary directory, deterministically keyed by the persistent
+devnet root unless the operator supplies another absolute socket root. This
+avoids the platform Unix-domain path limit without moving any durable state.
 
 ## Compatibility and updates
 
@@ -239,6 +243,9 @@ than a consequence of shared memory or storage.
 - A local four-validator run owns twelve long-running child processes and four
   independent durable ledgers; foreground supervision and bounded teardown are
   part of the tested operational contract.
+- Ephemeral application sockets are separated from the persistent network
+  root, path-length validated before startup, and removed after orderly
+  teardown.
 - Complete-mesh loopback topology is an M1 operational default, not a
   production network architecture or validator-admission policy.
 

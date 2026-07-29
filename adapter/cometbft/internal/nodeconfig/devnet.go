@@ -2,6 +2,7 @@ package nodeconfig
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"os"
@@ -23,6 +24,7 @@ const (
 	devnetPortStride         = 10
 	devnetLastPortOffset     = 32
 	validatorPower           = 10
+	maximumUnixSocketPath    = 107
 )
 
 // DevnetNode contains the fixed paths and endpoints for one local replica.
@@ -42,6 +44,7 @@ type DevnetNode struct {
 // Devnet is the fixed four-validator M1 local topology.
 type Devnet struct {
 	Root        string
+	SocketRoot  string
 	BaseP2PPort int
 	Nodes       [DevnetNodeCount]DevnetNode
 }
@@ -49,22 +52,52 @@ type Devnet struct {
 // NewDevnet validates and derives a loopback-only four-validator topology.
 func NewDevnet(root string, baseP2PPort int) (Devnet, error) {
 	cleanRoot := filepath.Clean(root)
+	digest := sha256.Sum256([]byte(cleanRoot))
+	socketRoot := filepath.Join(
+		os.TempDir(), fmt.Sprintf("protocol-stack-devnet-%x", digest[:8]))
+	return NewDevnetWithSocketRoot(root, socketRoot, baseP2PPort)
+}
+
+// NewDevnetWithSocketRoot uses an explicit short-lived Unix-socket directory.
+func NewDevnetWithSocketRoot(
+	root string,
+	socketRoot string,
+	baseP2PPort int,
+) (Devnet, error) {
+	cleanRoot := filepath.Clean(root)
 	if !filepath.IsAbs(root) || cleanRoot == string(filepath.Separator) {
 		return Devnet{}, errors.New("devnet root must be an absolute non-root path")
+	}
+	cleanSocketRoot := filepath.Clean(socketRoot)
+	if !filepath.IsAbs(socketRoot) ||
+		cleanSocketRoot == string(filepath.Separator) {
+		return Devnet{}, errors.New(
+			"devnet socket root must be an absolute non-root path")
 	}
 	if baseP2PPort < 1 || baseP2PPort > 65535-devnetLastPortOffset {
 		return Devnet{}, errors.New("devnet base P2P port is out of range")
 	}
-	result := Devnet{Root: cleanRoot, BaseP2PPort: baseP2PPort}
+	result := Devnet{
+		Root:        cleanRoot,
+		SocketRoot:  cleanSocketRoot,
+		BaseP2PPort: baseP2PPort,
+	}
 	for index := range DevnetNodeCount {
 		nodeRoot := filepath.Join(cleanRoot, fmt.Sprintf("node%d", index))
 		p2pPort := baseP2PPort + devnetPortStride*index
+		applicationSocket := filepath.Join(
+			cleanSocketRoot, fmt.Sprintf("node%d.sock", index))
+		if len(applicationSocket) > maximumUnixSocketPath {
+			return Devnet{}, fmt.Errorf(
+				"node %d application socket path exceeds %d bytes",
+				index, maximumUnixSocketPath)
+		}
 		result.Nodes[index] = DevnetNode{
 			Index:             index,
 			Root:              nodeRoot,
 			Home:              filepath.Join(nodeRoot, "cometbft"),
 			Database:          filepath.Join(nodeRoot, "ledger.db"),
-			ApplicationSocket: filepath.Join(nodeRoot, "application.sock"),
+			ApplicationSocket: applicationSocket,
 			LogDirectory:      filepath.Join(nodeRoot, "logs"),
 			Endpoints: Endpoints{
 				ProxyApp: loopbackEndpoint(p2pPort + 2),
@@ -145,6 +178,7 @@ func (devnet Devnet) preflight() (bool, error) {
 		return false, fmt.Errorf("protect devnet root: %w", err)
 	}
 	existingCount := 0
+	databaseCount := 0
 	for _, node := range devnet.Nodes {
 		config := cfg.DefaultConfig().SetRoot(node.Home)
 		paths := []string{
@@ -171,9 +205,24 @@ func (devnet Devnet) preflight() (bool, error) {
 		if present == len(paths) {
 			existingCount++
 		}
+		databaseExists, err := regularFileExists(node.Database)
+		if err != nil {
+			return false, fmt.Errorf("node %d: %w", node.Index, err)
+		}
+		if databaseExists {
+			databaseCount++
+			if present == 0 {
+				return false, fmt.Errorf(
+					"node %d has a ledger without a validator home", node.Index)
+			}
+		}
 	}
 	if existingCount != 0 && existingCount != DevnetNodeCount {
 		return false, errors.New("devnet contains a mixture of fresh and existing homes")
+	}
+	if databaseCount != 0 && databaseCount != DevnetNodeCount {
+		return false, errors.New(
+			"devnet contains an incomplete set of replica ledgers")
 	}
 	return existingCount == DevnetNodeCount, nil
 }

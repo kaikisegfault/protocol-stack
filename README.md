@@ -3,7 +3,7 @@
 `protocol-stack` is the open-source research and implementation monorepo for a
 sovereign, single-native-asset blockchain stack.
 
-The project is in its foundation phase. Its first operational milestone is a
+The project is research software. Its first operational milestone is a
 reproducible four-validator local devnet backed by an original deterministic
 C++20 ledger kernel. It is not production-ready.
 

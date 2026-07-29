@@ -38,6 +38,7 @@ class Network:
     bridge: pathlib.Path
     node: pathlib.Path
     root: pathlib.Path
+    socket_root: pathlib.Path
     genesis: pathlib.Path
     base_port: int
 
@@ -45,12 +46,14 @@ class Network:
         return [
             "-root",
             str(self.root),
+            "-socket-root",
+            str(self.socket_root),
             "-base-p2p-port",
             str(self.base_port),
         ]
 
     def application_socket(self, index: int) -> pathlib.Path:
-        return self.root / f"node{index}" / "application.sock"
+        return self.socket_root / f"node{index}.sock"
 
     def rpc_port(self, index: int) -> int:
         return self.base_port + index * 10 + 1
@@ -100,12 +103,26 @@ def start_network(network: Network, workspace: pathlib.Path) -> ManagedProcess:
         run_health(network)
         return process
     except Exception as error:
-        process.log_file.flush()
+        shutdown_error = ""
+        try:
+            process.stop()
+        except Exception as stop_error:
+            shutdown_error = f"\nsupervisor shutdown error:\n{stop_error}"
+        finally:
+            process.kill()
         output = process.log_path.read_text(encoding="utf-8", errors="replace")
-        process.kill()
+        child_outputs = []
+        for path in sorted(network.root.glob("node*/logs/*.log")):
+            child_outputs.append(
+                f"{path.relative_to(network.root)}:\n"
+                f"{path.read_text(encoding='utf-8', errors='replace')}"
+            )
+        children = "\n".join(child_outputs)
         raise RuntimeError(
             f"devnet readiness failed: {error}\n"
-            f"supervisor output:\n{output}"
+            f"supervisor output:\n{output}\n"
+            f"child outputs:\n{children}"
+            f"{shutdown_error}"
         ) from error
 
 
@@ -253,13 +270,26 @@ def verify(
     commit_one = reference.apply_block(1, [transaction_one])
     transaction_two = transfer(sodium, fixture, 0, 2, 2, 20_000)
     commit_two = reference.apply_block(2, [transaction_two])
+    for relative_path, expected in (
+        ("protocol.genesis.hex", fixture.genesis),
+        ("transaction-1.hex", transaction_one),
+        ("transaction-2.hex", transaction_two),
+    ):
+        encoded = (
+            REPOSITORY / "examples" / "devnet" / relative_path
+        ).read_text(encoding="ascii")
+        if bytes.fromhex(encoded) != expected:
+            raise RuntimeError(f"bundled {relative_path} differs from fixture")
 
     parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(
         prefix="cometbft-four-validator-", dir=parent
-    ) as temporary:
+    ) as temporary, tempfile.TemporaryDirectory(
+        prefix="protocol-stack-devnet-sockets-"
+    ) as socket_temporary:
         workspace = pathlib.Path(temporary)
         root = workspace / "network"
+        socket_root = pathlib.Path(socket_temporary) / "network"
         genesis = workspace / "protocol.genesis"
         genesis.write_bytes(fixture.genesis)
         network = Network(
@@ -268,6 +298,7 @@ def verify(
             bridge,
             node,
             root,
+            socket_root,
             genesis,
             reserve_port_block(),
         )
