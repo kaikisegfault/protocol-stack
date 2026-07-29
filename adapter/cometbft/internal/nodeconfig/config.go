@@ -37,6 +37,12 @@ type Endpoints struct {
 	P2P      string
 }
 
+type nodeOptions struct {
+	moniker          string
+	persistentPeers  string
+	allowDuplicateIP bool
+}
+
 func ParseIdentity(chainID, appHash string) (Identity, error) {
 	chain, err := parseHash(chainID)
 	if err != nil {
@@ -70,7 +76,9 @@ func Ensure(home string, identity Identity, endpoints Endpoints) error {
 	if !filepath.IsAbs(home) || filepath.Clean(home) == string(filepath.Separator) {
 		return errors.New("home must be an absolute non-root path")
 	}
-	config, err := nodeConfig(home, endpoints)
+	config, err := nodeConfig(home, endpoints, nodeOptions{
+		moniker: "protocol-stack-m1",
+	})
 	if err != nil {
 		return err
 	}
@@ -81,25 +89,36 @@ func Ensure(home string, identity Identity, endpoints Endpoints) error {
 	if err != nil {
 		return err
 	}
-	if _, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile()); err != nil {
-		return fmt.Errorf("node key: %w", err)
-	}
-	if err := ensureGenesis(config.GenesisFile(), identity, validator); err != nil {
+	if _, err := ensureNodeKey(config); err != nil {
 		return err
 	}
-	if err := writeConfig(config); err != nil {
+	expected, err := singleValidatorGenesis(identity, validator)
+	if err != nil {
+		return err
+	}
+	if err := ensureGenesis(config.GenesisFile(), expected); err != nil {
+		return err
+	}
+	if err := ensureConfig(config); err != nil {
 		return err
 	}
 	return nil
 }
 
-func nodeConfig(home string, endpoints Endpoints) (*cfg.Config, error) {
+func nodeConfig(
+	home string,
+	endpoints Endpoints,
+	options nodeOptions,
+) (*cfg.Config, error) {
 	if endpoints.ProxyApp == "" || endpoints.RPC == "" || endpoints.P2P == "" {
 		return nil, errors.New("proxy, RPC, and P2P addresses are required")
 	}
+	if options.moniker == "" {
+		return nil, errors.New("moniker is required")
+	}
 	config := cfg.DefaultConfig().SetRoot(home)
 	config.Version = CometBFTVersion
-	config.Moniker = "protocol-stack-m1"
+	config.Moniker = options.moniker
 	config.ProxyApp = endpoints.ProxyApp
 	config.ABCI = "socket"
 	config.RPC.ListenAddress = endpoints.RPC
@@ -108,6 +127,8 @@ func nodeConfig(home string, endpoints Endpoints) (*cfg.Config, error) {
 	config.P2P.ListenAddress = endpoints.P2P
 	config.P2P.PexReactor = false
 	config.P2P.AddrBookStrict = false
+	config.P2P.PersistentPeers = options.persistentPeers
+	config.P2P.AllowDuplicateIP = options.allowDuplicateIP
 	config.P2P.LibP2PConfig.Enabled = false
 	config.Mempool.Type = cfg.MempoolTypeFlood
 	config.StateSync.Enable = false
@@ -153,6 +174,18 @@ func ensureValidator(config *cfg.Config) (_ *privval.FilePV, err error) {
 	return validator, nil
 }
 
+func ensureNodeKey(config *cfg.Config) (*p2p.NodeKey, error) {
+	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
+	if err != nil {
+		return nil, fmt.Errorf("node key: %w", err)
+	}
+	if nodeKey.PrivKey == nil || nodeKey.PubKey() == nil ||
+		len(nodeKey.ID()) != p2p.IDByteLength*2 {
+		return nil, errors.New("node key is inconsistent")
+	}
+	return nodeKey, nil
+}
+
 func loadValidator(keyPath, statePath string) (*privval.FilePV, error) {
 	keyBytes, err := os.ReadFile(keyPath)
 	if err != nil {
@@ -181,11 +214,7 @@ func loadValidator(keyPath, statePath string) (*privval.FilePV, error) {
 	return &privval.FilePV{Key: key, LastSignState: state}, nil
 }
 
-func ensureGenesis(path string, identity Identity, validator *privval.FilePV) error {
-	expected, err := expectedGenesis(identity, validator)
-	if err != nil {
-		return err
-	}
+func ensureGenesis(path string, expected *types.GenesisDoc) error {
 	if fileExists(path) {
 		actual, err := readGenesis(path)
 		if err != nil {
@@ -202,7 +231,7 @@ func ensureGenesis(path string, identity Identity, validator *privval.FilePV) er
 	return nil
 }
 
-func expectedGenesis(
+func singleValidatorGenesis(
 	identity Identity,
 	validator *privval.FilePV,
 ) (*types.GenesisDoc, error) {
@@ -249,12 +278,49 @@ func readGenesis(path string) (*types.GenesisDoc, error) {
 	return &document, nil
 }
 
-func writeConfig(config *cfg.Config) (err error) {
-	defer recoverError("write config", &err)
+func ensureConfig(config *cfg.Config) error {
+	expected, err := configBytes(config)
+	if err != nil {
+		return err
+	}
 	path := filepath.Join(
 		config.RootDir, cfg.DefaultConfigDir, cfg.DefaultConfigFileName)
-	cfg.WriteConfigFile(path, config)
+	if fileExists(path) {
+		actual, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("read configuration: %w", err)
+		}
+		if !bytes.Equal(actual, expected) {
+			return errors.New("existing CometBFT configuration differs")
+		}
+		return nil
+	}
+	if err := os.WriteFile(path, expected, 0o644); err != nil {
+		return fmt.Errorf("write configuration: %w", err)
+	}
 	return nil
+}
+
+func configBytes(config *cfg.Config) (_ []byte, err error) {
+	path := filepath.Join(config.RootDir, ".protocol-stack-config.tmp")
+	if _, statErr := os.Lstat(path); statErr == nil {
+		return nil, errors.New("temporary configuration path is occupied")
+	} else if !errors.Is(statErr, os.ErrNotExist) {
+		return nil, fmt.Errorf("inspect temporary configuration path: %w", statErr)
+	}
+	defer func() {
+		removeErr := os.Remove(path)
+		if removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) && err == nil {
+			err = fmt.Errorf("remove temporary configuration: %w", removeErr)
+		}
+	}()
+	defer recoverError("render configuration", &err)
+	cfg.WriteConfigFile(path, config)
+	encoded, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read rendered configuration: %w", err)
+	}
+	return encoded, nil
 }
 
 func recoverError(operation string, target *error) {
