@@ -76,6 +76,9 @@ func Run(
 	}
 	for _, node := range devnet.Nodes {
 		if err := awaitUnix(ctx, events, node.ApplicationSocket); err != nil {
+			if ctx.Err() != nil {
+				return nil
+			}
 			return fmt.Errorf("node %d application readiness: %w", node.Index, err)
 		}
 	}
@@ -99,6 +102,9 @@ func Run(
 	}
 	for _, node := range devnet.Nodes {
 		if err := awaitTCP(ctx, events, node.ABCIPort); err != nil {
+			if ctx.Err() != nil {
+				return nil
+			}
 			return fmt.Errorf("node %d bridge readiness: %w", node.Index, err)
 		}
 	}
@@ -121,6 +127,9 @@ func Run(
 	}
 	health, err := awaitHealthy(ctx, events, devnet)
 	if err != nil {
+		if ctx.Err() != nil {
+			return nil
+		}
 		return err
 	}
 	fmt.Printf(

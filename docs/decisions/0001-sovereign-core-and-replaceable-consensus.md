@@ -99,6 +99,10 @@ Application sockets instead live in an owner-only, short-lived directory below
 the platform temporary directory, deterministically keyed by the persistent
 devnet root unless the operator supplies another absolute socket root. This
 avoids the platform Unix-domain path limit without moving any durable state.
+Although `create_empty_blocks` remains false, CometBFT may commit an empty
+block following an application-hash change. Canonical height changes the
+ledger root, so the independent integration model replays every observed
+intervening empty block instead of assuming fixed transfer heights.
 
 ## Compatibility and updates
 

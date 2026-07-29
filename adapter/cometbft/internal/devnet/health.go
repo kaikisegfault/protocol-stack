@@ -67,7 +67,6 @@ func CheckHealth(
 	client := newRPCClient()
 	statuses := make([]statusResult, nodeconfig.DevnetNodeCount)
 	networks := make([]netInfoResult, nodeconfig.DevnetNodeCount)
-	heads := make([]ApplicationHead, nodeconfig.DevnetNodeCount)
 	validators := make([]validatorsResult, nodeconfig.DevnetNodeCount)
 	var infos [nodeconfig.DevnetNodeCount]abciInfoResult
 
@@ -99,14 +98,9 @@ func CheckHealth(
 		); err != nil {
 			return NetworkHealth{}, fmt.Errorf("node %d: %w", index, err)
 		}
-		head, err := ReadApplicationHead(ctx, node.ApplicationSocket)
-		if err != nil {
-			return NetworkHealth{}, fmt.Errorf("node %d: %w", index, err)
-		}
-		heads[index] = head
 	}
 
-	health, err := compareHeads(statuses, infos, heads)
+	health, err := compareHeads(statuses, infos)
 	if err != nil {
 		return NetworkHealth{}, err
 	}

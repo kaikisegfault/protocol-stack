@@ -5,8 +5,8 @@ fixture. They are development-only values with publicly known signing seeds
 and must never hold real value.
 
 - `protocol.genesis.hex` is the canonical four-account synthetic genesis.
-- `transaction-1.hex` is a valid height-one transfer from the first funded
-  account with nonce `1`.
+- `transaction-1.hex` is a valid transfer from the first funded account with
+  nonce `1`.
 - `transaction-2.hex` is a valid next transfer from the same account with
   nonce `2`.
 

@@ -64,7 +64,7 @@ shutdown.
 
 In another terminal, require four healthy RPCs, a complete three-peer view at
 every validator, one equal-power validator set, and identical CometBFT, ABCI,
-and direct C++ application heads:
+and application heads:
 
 ```sh
 tools/devnet.sh health
@@ -91,6 +91,9 @@ tools/devnet.sh transaction examples/devnet/transaction-2.hex 1
 
 Use a different absolute `PROTOCOL_STACK_DEVNET_ROOT` to initialize a new
 network without deleting retained evidence. Set
+`PROTOCOL_STACK_DEVNET_SOCKET_ROOT` to the same absolute short-lived directory
+in every terminal when overriding the deterministic platform-temporary
+default. Set
 `PROTOCOL_STACK_DEVNET_BASE_P2P_PORT` when the default `27656..27688` loopback
 block is occupied. Every repeated start refuses partial homes, changed keys,
 changed genesis, or changed configuration.

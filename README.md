@@ -50,7 +50,9 @@ tools/devnet.sh transaction examples/devnet/transaction-2.hex 1
 
 The fixtures have public development keys and must never hold real value.
 `PROTOCOL_STACK_DEVNET_ROOT` selects a different persistent network directory,
-and `PROTOCOL_STACK_DEVNET_BASE_P2P_PORT` moves the fixed local port block.
+`PROTOCOL_STACK_DEVNET_SOCKET_ROOT` selects a shared short-lived socket
+directory for all terminals, and `PROTOCOL_STACK_DEVNET_BASE_P2P_PORT` moves
+the fixed local port block.
 
 Configure, build, test, and run both the single-node compatibility integration
 and the complete four-validator lifecycle with:

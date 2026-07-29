@@ -61,9 +61,10 @@ unexplained processes or files individually rather than deleting them.
 The entry point includes Go static analysis, the single-node compatibility
 path, and a four-validator full-mesh integration. The latter supervises twelve
 processes, checks all direct peers and validator sets, commits independently
-modelled signed transfers, compares every ABCI and direct durable C++ head,
-stops cleanly, restarts the retained network at height one, and continues at
-height two.
+modelled signed transfers, compares every ABCI head, stops cleanly, audits all
+four durable SQLite replicas directly through independent C++ application
+processes, restarts the retained network, independently models any intervening
+empty blocks, and continues at a later height.
 
 Long-running fuzzing, economic simulations, and multi-platform reproducibility
 checks may run separately, but their commands and latest evidence must be

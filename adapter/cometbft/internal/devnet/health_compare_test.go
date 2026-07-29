@@ -2,6 +2,7 @@ package devnet
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"testing"
 
@@ -11,12 +12,10 @@ import (
 func healthyFixtures() (
 	[]statusResult,
 	[nodeconfig.DevnetNodeCount]abciInfoResult,
-	[]ApplicationHead,
 	[]netInfoResult,
 	[]validatorsResult,
 ) {
 	statuses := make([]statusResult, nodeconfig.DevnetNodeCount)
-	heads := make([]ApplicationHead, nodeconfig.DevnetNodeCount)
 	networks := make([]netInfoResult, nodeconfig.DevnetNodeCount)
 	validators := make([]validatorsResult, nodeconfig.DevnetNodeCount)
 	var infos [nodeconfig.DevnetNodeCount]abciInfoResult
@@ -28,11 +27,10 @@ func healthyFixtures() (
 		statuses[index].NodeInfo.ID = fmt.Sprintf("node-%d", index)
 		statuses[index].NodeInfo.Network = "ps-test"
 		statuses[index].SyncInfo.LatestBlockHeight = "2"
-		statuses[index].SyncInfo.LatestAppHash = "AABB"
+		statuses[index].SyncInfo.LatestAppHash = hex.EncodeToString(root[:])
 		infos[index].Response.LastBlockHeight = "2"
 		infos[index].Response.LastBlockAppHash =
 			base64.StdEncoding.EncodeToString(root[:])
-		heads[index] = ApplicationHead{Height: 2, Root: root}
 		networks[index].NPeers = "3"
 		for peer := range nodeconfig.DevnetNodeCount {
 			if peer == index {
@@ -58,19 +56,19 @@ func healthyFixtures() (
 				validators[index].Validators, entry)
 		}
 	}
-	return statuses, infos, heads, networks, validators
+	return statuses, infos, networks, validators
 }
 
 func TestCompareHealthyNetwork(t *testing.T) {
-	statuses, infos, heads, networks, validators := healthyFixtures()
-	health, err := compareHeads(statuses, infos, heads)
+	statuses, infos, networks, validators := healthyFixtures()
+	health, err := compareHeads(statuses, infos)
 	if err != nil {
 		t.Fatalf("compare heads: %v", err)
 	}
 	if health.ChainID != "ps-test" ||
 		health.Height != 2 ||
 		health.HeaderHeight != 2 ||
-		len(health.HeaderAppHash) != 2 {
+		len(health.HeaderAppHash) != len(nodeconfig.Hash{}) {
 		t.Fatalf("unexpected health: %#v", health)
 	}
 	if err := comparePeers(statuses, networks); err != nil {
@@ -79,18 +77,36 @@ func TestCompareHealthyNetwork(t *testing.T) {
 	if err := compareValidators(validators); err != nil {
 		t.Fatalf("compare validators: %v", err)
 	}
+
+	for index := range nodeconfig.DevnetNodeCount {
+		statuses[index].SyncInfo.LatestBlockHeight = "0"
+		statuses[index].SyncInfo.LatestAppHash = ""
+		infos[index].Response.LastBlockHeight = "0"
+	}
+	if health, err := compareHeads(statuses, infos); err != nil ||
+		health.Height != 0 ||
+		len(health.HeaderAppHash) != 0 {
+		t.Fatalf("height-zero health = %#v, %v", health, err)
+	}
 }
 
 func TestCompareNetworkRejectsDivergence(t *testing.T) {
 	t.Run("head", func(t *testing.T) {
-		statuses, infos, heads, _, _ := healthyFixtures()
-		heads[3].Root[0] ^= 1
-		if _, err := compareHeads(statuses, infos, heads); err == nil {
-			t.Fatal("accepted divergent C++ head")
+		statuses, infos, _, _ := healthyFixtures()
+		infos[3].Response.LastBlockHeight = "3"
+		if _, err := compareHeads(statuses, infos); err == nil {
+			t.Fatal("accepted divergent ABCI head")
+		}
+	})
+	t.Run("header-hash-length", func(t *testing.T) {
+		statuses, infos, _, _ := healthyFixtures()
+		statuses[2].SyncInfo.LatestAppHash = "AA"
+		if _, err := compareHeads(statuses, infos); err == nil {
+			t.Fatal("accepted invalid header application hash")
 		}
 	})
 	t.Run("peer", func(t *testing.T) {
-		statuses, _, _, networks, _ := healthyFixtures()
+		statuses, _, networks, _ := healthyFixtures()
 		networks[2].Peers = networks[2].Peers[:2]
 		networks[2].NPeers = "2"
 		if err := comparePeers(statuses, networks); err == nil {
@@ -98,7 +114,7 @@ func TestCompareNetworkRejectsDivergence(t *testing.T) {
 		}
 	})
 	t.Run("validator", func(t *testing.T) {
-		_, _, _, _, validators := healthyFixtures()
+		_, _, _, validators := healthyFixtures()
 		validators[1].Validators[0].VotingPower = "11"
 		if err := compareValidators(validators); err == nil {
 			t.Fatal("accepted unequal validator power")
