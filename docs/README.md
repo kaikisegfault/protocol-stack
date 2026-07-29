@@ -46,3 +46,6 @@ immutable; compatible changes require a new version.
   receipt, and ordered block semantics.
 - `specifications/consensus-application-v1.md`: adapter-neutral ordering
   lifecycle, application results, durable commit, restart, and local framing.
+- `specifications/native-economy-simulation-v1.md`: versioned integer-only
+  accounting, authority, event, trace, and metric contract for the independent
+  M2 research simulator; it is not a consensus transition.
