@@ -88,7 +88,10 @@ def reserve_port_block() -> int:
     raise RuntimeError("unable to reserve four-validator port block")
 
 
-def start_network(network: Network, workspace: pathlib.Path) -> ManagedProcess:
+def start_network(
+    network: Network,
+    workspace: pathlib.Path,
+) -> tuple[ManagedProcess, dict[str, str]]:
     process = start_process(
         "four-validator-devnet",
         [
@@ -107,8 +110,7 @@ def start_network(network: Network, workspace: pathlib.Path) -> ManagedProcess:
         workspace,
     )
     try:
-        run_health(network)
-        return process
+        return process, run_health(network)
     except Exception as error:
         shutdown_error = ""
         try:
@@ -363,9 +365,8 @@ def verify(
             reserve_port_block(),
         )
 
-        first = start_network(network, workspace)
+        first, initial_health = start_network(network, workspace)
         try:
-            initial_health = run_health(network)
             latest = synchronize_reference(reference, initial_health, None)
             first_result = run_transaction(
                 network,
@@ -389,11 +390,11 @@ def verify(
             latest.resulting_state_root,
         )
 
-        second = start_network(network, workspace)
+        second, restart_health = start_network(network, workspace)
         try:
             latest = synchronize_reference(
                 reference,
-                run_health(network),
+                restart_health,
                 latest,
             )
             second_result = run_transaction(
