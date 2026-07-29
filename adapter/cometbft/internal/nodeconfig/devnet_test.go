@@ -18,6 +18,13 @@ func TestNewDevnet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new devnet: %v", err)
 	}
+	if !filepath.IsAbs(devnet.SocketRoot) ||
+		!strings.HasPrefix(
+			filepath.Base(devnet.SocketRoot),
+			"protocol-stack-devnet-",
+		) {
+		t.Fatalf("unexpected socket root %q", devnet.SocketRoot)
+	}
 	for index, node := range devnet.Nodes {
 		p2pPort := DefaultDevnetBaseP2PPort + index*devnetPortStride
 		if node.Index != index ||
@@ -25,7 +32,7 @@ func TestNewDevnet(t *testing.T) {
 			node.Home != filepath.Join(node.Root, "cometbft") ||
 			node.Database != filepath.Join(node.Root, "ledger.db") ||
 			node.ApplicationSocket != filepath.Join(
-				node.Root, "application.sock") ||
+				devnet.SocketRoot, fmt.Sprintf("node%d.sock", index)) ||
 			node.LogDirectory != filepath.Join(node.Root, "logs") ||
 			node.P2PPort != p2pPort ||
 			node.RPCPort != p2pPort+1 ||
@@ -35,6 +42,18 @@ func TestNewDevnet(t *testing.T) {
 			node.Endpoints.ProxyApp != loopbackEndpoint(p2pPort+2) {
 			t.Fatalf("node %d layout mismatch: %#v", index, node)
 		}
+	}
+
+	overlongSocketRoot := filepath.Join(
+		string(filepath.Separator),
+		strings.Repeat("s", maximumUnixSocketPath),
+	)
+	if _, err := NewDevnetWithSocketRoot(
+		root,
+		overlongSocketRoot,
+		DefaultDevnetBaseP2PPort,
+	); err == nil || !strings.Contains(err.Error(), "exceeds") {
+		t.Fatalf("overlong socket root error = %v", err)
 	}
 
 	for _, values := range []struct {
@@ -261,6 +280,18 @@ func TestEnsureDevnetRejectsPartialOrDuplicateKeys(t *testing.T) {
 		err := devnet.Ensure(testIdentity())
 		if err == nil || !strings.Contains(err.Error(), "incomplete") {
 			t.Fatalf("partial-home error = %v", err)
+		}
+	})
+	t.Run("ledger-without-home", func(t *testing.T) {
+		devnet := mustDevnet(t)
+		if err := os.MkdirAll(devnet.Nodes[0].Root, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		writeTestFile(t, devnet.Nodes[0].Database, []byte("not-a-ledger"))
+		err := devnet.Ensure(testIdentity())
+		if err == nil || !strings.Contains(
+			err.Error(), "ledger without a validator home") {
+			t.Fatalf("orphan-ledger error = %v", err)
 		}
 	})
 

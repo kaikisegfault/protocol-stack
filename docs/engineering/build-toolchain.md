@@ -45,14 +45,28 @@ The script checks the supported platform and host prerequisites, creates
 the exact CMake and Ninja wheels. It downloads the official Go 1.25.10 Linux
 x86-64 archive, verifies the SHA-256 accepted in ADR 0001, verifies the pinned
 Go module graph, runs all CometBFT adapter tests and vet, and builds the bridge,
-strict initializer, and pinned node commands with cgo disabled. CMake then
-downloads the official libsodium 1.0.22 and SQLite 3.53.3 archives,
-verifies their committed SHA-256 digests, builds them within the selected
-preset, builds the C++20 verification targets, and runs the C++ and Python
-suite through CTest. Finally, a process integration starts the real CometBFT
-node, bridge, and C++ application, commits a signed transfer, restarts the
-complete stack, commits the next height, and checks the durable application
-root.
+strict single-node initializer, four-validator supervisor, and pinned node
+commands with cgo disabled. CMake then downloads the official libsodium 1.0.22
+and SQLite 3.53.3 archives, verifies their committed SHA-256 digests, builds
+them within the selected preset, builds the C++20 verification targets, and
+runs the C++ and Python suite through CTest. Finally, the process integrations
+run both the single-node compatibility path and the twelve-process
+four-validator lifecycle. The latter checks exact peers and validator sets,
+commits a signed transfer, stops and restarts every replica, commits the next
+height, and compares all four durable application roots.
+
+For an operational devnet without running the test suite, this foreground
+command builds only missing runtime binaries and then starts the fixed local
+topology:
+
+```sh
+tools/devnet.sh start
+```
+
+Its first run still downloads and integrity-checks the required build,
+libsodium, SQLite, Go, and module inputs. This focused path is for operating the
+documented network; the complete hosted verification matrix remains the
+evidence gate for changes.
 
 The Python tests use only the standard library and the exact libsodium shared
 library produced by that build. They do not inspect or modify the user's
@@ -71,11 +85,15 @@ protocol-stack test harnesses.
 ## Cache and cleanup
 
 Tool wheels, the isolated virtual environment, the pinned Go toolchain, Go
-module and build caches, and the three integration binaries live under
+module and build caches, and the four Go runtime binaries live under
 `.cache/`. Each preset's configuration, downloaded dependency sources,
 compiled dependencies, and test artifacts live under `out/build/<preset>/`.
 Both roots are ignored by Git and may be deleted safely; the next verification
 run reconstructs them from committed versions and hashes.
+
+The ignored `.local/devnet` directory is different: it contains generated
+validator keys, CometBFT block stores, and four SQLite ledgers retained across
+operator restarts. `tools/clean-local.sh` deliberately does not remove it.
 
 The bootstrap deliberately does not share compiled dependency trees between
 presets because compiler selections and project instrumentation configurations

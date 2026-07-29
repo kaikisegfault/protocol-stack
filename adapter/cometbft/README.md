@@ -58,7 +58,9 @@ tools/devnet.sh start
 The first build downloads the pinned CMake, Ninja, Go, libsodium, SQLite, and
 Go-module inputs into ignored local caches. The persistent default network is
 under `.local/devnet`; its generated unencrypted validator keys are for local
-development only.
+development only. Application sockets use a deterministic short owner-only
+directory below the platform temporary directory and are removed after orderly
+shutdown.
 
 In another terminal, require four healthy RPCs, a complete three-peer view at
 every validator, one equal-power validator set, and identical CometBFT, ABCI,

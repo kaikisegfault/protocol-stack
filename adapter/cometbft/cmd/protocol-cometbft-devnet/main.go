@@ -16,8 +16,9 @@ import (
 )
 
 type layoutFlags struct {
-	root     string
-	basePort int
+	root       string
+	socketRoot string
+	basePort   int
 }
 
 func main() {
@@ -47,6 +48,12 @@ func addLayoutFlags(flags *flag.FlagSet) *layoutFlags {
 	result := &layoutFlags{}
 	flags.StringVar(
 		&result.root, "root", "", "absolute persistent devnet root")
+	flags.StringVar(
+		&result.socketRoot,
+		"socket-root",
+		"",
+		"optional absolute ephemeral Unix-socket root",
+	)
 	flags.IntVar(
 		&result.basePort,
 		"base-p2p-port",
@@ -57,6 +64,13 @@ func addLayoutFlags(flags *flag.FlagSet) *layoutFlags {
 }
 
 func (values *layoutFlags) devnet() (nodeconfig.Devnet, error) {
+	if values.socketRoot != "" {
+		return nodeconfig.NewDevnetWithSocketRoot(
+			values.root,
+			values.socketRoot,
+			values.basePort,
+		)
+	}
 	return nodeconfig.NewDevnet(values.root, values.basePort)
 }
 
