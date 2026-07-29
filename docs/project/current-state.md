@@ -4,20 +4,39 @@ Last updated: 2026-07-29
 
 ## Phase
 
-M2 — Native economy specification and simulator. M1 — Sovereign Devnet Alpha
-is complete: the deterministic C++ ledger, SQLite persistence, headless
-application, stateless ABCI++ bridge, pinned CometBFT node, and reproducible
-four-validator foreground devnet are merged and verified. Issue #32 closed
-through PR #33 as `141482c`; exact final-head Actions run 30450907381 and
-post-merge run 30451381375 passed the full compiler, sanitizer, differential,
-persistence, single-node, and four-validator matrix. No M1 implementation
-branch remains. The nearest outcome is a simulation-first specification of the
-native economy's canonical value-flow model and simulator contract before any
-numerical parameter or C++ economic implementation is accepted.
+M2 — Native economy specification and simulator. The first M2 slice now
+defines and independently executes the native asset's complete value-flow
+inventory across accounts, capped issuance, fees, treasury, escrows, bonded
+and unbonding stake, validator/node claims, and penalties. Issue #35 and draft
+PR #36 contain the accepted research contract, standard-library Python
+simulator, fixed fixture, seeded study, and exact candidate evidence. No
+production allocation, rate, curve, threshold, authority proof, or C++
+economic transition is accepted. The next clean session should begin the
+validator/node eligibility, lifecycle, and reward-entitlement contract needed
+before meaningful parameter sweeps.
 
 ## Verified facts
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #35 and PR #36 select typed protocol-owned custody, capped issuance
+  only into treasury, explicit capabilities, height-derived epochs, pull-based
+  validator/node claims, and penalty quarantine followed by explicit treasury
+  routing. ADR 0008 records the primary-source research, alternatives,
+  consequences, and non-consensus compatibility boundary.
+- `native-economy-simulation-v1.md` fixes a strict integer-only research
+  manifest, 16 ordered event kinds, checked `u64` arithmetic, ordinary-failure
+  atomicity, balanced journals, canonical JSON and SHA-256 trace domains, and
+  exact integer/rational metrics. It does not change M1 bytes, state,
+  persistence, ABCI behavior, or supply.
+- The independent `simulation/native_economy` package imports only Python's
+  standard library and never invokes C++, a node, network data, wall clock, or
+  Python randomness during replay. Its `SplitMix64-v1` generator emits
+  reviewable fixed events; fixture values are explicitly non-production.
+- The fixed all-bucket trace digest is
+  `41e956350c63970fa40378703c1b497801d28d095b756338efac1a1b558a1098`.
+  The reproducible 24-seed, 2,112-event study accepted every event, conserved
+  every issued unit, and produced study digest
+  `13e5f4dab789137b99e87197bb8c735e200ec9892e823e8b26a0bac1827d98f1`.
 - F0 merged to `main` through PR #3 on 2026-07-23.
 - The reproducible build/toolchain slice merged through PR #7 on 2026-07-23;
   all four GitHub compiler/sanitizer jobs passed.
@@ -517,26 +536,45 @@ numerical parameter or C++ economic implementation is accepted.
   repeating GCC and Clang debug plus both ASan/UBSan jobs with both live
   integrations. The rebase-merged `main` commit `141482c` passed the same four
   post-merge jobs in run 30451381375.
+- Direct focused execution passes all 18 native-economy tests: two fixed-model
+  tests, ten validation/boundary/atomicity tests, and six deterministic
+  scenario/CLI/study tests. Python compilation, strict fixture JSON parsing,
+  shell syntax, `git diff --check`, and a standard-library import audit pass.
+- Initial implementation candidate `1ae3aad` exposed one fresh-process
+  Python 3.12 failure in Actions run 30454311742: the package file `types.py`
+  shadowed the standard-library module when the generator ran directly. It
+  was renamed to `domain.py`; the same subprocess regression is retained in
+  the scenario suite.
+- Corrected code candidate `723c388` passed exact hosted Actions run
+  30454770955. GCC debug, Clang debug, and GCC ASan/UBSan passed 29/29 CTest
+  targets; Clang ASan/UBSan passed 35/35 including all six bounded fuzz
+  targets. All four jobs also passed Go module verification, tests, vet, four
+  cgo-free builds, the 10,000-sequence differential suite, persistence and
+  recovery coverage, and both live CometBFT integrations. The four-validator
+  path again completed two signed transfers, a full restart, and four durable
+  C++ replica audits per stop.
 
 ## Exact next action
 
-From clean synchronized `main`, create and map the first M2 issue for a
-simulation-first native-economy contract. Specify the canonical economic state
-inventory and conserved value-flow equation across accounts, authorized
-issuance, fee pool, treasury, escrows, bonded stake, validator/node rewards,
-and penalties; define deterministic integer/time inputs, authority boundaries,
-simulation trace/scenario/metric outputs, and compatibility rules. Research
-credible accounting and distribution alternatives, record the selected
-defaults and consequences before implementation, and deliberately leave all
-production allocations, rates, curves, and thresholds unresolved.
+In the next clean session, first reconcile this handoff with GitHub and the
+post-merge matrix. Then create one bounded M2 issue for a simulation-first
+validator/node participation contract: specify registration and exit,
+activation and unbond timing, jail/recovery and terminal removal, reward
+eligibility and contribution inputs, bounded authority proofs, deterministic
+epoch processing, and the exact interface by which validator and node
+entitlements fund the already-specified pull-claim buckets. Research and
+simulate that lifecycle before selecting reward rates, stake thresholds,
+penalty sizes, production actors, or C++ transitions.
 
 ## Open autonomous decisions
 
-- M2 economic bucket ownership, authorized issuance, fee distribution,
-  reward-claim versus direct-payout mechanics, epoch/height scheduling,
-  penalty disposition, and simulator scenario/metric design are unresolved.
-  Resolve them through research, a specification, ADR evidence, and the
-  independent simulator before accepting numerical parameters or C++ behavior.
+- Validator and node registration, eligibility, lifecycle, contribution
+  evidence, reward weighting, and authority-proof semantics remain unresolved.
+- All production issuance/allocation schedules, fee and reward shares, epoch
+  and unbond durations, stake thresholds, penalty sizes, treasury actors, and
+  emergency/upgrade capabilities remain unresolved. Resolve them through
+  additional independent simulations, specifications, ADR evidence, and
+  review before accepting C++ behavior.
 
 ## Blockers
 
