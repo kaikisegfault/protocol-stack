@@ -7,13 +7,14 @@ Last updated: 2026-07-29
 M2 — Native economy specification and simulator. The first M2 slice now
 defines and independently executes the native asset's complete value-flow
 inventory across accounts, capped issuance, fees, treasury, escrows, bonded
-and unbonding stake, validator/node claims, and penalties. Issue #35 and draft
-PR #36 contain the accepted research contract, standard-library Python
-simulator, fixed fixture, seeded study, and exact candidate evidence. No
-production allocation, rate, curve, threshold, authority proof, or C++
-economic transition is accepted. The next clean session should begin the
-validator/node eligibility, lifecycle, and reward-entitlement contract needed
-before meaningful parameter sweeps.
+and unbonding stake, validator/node claims, and penalties. Issue #35 closed
+through merged PR #36 as `78a87d1`; exact final-head Actions run 30455275819
+and post-merge run 30455765913 passed the full compiler, sanitizer,
+differential, persistence, single-node, four-validator, and simulator matrix.
+No delivery branch remains. No production allocation, rate, curve, threshold,
+authority proof, or C++ economic transition is accepted. The next clean
+session should begin the validator/node eligibility, lifecycle, and
+reward-entitlement contract needed before meaningful parameter sweeps.
 
 ## Verified facts
 
@@ -23,6 +24,9 @@ before meaningful parameter sweeps.
   validator/node claims, and penalty quarantine followed by explicit treasury
   routing. ADR 0008 records the primary-source research, alternatives,
   consequences, and non-consensus compatibility boundary.
+- PR #36 rebase-merged the completed issue #35 slice into `main` as
+  `78a87d1` on 2026-07-29. Issue #35 is closed, PR #36 is merged, and its
+  delivery branch and remote-tracking reference are removed.
 - `native-economy-simulation-v1.md` fixes a strict integer-only research
   manifest, 16 ordered event kinds, checked `u64` arithmetic, ordinary-failure
   atomicity, balanced journals, canonical JSON and SHA-256 trace domains, and
@@ -553,6 +557,10 @@ before meaningful parameter sweeps.
   recovery coverage, and both live CometBFT integrations. The four-validator
   path again completed two signed transfers, a full restart, and four durable
   C++ replica audits per stop.
+- Final PR #36 head `d12890d` passed exact hosted Actions run 30455275819,
+  repeating all four jobs and both live integrations. The rebase-merged
+  `main` commit `78a87d1` passed the same post-merge matrix in run
+  30455765913.
 
 ## Exact next action
 
