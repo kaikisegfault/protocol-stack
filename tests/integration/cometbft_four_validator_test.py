@@ -24,6 +24,7 @@ from model import BlockCommit, ReferenceLedger, state_root  # noqa: E402
 from pinned_sodium import Sodium  # noqa: E402
 
 NODE_COUNT = 4
+COMMAND_TIMEOUT_SECONDS = 100
 PORT_OFFSETS = tuple(
     offset
     for index in range(NODE_COUNT)
@@ -143,12 +144,12 @@ def run_health(network: Network) -> dict[str, str]:
                 "health",
                 *network.common_arguments(),
                 "-timeout",
-                "45s",
+                "90s",
             ],
             check=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            timeout=50,
+            timeout=COMMAND_TIMEOUT_SECONDS,
         )
     except subprocess.CalledProcessError as error:
         raise RuntimeError(
@@ -190,12 +191,12 @@ def run_transaction(
                 "-tx-file",
                 transaction_path,
                 "-timeout",
-                "45s",
+                "90s",
             ],
             check=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            timeout=50,
+            timeout=COMMAND_TIMEOUT_SECONDS,
         )
     except subprocess.CalledProcessError as error:
         raise RuntimeError(

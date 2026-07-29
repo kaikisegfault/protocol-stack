@@ -12,6 +12,8 @@ import (
 	"github.com/kaikisegfault/protocol-stack/adapter/cometbft/internal/nodeconfig"
 )
 
+const networkReadinessTimeout = 90 * time.Second
+
 // Binaries are the three process implementations used by every replica.
 type Binaries struct {
 	Application string
@@ -272,7 +274,7 @@ func awaitHealthy(
 	events <-chan childExit,
 	devnet nodeconfig.Devnet,
 ) (NetworkHealth, error) {
-	timer := time.NewTimer(45 * time.Second)
+	timer := time.NewTimer(networkReadinessTimeout)
 	defer timer.Stop()
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()

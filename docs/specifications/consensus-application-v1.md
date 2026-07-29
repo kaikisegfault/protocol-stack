@@ -134,7 +134,10 @@ applications, then all four bridges, then all four CometBFT nodes. An
 unexpected child exit is fatal and triggers bounded teardown of the remaining
 children. SIGINT and SIGTERM perform orderly bounded teardown in the reverse
 phase order. The supervisor does not daemonize, write a detached process ID,
-or report readiness while a replica is unavailable.
+or report readiness while a replica is unavailable. Application and bridge
+endpoint phases each have a 20-second bound; complete network convergence has
+a 90-second bound so sanitizer instrumentation remains inside the same tested
+lifecycle without making readiness unbounded.
 
 Network health requires all of the following at one observation point:
 
