@@ -210,9 +210,9 @@ Fields: `source`, `destination`, `amount`.
 
 The actor must equal `source`. Source and destination must differ. The source
 account must exist and cover amount; destination addition must not overflow.
-Success debits the source account and credits the destination, creating a
-zero-sequence research account if absent. The simulator models value flow, not
-M1 signatures or nonces.
+Success debits the source account and credits the destination, creating the
+destination account if absent. The simulator models value flow, not M1
+signatures or nonces.
 
 ### `charge_fee`
 
@@ -402,9 +402,9 @@ The canonical state includes accepted event identifiers in sorted order. It
 does not serialize cached totals, derived epoch, metrics, or manifest.
 
 Each trace record contains event index, identifier, kind, acceptance boolean,
-result name, height and epoch before and after, journal, and resulting state
-digest. A failed record therefore has identical before/after height and state
-digest.
+result name, height and epoch before and after, journal,
+`state_digest_before`, and `state_digest_after`. A failed record therefore has
+identical before/after height and state digest.
 
 The result object contains:
 
@@ -459,11 +459,21 @@ Research tooling must not interpret any metric as a production recommendation.
 
 ## Deterministic scenarios
 
-A scenario generator must name its algorithm and seed. Version one uses an
-original, fully specified `SplitMix64-v1` integer stream and deterministic
-index selection; it does not use Python's `random` module. Its output is a
-manifest and ordinary event array which can be stored, reviewed, and replayed
-without the generator.
+A scenario generator and its invocation must name the algorithm and seed.
+Version one uses `SplitMix64-v1`. Given a `u64` state, each next value is:
+
+```text
+state = (state + 0x9e3779b97f4a7c15) mod 2^64
+z = state
+z = ((z xor (z >> 30)) * 0xbf58476d1ce4e5b9) mod 2^64
+z = ((z xor (z >> 27)) * 0x94d049bb133111eb) mod 2^64
+output = z xor (z >> 31)
+```
+
+Bounded selection is `output mod upper_bound` for a positive upper bound. The
+generator does not use Python's `random` module. Its output is a manifest and
+ordinary event array which can be stored, reviewed, and replayed without the
+generator.
 
 The fixed fixture and seeded tests must cover every bucket, issuance at and
 beyond capacity, every authority class, fee remainder, validator and node

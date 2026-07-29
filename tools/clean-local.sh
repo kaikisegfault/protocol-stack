@@ -30,7 +30,7 @@ clean_tree "$repo_root/.cache/go-build"
 clean_tree "$repo_root/.cache/go-bin"
 clean_read_only_tree "$repo_root/.cache/go-mod"
 
-for python_root in "$repo_root/tools" "$repo_root/tests"; do
+for python_root in "$repo_root/simulation" "$repo_root/tools" "$repo_root/tests"; do
   find "$python_root" -type f \
     \( -name '*.pyc' -o -name '*.pyo' \) -delete
   find "$python_root" -depth -type d -name __pycache__ -empty -delete

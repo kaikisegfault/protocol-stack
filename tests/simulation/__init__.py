@@ -1,0 +1,1 @@
+"""Native-economy simulation tests."""
