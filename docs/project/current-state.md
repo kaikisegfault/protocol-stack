@@ -1,24 +1,61 @@
 # Current state
 
-Last updated: 2026-07-29
+Last updated: 2026-07-30
 
 ## Phase
 
-M2 — Native economy specification and simulator. The first M2 slice now
-defines and independently executes the native asset's complete value-flow
-inventory across accounts, capped issuance, fees, treasury, escrows, bonded
-and unbonding stake, validator/node claims, and penalties. Issue #35 closed
-through merged PR #36 as `78a87d1`; exact final-head Actions run 30455275819
-and post-merge run 30455765913 passed the full compiler, sanitizer,
-differential, persistence, single-node, four-validator, and simulator matrix.
-No delivery branch remains. No production allocation, rate, curve, threshold,
-authority proof, or C++ economic transition is accepted. The next clean
-session should begin the validator/node eligibility, lifecycle, and
-reward-entitlement contract needed before meaningful parameter sweeps.
+M2 — Native economy specification and simulator. The second M2 slice now
+defines and independently executes validator and resource-node registration,
+delayed activation and exit, bond evidence, recoverable jail, terminal
+removal, capability-scoped contribution results, integer entitlements, and
+ordinary native-economy claim funding. Issue #38 closed through PR #39 as
+`19f5d80`; exact final-head Actions run 30575635500 passed, and post-merge run
+30576149775 passed on the unchanged retry after exposing a listener-port race.
+Issue #40 and PR #41 removed that race and merged as `bdaa290`; exact candidate
+run 30577119242 and post-merge run 30577633067 passed the full compiler,
+sanitizer, fuzz, differential, persistence, single-node, four-validator, and
+simulator matrix. No delivery branch remains. No production allocation, rate,
+weight, duration, threshold, authority proof, verifier, or C++ economic
+transition is accepted. The next clean session should specify and simulate
+capability-scoped threshold authority results, rotation, and recovery before
+adversarial economic parameter sweeps.
 
 ## Verified facts
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #38 and PR #39 select stable participant identities and tombstones,
+  delayed lifecycle transitions, a recoverable jail overlay, terminal removal,
+  capability-scoped verifier results, participant-scoped floor entitlements,
+  retained budget remainder, and ordinary native-economy reward allocation.
+  ADR 0009 records the primary-source research, alternatives, consequences,
+  and research-only compatibility boundary.
+- `participation-simulation-v1.md` fixes a strict integer-only manifest,
+  fifteen ordered event kinds, global accepted event and proof identifiers,
+  checked `u64` arithmetic, ordinary-failure atomicity, exact lifecycle and
+  reward-settlement precedence, canonical JSON, SHA-256 trace domains, and an
+  all-or-nothing native-economy funding adapter.
+- The independent `simulation/participation` package owns no asset, balance,
+  bond, claim, or reward pool. It imports only Python's standard library and
+  the independent native-economy model, and replay invokes no C++, node,
+  network data, wall clock, Python randomness, raw telemetry, or external
+  verifier.
+- The reviewed 34-event participation fixture accepts every event and freezes
+  trace digest
+  `22c2b495457a13d7a83837ceeb98893b6df148b9ab99761763744dcbbb07b7e3`.
+  It reaches active, jailed, recovered, exited, and removed states, settles
+  both roles, and retains exact integer remainder.
+- The reproducible 24-seed participation study accepts all 2,184 events and
+  648 unique authority proof identifiers, funds every emitted native-economy
+  allocation, and freezes study digest
+  `a76ab6f63132d99ae80809aa1d8f9e8d61763218a7414e8d8efd5e3000a68a57`.
+  Its 192 role-epoch budgets allocate 11,727 of 11,900 research units and
+  retain 173; these fixtures are not production recommendations.
+- Issue #40 and PR #41 harden the four-validator test harness after post-merge
+  run 30576149775 selected future listener ports from Linux's ephemeral client
+  range. The harness now reads the host range, probes all twelve required
+  offsets in one of at most 256 disjoint non-ephemeral blocks, and fails
+  clearly if no block is available. Protocol behavior, topology, and operator
+  port defaults are unchanged.
 - Issue #35 and PR #36 select typed protocol-owned custody, capped issuance
   only into treasury, explicit capabilities, height-derived epochs, pull-based
   validator/node claims, and penalty quarantine followed by explicit treasury
@@ -561,23 +598,54 @@ reward-entitlement contract needed before meaningful parameter sweeps.
   repeating all four jobs and both live integrations. The rebase-merged
   `main` commit `78a87d1` passed the same post-merge matrix in run
   30455765913.
+- Direct focused execution passes all 19 participation tests: three fixed
+  model/funding tests, six validation/boundary/adapter tests, four lifecycle
+  tests, and six deterministic scenario/CLI/study tests. All 18 existing
+  native-economy tests, Python compilation, strict fixture parsing, the
+  standard-library/local import audit, and `git diff --check` pass.
+- PR #39 final head `06e0337` passed exact hosted Actions run 30575635500.
+  GCC debug, Clang debug, and GCC ASan/UBSan passed 33/33 CTest targets; Clang
+  ASan/UBSan passed 39/39 including all six bounded fuzz targets. Every job
+  also passed pinned dependency and Go gates, the 10,000-sequence differential
+  suite, persistence and recovery coverage, and both live CometBFT
+  integrations.
+- Participation merge `19f5d80` passed post-merge run 30576149775 on unchanged
+  retry attempt two. Attempt one passed all registered tests and three complete
+  jobs but Clang debug's four-validator startup found node0 RPC port 58304
+  already in use. The port was inside Linux's ephemeral range and had been
+  released after probing; issue #40 retained this evidence instead of treating
+  a green retry as resolution.
+- Focused issue #40 checks pass three port-allocation tests, Python compilation,
+  direct twelve-port selection outside local range `32768..60999`, and
+  `git diff --check`.
+- PR #41 final head `6b1b720` passed exact hosted Actions run 30577119242.
+  GCC debug, Clang debug, and GCC ASan/UBSan passed 34/34 CTest targets; Clang
+  ASan/UBSan passed 40/40 including all six bounded fuzz targets. The new
+  allocator target and both live integrations passed in every job.
+- The rebase-merged final `main` commit `bdaa290` passed post-merge Actions run
+  30577633067 with the same 34/34 or 40/40 matrix. All four jobs completed the
+  four-validator transfer/restart path and four durable C++ audits per stop
+  without a listener collision.
 
 ## Exact next action
 
 In the next clean session, first reconcile this handoff with GitHub and the
 post-merge matrix. Then create one bounded M2 issue for a simulation-first
-validator/node participation contract: specify registration and exit,
-activation and unbond timing, jail/recovery and terminal removal, reward
-eligibility and contribution inputs, bounded authority proofs, deterministic
-epoch processing, and the exact interface by which validator and node
-entitlements fund the already-specified pull-claim buckets. Research and
-simulate that lifecycle before selecting reward rates, stake thresholds,
-penalty sizes, production actors, or C++ transitions.
+authority-result envelope shared by native-economy and participation
+capabilities. Research and specify versioned authority sets, distinct-member
+thresholds, domain-separated action digests, chain/module/capability/epoch and
+deadline binding, result and action replay identities, scheduled rotation,
+revocation, recovery, and emergency containment. Simulate compromised,
+colluding, stale, duplicated, cross-capability, and offline members without
+implementing cryptographic primitives or choosing production principals or
+quorums. Establish this deterministic authorization boundary before
+adversarial participation/economic parameter families or C++ transitions.
 
 ## Open autonomous decisions
 
-- Validator and node registration, eligibility, lifecycle, contribution
-  evidence, reward weighting, and authority-proof semantics remain unresolved.
+- Production authority membership, threshold sizes, signature collection,
+  verifier rotation/recovery, contribution measurement, and evidence appraisal
+  remain unresolved.
 - All production issuance/allocation schedules, fee and reward shares, epoch
   and unbond durations, stake thresholds, penalty sizes, treasury actors, and
   emergency/upgrade capabilities remain unresolved. Resolve them through
