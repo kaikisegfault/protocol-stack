@@ -757,6 +757,30 @@ add_test(
     "${Python3_EXECUTABLE}"
     "${PROJECT_SOURCE_DIR}/tests/simulation/native_economy_scenario_test.py"
 )
+add_test(
+  NAME participation-model
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/participation_model_test.py"
+)
+add_test(
+  NAME participation-errors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/participation_errors_test.py"
+)
+add_test(
+  NAME participation-lifecycle
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/participation_lifecycle_test.py"
+)
+add_test(
+  NAME participation-scenarios
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/participation_scenario_test.py"
+)
 set_tests_properties(
   protocol-primitives-python
   ledger-transition-python

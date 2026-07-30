@@ -9,6 +9,8 @@
 - `project/current-state.md`: verified handoff between sessions.
 - `project/native-economy-simulation-report-v1.md`: reproducible M2 seeded
   accounting study and its explicitly non-production interpretation.
+- `project/participation-simulation-report-v1.md`: reproducible M2 validator
+  and node lifecycle, entitlement, and claim-funding study.
 
 ## Architecture
 
@@ -51,6 +53,9 @@ immutable; compatible changes require a new version.
 - `specifications/native-economy-simulation-v1.md`: versioned integer-only
   accounting, authority, event, trace, and metric contract for the independent
   M2 research simulator; it is not a consensus transition.
+- `specifications/participation-simulation-v1.md`: validator and resource-node
+  lifecycle, bounded verifier-result, entitlement, and native-claim funding
+  contract for M2 research.
 
-The corresponding executable research tool and reviewed fixture live in
-`../simulation/native_economy/`.
+The corresponding executable research tools and reviewed fixtures live in
+`../simulation/native_economy/` and `../simulation/participation/`.

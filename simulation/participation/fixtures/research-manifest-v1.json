@@ -1,0 +1,48 @@
+{
+  "authorities": {
+    "clock": "clock",
+    "enforcement": "enforcement",
+    "lifecycle": "lifecycle",
+    "registration": "registrar",
+    "reward": "reward",
+    "stake": "stake_verifier"
+  },
+  "contributions": {
+    "nodes": {
+      "compute": {
+        "verifier": "compute_verifier",
+        "weight": 5
+      },
+      "storage": {
+        "verifier": "storage_verifier",
+        "weight": 2
+      }
+    },
+    "validators": {
+      "proposal": {
+        "verifier": "consensus_verifier",
+        "weight": 7
+      },
+      "vote": {
+        "verifier": "consensus_verifier",
+        "weight": 3
+      }
+    }
+  },
+  "genesis": {
+    "height": 0
+  },
+  "parameters": {
+    "activation_delay_epochs": 1,
+    "epoch_length": 2,
+    "exit_delay_epochs": 1,
+    "max_jail_epochs": 3,
+    "max_participants": 8,
+    "max_units_per_participant_epoch": 20,
+    "max_units_per_proof": 10,
+    "removal_hold_epochs": 2,
+    "validator_minimum_bond": 10
+  },
+  "research_only": true,
+  "schema": "protocol-stack/participation-simulation-manifest/v1"
+}

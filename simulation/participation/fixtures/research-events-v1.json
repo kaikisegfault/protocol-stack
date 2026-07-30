@@ -1,0 +1,310 @@
+[
+  {
+    "actor": "registrar",
+    "bond_id": "bond_a",
+    "evidence_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "height": 0,
+    "id": "register_validator_a",
+    "kind": "register_validator",
+    "owner": "alice",
+    "participant": "validator_a",
+    "payout_account": "alice",
+    "proof_id": "proof_register_validator_a"
+  },
+  {
+    "actor": "registrar",
+    "bond_id": "bond_b",
+    "evidence_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "height": 0,
+    "id": "register_validator_b",
+    "kind": "register_validator",
+    "owner": "bob",
+    "participant": "validator_b",
+    "payout_account": "bob",
+    "proof_id": "proof_register_validator_b"
+  },
+  {
+    "actor": "registrar",
+    "evidence_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "height": 0,
+    "id": "register_node_a",
+    "kind": "register_node",
+    "owner": "carol",
+    "participant": "node_a",
+    "payout_account": "carol",
+    "proof_id": "proof_register_node_a"
+  },
+  {
+    "actor": "registrar",
+    "evidence_digest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "height": 0,
+    "id": "register_node_b",
+    "kind": "register_node",
+    "owner": "dave",
+    "participant": "node_b",
+    "payout_account": "dave",
+    "proof_id": "proof_register_node_b"
+  },
+  {
+    "actor": "stake_verifier",
+    "amount": 10,
+    "bond_id": "bond_a",
+    "evidence_digest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "height": 0,
+    "id": "confirm_bond_a",
+    "kind": "confirm_bond",
+    "participant": "validator_a",
+    "proof_id": "proof_confirm_bond_a"
+  },
+  {
+    "actor": "stake_verifier",
+    "amount": 20,
+    "bond_id": "bond_b",
+    "evidence_digest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "height": 0,
+    "id": "confirm_bond_b",
+    "kind": "confirm_bond",
+    "participant": "validator_b",
+    "proof_id": "proof_confirm_bond_b"
+  },
+  {
+    "actor": "clock",
+    "height": 0,
+    "id": "advance_1",
+    "kind": "advance_height",
+    "to_height": 1
+  },
+  {
+    "actor": "clock",
+    "height": 1,
+    "id": "advance_2",
+    "kind": "advance_height",
+    "to_height": 2
+  },
+  {
+    "actor": "lifecycle",
+    "height": 2,
+    "id": "activate_validator_a",
+    "kind": "activate",
+    "participant": "validator_a"
+  },
+  {
+    "actor": "lifecycle",
+    "height": 2,
+    "id": "activate_validator_b",
+    "kind": "activate",
+    "participant": "validator_b"
+  },
+  {
+    "actor": "lifecycle",
+    "height": 2,
+    "id": "activate_node_a",
+    "kind": "activate",
+    "participant": "node_a"
+  },
+  {
+    "actor": "lifecycle",
+    "height": 2,
+    "id": "activate_node_b",
+    "kind": "activate",
+    "participant": "node_b"
+  },
+  {
+    "actor": "consensus_verifier",
+    "contribution_kind": "vote",
+    "epoch": 1,
+    "evidence_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+    "height": 2,
+    "id": "attest_validator_a",
+    "kind": "attest_contribution",
+    "participant": "validator_a",
+    "proof_id": "proof_vote_a",
+    "role": "validator",
+    "units": 3
+  },
+  {
+    "actor": "consensus_verifier",
+    "contribution_kind": "vote",
+    "epoch": 1,
+    "evidence_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+    "height": 2,
+    "id": "attest_validator_b",
+    "kind": "attest_contribution",
+    "participant": "validator_b",
+    "proof_id": "proof_vote_b",
+    "role": "validator",
+    "units": 1
+  },
+  {
+    "actor": "storage_verifier",
+    "contribution_kind": "storage",
+    "epoch": 1,
+    "evidence_digest": "3333333333333333333333333333333333333333333333333333333333333333",
+    "height": 2,
+    "id": "attest_node_a",
+    "kind": "attest_contribution",
+    "participant": "node_a",
+    "proof_id": "proof_storage_a",
+    "role": "node",
+    "units": 2
+  },
+  {
+    "actor": "storage_verifier",
+    "contribution_kind": "storage",
+    "epoch": 1,
+    "evidence_digest": "4444444444444444444444444444444444444444444444444444444444444444",
+    "height": 2,
+    "id": "attest_node_b",
+    "kind": "attest_contribution",
+    "participant": "node_b",
+    "proof_id": "proof_storage_b",
+    "role": "node",
+    "units": 1
+  },
+  {
+    "actor": "enforcement",
+    "evidence_digest": "5555555555555555555555555555555555555555555555555555555555555555",
+    "height": 2,
+    "id": "jail_node_b",
+    "kind": "jail",
+    "participant": "node_b",
+    "proof_id": "proof_jail_node_b",
+    "until_epoch": 2
+  },
+  {
+    "actor": "clock",
+    "height": 2,
+    "id": "advance_3",
+    "kind": "advance_height",
+    "to_height": 3
+  },
+  {
+    "actor": "clock",
+    "height": 3,
+    "id": "advance_4",
+    "kind": "advance_height",
+    "to_height": 4
+  },
+  {
+    "actor": "dave",
+    "height": 4,
+    "id": "request_recovery_node_b",
+    "kind": "request_recovery",
+    "participant": "node_b"
+  },
+  {
+    "actor": "lifecycle",
+    "height": 4,
+    "id": "recover_node_b",
+    "kind": "recover",
+    "participant": "node_b"
+  },
+  {
+    "actor": "reward",
+    "amount": 10,
+    "epoch": 1,
+    "height": 4,
+    "id": "budget_validators",
+    "kind": "set_reward_budget",
+    "role": "validator"
+  },
+  {
+    "actor": "reward",
+    "amount": 5,
+    "epoch": 1,
+    "height": 4,
+    "id": "budget_nodes",
+    "kind": "set_reward_budget",
+    "role": "node"
+  },
+  {
+    "actor": "reward",
+    "epoch": 1,
+    "height": 4,
+    "id": "settle_validator_a",
+    "kind": "settle_entitlement",
+    "participant": "validator_a",
+    "role": "validator"
+  },
+  {
+    "actor": "reward",
+    "epoch": 1,
+    "height": 4,
+    "id": "settle_validator_b",
+    "kind": "settle_entitlement",
+    "participant": "validator_b",
+    "role": "validator"
+  },
+  {
+    "actor": "reward",
+    "epoch": 1,
+    "height": 4,
+    "id": "finalize_validators",
+    "kind": "finalize_budget",
+    "role": "validator"
+  },
+  {
+    "actor": "reward",
+    "epoch": 1,
+    "height": 4,
+    "id": "settle_node_a",
+    "kind": "settle_entitlement",
+    "participant": "node_a",
+    "role": "node"
+  },
+  {
+    "actor": "reward",
+    "epoch": 1,
+    "height": 4,
+    "id": "settle_node_b",
+    "kind": "settle_entitlement",
+    "participant": "node_b",
+    "role": "node"
+  },
+  {
+    "actor": "reward",
+    "epoch": 1,
+    "height": 4,
+    "id": "finalize_nodes",
+    "kind": "finalize_budget",
+    "role": "node"
+  },
+  {
+    "actor": "bob",
+    "height": 4,
+    "id": "request_exit_validator_b",
+    "kind": "request_exit",
+    "participant": "validator_b"
+  },
+  {
+    "actor": "enforcement",
+    "evidence_digest": "6666666666666666666666666666666666666666666666666666666666666666",
+    "height": 4,
+    "id": "remove_node_b",
+    "kind": "remove",
+    "participant": "node_b",
+    "proof_id": "proof_remove_node_b",
+    "reason": "repeated_fault"
+  },
+  {
+    "actor": "clock",
+    "height": 4,
+    "id": "advance_5",
+    "kind": "advance_height",
+    "to_height": 5
+  },
+  {
+    "actor": "clock",
+    "height": 5,
+    "id": "advance_6",
+    "kind": "advance_height",
+    "to_height": 6
+  },
+  {
+    "actor": "bob",
+    "height": 6,
+    "id": "complete_exit_validator_b",
+    "kind": "complete_exit",
+    "participant": "validator_b"
+  }
+]
