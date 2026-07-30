@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pathlib
-import socket
 import subprocess
 import sys
 import tempfile
@@ -18,6 +17,7 @@ from cometbft_process import (  # noqa: E402
     ManagedProcess,
     application_info,
     await_unix_socket,
+    reserve_non_ephemeral_port_block,
     start_process,
 )
 from model import BlockCommit, ReferenceLedger, state_root  # noqa: E402
@@ -68,25 +68,7 @@ class SubmittedTransaction:
 
 
 def reserve_port_block() -> int:
-    for _ in range(100):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as candidate:
-            candidate.bind(("127.0.0.1", 0))
-            base = candidate.getsockname()[1]
-        if base > 65535 - max(PORT_OFFSETS):
-            continue
-        reservations: list[socket.socket] = []
-        try:
-            for offset in PORT_OFFSETS:
-                reservation = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                reservation.bind(("127.0.0.1", base + offset))
-                reservations.append(reservation)
-            return base
-        except OSError:
-            pass
-        finally:
-            for reservation in reservations:
-                reservation.close()
-    raise RuntimeError("unable to reserve four-validator port block")
+    return reserve_non_ephemeral_port_block(PORT_OFFSETS)
 
 
 def start_network(

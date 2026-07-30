@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pathlib
+import secrets
 import socket
 import struct
 import subprocess
@@ -14,6 +15,12 @@ from cometbft_rpc import rpc_call
 HEADER = struct.Struct(">4sHBBQI")
 INFO_KIND = 1
 MAXIMUM_FRAME = 33_554_432
+MAXIMUM_PORT = 65_535
+MINIMUM_UNPRIVILEGED_PORT = 1_024
+PORT_BLOCK_ATTEMPTS = 256
+LINUX_EPHEMERAL_RANGE = pathlib.Path(
+    "/proc/sys/net/ipv4/ip_local_port_range"
+)
 
 
 @dataclass
@@ -79,6 +86,88 @@ def reserve_ports(count: int) -> list[int]:
             reservation.bind(("127.0.0.1", 0))
             reservations.append(reservation)
         return [value.getsockname()[1] for value in reservations]
+    finally:
+        for reservation in reservations:
+            reservation.close()
+
+
+def reserve_non_ephemeral_port_block(offsets: tuple[int, ...]) -> int:
+    ephemeral_range = read_linux_ephemeral_port_range()
+    candidates = non_ephemeral_block_bases(ephemeral_range, offsets)
+    if not candidates:
+        raise RuntimeError("no non-ephemeral listener port block is available")
+    start = secrets.randbelow(len(candidates))
+    attempts = min(len(candidates), PORT_BLOCK_ATTEMPTS)
+    for step in range(attempts):
+        base = candidates[(start + step) % len(candidates)]
+        if _can_reserve_port_block(base, offsets):
+            return base
+    raise RuntimeError("unable to reserve non-ephemeral listener port block")
+
+
+def read_linux_ephemeral_port_range(
+    path: pathlib.Path = LINUX_EPHEMERAL_RANGE,
+) -> tuple[int, int]:
+    try:
+        fields = path.read_text(encoding="ascii").split()
+        values = tuple(int(value, 10) for value in fields)
+    except (OSError, UnicodeError, ValueError) as error:
+        raise RuntimeError("cannot read Linux ephemeral port range") from error
+    if (
+        len(values) != 2
+        or values[0] < 1
+        or values[0] > values[1]
+        or values[1] > MAXIMUM_PORT
+    ):
+        raise RuntimeError("invalid Linux ephemeral port range")
+    return values
+
+
+def non_ephemeral_block_bases(
+    ephemeral_range: tuple[int, int],
+    offsets: tuple[int, ...],
+) -> tuple[int, ...]:
+    if not offsets or len(set(offsets)) != len(offsets):
+        raise ValueError("port offsets must be nonempty and unique")
+    if min(offsets) != 0 or max(offsets) > MAXIMUM_PORT:
+        raise ValueError("port offsets must start at zero and fit a port")
+    maximum_offset = max(offsets)
+    ephemeral_first, ephemeral_last = ephemeral_range
+    if (
+        ephemeral_first < 1
+        or ephemeral_first > ephemeral_last
+        or ephemeral_last > MAXIMUM_PORT
+    ):
+        raise ValueError("invalid ephemeral port range")
+    ranges = (
+        (
+            MINIMUM_UNPRIVILEGED_PORT,
+            ephemeral_first - maximum_offset - 1,
+        ),
+        (
+            max(MINIMUM_UNPRIVILEGED_PORT, ephemeral_last + 1),
+            MAXIMUM_PORT - maximum_offset,
+        ),
+    )
+    stride = maximum_offset + 1
+    return tuple(
+        base
+        for first, last in ranges
+        if first <= last
+        for base in range(first, last + 1, stride)
+    )
+
+
+def _can_reserve_port_block(base: int, offsets: tuple[int, ...]) -> bool:
+    reservations: list[socket.socket] = []
+    try:
+        for offset in offsets:
+            reservation = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            reservations.append(reservation)
+            reservation.bind(("127.0.0.1", base + offset))
+        return True
+    except OSError:
+        return False
     finally:
         for reservation in reservations:
             reservation.close()

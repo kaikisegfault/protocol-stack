@@ -740,6 +740,12 @@ add_test(
     "${CMAKE_CURRENT_BINARY_DIR}/ah-v1"
 )
 add_test(
+  NAME cometbft-port-allocation
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/integration/cometbft_port_allocation_test.py"
+)
+add_test(
   NAME native-economy-model
   COMMAND
     "${Python3_EXECUTABLE}"
