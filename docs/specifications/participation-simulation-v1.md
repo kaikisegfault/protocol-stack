@@ -87,8 +87,8 @@ The manifest has exactly:
 `max_units_per_participant_epoch`.
 
 Every authority, contribution kind, and verifier is a valid identifier.
-`validators` and `nodes` each contain at least one contribution kind, and a
-kind occurs in only its enclosing role. A weight is nonzero `u64`.
+`validators` and `nodes` each contain at least one contribution kind, and each
+kind is scoped by its enclosing role. A weight is nonzero `u64`.
 
 All values are research fixtures. In particular, none is a production stake
 threshold, duration, cap, contribution weight, authority, or reward rule.
@@ -121,6 +121,7 @@ payout_account
 phase = pending | active | exit_pending | exited | removed
 registered_epoch
 activation_epoch
+activated_epoch = u64 | null
 exit_epoch = u64 | null
 unbond_ready_epoch = u64 | null
 jailed_until_epoch = u64 | null
@@ -128,15 +129,18 @@ recovery_requested = boolean
 bond_id = identifier | null
 confirmed_bond = u64 | null
 terminal_reason = identifier | null
+removed_epoch = u64 | null
 ```
 
 Validators have a non-null `bond_id`; nodes have `null`. A confirmed bond is
 never zero and exists only for a validator. `activation_epoch` is
-`registered_epoch + activation_delay_epochs`. `exit_epoch` exists exactly for
+`registered_epoch + activation_delay_epochs`. `activated_epoch` records the
+explicit successful activation or is null. `exit_epoch` exists exactly for
 `exit_pending`, `exited`, or a removed participant that had requested exit.
-An exited participant's `unbond_ready_epoch` equals its exit epoch. A removed
-validator has an unbond-ready epoch no earlier than the removal epoch plus
-`removal_hold_epochs`. Node records never have an unbond-ready epoch.
+An exited participant's `unbond_ready_epoch` equals its exit epoch.
+`removed_epoch` exists exactly for `removed`. A removed validator has an
+unbond-ready epoch no earlier than `removed_epoch + removal_hold_epochs`. Node
+records never have an unbond-ready epoch.
 
 A participant is reward eligible for epoch `E` exactly when, at contribution
 acceptance:
@@ -295,7 +299,7 @@ Fields: `participant`.
 Actor must equal `lifecycle`. The participant must exist in `pending` phase
 and current epoch must be at least `activation_epoch`. A validator must have a
 confirmed bond at or above the research minimum. Success changes phase to
-`active`.
+`active` and records `activated_epoch = current_epoch`.
 
 ### `request_exit`
 
@@ -359,8 +363,8 @@ Fields: `participant`, `reason`, `proof_id`, `evidence_digest`.
 
 Actor must equal `enforcement`. Test proof replay and participant existence.
 An `exited` or `removed` participant returns `INVALID_STATUS`. Success changes
-phase to `removed`, stores the reason, and clears jail and recovery state. For
-a validator it sets:
+phase to `removed`, stores the reason and `removed_epoch = current_epoch`, and
+clears jail and recovery state. For a validator it sets:
 
 ```text
 unbond_ready_epoch =
