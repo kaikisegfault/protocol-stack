@@ -4,22 +4,40 @@ Last updated: 2026-07-31
 
 ## Phase
 
-M2 — Native economy specification and simulator. The third M2 slice now
-defines and independently executes capability-scoped threshold authority
-results, distinct-member and proof replay protection, exact downstream action
-binding, dual-threshold rotation, emergency containment, revocation, and
-delayed recovery for both accepted M2 simulators. Issue #43 closed through PR
-#44 as `dcf8ef1`; exact candidate Actions run 30668672185 and post-merge run
-30669111620 passed the full compiler, sanitizer, fuzz, differential,
-persistence, single-node, four-validator, and simulator matrix. No delivery
-branch remains. No production allocation, rate, weight, duration, principal,
-threshold, signature scheme, verifier, or C++ economic transition is accepted.
-The next clean session should run one bounded cross-simulator adversarial
-parameter-family study before proposing any production economic values.
+M2 — Native economy specification and simulator. The fourth bounded M2 slice
+now composes the accepted native-economy, participation, and threshold-
+authority research models across a reviewed 27-case, thirteen-factor,
+strength-two orthogonal design and eight deterministic seeds. Issue #47 closed
+through PR #48 as `25ba28f`; exact candidate Actions run 30672213749 and
+post-merge run 30672536498 passed the full compiler, sanitizer, fuzz,
+differential, persistence, single-node, four-validator, and 216-run simulator
+matrix. No delivery branch remains. No production allocation, rate, weight,
+duration, principal, threshold, signature scheme, verifier, or C++ economic
+transition is accepted. The next clean session should define one narrow,
+high-resolution solvency-and-concentration experiment around the robust
+families before proposing any production economic values.
 
 ## Verified facts
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #47 and PR #48 accept ADR 0011's research-only
+  `OA(27,13,3,2)-GF3-v1` screen over issuance, fees, reward funding, validator
+  and node weights, bond and penalty size, lifecycle delays, authority
+  threshold, recovery delay, and a correlated availability/compromise shock.
+  The array proves every level and ordered factor pair is balanced while
+  explicitly leaving higher-order interactions aliased.
+- The standard-library-only `simulation/economic_stress` package composes the
+  unchanged M2 simulators through their exact accepted adapters. Its 216 runs
+  classify 12 robust, 92 fragile, and 112 infeasible cases; conserve and cap
+  supply in all 216; expose 48 fully created reward-funding shortfalls and 72
+  exact-threshold authority captures; and freeze design digest
+  `b59793533b8c963c47ca0d3d182eb320c144b8e4d3929b41b75e777c7dc83647`
+  and study digest
+  `d697f437a5e94d3cbba02cb131609b0591a59930968dc2c5880b49c9590f40de`.
+- Dependabot PR #46 updated Pion DTLS to 3.1.4, STUN to 3.1.5, and transport/v4
+  to 4.0.2 as `169c133`. Exact candidate run 30670310881 and post-merge run
+  30670825618 passed all four hosted jobs, dependency-graph run 30670826339
+  succeeded, and GitHub reports no open Dependabot alerts.
 - Issue #43 and PR #44 select capability-scoped, versioned authority sets;
   distinct externally verified members; independent event, result, action, and
   proof replay identities; chain/module/capability/epoch/deadline action
@@ -184,6 +202,16 @@ parameter-family study before proposing any production economic values.
 
 ## Verification evidence
 
+- The focused local command
+  `python3 -m unittest discover -s tests/simulation -p '*_test.py'` passed all
+  74 native-economy, participation, authority, and cross-simulator tests.
+  Python bytecode compilation, design-fixture JSON parsing, staged secret
+  inspection, and `git diff --check` also passed. No full local verifier or
+  compiler/sanitizer matrix ran; GitHub hosted those resource-heavy gates.
+- Exact PR #48 candidate run 30672213749 passed GCC and Clang debug plus both
+  sanitizer jobs on `94ba19a`, including the frozen 216-run study. Exact
+  post-merge run 30672536498 passed the same four jobs on `main` commit
+  `25ba28f`.
 - The fixed primitive vector suite passes through `tools/verify.sh` with GCC
   12.2.0, Clang 14.0.6, and `-Wall -Wextra -Wpedantic -Werror`.
 - Both GCC and Clang AddressSanitizer plus UndefinedBehaviorSanitizer presets
