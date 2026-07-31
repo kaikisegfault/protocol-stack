@@ -787,6 +787,30 @@ add_test(
     "${Python3_EXECUTABLE}"
     "${PROJECT_SOURCE_DIR}/tests/simulation/participation_scenario_test.py"
 )
+add_test(
+  NAME authority-model
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/authority_model_test.py"
+)
+add_test(
+  NAME authority-errors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/authority_errors_test.py"
+)
+add_test(
+  NAME authority-lifecycle
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/authority_lifecycle_test.py"
+)
+add_test(
+  NAME authority-scenarios
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/authority_scenario_test.py"
+)
 set_tests_properties(
   protocol-primitives-python
   ledger-transition-python

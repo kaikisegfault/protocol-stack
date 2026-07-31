@@ -1,0 +1,1102 @@
+[
+  {
+    "action_digest": "b8afa5d5bf166c1113a216f3bd0a09064a7247d020be5131dbbde5ed162b6fe3",
+    "action_id": "action_0001",
+    "approvals": [
+      {
+        "evidence_digest": "1a5a05f5a4f94bc491650770e569777ee24e0247a1b1cff54f2b2c461e19a8dd",
+        "member": "issuer_a",
+        "proof_id": "proof_0001"
+      }
+    ],
+    "capability": "issuance",
+    "chain_id": "research_chain",
+    "deadline_epoch": 2,
+    "height": 0,
+    "id": "event_0001",
+    "kind": "authorize_action",
+    "module": "native_economy",
+    "result_id": "result_0001",
+    "set_id": "issuance_set",
+    "set_version": 1,
+    "valid_from_epoch": 0
+  },
+  {
+    "action_digest": "8cb3f091438bfdfd679d7dcfd27a5b8c957dc461f477da4212f64220ec3ce004",
+    "action_id": "action_0002",
+    "approvals": [
+      {
+        "evidence_digest": "57894a16e373223d73340bb6e60af40326cca44f0511aa3e0741fe10419aa55d",
+        "member": "issuer_a",
+        "proof_id": "proof_0002"
+      },
+      {
+        "evidence_digest": "8fd4c2d99fa60d9d982398130022f1a766f4d495e138c0b1ab6599dfbe1535c7",
+        "member": "issuer_a",
+        "proof_id": "proof_0003"
+      }
+    ],
+    "capability": "issuance",
+    "chain_id": "research_chain",
+    "deadline_epoch": 2,
+    "height": 0,
+    "id": "event_0002",
+    "kind": "authorize_action",
+    "module": "native_economy",
+    "result_id": "result_0002",
+    "set_id": "issuance_set",
+    "set_version": 1,
+    "valid_from_epoch": 0
+  },
+  {
+    "action_digest": "3ea57f824dceb5898666f1710afc74a031508982f2c4b9cd138da257d58e5ff8",
+    "action_id": "action_0003",
+    "approvals": [
+      {
+        "evidence_digest": "b7ad3345d55a01f8b547c73567310fc6f6e5ddefdfb66260942b5bab0978b232",
+        "member": "issuer_a",
+        "proof_id": "proof_0004"
+      },
+      {
+        "evidence_digest": "3988ee2dc92f846a45ab06787c4ccb064d9e97661d8e4086c082f7e274e1bae6",
+        "member": "outsider",
+        "proof_id": "proof_0005"
+      }
+    ],
+    "capability": "issuance",
+    "chain_id": "research_chain",
+    "deadline_epoch": 2,
+    "height": 0,
+    "id": "event_0003",
+    "kind": "authorize_action",
+    "module": "native_economy",
+    "result_id": "result_0003",
+    "set_id": "issuance_set",
+    "set_version": 1,
+    "valid_from_epoch": 0
+  },
+  {
+    "action_digest": "9a7ed94c2092f1af15de490ca95336d7f3276eec844cac0c0dc45a895da2e49d",
+    "action_id": "action_0004",
+    "approvals": [
+      {
+        "evidence_digest": "773c25447afed31dec94017e92830a931b137179708063ca1c0732bba9edef72",
+        "member": "issuer_a",
+        "proof_id": "proof_0006"
+      },
+      {
+        "evidence_digest": "453a4044019a0fed1c597bc04ecfc61b6c9acdcac7a8a4ca8d3f2b95ae3c1acf",
+        "member": "issuer_b",
+        "proof_id": "proof_0007"
+      }
+    ],
+    "capability": "issuance",
+    "chain_id": "other_chain",
+    "deadline_epoch": 2,
+    "height": 0,
+    "id": "event_0004",
+    "kind": "authorize_action",
+    "module": "native_economy",
+    "result_id": "result_0004",
+    "set_id": "issuance_set",
+    "set_version": 1,
+    "valid_from_epoch": 0
+  },
+  {
+    "action_digest": "ac8f85673cce5b9eed1ed3ece571df234536f5d7e387aa3b4af66dca167dc8cf",
+    "action_id": "action_0005",
+    "approvals": [
+      {
+        "evidence_digest": "f6aee179987c07ee108fb38b2f5c907aea2ede5a6fd666df3bdd52d3c1560530",
+        "member": "issuer_a",
+        "proof_id": "proof_0008"
+      },
+      {
+        "evidence_digest": "6fdc4c9df6bda69eed0f0aa3aceccfc8c08540519eb04d22d24cde327e84ae42",
+        "member": "issuer_b",
+        "proof_id": "proof_0009"
+      }
+    ],
+    "capability": "issuance",
+    "chain_id": "research_chain",
+    "deadline_epoch": 2,
+    "height": 0,
+    "id": "event_0005",
+    "kind": "authorize_action",
+    "module": "native_economy",
+    "result_id": "result_0005",
+    "set_id": "issuance_set",
+    "set_version": 1,
+    "valid_from_epoch": 1
+  },
+  {
+    "action_digest": "f0f173e225590405110b3570409e7a0535176b03126113337e8f6b237a21bb4c",
+    "action_id": "action_issue",
+    "approvals": [
+      {
+        "evidence_digest": "8e319cbc88658c9f979fcb94ba934aa0100444634951fbaa16dd76b79702aab1",
+        "member": "issuer_a",
+        "proof_id": "proof_0010"
+      },
+      {
+        "evidence_digest": "d3fe9ff9453950f353ac83fee26c307edd436d887d46e859e1dfa095b49ef14b",
+        "member": "issuer_b",
+        "proof_id": "proof_0011"
+      }
+    ],
+    "capability": "issuance",
+    "chain_id": "research_chain",
+    "deadline_epoch": 2,
+    "height": 0,
+    "id": "event_0006",
+    "kind": "authorize_action",
+    "module": "native_economy",
+    "result_id": "result_issue",
+    "set_id": "issuance_set",
+    "set_version": 1,
+    "valid_from_epoch": 0
+  },
+  {
+    "action_digest": "f0f173e225590405110b3570409e7a0535176b03126113337e8f6b237a21bb4c",
+    "action_id": "action_issue",
+    "approvals": [
+      {
+        "evidence_digest": "8e319cbc88658c9f979fcb94ba934aa0100444634951fbaa16dd76b79702aab1",
+        "member": "issuer_a",
+        "proof_id": "proof_0010"
+      },
+      {
+        "evidence_digest": "d3fe9ff9453950f353ac83fee26c307edd436d887d46e859e1dfa095b49ef14b",
+        "member": "issuer_b",
+        "proof_id": "proof_0011"
+      }
+    ],
+    "capability": "issuance",
+    "chain_id": "research_chain",
+    "deadline_epoch": 2,
+    "height": 0,
+    "id": "event_0006",
+    "kind": "authorize_action",
+    "module": "native_economy",
+    "result_id": "result_issue",
+    "set_id": "issuance_set",
+    "set_version": 1,
+    "valid_from_epoch": 0
+  },
+  {
+    "action_digest": "ffed6a66c6938f1ffd1b8c1cb8ef1b5676eb4f4a96ed7d55fd3e29fd17d54f15",
+    "action_id": "action_0007",
+    "approvals": [
+      {
+        "evidence_digest": "2df6d8d3be592b5b75f780e3c9f6c9bcbb5e4efe177a7d86253050604aed10a1",
+        "member": "issuer_a",
+        "proof_id": "proof_0012"
+      },
+      {
+        "evidence_digest": "6ed382f798c545cf35d09935927d7be500c2ce529d050c0072a283def8935a29",
+        "member": "issuer_b",
+        "proof_id": "proof_0013"
+      }
+    ],
+    "capability": "issuance",
+    "chain_id": "research_chain",
+    "deadline_epoch": 2,
+    "height": 0,
+    "id": "event_0007",
+    "kind": "authorize_action",
+    "module": "native_economy",
+    "result_id": "result_issue",
+    "set_id": "issuance_set",
+    "set_version": 1,
+    "valid_from_epoch": 0
+  },
+  {
+    "action_digest": "665488b952d9664c2147ebbf8da63feb832c9b0744e78d3f3f69a9d34fb159ae",
+    "action_id": "action_issue",
+    "approvals": [
+      {
+        "evidence_digest": "d4ba86a355bbf8e668c73cb665a73541290ab9b690e5920380ab1b14aa1ad020",
+        "member": "issuer_a",
+        "proof_id": "proof_0014"
+      },
+      {
+        "evidence_digest": "feadd698941091e138199856302c1fa53d13db7723fe94a42a09f0dc459051d4",
+        "member": "issuer_b",
+        "proof_id": "proof_0015"
+      }
+    ],
+    "capability": "issuance",
+    "chain_id": "research_chain",
+    "deadline_epoch": 2,
+    "height": 0,
+    "id": "event_0008",
+    "kind": "authorize_action",
+    "module": "native_economy",
+    "result_id": "result_0008",
+    "set_id": "issuance_set",
+    "set_version": 1,
+    "valid_from_epoch": 0
+  },
+  {
+    "action_digest": "12d1da969fcb4caa3ff1a788e2a415907124c0fb0dc45490e80a559603b62e2b",
+    "action_id": "action_0009",
+    "approvals": [
+      {
+        "evidence_digest": "8e319cbc88658c9f979fcb94ba934aa0100444634951fbaa16dd76b79702aab1",
+        "member": "issuer_a",
+        "proof_id": "proof_0010"
+      },
+      {
+        "evidence_digest": "fae6f0c56def563052ef4d93c172e9b9d536eb880c2c005519f7db1d8c89d12a",
+        "member": "issuer_c",
+        "proof_id": "proof_0016"
+      }
+    ],
+    "capability": "issuance",
+    "chain_id": "research_chain",
+    "deadline_epoch": 2,
+    "height": 0,
+    "id": "event_0009",
+    "kind": "authorize_action",
+    "module": "native_economy",
+    "result_id": "result_0009",
+    "set_id": "issuance_set",
+    "set_version": 1,
+    "valid_from_epoch": 0
+  },
+  {
+    "action_digest": "2d2139517f40625f98c7f06107bf31001c4a05991f10e21c1f49d06db443d2cb",
+    "action_id": "action_register",
+    "approvals": [
+      {
+        "evidence_digest": "109aae4234bc13b0d38b1116f81db16921149b680f181de1427681440ff96884",
+        "member": "registrar_a",
+        "proof_id": "proof_0017"
+      },
+      {
+        "evidence_digest": "fe0684e7231a1814e69402fb4be1efd4400eead6a3948cebfd4291cc0b749cbe",
+        "member": "registrar_b",
+        "proof_id": "proof_0018"
+      }
+    ],
+    "capability": "registration",
+    "chain_id": "research_chain",
+    "deadline_epoch": 2,
+    "height": 0,
+    "id": "event_0010",
+    "kind": "authorize_action",
+    "module": "participation",
+    "result_id": "result_register",
+    "set_id": "registration_set",
+    "set_version": 1,
+    "valid_from_epoch": 0
+  },
+  {
+    "action_digest": "18d9abbe6f35a5d425c719ab54cf371340b3970b3855a138226aac72b7b7e6b0",
+    "action_id": "action_0011",
+    "approvals": [
+      {
+        "evidence_digest": "184396f836863aaa2e8f14fe999b3f2b4f375993682bc756aa8ae0823e16980e",
+        "member": "issuer_a",
+        "proof_id": "proof_0019"
+      },
+      {
+        "evidence_digest": "6d4bb24cce5677bb5bd5b66575df97d12c3b7deacbf18e3708493947e8905045",
+        "member": "issuer_b",
+        "proof_id": "proof_0020"
+      }
+    ],
+    "capability": "registration",
+    "chain_id": "research_chain",
+    "deadline_epoch": 2,
+    "height": 0,
+    "id": "event_0011",
+    "kind": "authorize_action",
+    "module": "participation",
+    "result_id": "result_0011",
+    "set_id": "issuance_set",
+    "set_version": 1,
+    "valid_from_epoch": 0
+  },
+  {
+    "action_digest": "2b18e24e2fb4f6d2fc728d9ffbdbd8e80660796f4960891d146d9c1500beb888",
+    "action_id": "action_0012",
+    "activation_epoch": 1,
+    "approvals": [
+      {
+        "evidence_digest": "6abc12ee65ad9e6bd9fc2cbcbe3aa341a4108e2f73c7165cd98af69848f313d5",
+        "member": "issuer_a",
+        "proof_id": "proof_0021"
+      },
+      {
+        "evidence_digest": "4bfb27f05886d7296e913b97e380732cfacb47a76cdbd96f34489d8ae487b9a2",
+        "member": "issuer_b",
+        "proof_id": "proof_0022"
+      }
+    ],
+    "chain_id": "research_chain",
+    "deadline_epoch": 2,
+    "height": 0,
+    "id": "event_0012",
+    "kind": "schedule_rotation",
+    "next_members": [
+      "issuer_d",
+      "issuer_e",
+      "issuer_f"
+    ],
+    "next_threshold": 2,
+    "next_version": 2,
+    "result_id": "result_0012",
+    "set_id": "issuance_set",
+    "set_version": 1,
+    "target_capability": "issuance",
+    "target_module": "native_economy",
+    "valid_from_epoch": 0
+  },
+  {
+    "action_digest": "be62dcc8da67475f572d751063eb5f7bcfbffafe8c46b77e859d0aa4de6084ec",
+    "action_id": "action_0013",
+    "activation_epoch": 1,
+    "approvals": [
+      {
+        "evidence_digest": "dac3ca9b7db45645e857ff8d502f35ad2b4a36ba8606eb82e27b6825eb453cfd",
+        "member": "issuer_a",
+        "proof_id": "proof_0023"
+      },
+      {
+        "evidence_digest": "b210eae908fa73b647d4bcea1a223d18856afa71b620cce97d0cf815d1c6cf18",
+        "member": "issuer_b",
+        "proof_id": "proof_0024"
+      },
+      {
+        "evidence_digest": "c4a600669ebcb79ec6f4b75ae4329380564df834e4c60df12e34d4d4242357df",
+        "member": "issuer_d",
+        "proof_id": "proof_0025"
+      },
+      {
+        "evidence_digest": "926500dc56e917d58db1922424ad3ab334837a58751ce09d00b13b762adbd2c1",
+        "member": "issuer_e",
+        "proof_id": "proof_0026"
+      }
+    ],
+    "chain_id": "research_chain",
+    "deadline_epoch": 2,
+    "height": 0,
+    "id": "event_0013",
+    "kind": "schedule_rotation",
+    "next_members": [
+      "issuer_d",
+      "issuer_e",
+      "issuer_f"
+    ],
+    "next_threshold": 2,
+    "next_version": 2,
+    "result_id": "result_0013",
+    "set_id": "issuance_set",
+    "set_version": 1,
+    "target_capability": "issuance",
+    "target_module": "native_economy",
+    "valid_from_epoch": 0
+  },
+  {
+    "actor": "clock",
+    "height": 0,
+    "id": "event_0014",
+    "kind": "activate_rotation",
+    "target_capability": "issuance",
+    "target_module": "native_economy"
+  },
+  {
+    "action_digest": "063de5ce5336aefdc157028eab6c53bb8ecb6fa10072d60addcbe71702d52069",
+    "action_id": "action_0015",
+    "activation_epoch": 1,
+    "approvals": [
+      {
+        "evidence_digest": "599a73f13758b12add1ddfbad9a969624b4f5fadbef0724851428dc626bd31f7",
+        "member": "registrar_a",
+        "proof_id": "proof_0027"
+      },
+      {
+        "evidence_digest": "7d2e948585692ddc320b1c4ee3519bd833f7edcba931a671d987377cdee22769",
+        "member": "registrar_b",
+        "proof_id": "proof_0028"
+      },
+      {
+        "evidence_digest": "551e607b91245e5f91a08d349fd554a3183b6c2af5deed3c9dbdcff753187a02",
+        "member": "registrar_d",
+        "proof_id": "proof_0029"
+      },
+      {
+        "evidence_digest": "db4dc606a9906c85b68c2458915efab8b91adeefe6263cb589c5a3b082cb2b43",
+        "member": "registrar_e",
+        "proof_id": "proof_0030"
+      }
+    ],
+    "chain_id": "research_chain",
+    "deadline_epoch": 2,
+    "height": 0,
+    "id": "event_0015",
+    "kind": "schedule_rotation",
+    "next_members": [
+      "registrar_d",
+      "registrar_e",
+      "registrar_f"
+    ],
+    "next_threshold": 2,
+    "next_version": 2,
+    "result_id": "result_0015",
+    "set_id": "registration_set",
+    "set_version": 1,
+    "target_capability": "registration",
+    "target_module": "participation",
+    "valid_from_epoch": 0
+  },
+  {
+    "action_digest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "action_id": "action_0016",
+    "approvals": [
+      {
+        "evidence_digest": "40a46339eb4a4911ae835f164651b3f560507fe1b27ebf4ffa06aeea89e5eaca",
+        "member": "contain_a",
+        "proof_id": "proof_0031"
+      },
+      {
+        "evidence_digest": "18d02a7338a2d20ec186dab0d13ee2a8656b6dc13b527ad8e18e41f055407e59",
+        "member": "contain_b",
+        "proof_id": "proof_0032"
+      }
+    ],
+    "chain_id": "research_chain",
+    "deadline_epoch": 2,
+    "height": 0,
+    "id": "event_0016",
+    "kind": "pause_capability",
+    "reason_digest": "9942199c0c771686eba19bdbf463d7a58587efdd18bad7fff9a0d93e6fa507aa",
+    "result_id": "result_0016",
+    "set_id": "containment_set",
+    "set_version": 1,
+    "target_capability": "registration",
+    "target_module": "participation",
+    "valid_from_epoch": 0
+  },
+  {
+    "action_digest": "d1dea1f20c94915cc9217de177064d3f68039709291318c9025aa90fc40fab34",
+    "action_id": "action_0017",
+    "approvals": [
+      {
+        "evidence_digest": "c9ec30c298ff50e0bdd6a61ac303969b79413078efd68a11f9ca97a9cfad80a1",
+        "member": "contain_a",
+        "proof_id": "proof_0033"
+      },
+      {
+        "evidence_digest": "0340f939792b338059ae51ed30b3ef7a090b6d2c67cb03ab2556d4a1371a151f",
+        "member": "contain_b",
+        "proof_id": "proof_0034"
+      }
+    ],
+    "chain_id": "research_chain",
+    "deadline_epoch": 2,
+    "height": 0,
+    "id": "event_0017",
+    "kind": "pause_capability",
+    "reason_digest": "9942199c0c771686eba19bdbf463d7a58587efdd18bad7fff9a0d93e6fa507aa",
+    "result_id": "result_0017",
+    "set_id": "containment_set",
+    "set_version": 1,
+    "target_capability": "registration",
+    "target_module": "participation",
+    "valid_from_epoch": 0
+  },
+  {
+    "action_digest": "b44da0617d9c80f7b1f6d3b0ce5799e97d6c9ff6209cc2b881893fc7beee9503",
+    "action_id": "action_0018",
+    "approvals": [
+      {
+        "evidence_digest": "067755e6bb86ab08b2635f76512fd812db3b31163776cad94662315f71c046b0",
+        "member": "registrar_a",
+        "proof_id": "proof_0035"
+      },
+      {
+        "evidence_digest": "af71f2be3a5cc664ec8290578be8a9a961603ddcd0d556db6e4874507af63fef",
+        "member": "registrar_b",
+        "proof_id": "proof_0036"
+      }
+    ],
+    "capability": "registration",
+    "chain_id": "research_chain",
+    "deadline_epoch": 2,
+    "height": 0,
+    "id": "event_0018",
+    "kind": "authorize_action",
+    "module": "participation",
+    "result_id": "result_0018",
+    "set_id": "registration_set",
+    "set_version": 1,
+    "valid_from_epoch": 0
+  },
+  {
+    "actor": "clock",
+    "height": 0,
+    "id": "event_0019",
+    "kind": "activate_rotation",
+    "target_capability": "registration",
+    "target_module": "participation"
+  },
+  {
+    "action_digest": "f166eb985bfb149292b9617ec6b0d06880b07d822b41566a8f0e33071fffc377",
+    "action_id": "action_0020",
+    "approvals": [
+      {
+        "evidence_digest": "04fb78f1bc2db10ac14667f70f3640bbf4682681671949aa0bb2e48f63016ef5",
+        "member": "recover_a",
+        "proof_id": "proof_0037"
+      },
+      {
+        "evidence_digest": "eb2e810ef15356d48c61196cd36b6ad0046013c42a6a73e32ee19d68d39053e7",
+        "member": "recover_b",
+        "proof_id": "proof_0038"
+      },
+      {
+        "evidence_digest": "cd9d94493d7a55fbcd689940202388daab8abe624d05f9d9b3c26814c4a7981e",
+        "member": "registrar_d",
+        "proof_id": "proof_0039"
+      },
+      {
+        "evidence_digest": "b93602b986ac9ff335a9b1f4d7f03e23ec2a64f70592fb9d9235648b2d2f3c3d",
+        "member": "registrar_e",
+        "proof_id": "proof_0040"
+      }
+    ],
+    "chain_id": "research_chain",
+    "deadline_epoch": 2,
+    "height": 0,
+    "id": "event_0020",
+    "kind": "recover_capability",
+    "next_members": [
+      "registrar_d",
+      "registrar_e",
+      "registrar_f"
+    ],
+    "next_threshold": 2,
+    "next_version": 2,
+    "result_id": "result_0020",
+    "set_id": "recovery_set",
+    "set_version": 1,
+    "target_capability": "registration",
+    "target_module": "participation",
+    "valid_from_epoch": 0
+  },
+  {
+    "actor": "clock",
+    "height": 0,
+    "id": "event_0021",
+    "kind": "advance_height",
+    "to_height": 1
+  },
+  {
+    "actor": "clock",
+    "height": 1,
+    "id": "event_0022",
+    "kind": "advance_height",
+    "to_height": 2
+  },
+  {
+    "actor": "clock",
+    "height": 2,
+    "id": "event_0023",
+    "kind": "advance_height",
+    "to_height": 3
+  },
+  {
+    "actor": "clock",
+    "height": 3,
+    "id": "event_0024",
+    "kind": "advance_height",
+    "to_height": 4
+  },
+  {
+    "actor": "clock",
+    "height": 4,
+    "id": "event_0025",
+    "kind": "advance_height",
+    "to_height": 5
+  },
+  {
+    "actor": "clock",
+    "height": 5,
+    "id": "event_0026",
+    "kind": "advance_height",
+    "to_height": 6
+  },
+  {
+    "actor": "clock",
+    "height": 6,
+    "id": "event_0027",
+    "kind": "advance_height",
+    "to_height": 7
+  },
+  {
+    "actor": "clock",
+    "height": 7,
+    "id": "event_0028",
+    "kind": "advance_height",
+    "to_height": 8
+  },
+  {
+    "actor": "clock",
+    "height": 8,
+    "id": "event_0029",
+    "kind": "advance_height",
+    "to_height": 9
+  },
+  {
+    "actor": "clock",
+    "height": 9,
+    "id": "event_0030",
+    "kind": "advance_height",
+    "to_height": 10
+  },
+  {
+    "actor": "clock",
+    "height": 10,
+    "id": "event_0031",
+    "kind": "advance_height",
+    "to_height": 11
+  },
+  {
+    "actor": "clock",
+    "height": 11,
+    "id": "event_0032",
+    "kind": "advance_height",
+    "to_height": 12
+  },
+  {
+    "actor": "clock",
+    "height": 12,
+    "id": "event_0033",
+    "kind": "advance_height",
+    "to_height": 13
+  },
+  {
+    "actor": "clock",
+    "height": 13,
+    "id": "event_0034",
+    "kind": "advance_height",
+    "to_height": 14
+  },
+  {
+    "actor": "clock",
+    "height": 14,
+    "id": "event_0035",
+    "kind": "advance_height",
+    "to_height": 15
+  },
+  {
+    "actor": "clock",
+    "height": 15,
+    "id": "event_0036",
+    "kind": "advance_height",
+    "to_height": 16
+  },
+  {
+    "actor": "clock",
+    "height": 16,
+    "id": "event_0037",
+    "kind": "advance_height",
+    "to_height": 17
+  },
+  {
+    "actor": "clock",
+    "height": 17,
+    "id": "event_0038",
+    "kind": "advance_height",
+    "to_height": 18
+  },
+  {
+    "actor": "clock",
+    "height": 18,
+    "id": "event_0039",
+    "kind": "advance_height",
+    "to_height": 19
+  },
+  {
+    "actor": "clock",
+    "height": 19,
+    "id": "event_0040",
+    "kind": "advance_height",
+    "to_height": 20
+  },
+  {
+    "action_digest": "9ad4bfbd0611c2df23dc1370bfd9297141bfe5fa7fed3bd0910f2b6edb848f2c",
+    "action_id": "action_0041",
+    "approvals": [
+      {
+        "evidence_digest": "989012c925203d37c3bb5a3a2812df814b165c7c6128788919cbfc90004fba55",
+        "member": "recover_a",
+        "proof_id": "proof_0041"
+      },
+      {
+        "evidence_digest": "42cafcb1b1782f29779d2375e68aaef05865393aaeed5ad4587de1bd287109df",
+        "member": "recover_b",
+        "proof_id": "proof_0042"
+      },
+      {
+        "evidence_digest": "319018458636a31f4190cabe88e6f176206f1744589e28c1e08f84c370e69ae1",
+        "member": "registrar_d",
+        "proof_id": "proof_0043"
+      },
+      {
+        "evidence_digest": "4ae2e581c0237be7314143064a88282230bc0280918df8e6d19e0d3b64ae52b7",
+        "member": "registrar_e",
+        "proof_id": "proof_0044"
+      }
+    ],
+    "chain_id": "research_chain",
+    "deadline_epoch": 4,
+    "height": 20,
+    "id": "event_0041",
+    "kind": "recover_capability",
+    "next_members": [
+      "registrar_d",
+      "registrar_e",
+      "registrar_f"
+    ],
+    "next_threshold": 2,
+    "next_version": 2,
+    "result_id": "result_0041",
+    "set_id": "recovery_set",
+    "set_version": 1,
+    "target_capability": "registration",
+    "target_module": "participation",
+    "valid_from_epoch": 2
+  },
+  {
+    "actor": "clock",
+    "height": 20,
+    "id": "event_0042",
+    "kind": "activate_rotation",
+    "target_capability": "issuance",
+    "target_module": "native_economy"
+  },
+  {
+    "action_digest": "a675d0fd5c2c20905ec6f6c2ddb0728d37d3c1fec030a060d314911b16f4ef06",
+    "action_id": "action_0043",
+    "approvals": [
+      {
+        "evidence_digest": "9ec0da95fc92b02e7b76f54ee051828903145802c7ee965a343859c3343682db",
+        "member": "issuer_a",
+        "proof_id": "proof_0045"
+      },
+      {
+        "evidence_digest": "5db0521e33ffe248f8e0bb165f94250f19aec4ab84402af1081ee14047b26304",
+        "member": "issuer_b",
+        "proof_id": "proof_0046"
+      }
+    ],
+    "capability": "issuance",
+    "chain_id": "research_chain",
+    "deadline_epoch": 0,
+    "height": 20,
+    "id": "event_0043",
+    "kind": "authorize_action",
+    "module": "native_economy",
+    "result_id": "result_0043",
+    "set_id": "issuance_set",
+    "set_version": 1,
+    "valid_from_epoch": 0
+  },
+  {
+    "action_digest": "16e2e3fde0b0878f3cd7400a8f347e3b35198444de333b9dbe8b3ab3187c36b5",
+    "action_id": "action_0044",
+    "approvals": [
+      {
+        "evidence_digest": "f6a9de30a4921bc2ae95b1fdb14d16165adba4d4510b92be14c38b16f7777596",
+        "member": "issuer_d",
+        "proof_id": "proof_0047"
+      },
+      {
+        "evidence_digest": "df0f3c7c16ee3c77a2ae2cf48eae53c7444ccd2cd674b2e4b017afe8f28e0c43",
+        "member": "issuer_e",
+        "proof_id": "proof_0048"
+      }
+    ],
+    "capability": "issuance",
+    "chain_id": "research_chain",
+    "deadline_epoch": 0,
+    "height": 20,
+    "id": "event_0044",
+    "kind": "authorize_action",
+    "module": "native_economy",
+    "result_id": "result_0044",
+    "set_id": "issuance_set",
+    "set_version": 2,
+    "valid_from_epoch": 0
+  },
+  {
+    "action_digest": "107111320455a58948679f930ebb33588239451726986dda07ae6626ad98af10",
+    "action_id": "action_rotated_issue",
+    "approvals": [
+      {
+        "evidence_digest": "d11554d2dd0b713a8c72a2b1eea34ca0c6eb4894e75e6a9f9db4d344ffa59faa",
+        "member": "issuer_d",
+        "proof_id": "proof_0049"
+      },
+      {
+        "evidence_digest": "d397728758fb58e97b2ca786dcd2ec7af850876ff7fcd09c2420b2c0d8bce32d",
+        "member": "issuer_e",
+        "proof_id": "proof_0050"
+      }
+    ],
+    "capability": "issuance",
+    "chain_id": "research_chain",
+    "deadline_epoch": 3,
+    "height": 20,
+    "id": "event_0045",
+    "kind": "authorize_action",
+    "module": "native_economy",
+    "result_id": "result_rotated_issue",
+    "set_id": "issuance_set",
+    "set_version": 2,
+    "valid_from_epoch": 2
+  },
+  {
+    "action_digest": "2888d6fc1b24dd61f24afe34274da1e4a20527b4fa11179cfef535b4335eef40",
+    "action_id": "action_0046",
+    "approvals": [
+      {
+        "evidence_digest": "4d166967c5a7ed102e533b83c977ef07742e7c5ddbe5b59e8996f67799af1e97",
+        "member": "contain_a",
+        "proof_id": "proof_0051"
+      },
+      {
+        "evidence_digest": "7a98685223094b06eeb945c27138806015f771f7dfc283a81ca7da1185f5ed5a",
+        "member": "contain_c",
+        "proof_id": "proof_0052"
+      }
+    ],
+    "chain_id": "research_chain",
+    "deadline_epoch": 2,
+    "height": 20,
+    "id": "event_0046",
+    "kind": "revoke_member",
+    "member": "issuer_d",
+    "reason_digest": "9942199c0c771686eba19bdbf463d7a58587efdd18bad7fff9a0d93e6fa507aa",
+    "result_id": "result_0046",
+    "set_id": "containment_set",
+    "set_version": 1,
+    "target_capability": "issuance",
+    "target_module": "native_economy",
+    "valid_from_epoch": 0
+  },
+  {
+    "action_digest": "54a956c7c7fe64de121e98200210a1d3d94bcef853ef8974a5f0463942f90d2b",
+    "action_id": "action_0047",
+    "approvals": [
+      {
+        "evidence_digest": "d1863cacc141db017ab5814cb034b28e187dd1c2e2446fd3ef4dd449b74f2422",
+        "member": "issuer_e",
+        "proof_id": "proof_0053"
+      },
+      {
+        "evidence_digest": "0a3b28cdca2b5bcdc8d37c28386ee78bc4a15d24a87ef7a9ea9d671068bcdc34",
+        "member": "issuer_f",
+        "proof_id": "proof_0054"
+      }
+    ],
+    "capability": "issuance",
+    "chain_id": "research_chain",
+    "deadline_epoch": 3,
+    "height": 20,
+    "id": "event_0047",
+    "kind": "authorize_action",
+    "module": "native_economy",
+    "result_id": "result_0047",
+    "set_id": "issuance_set",
+    "set_version": 2,
+    "valid_from_epoch": 2
+  },
+  {
+    "actor": "clock",
+    "height": 20,
+    "id": "event_0048",
+    "kind": "advance_height",
+    "to_height": 21
+  },
+  {
+    "actor": "clock",
+    "height": 21,
+    "id": "event_0049",
+    "kind": "advance_height",
+    "to_height": 22
+  },
+  {
+    "actor": "clock",
+    "height": 22,
+    "id": "event_0050",
+    "kind": "advance_height",
+    "to_height": 23
+  },
+  {
+    "actor": "clock",
+    "height": 23,
+    "id": "event_0051",
+    "kind": "advance_height",
+    "to_height": 24
+  },
+  {
+    "actor": "clock",
+    "height": 24,
+    "id": "event_0052",
+    "kind": "advance_height",
+    "to_height": 25
+  },
+  {
+    "actor": "clock",
+    "height": 25,
+    "id": "event_0053",
+    "kind": "advance_height",
+    "to_height": 26
+  },
+  {
+    "actor": "clock",
+    "height": 26,
+    "id": "event_0054",
+    "kind": "advance_height",
+    "to_height": 27
+  },
+  {
+    "actor": "clock",
+    "height": 27,
+    "id": "event_0055",
+    "kind": "advance_height",
+    "to_height": 28
+  },
+  {
+    "actor": "clock",
+    "height": 28,
+    "id": "event_0056",
+    "kind": "advance_height",
+    "to_height": 29
+  },
+  {
+    "actor": "clock",
+    "height": 29,
+    "id": "event_0057",
+    "kind": "advance_height",
+    "to_height": 30
+  },
+  {
+    "actor": "clock",
+    "height": 30,
+    "id": "event_0058",
+    "kind": "advance_height",
+    "to_height": 31
+  },
+  {
+    "actor": "clock",
+    "height": 31,
+    "id": "event_0059",
+    "kind": "advance_height",
+    "to_height": 32
+  },
+  {
+    "actor": "clock",
+    "height": 32,
+    "id": "event_0060",
+    "kind": "advance_height",
+    "to_height": 33
+  },
+  {
+    "actor": "clock",
+    "height": 33,
+    "id": "event_0061",
+    "kind": "advance_height",
+    "to_height": 34
+  },
+  {
+    "actor": "clock",
+    "height": 34,
+    "id": "event_0062",
+    "kind": "advance_height",
+    "to_height": 35
+  },
+  {
+    "actor": "clock",
+    "height": 35,
+    "id": "event_0063",
+    "kind": "advance_height",
+    "to_height": 36
+  },
+  {
+    "actor": "clock",
+    "height": 36,
+    "id": "event_0064",
+    "kind": "advance_height",
+    "to_height": 37
+  },
+  {
+    "actor": "clock",
+    "height": 37,
+    "id": "event_0065",
+    "kind": "advance_height",
+    "to_height": 38
+  },
+  {
+    "actor": "clock",
+    "height": 38,
+    "id": "event_0066",
+    "kind": "advance_height",
+    "to_height": 39
+  },
+  {
+    "actor": "clock",
+    "height": 39,
+    "id": "event_0067",
+    "kind": "advance_height",
+    "to_height": 40
+  },
+  {
+    "action_digest": "e53bf57079c9ed3bc1775dca7a9300455b95fc84562da1d7af702431d0fcc8e6",
+    "action_id": "action_0068",
+    "approvals": [
+      {
+        "evidence_digest": "9376947f68e256c6f5ac922498ee9cf2912e2726a39077b27ea682b46d05629a",
+        "member": "recover_a",
+        "proof_id": "proof_0055"
+      },
+      {
+        "evidence_digest": "f2f19d1b727857ccef2ddb203ce2a058c61edc26357cd2301d98bb396be7d85d",
+        "member": "recover_b",
+        "proof_id": "proof_0056"
+      },
+      {
+        "evidence_digest": "a3f27d225815fb0c0bc5ea0e6b930ebf2e62d6045403aa41c6c65adee15590e3",
+        "member": "issuer_g",
+        "proof_id": "proof_0057"
+      },
+      {
+        "evidence_digest": "8bdd6d2ec5897841673d627f03205fb2ed7b7a6fbe9301e5a6bdb144bcb0c94f",
+        "member": "issuer_h",
+        "proof_id": "proof_0058"
+      }
+    ],
+    "chain_id": "research_chain",
+    "deadline_epoch": 6,
+    "height": 40,
+    "id": "event_0068",
+    "kind": "recover_capability",
+    "next_members": [
+      "issuer_g",
+      "issuer_h",
+      "issuer_i"
+    ],
+    "next_threshold": 2,
+    "next_version": 3,
+    "result_id": "result_0068",
+    "set_id": "recovery_set",
+    "set_version": 1,
+    "target_capability": "issuance",
+    "target_module": "native_economy",
+    "valid_from_epoch": 4
+  }
+]
