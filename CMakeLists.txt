@@ -811,6 +811,30 @@ add_test(
     "${Python3_EXECUTABLE}"
     "${PROJECT_SOURCE_DIR}/tests/simulation/authority_scenario_test.py"
 )
+add_test(
+  NAME economic-stress-design
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/economic_stress_design_test.py"
+)
+add_test(
+  NAME economic-stress-model
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/economic_stress_model_test.py"
+)
+add_test(
+  NAME economic-stress-study
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/economic_stress_study_test.py"
+)
+add_test(
+  NAME economic-stress-errors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/economic_stress_errors_test.py"
+)
 set_tests_properties(
   protocol-primitives-python
   ledger-transition-python

@@ -161,9 +161,10 @@ max_units_per_participant_epoch = 40
 
 Authorities are the existing research identifiers `clock`, `registrar`,
 `stake_verifier`, `lifecycle`, `enforcement`, and `reward`. Validators have
-one contribution kind `vote` with verifier `vote_verifier` and the selected
-validator weight. Nodes have one kind `storage` with verifier
-`storage_verifier` and the selected node weight. Genesis height is zero.
+`proposal` with the selected validator weight and baseline `vote` with weight
+one; both use `vote_verifier`. Nodes have `compute` with the selected node
+weight and baseline `storage` with weight one; both use `storage_verifier`.
+Genesis height is zero.
 
 ### Native-economy manifest
 
@@ -206,7 +207,9 @@ stake                                p_stake_set
 lifecycle                            p_lifecycle_set
 enforcement                          p_enforcement_set
 reward                               p_reward_set
+contribution/validator/proposal      p_proposal_set
 contribution/validator/vote          p_vote_set
+contribution/node/compute            p_compute_set
 contribution/node/storage            p_storage_set
 ```
 
@@ -237,8 +240,10 @@ At height zero it emits, in order:
 
 It emits one clock advance per height until the activation delay is reached,
 then activates all four participants in the same order. At that height each
-participant emits one contribution proof for the role's only contribution
-kind and the current epoch, using its seeded units.
+participant emits one contribution proof for the current epoch using its
+seeded units. The `a` participant in each role uses the selected-weight kind
+(`proposal` or `compute`); the `b` participant uses the weight-one baseline
+kind (`vote` or `storage`).
 
 The generator advances one height to close the contribution epoch. For role
 order `validator`, then `node`, it sets the selected reward budget, settles
@@ -310,12 +315,13 @@ Participation entitlements do not exist until participation executes, while
 their exact native-economy allocation events must be inside authority action
 digests. The study resolves this without mutable or implicit authorization:
 
-1. build a prefix containing every predetermined legitimate target and the
-   captured-issuance target;
+1. build a prefix containing every predetermined participation target;
 2. simulate the authority prefix;
 3. release and simulate the participation flow;
-4. derive exact funding targets through participation's accepted adapter;
-5. append authority events for those targets and the control flow;
+4. derive exact funding targets through participation's accepted adapter and
+   build the complete native-economy flow;
+5. append authority events for every native-economy target, the captured
+   issuance target, and the control flow;
 6. replay the complete authority event list from genesis;
 7. release every target from the complete result; and
 8. replay participation and require byte-identical output to the prefix-based
@@ -379,14 +385,16 @@ reward allocations equal the sum of all nonzero participation entitlements.
 result is accepted, whether or not the economic supply cap later rejects the
 target.
 
-For all nonzero entitlements together, `concentration_within_bound` requires:
+For each role's two nonzero entitlements, `concentration_within_bound`
+requires:
 
 ```text
-4 * maximum_entitlement <= 3 * total_entitlement
+4 * maximum_role_entitlement <= 3 * total_role_entitlement
 ```
 
-A zero total fails the objective. The three-quarter bound is a research alarm
-for this four-participant fixture, not a production distribution policy.
+A zero role total fails the objective. The three-quarter bound is a research
+alarm for this two-participant-per-role fixture, not a production distribution
+policy.
 
 Reverse-stress codes are emitted in lexical order:
 
@@ -428,7 +436,8 @@ Each run reports:
   remainder;
 - issued supply, issuance capacity, treasury, fee pool, reward pool, penalty
   pool, bonded, unbonding, and account totals;
-- exact maximum-entitlement share as a reduced rational;
+- exact per-role and maximum within-role entitlement shares as reduced
+  rationals;
 - the objective object, reverse-stress codes, and classification.
 
 No metric uses a float. Counts and totals are derived from canonical accepted
