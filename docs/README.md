@@ -56,6 +56,10 @@ immutable; compatible changes require a new version.
 - `specifications/participation-simulation-v1.md`: validator and resource-node
   lifecycle, bounded verifier-result, entitlement, and native-claim funding
   contract for M2 research.
+- `specifications/authority-simulation-v1.md`: capability-scoped
+  distinct-member thresholds, action results, rotation, containment, recovery,
+  and shared simulator adapters for M2 research.
 
 The corresponding executable research tools and reviewed fixtures live in
-`../simulation/native_economy/` and `../simulation/participation/`.
+`../simulation/native_economy/`, `../simulation/participation/`, and
+`../simulation/authority/`.
