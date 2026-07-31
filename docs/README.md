@@ -13,6 +13,8 @@
   and node lifecycle, entitlement, and claim-funding study.
 - `project/authority-simulation-report-v1.md`: reproducible M2 threshold
   result, rotation, containment, recovery, and shared-adapter study.
+- `project/economic-stress-report-v1.md`: reproducible M2 orthogonal
+  cross-simulator parameter-family and reverse-stress study.
 
 ## Architecture
 
@@ -61,7 +63,9 @@ immutable; compatible changes require a new version.
 - `specifications/authority-simulation-v1.md`: capability-scoped
   distinct-member thresholds, action results, rotation, containment, recovery,
   and shared simulator adapters for M2 research.
+- `specifications/economic-stress-study-v1.md`: deterministic three-level
+  orthogonal parameter screening across the accepted M2 simulators.
 
 The corresponding executable research tools and reviewed fixtures live in
-`../simulation/native_economy/`, `../simulation/participation/`, and
-`../simulation/authority/`.
+`../simulation/native_economy/`, `../simulation/participation/`,
+`../simulation/authority/`, and `../simulation/economic_stress/`.
