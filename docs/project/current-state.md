@@ -1,28 +1,52 @@
 # Current state
 
-Last updated: 2026-07-30
+Last updated: 2026-07-31
 
 ## Phase
 
-M2 — Native economy specification and simulator. The second M2 slice now
-defines and independently executes validator and resource-node registration,
-delayed activation and exit, bond evidence, recoverable jail, terminal
-removal, capability-scoped contribution results, integer entitlements, and
-ordinary native-economy claim funding. Issue #38 closed through PR #39 as
-`19f5d80`; exact final-head Actions run 30575635500 passed, and post-merge run
-30576149775 passed on the unchanged retry after exposing a listener-port race.
-Issue #40 and PR #41 removed that race and merged as `bdaa290`; exact candidate
-run 30577119242 and post-merge run 30577633067 passed the full compiler,
-sanitizer, fuzz, differential, persistence, single-node, four-validator, and
-simulator matrix. No delivery branch remains. No production allocation, rate,
-weight, duration, threshold, authority proof, verifier, or C++ economic
-transition is accepted. The next clean session should specify and simulate
-capability-scoped threshold authority results, rotation, and recovery before
-adversarial economic parameter sweeps.
+M2 — Native economy specification and simulator. The third M2 slice now
+defines and independently executes capability-scoped threshold authority
+results, distinct-member and proof replay protection, exact downstream action
+binding, dual-threshold rotation, emergency containment, revocation, and
+delayed recovery for both accepted M2 simulators. Issue #43 closed through PR
+#44 as `dcf8ef1`; exact candidate Actions run 30668672185 and post-merge run
+30669111620 passed the full compiler, sanitizer, fuzz, differential,
+persistence, single-node, four-validator, and simulator matrix. No delivery
+branch remains. No production allocation, rate, weight, duration, principal,
+threshold, signature scheme, verifier, or C++ economic transition is accepted.
+The next clean session should run one bounded cross-simulator adversarial
+parameter-family study before proposing any production economic values.
 
 ## Verified facts
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #43 and PR #44 select capability-scoped, versioned authority sets;
+  distinct externally verified members; independent event, result, action, and
+  proof replay identities; chain/module/capability/epoch/deadline action
+  domains; dual current-and-proposed rotation approval; fail-closed emergency
+  containment and revocation; and delayed dual-threshold recovery. ADR 0010
+  records the primary-source research, alternatives, consequences, and
+  research-only compatibility boundary.
+- `authority-simulation-v1.md` fixes strict integer-only manifest and event
+  schemas, seven ordered event kinds, checked `u64` arithmetic, complete
+  ordinary-failure atomicity, immutable research containment and recovery
+  roots, consecutive retained versions, canonical JSON and SHA-256 trace
+  domains, and all-or-nothing adapters into native-economy v1 and participation
+  v1. It changes no M1 byte, root, persistence, ABCI, supply, or validator-set
+  behavior.
+- The independent `simulation/authority` package owns no key, signature, raw
+  evidence, native value, account, participant, or consensus transition. It
+  imports only Python's standard library and the two accepted M2 models;
+  replay invokes no randomness, wall clock, network, node, C++, verifier, or
+  model inference.
+- The reviewed 69-event authority fixture accepts 50 events, rejects 19
+  adversarial events, retains 26 unique member-proof identifiers and three
+  operational results, completes one ordinary rotation and two recoveries,
+  and freezes trace digest
+  `26f96d2fccdcb7b9acdcad0b83f81a564aa99196eb4042285ddcf38dba6588a1`.
+  The reproducible 24-seed study replays 1,656 events, accepts all 48 adapted
+  downstream events, and freezes study digest
+  `74e0913b379151a3fd72529837b0dcb31002dbe33251ad5e3ae4bb2fc1739ea4`.
 - Issue #38 and PR #39 select stable participant identities and tombstones,
   delayed lifecycle transitions, a recoverable jail overlay, terminal removal,
   capability-scoped verifier results, participant-scoped floor entitlements,
@@ -626,20 +650,39 @@ adversarial economic parameter sweeps.
   30577633067 with the same 34/34 or 40/40 matrix. All four jobs completed the
   four-validator transfer/restart path and four durable C++ audits per stop
   without a listener collision.
+- Direct focused execution passes all 23 authority tests: four fixed-model and
+  adapter tests, seven strict validation/boundary/atomicity tests, six
+  rotation/containment/recovery tests, and six deterministic scenario/CLI/study
+  tests. All 18 native-economy and 19 participation tests, Python compilation,
+  strict fixture parsing and generator equality, the standard-library/local
+  import audit, and `git diff --check` pass. No new fuzz target applies because
+  this research tool decodes no protocol or consensus byte surface; strict
+  Python JSON decoding and mutation tests cover its caller-bounded inputs.
+- PR #44 final head `c62bc94` passed exact hosted Actions run 30668672185.
+  GCC debug, Clang debug, and GCC ASan/UBSan passed 38/38 CTest targets; Clang
+  ASan/UBSan passed 44/44 including all six bounded fuzz targets. Every job
+  also passed pinned dependency and Go gates, the 10,000-sequence differential
+  suite, persistence and recovery coverage, all three M2 simulators, and both
+  live CometBFT integrations.
+- The rebase-merged `main` commit `dcf8ef1` passed post-merge Actions run
+  30669111620 with the same 38/38 or 44/44 matrix. All four jobs completed the
+  single-node and four-validator transfer/restart paths and four durable C++
+  replica audits per four-validator stop.
 
 ## Exact next action
 
 In the next clean session, first reconcile this handoff with GitHub and the
-post-merge matrix. Then create one bounded M2 issue for a simulation-first
-authority-result envelope shared by native-economy and participation
-capabilities. Research and specify versioned authority sets, distinct-member
-thresholds, domain-separated action digests, chain/module/capability/epoch and
-deadline binding, result and action replay identities, scheduled rotation,
-revocation, recovery, and emergency containment. Simulate compromised,
-colluding, stale, duplicated, cross-capability, and offline members without
-implementing cryptographic primitives or choosing production principals or
-quorums. Establish this deterministic authorization boundary before
-adversarial participation/economic parameter families or C++ transitions.
+post-merge matrix. Then create one bounded M2 issue for a deterministic
+cross-simulator adversarial parameter-family study that composes accepted
+native-economy flows, participation entitlements, and threshold-authorized
+privileged actions. Specify discrete integer research ranges and explicit
+safety, solvency, conservation, liveness, concentration, and recovery
+objectives before generating scenarios. Sweep issuance, fee routing, treasury
+and reward budgets, stake and lifecycle delays, contribution weights,
+penalties, authority thresholds, rotation delays, and correlated failure
+families without selecting production values or adding C++ transitions. Record
+which parameter families are infeasible, fragile, or robust enough for later
+independent economic review.
 
 ## Open autonomous decisions
 
