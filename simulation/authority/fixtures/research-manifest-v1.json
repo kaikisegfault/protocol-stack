@@ -1,0 +1,88 @@
+{
+  "capabilities": {
+    "native_economy": {
+      "issuance": {
+        "members": [
+          "issuer_a",
+          "issuer_b",
+          "issuer_c"
+        ],
+        "set_id": "issuance_set",
+        "threshold": 2,
+        "version": 1
+      },
+      "reward": {
+        "members": [
+          "rewarder_a",
+          "rewarder_b",
+          "rewarder_c"
+        ],
+        "set_id": "reward_set",
+        "threshold": 2,
+        "version": 1
+      }
+    },
+    "participation": {
+      "contribution/validator/vote": {
+        "members": [
+          "vote_a",
+          "vote_b",
+          "vote_c"
+        ],
+        "set_id": "vote_set",
+        "threshold": 2,
+        "version": 1
+      },
+      "registration": {
+        "members": [
+          "registrar_a",
+          "registrar_b",
+          "registrar_c"
+        ],
+        "set_id": "registration_set",
+        "threshold": 2,
+        "version": 1
+      }
+    }
+  },
+  "chain_id": "research_chain",
+  "clock": "clock",
+  "control_sets": {
+    "containment": {
+      "members": [
+        "contain_a",
+        "contain_b",
+        "contain_c"
+      ],
+      "set_id": "containment_set",
+      "threshold": 2,
+      "version": 1
+    },
+    "recovery": {
+      "members": [
+        "recover_a",
+        "recover_b",
+        "recover_c"
+      ],
+      "set_id": "recovery_set",
+      "threshold": 2,
+      "version": 1
+    }
+  },
+  "genesis": {
+    "height": 0
+  },
+  "parameters": {
+    "epoch_length": 10,
+    "max_action_lifetime_epochs": 2,
+    "max_approvals_per_result": 16,
+    "max_capabilities": 8,
+    "max_members_per_set": 8,
+    "max_rotation_delay_epochs": 4,
+    "max_versions_per_capability": 8,
+    "min_rotation_delay_epochs": 1,
+    "recovery_delay_epochs": 2
+  },
+  "research_only": true,
+  "schema": "protocol-stack/authority-simulation-manifest/v1"
+}

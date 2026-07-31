@@ -11,6 +11,8 @@
   accounting study and its explicitly non-production interpretation.
 - `project/participation-simulation-report-v1.md`: reproducible M2 validator
   and node lifecycle, entitlement, and claim-funding study.
+- `project/authority-simulation-report-v1.md`: reproducible M2 threshold
+  result, rotation, containment, recovery, and shared-adapter study.
 
 ## Architecture
 
