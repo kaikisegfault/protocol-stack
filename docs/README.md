@@ -65,6 +65,9 @@ immutable; compatible changes require a new version.
   and shared simulator adapters for M2 research.
 - `specifications/economic-stress-study-v1.md`: deterministic three-level
   orthogonal parameter screening across the accepted M2 simulators.
+- `specifications/economic-envelope-study-v1.md`: exact high-resolution
+  reward-funding and within-role concentration boundaries around the screened
+  M2 survivor families.
 
 The corresponding executable research tools and reviewed fixtures live in
 `../simulation/native_economy/`, `../simulation/participation/`,
