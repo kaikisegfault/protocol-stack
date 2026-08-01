@@ -746,6 +746,24 @@ add_test(
     "${PROJECT_SOURCE_DIR}/tests/integration/cometbft_port_allocation_test.py"
 )
 add_test(
+  NAME repository-metadata
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tools/verify_metadata.py"
+)
+add_test(
+  NAME verification-scope
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/tools/verification_scope_test.py"
+)
+add_test(
+  NAME verify-metadata
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/tools/verify_metadata_test.py"
+)
+add_test(
   NAME native-economy-model
   COMMAND
     "${Python3_EXECUTABLE}"

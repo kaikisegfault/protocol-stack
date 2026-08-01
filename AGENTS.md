@@ -72,12 +72,15 @@ test evidence, then repair the state document.
   auditable and safe.
 - During implementation, use only lightweight or focused local checks needed
   for prompt feedback. Push a clean candidate and use GitHub-hosted Actions on
-  that exact commit as the default execution site for full builds, compiler and
-  sanitizer matrices, fuzzing, simulations, packaging, and other heavy work.
-  Run a heavy gate locally only when the workflow is unavailable or under
-  change, or when reproducing a failure requires it; record why. Do not
-  duplicate the full remote matrix locally by default. Required completion
-  gates remain mandatory.
+  that exact commit. Pure Markdown, README, static documentation-asset, and
+  repository-skill instruction/metadata changes use the focused metadata path;
+  do not run the compiler/sanitizer matrix for them. Source, executable script,
+  build, workflow, dependency, protocol, configuration, and unclassified
+  changes fail closed to the full hosted matrix. Run a heavy gate locally only
+  when the workflow is unavailable or under change, or when reproducing a
+  failure requires it; record why. Do not duplicate the full remote matrix
+  locally by default. Required risk-proportionate completion gates remain
+  mandatory.
 - Treat the owner's local machine as resource-constrained. Do not run the full
   verifier, populate large build/module/VCS caches, use direct VCS dependency
   retrieval, or resolve expanded dependency graphs locally when a

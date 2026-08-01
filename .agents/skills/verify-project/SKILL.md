@@ -8,25 +8,30 @@ description: Run and evaluate protocol-stack quality gates before completion, co
 1. Read `docs/engineering/verification.md` and inspect the complete change.
 2. Classify affected surfaces: documentation, build, kernel, protocol,
    persistence, adapter, network, Python model, or operations.
-3. Run lightweight and focused checks locally when they provide prompt
-   feedback. Push a clean candidate, then use the required GitHub-hosted
-   workflow jobs on that exact commit for full builds, compiler and sanitizer
+3. For changes limited to Markdown, static documentation assets, `SKILL.md`,
+   and skill `agents/openai.yaml`, use the focused repository-metadata path.
+   Do not run the compiler/sanitizer matrix. Any executable script, source,
+   build, workflow, dependency, protocol, configuration, or unclassified path
+   fails closed to full verification.
+4. Run lightweight and focused checks locally when they provide prompt
+   feedback. Push a clean candidate, then use the selected GitHub-hosted path
+   on that exact commit. Use the full path for builds, compiler and sanitizer
    matrices, fuzzing, simulations, packaging, and other heavy gates. Do not
    duplicate heavy remote work locally by default.
-4. For consensus-visible changes, require fixed vectors, negative and boundary
+5. For consensus-visible changes, require fixed vectors, negative and boundary
    cases, property invariants, and differential evidence from an independent
    model.
-5. For untrusted bytes, require a fuzz target or a documented reason it does
+6. For untrusted bytes, require a fuzz target or a documented reason it does
    not apply.
-6. For C/C++, require the configured compiler matrix and sanitizers. GitHub
+7. For C/C++, require the configured compiler matrix and sanitizers. GitHub
    Actions on the exact commit is the default evidence. Run the full matrix
    locally only if the workflow is unavailable or under change, or local
    reproduction is needed; record the reason.
-7. Inspect the full diff, Git status, generated artifacts, documentation, and
+8. Inspect the full diff, Git status, generated artifacts, documentation, and
    dependency changes.
-8. Report exact local commands and exact GitHub check results. Distinguish
+9. Report exact local commands and exact GitHub check results. Distinguish
    passed, failed, and unavailable checks.
-9. At every phase boundary, use bounded status queries, cancel obsolete remote
+10. At every phase boundary, use bounded status queries, cancel obsolete remote
    runs, audit for repository build/test/watch/server processes, and remove
    reproducible local artifacts with `tools/clean-local.sh`. Preserve and
    investigate anything unexplained.

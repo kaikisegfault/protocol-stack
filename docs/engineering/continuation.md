@@ -77,9 +77,11 @@ outcome. Prefer production code and runnable integration over speculative
 frameworks, redundant test environments, or documentation that does not
 clarify implemented behavior.
 
-Use the smallest relevant local check while iterating. The repository's
-compiler and sanitizer matrix remains a completion gate, but GitHub-hosted
-Actions on the exact candidate commit are its default execution site. Do not
+Use the smallest relevant local check while iterating. Risk-proportionate
+GitHub-hosted Actions on the exact candidate commit remain a completion gate.
+Pure documentation and repository-skill metadata use the focused metadata
+path; code, executable, build, workflow, dependency, protocol, configuration,
+and unclassified changes use the compiler and sanitizer matrix. Do not
 duplicate the heavy matrix locally without a concrete workflow or diagnostic
 reason.
 
