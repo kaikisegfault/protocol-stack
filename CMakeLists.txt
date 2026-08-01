@@ -853,6 +853,24 @@ add_test(
     "${Python3_EXECUTABLE}"
     "${PROJECT_SOURCE_DIR}/tests/simulation/economic_envelope_study_test.py"
 )
+add_test(
+  NAME reward-distribution-design
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/reward_distribution_design_test.py"
+)
+add_test(
+  NAME reward-distribution-model
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/reward_distribution_model_test.py"
+)
+add_test(
+  NAME reward-distribution-study
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/reward_distribution_study_test.py"
+)
 set_tests_properties(
   protocol-primitives-python
   ledger-transition-python

@@ -1,0 +1,306 @@
+{
+  "cap_ratio": {
+    "denominator": 4,
+    "numerator": 3
+  },
+  "contribution_epochs": 8,
+  "design": "REWARD-CAP(6x2x16x20^2;5x8+4)-v1",
+  "drain_epochs": 4,
+  "history_epochs": 4,
+  "mechanisms": [
+    "proportional",
+    "participant_cap",
+    "principal_cap"
+  ],
+  "roles": [
+    "validator",
+    "node"
+  ],
+  "scenarios": [
+    {
+      "budget": 100,
+      "contributions": [
+        {
+          "worker_a": 20,
+          "worker_b": 20
+        },
+        {
+          "worker_a": 20,
+          "worker_b": 1
+        },
+        {
+          "worker_a": 1,
+          "worker_b": 20
+        },
+        {
+          "worker_a": 15,
+          "worker_b": 5
+        },
+        {
+          "worker_a": 5,
+          "worker_b": 15
+        },
+        {
+          "worker_a": 13,
+          "worker_b": 7
+        },
+        {
+          "worker_a": 7,
+          "worker_b": 13
+        },
+        {
+          "worker_a": 10,
+          "worker_b": 10
+        }
+      ],
+      "participants": {
+        "worker_a": {
+          "payout_account": "alpha",
+          "principal": "alpha"
+        },
+        "worker_b": {
+          "payout_account": "beta",
+          "principal": "beta"
+        }
+      },
+      "role": "node",
+      "scenario_id": "honest_variance"
+    },
+    {
+      "budget": 100,
+      "contributions": [
+        {
+          "worker_a": 20,
+          "worker_b": 20
+        },
+        {
+          "worker_a": 20,
+          "worker_c": 10
+        },
+        {
+          "worker_b": 20,
+          "worker_c": 10
+        },
+        {
+          "worker_a": 20
+        },
+        {
+          "worker_b": 20
+        },
+        {
+          "worker_c": 20
+        },
+        {
+          "worker_a": 20,
+          "worker_b": 20,
+          "worker_c": 20
+        },
+        {
+          "worker_a": 10,
+          "worker_b": 10,
+          "worker_c": 10
+        }
+      ],
+      "participants": {
+        "worker_a": {
+          "payout_account": "alpha",
+          "principal": "alpha"
+        },
+        "worker_b": {
+          "payout_account": "beta",
+          "principal": "beta"
+        },
+        "worker_c": {
+          "payout_account": "gamma",
+          "principal": "gamma"
+        }
+      },
+      "role": "node",
+      "scenario_id": "intermittent_availability"
+    },
+    {
+      "budget": 100,
+      "contributions": [
+        {
+          "worker_a": 15,
+          "worker_b": 10
+        },
+        {
+          "worker_a": 20,
+          "worker_b": 5
+        },
+        {
+          "worker_a": 5,
+          "worker_b": 20
+        },
+        {
+          "worker_a": 15,
+          "worker_b": 10,
+          "worker_c": 5
+        },
+        {
+          "worker_a": 20,
+          "worker_b": 10,
+          "worker_c": 10
+        },
+        {
+          "worker_a": 10,
+          "worker_c": 20
+        },
+        {
+          "worker_a": 5,
+          "worker_c": 20
+        },
+        {
+          "worker_c": 20
+        }
+      ],
+      "participants": {
+        "worker_a": {
+          "payout_account": "alpha",
+          "principal": "alpha"
+        },
+        "worker_b": {
+          "payout_account": "beta",
+          "principal": "beta"
+        },
+        "worker_c": {
+          "payout_account": "gamma",
+          "principal": "gamma"
+        }
+      },
+      "role": "node",
+      "scenario_id": "population_change"
+    },
+    {
+      "budget": 100,
+      "contributions": [
+        {
+          "baseline": 2,
+          "dominant": 18
+        },
+        {
+          "baseline": 2,
+          "dominant": 18
+        },
+        {
+          "baseline": 2,
+          "dominant": 18
+        },
+        {
+          "baseline": 2,
+          "dominant": 18
+        },
+        {
+          "baseline": 2,
+          "dominant": 18
+        },
+        {
+          "baseline": 2,
+          "dominant": 18
+        },
+        {
+          "baseline": 2,
+          "dominant": 18
+        },
+        {
+          "baseline": 2,
+          "dominant": 18
+        }
+      ],
+      "participants": {
+        "baseline": {
+          "payout_account": "beta",
+          "principal": "beta"
+        },
+        "dominant": {
+          "payout_account": "alpha",
+          "principal": "alpha"
+        }
+      },
+      "role": "node",
+      "scenario_id": "dominant_unsplit"
+    },
+    {
+      "budget": 100,
+      "contributions": [
+        {
+          "baseline": 2,
+          "dominant_a": 9,
+          "dominant_b": 9
+        },
+        {
+          "baseline": 2,
+          "dominant_a": 9,
+          "dominant_b": 9
+        },
+        {
+          "baseline": 2,
+          "dominant_a": 9,
+          "dominant_b": 9
+        },
+        {
+          "baseline": 2,
+          "dominant_a": 9,
+          "dominant_b": 9
+        },
+        {
+          "baseline": 2,
+          "dominant_a": 9,
+          "dominant_b": 9
+        },
+        {
+          "baseline": 2,
+          "dominant_a": 9,
+          "dominant_b": 9
+        },
+        {
+          "baseline": 2,
+          "dominant_a": 9,
+          "dominant_b": 9
+        },
+        {
+          "baseline": 2,
+          "dominant_a": 9,
+          "dominant_b": 9
+        }
+      ],
+      "participants": {
+        "baseline": {
+          "payout_account": "beta",
+          "principal": "beta"
+        },
+        "dominant_a": {
+          "payout_account": "alpha",
+          "principal": "alpha"
+        },
+        "dominant_b": {
+          "payout_account": "alpha",
+          "principal": "alpha"
+        }
+      },
+      "role": "node",
+      "scenario_id": "dominant_split"
+    }
+  ],
+  "schema": "protocol-stack/reward-distribution-design/v1",
+  "support_point_count": 76800,
+  "survivor_case_ids": [
+    "case_00",
+    "case_01",
+    "case_09",
+    "case_15",
+    "case_21",
+    "case_24"
+  ],
+  "unit_range": {
+    "maximum": 20,
+    "minimum": 1,
+    "step": 1
+  },
+  "weight_range": {
+    "maximum": 16,
+    "minimum": 1,
+    "step": 1
+  }
+}
