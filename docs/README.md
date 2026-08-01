@@ -70,7 +70,10 @@ immutable; compatible changes require a new version.
 - `specifications/economic-envelope-study-v1.md`: exact high-resolution
   reward-funding and within-role concentration boundaries around the screened
   M2 survivor families.
+- `specifications/reward-distribution-study-v1.md`: deterministic proportional,
+  participant-cap, and principal-cap mechanism comparison contract.
 
 The corresponding executable research tools and reviewed fixtures live in
 `../simulation/native_economy/`, `../simulation/participation/`,
-`../simulation/authority/`, and `../simulation/economic_stress/`.
+`../simulation/authority/`, `../simulation/economic_stress/`, and
+`../simulation/reward_distribution/`.
