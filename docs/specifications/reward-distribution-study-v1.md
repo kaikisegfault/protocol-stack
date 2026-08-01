@@ -154,9 +154,10 @@ split_advantage = split selected-principal payout
                   - unsplit selected-principal payout
 ```
 
-Record positive, zero, and negative counts and maximum positive amount. Same-
-principal split invariance requires every advantage to be zero. It says
-nothing about identities registered with different principal labels.
+Record positive, zero, and negative counts and maximum positive amount. A
+mechanism has no profitable same-principal split when every advantage is zero
+or negative. It says nothing about identities registered with different
+principal labels; negative differences may arise from per-participant floors.
 
 ## Trajectory design
 
@@ -197,7 +198,8 @@ Objectives are:
 - identity/principal concentration: every nonzero payout epoch passes in that
   scope;
 - `complete_retention`: paid credit equals created credit; and
-- `split_invariant`: paired selected-principal payout is identical.
+- `nonprofitable_split`: no paired selected-principal split advantage is
+  positive.
 
 A zero-payout epoch is not a concentration pass and remains a liveness result.
 

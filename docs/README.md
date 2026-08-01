@@ -17,6 +17,8 @@
   cross-simulator parameter-family and reverse-stress study.
 - `project/economic-envelope-report-v1.md`: exact M2 reward-funding and
   within-role concentration boundaries around the screened survivor families.
+- `project/reward-distribution-report-v1.md`: exact M2 payout-cap,
+  credit-liveness, and same-principal identity-split evidence.
 
 ## Architecture
 
