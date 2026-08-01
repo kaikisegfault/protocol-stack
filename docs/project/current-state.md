@@ -11,15 +11,40 @@ multi-epoch churn, and same-principal identity splitting. Issue #53 closed
 through PR #54 as `de05202`; exact candidate Actions run 30716455320 and
 post-merge run 30716797656 passed the full compiler, sanitizer, fuzz,
 differential, persistence, single-node, four-validator, and simulator matrix.
-No delivery branch remains. No production allocation, issuance, fee route,
-budget, contribution weight, distribution mechanism, duration, principal,
-admission cost, threshold, signature scheme, verifier, or C++ economic
-transition is accepted. The next clean session should quantify cross-principal
-identity-split incentives and admission-cost tradeoffs before proposing any
-production reward or identity rule.
+No delivery branch remains. Repository closeout is now deterministic: issue
+#56 and PR #57 added the `conclude-project` skill and risk-proportionate hosted
+verification as `af68178`. Exact candidate run 30719386549 and post-merge run
+30719746416 passed the selected full path and aggregate gate. Pure
+documentation and repository-skill metadata now take a focused metadata path;
+code, executable, build, workflow, dependency, protocol, configuration, and
+unknown changes fail closed to the full matrix. No production allocation,
+issuance, fee route, budget, contribution weight, distribution mechanism,
+duration, principal, admission cost, threshold, signature scheme, verifier,
+or C++ economic transition is accepted. The next clean session should
+quantify cross-principal identity-split incentives and admission-cost
+tradeoffs before proposing any production reward or identity rule.
 
 ## Verified facts
 
+- Issue #56 and PR #57 add repository-local `conclude-project`, invoked by
+  `conclude`, `wrap up`, or an equivalent current-slice closeout request. It
+  freezes scope at work already started, requires implementation and handoff
+  completion, exact candidate and post-merge evidence, issue/PR publication,
+  and exhaustive repository reconciliation, and prohibits beginning the
+  recorded next slice.
+- `tools/verification_scope.py` classifies only Markdown, `LICENSE`, `NOTICE`,
+  static documentation images, and skill `agents/openai.yaml` as lightweight.
+  Empty, unsafe, executable, source, test, build, workflow, dependency,
+  protocol, configuration, and unknown path sets select full verification.
+  `tools/verify_metadata.py` parses the Codex TOML, validates all repository
+  skill frontmatter and UI metadata, rejects template TODOs, proves required
+  paths, and resolves internal Markdown links.
+- Strict branch protection now requires `Verification required` from GitHub
+  Actions app 15368. The aggregate fails unless classification and the selected
+  verification path succeed. Full and dependency-resolution workflows use
+  GitHub-verified `actions/checkout` v6.0.2 commit
+  `de0fac2e4500dabe0009e67214ff5f5447ce83dd`; the dependency resolver retains
+  its required authenticated publication path.
 - Issue #53 and PR #54 accept ADR 0013's research-only reward-distribution
   mechanism study. It compares the unchanged proportional floor entitlement,
   a four-opportunity participant-scoped credit cap, and the same cap grouped by
@@ -256,6 +281,21 @@ production reward or identity rule.
 
 ## Verification evidence
 
+- The official skill validator passes all four repository skills. Direct
+  focused execution of `tools/verify_metadata.py` validates four skills and
+  twelve internal Markdown links; six classification and metadata-verifier
+  unit tests pass. Python bytecode compilation, both workflow YAML parses,
+  changed-path classification fixtures, `git diff --check`, complete staged
+  diff review, and staged secret-pattern inspection also pass.
+- PR #57 exact head `bfa1760` passed candidate run 30719386549. Classification
+  selected full verification; GCC and Clang debug plus GCC ASan/UBSan passed
+  51/51 CTest targets, Clang ASan/UBSan passed 57/57 including bounded fuzz
+  smoke, and the aggregate gate passed. Resolver run 30719386529 passed.
+- Rebase-merged `main` commit `af68178` passed post-merge run 30719746416 with
+  the same classification, 51/51 or 57/57 matrix, both live CometBFT
+  integrations, repository metadata tests, and aggregate gate. Issue #56 is
+  closed, PR #57 is merged, and its local and remote delivery branch is
+  removed.
 - Direct focused execution passes all 10 reward-distribution tests: two design
   and reviewed-fixture tests, four checked arithmetic/history/adapter tests,
   and four fixed-evidence/replay/CLI/import tests. Python compilation, strict
