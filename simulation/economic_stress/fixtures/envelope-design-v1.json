@@ -1,0 +1,254 @@
+{
+  "budget_range": {
+    "maximum": 1500,
+    "minimum": 50,
+    "step": 1
+  },
+  "concentration_cell_count": 1536,
+  "contribution_unit_range": {
+    "maximum": 20,
+    "minimum": 1,
+    "step": 1
+  },
+  "design": "EXACT-ENVELOPE(6;2401x1451;16x16;20^4)-v1",
+  "financial_cell_count": 20903106,
+  "issuance_range": {
+    "maximum": 2500,
+    "minimum": 100,
+    "step": 1
+  },
+  "joint_combination_count": 160000,
+  "role_combination_count": 400,
+  "schema": "protocol-stack/economic-envelope-design/v1",
+  "survivor_case_ids": [
+    "case_00",
+    "case_01",
+    "case_09",
+    "case_15",
+    "case_21",
+    "case_24"
+  ],
+  "survivor_configurations": [
+    {
+      "case_id": "case_00",
+      "case_index": 0,
+      "compromised_available": 0,
+      "honest_available": 3,
+      "levels": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "values": {
+        "activation_delay_epochs": 1,
+        "authority_delay_epochs": 1,
+        "authority_threshold": 1,
+        "correlated_shock": "nominal",
+        "exit_unbond_delay_epochs": 1,
+        "fee_reward_parts": 0,
+        "fee_volume": 20,
+        "issuance_amount": 100,
+        "node_weight": 1,
+        "penalty_parts": 0,
+        "reward_budget_per_role": 100,
+        "validator_minimum_bond": 100,
+        "validator_weight": 1
+      }
+    },
+    {
+      "case_id": "case_01",
+      "case_index": 1,
+      "compromised_available": 1,
+      "honest_available": 2,
+      "levels": [
+        0,
+        1,
+        2,
+        0,
+        1,
+        2,
+        0,
+        1,
+        2,
+        0,
+        1,
+        2,
+        1
+      ],
+      "values": {
+        "activation_delay_epochs": 4,
+        "authority_delay_epochs": 4,
+        "authority_threshold": 2,
+        "correlated_shock": "degraded",
+        "exit_unbond_delay_epochs": 1,
+        "fee_reward_parts": 10,
+        "fee_volume": 200,
+        "issuance_amount": 100,
+        "node_weight": 16,
+        "penalty_parts": 1,
+        "reward_budget_per_role": 100,
+        "validator_minimum_bond": 100,
+        "validator_weight": 4
+      }
+    },
+    {
+      "case_id": "case_09",
+      "case_index": 9,
+      "compromised_available": 0,
+      "honest_available": 3,
+      "levels": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      "values": {
+        "activation_delay_epochs": 2,
+        "authority_delay_epochs": 1,
+        "authority_threshold": 1,
+        "correlated_shock": "nominal",
+        "exit_unbond_delay_epochs": 1,
+        "fee_reward_parts": 5,
+        "fee_volume": 200,
+        "issuance_amount": 500,
+        "node_weight": 4,
+        "penalty_parts": 1,
+        "reward_budget_per_role": 500,
+        "validator_minimum_bond": 500,
+        "validator_weight": 4
+      }
+    },
+    {
+      "case_id": "case_15",
+      "case_index": 15,
+      "compromised_available": 0,
+      "honest_available": 3,
+      "levels": [
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        0
+      ],
+      "values": {
+        "activation_delay_epochs": 4,
+        "authority_delay_epochs": 4,
+        "authority_threshold": 3,
+        "correlated_shock": "nominal",
+        "exit_unbond_delay_epochs": 4,
+        "fee_reward_parts": 5,
+        "fee_volume": 200,
+        "issuance_amount": 500,
+        "node_weight": 1,
+        "penalty_parts": 5,
+        "reward_budget_per_role": 100,
+        "validator_minimum_bond": 1000,
+        "validator_weight": 1
+      }
+    },
+    {
+      "case_id": "case_21",
+      "case_index": 21,
+      "compromised_available": 0,
+      "honest_available": 3,
+      "levels": [
+        2,
+        2,
+        2,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0
+      ],
+      "values": {
+        "activation_delay_epochs": 2,
+        "authority_delay_epochs": 2,
+        "authority_threshold": 2,
+        "correlated_shock": "nominal",
+        "exit_unbond_delay_epochs": 2,
+        "fee_reward_parts": 10,
+        "fee_volume": 800,
+        "issuance_amount": 2000,
+        "node_weight": 1,
+        "penalty_parts": 1,
+        "reward_budget_per_role": 100,
+        "validator_minimum_bond": 500,
+        "validator_weight": 1
+      }
+    },
+    {
+      "case_id": "case_24",
+      "case_index": 24,
+      "compromised_available": 0,
+      "honest_available": 3,
+      "levels": [
+        2,
+        2,
+        2,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        2,
+        2,
+        2,
+        0
+      ],
+      "values": {
+        "activation_delay_epochs": 1,
+        "authority_delay_epochs": 4,
+        "authority_threshold": 3,
+        "correlated_shock": "nominal",
+        "exit_unbond_delay_epochs": 4,
+        "fee_reward_parts": 10,
+        "fee_volume": 800,
+        "issuance_amount": 2000,
+        "node_weight": 4,
+        "penalty_parts": 0,
+        "reward_budget_per_role": 500,
+        "validator_minimum_bond": 100,
+        "validator_weight": 4
+      }
+    }
+  ],
+  "weight_range": {
+    "maximum": 16,
+    "minimum": 1,
+    "step": 1
+  }
+}

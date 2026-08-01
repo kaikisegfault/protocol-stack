@@ -173,10 +173,12 @@ allocations may fail atomically, and the combination is not completely funded.
 
 ### Lossless issuance compression
 
-For each family and budget, define the unbounded treasury threshold:
+For each family and budget, define the saturated treasury threshold:
 
 ```text
-required = requested_reward_funding - 500 - fee_treasury
+base_treasury = 500 + fee_treasury
+required = 0 if requested_reward_funding <= base_treasury
+           else requested_reward_funding - base_treasury
 ```
 
 If `required <= 100`, every issuance cell accepts treasury funding. If

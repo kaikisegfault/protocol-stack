@@ -835,6 +835,24 @@ add_test(
     "${Python3_EXECUTABLE}"
     "${PROJECT_SOURCE_DIR}/tests/simulation/economic_stress_errors_test.py"
 )
+add_test(
+  NAME economic-envelope-design
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/economic_envelope_design_test.py"
+)
+add_test(
+  NAME economic-envelope-projection
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/economic_envelope_projection_test.py"
+)
+add_test(
+  NAME economic-envelope-study
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/economic_envelope_study_test.py"
+)
 set_tests_properties(
   protocol-primitives-python
   ledger-transition-python
