@@ -22,8 +22,11 @@ description: Continue autonomous work in protocol-stack when the owner says "pro
    update affected documentation plus `current-state.md`.
 8. Commit and push each clean, independently complete candidate under the
    configured owner identity. Do not wait for the session to end.
-9. Require the heavy `verify-project` gates on GitHub-hosted runners for that
-   exact commit before merge or completion. Record the results in the pull
+9. Require the risk-proportionate `verify-project` path on GitHub-hosted
+   runners for that exact commit before merge or completion. Use focused
+   metadata verification for pure documentation or skill metadata and the
+   heavy matrix for code, executable, build, workflow, dependency, protocol,
+   configuration, or unclassified changes. Record the results in the pull
    request and repair any failure.
 10. Merge and clean the completed phase, then repeat from step 5 while
     execution capacity remains. A completed slice is not a reason to yield.

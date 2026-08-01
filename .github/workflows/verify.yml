@@ -14,8 +14,65 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  scope:
+    name: Classify verification scope
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    outputs:
+      value: ${{ steps.classify.outputs.value }}
+    steps:
+      - name: Check out source and history
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Classify changed paths
+        id: classify
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          base_type=$(git cat-file -t "$BASE_SHA" 2>/dev/null || true)
+          head_type=$(git cat-file -t "$HEAD_SHA" 2>/dev/null || true)
+          if [[ ! "$BASE_SHA" =~ ^[0-9a-f]{40}$ ||
+                ! "$HEAD_SHA" =~ ^[0-9a-f]{40}$ ||
+                "$BASE_SHA" =~ ^0+$ ||
+                "$base_type" != commit ||
+                "$head_type" != commit ]]; then
+            echo "Unable to prove the changed-path set." >&2
+            exit 1
+          fi
+          git diff --check "$BASE_SHA" "$HEAD_SHA"
+          git diff --name-only "$BASE_SHA" "$HEAD_SHA"
+          scope=$(git diff --name-only -z "$BASE_SHA" "$HEAD_SHA" |
+            python3 tools/verification_scope.py --null)
+          printf 'value=%s\n' "$scope" >> "$GITHUB_OUTPUT"
+          printf 'Verification scope: %s\n' "$scope"
+
+  metadata:
+    name: Documentation and skill metadata
+    needs: scope
+    if: needs.scope.outputs.value == 'lightweight'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Check out source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Verify repository metadata
+        run: |
+          python3 tools/verify_metadata.py
+          python3 -m unittest discover -s tests/tools -p '*_test.py'
+
   linux:
     name: Linux x86_64 / ${{ matrix.preset }}
+    needs: scope
+    if: needs.scope.outputs.value == 'full'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
@@ -28,7 +85,9 @@ jobs:
           - clang-sanitizers
     steps:
       - name: Check out source
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Install host prerequisites
         run: |
@@ -44,3 +103,40 @@ jobs:
         env:
           PROTOCOL_STACK_PRESET: ${{ matrix.preset }}
         run: tools/verify.sh
+
+  required:
+    name: Verification required
+    needs:
+      - scope
+      - metadata
+      - linux
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Require the selected verification path
+        env:
+          LINUX_RESULT: ${{ needs.linux.result }}
+          METADATA_RESULT: ${{ needs.metadata.result }}
+          SCOPE: ${{ needs.scope.outputs.value }}
+          SCOPE_RESULT: ${{ needs.scope.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$SCOPE_RESULT" != success ]]; then
+            echo "Scope classification failed: $SCOPE_RESULT" >&2
+            exit 1
+          fi
+          case "$SCOPE" in
+            lightweight)
+              [[ "$METADATA_RESULT" == success && "$LINUX_RESULT" == skipped ]]
+              ;;
+            full)
+              [[ "$METADATA_RESULT" == skipped && "$LINUX_RESULT" == success ]]
+              ;;
+            *)
+              echo "Unknown verification scope: $SCOPE" >&2
+              exit 1
+              ;;
+          esac
+          printf 'Required %s verification passed.\n' "$SCOPE"

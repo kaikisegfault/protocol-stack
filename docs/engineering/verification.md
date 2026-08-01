@@ -44,6 +44,21 @@ or focused checks needed for prompt feedback. Do not duplicate a green remote
 matrix locally unless the workflow is unavailable or under change, or a remote
 failure must be reproduced; document that exception.
 
+Verification is risk-proportionate. A changed-path set containing only
+Markdown, static image assets below `docs/`, `SKILL.md`, skill
+`agents/openai.yaml`, `LICENSE`, or `NOTICE` uses the lightweight metadata
+path: whitespace, required repository paths, TOML parsing, repository skill
+frontmatter and UI metadata, template-marker absence, internal Markdown links,
+and focused verifier unit tests. It does not run compilers, sanitizers, fuzzers,
+simulations, or live networks.
+
+Any executable script, source, test, build file, workflow, dependency file,
+protocol artifact, configuration file, or unclassified path fails closed to
+the full matrix. A change to the classifier, metadata verifier, or workflow
+itself therefore receives full verification. Branch protection requires the
+aggregate `Verification required` check, which fails unless the selected path
+and scope classifier both succeed.
+
 The owner machine is resource-constrained. Dependency graph resolution,
 lock-file generation for expanded graphs, full verification, direct VCS module
 retrieval, and other operations that populate large reproducible caches belong
