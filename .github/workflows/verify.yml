@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   scope:
-    name: Classify verification scope
+    name: Classify and verify change scope
     runs-on: ubuntu-24.04
     timeout-minutes: 3
     outputs:
@@ -52,19 +52,8 @@ jobs:
           printf 'value=%s\n' "$scope" >> "$GITHUB_OUTPUT"
           printf 'Verification scope: %s\n' "$scope"
 
-  metadata:
-    name: Documentation and skill metadata
-    needs: scope
-    if: needs.scope.outputs.value == 'lightweight'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 3
-    steps:
-      - name: Check out source
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-
       - name: Verify repository metadata
+        if: steps.classify.outputs.value == 'lightweight'
         run: |
           python3 tools/verify_metadata.py
           python3 -m unittest discover -s tests/tools -p '*_test.py'
@@ -108,7 +97,6 @@ jobs:
     name: Verification required
     needs:
       - scope
-      - metadata
       - linux
     if: always()
     runs-on: ubuntu-24.04
@@ -117,7 +105,6 @@ jobs:
       - name: Require the selected verification path
         env:
           LINUX_RESULT: ${{ needs.linux.result }}
-          METADATA_RESULT: ${{ needs.metadata.result }}
           SCOPE: ${{ needs.scope.outputs.value }}
           SCOPE_RESULT: ${{ needs.scope.result }}
         shell: bash
@@ -129,10 +116,10 @@ jobs:
           fi
           case "$SCOPE" in
             lightweight)
-              [[ "$METADATA_RESULT" == success && "$LINUX_RESULT" == skipped ]]
+              [[ "$LINUX_RESULT" == skipped ]]
               ;;
             full)
-              [[ "$METADATA_RESULT" == skipped && "$LINUX_RESULT" == success ]]
+              [[ "$LINUX_RESULT" == success ]]
               ;;
             *)
               echo "Unknown verification scope: $SCOPE" >&2
