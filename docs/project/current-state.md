@@ -4,21 +4,51 @@ Last updated: 2026-08-01
 
 ## Phase
 
-M2 — Native economy specification and simulator. The fifth bounded M2 slice
-now resolves exact reward-funding and within-role concentration boundaries
-around all six families that survived the broad orthogonal screen. Issue #50
-closed through PR #51 as `cbe9407`; exact candidate Actions run 30714426243
-and post-merge run 30714722297 passed the full compiler, sanitizer, fuzz,
+M2 — Native economy specification and simulator. The sixth bounded M2 slice
+now compares the unchanged proportional entitlement with participant- and
+registered-principal-scoped payout caps across exact contribution support,
+multi-epoch churn, and same-principal identity splitting. Issue #53 closed
+through PR #54 as `de05202`; exact candidate Actions run 30716455320 and
+post-merge run 30716797656 passed the full compiler, sanitizer, fuzz,
 differential, persistence, single-node, four-validator, and simulator matrix.
 No delivery branch remains. No production allocation, issuance, fee route,
 budget, contribution weight, distribution mechanism, duration, principal,
-threshold, signature scheme, verifier, or C++ economic transition is accepted.
-The next clean session should compare one narrow set of reward-distribution
-mechanisms under contribution variance and identity splitting before proposing
-any production reward rule or value.
+admission cost, threshold, signature scheme, verifier, or C++ economic
+transition is accepted. The next clean session should quantify cross-principal
+identity-split incentives and admission-cost tradeoffs before proposing any
+production reward or identity rule.
 
 ## Verified facts
 
+- Issue #53 and PR #54 accept ADR 0013's research-only reward-distribution
+  mechanism study. It compares the unchanged proportional floor entitlement,
+  a four-opportunity participant-scoped credit cap, and the same cap grouped by
+  the existing registered owner label. Pending credit is explicitly not a
+  native claim, and only a nonzero selected payout reaches native economy v1.
+- Each mechanism evaluates 76,800 exact role points in both unsplit and
+  same-owner split forms across all six ADR 0012 survivor families, both roles,
+  weights `1..16`, and ordered contribution units `1..20`. Participant capping
+  produces a profitable split in 56,052 points with maximum advantage 495;
+  principal capping produces no positive same-owner advantage, but both capped
+  forms suppress payout entirely in 1,216 unsplit support points.
+- The fifteen multi-epoch runs expose the same tradeoff. A persistently
+  dominant principal receives 240 atoms whether represented by one or two IDs
+  under principal capping, but participant capping increases its split payout
+  from 240 to 720. Principal capping expires 1,071 of 3,992 credits across all
+  trajectories and 480 of 800 in the dominant case; it does not provide both
+  complete concentration control and complete payout liveness.
+- Every emitted payout in all fifteen trajectories is accepted by an
+  independently pre-funded native-economy manifest. Balanced, dominant, and
+  same-owner split points exactly match participation v1,
+  `build_funding_events`, and native economy v1. Design digest
+  `9d9157802b488f4e5029859aba8354570b1b725d8ccc00bd19704652e7856eb2`
+  and study digest
+  `3cf94c8c5befbc7dffb185de05496738989d2e3fa50e8cb211cfcc6948594cb4`
+  are frozen.
+- Reward distribution study v1 changes no accepted simulator schema, digest,
+  transition, M1 byte or root, persistence, ABCI behavior, supply or fee rule,
+  C++ transition, or CometBFT validator set. Registered owner labels are study
+  groupings, not unique-person or Sybil-resistance proofs.
 - Repository: `kaikisegfault/protocol-stack`.
 - Issue #50 and PR #51 accept ADR 0012's research-only exact economic
   envelope. Its lossless profiles represent every one of 20,903,106 integer
@@ -226,6 +256,23 @@ any production reward rule or value.
 
 ## Verification evidence
 
+- Direct focused execution passes all 10 reward-distribution tests: two design
+  and reviewed-fixture tests, four checked arithmetic/history/adapter tests,
+  and four fixed-evidence/replay/CLI/import tests. Python compilation, strict
+  JSON parsing, generator equality, repeated and CLI byte equality, the
+  standard-library/local import audit, `git diff --check`, and staged secret
+  inspection pass. No new fuzz target applies because the research layer
+  decodes no protocol or consensus byte surface.
+- PR #54 exact head `37d248f` passed hosted Actions run 30716455320. GCC and
+  Clang debug passed 41/41 CTest targets; GCC and Clang ASan/UBSan passed 47/47
+  including all six bounded fuzz targets. Every job also passed pinned
+  dependency and Go gates, the 10,000-sequence differential suite, persistence
+  and recovery coverage, all four M2 research packages, and both live CometBFT
+  integrations.
+- The rebase-merged `main` commit `de05202` passed post-merge Actions run
+  30716797656 with the same 41/41 or 47/47 matrix. All four jobs completed the
+  single-node and four-validator transfer/restart paths and four durable C++
+  replica audits per four-validator stop.
 - The focused local command
   `python3 -m unittest discover -s tests/simulation -p '*_test.py'` passed all
   87 native-economy, participation, authority, cross-simulator, and exact-
@@ -738,17 +785,19 @@ any production reward rule or value.
 
 In the next clean session, first reconcile this handoff with GitHub and the
 post-merge matrix. Then create one bounded M2 issue for a deterministic
-reward-distribution mechanism study. Compare the unchanged proportional
-baseline with a multi-epoch participant-capped accumulator and a principal-
-scoped cap under honest contribution variance, intermittent availability,
-population changes, and one principal splitting the same work across multiple
-identities. Specify integer-only ordering, cap, remainder, history, pruning,
-funding, liveness, useful-unit retention, concentration, and split-advantage
-objectives before code. Use the existing participation and native-economy
-adapters without selecting production actors, verifier policy, rates, weights,
-budgets, or C++ transitions. Record whether either mechanism improves the
-complete-support concentration failure without creating a profitable identity-
-split or unfunded liability.
+cross-principal admission-cost study. Hold accepted useful work fixed while a
+dominant operator splits it across `1..16` participant IDs whose owner and
+payout labels are all distinct, so neither studied cap can group them. Compare
+the zero-cost baseline with exact per-identity operating cost and refundable
+native-bond capital-time cost families. Predeclare integer utility, lock,
+churn, honest-entry, funding, concentration, split-profit, and break-even
+objectives; derive lossless cost boundaries instead of selecting a token price
+or production bond. Compose the unchanged participation, native-economy, and
+reward-distribution research paths. Record whether any cost range removes all
+profitable hidden-principal splits without excluding the smallest honest
+contributors or creating an unfunded claim. Do not select an identity provider,
+registrar, uniqueness proof, admission price, stake threshold, reward rate,
+actor, or C++ transition.
 
 ## Open autonomous decisions
 
