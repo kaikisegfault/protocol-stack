@@ -1,25 +1,49 @@
 # Current state
 
-Last updated: 2026-07-31
+Last updated: 2026-08-01
 
 ## Phase
 
-M2 — Native economy specification and simulator. The fourth bounded M2 slice
-now composes the accepted native-economy, participation, and threshold-
-authority research models across a reviewed 27-case, thirteen-factor,
-strength-two orthogonal design and eight deterministic seeds. Issue #47 closed
-through PR #48 as `25ba28f`; exact candidate Actions run 30672213749 and
-post-merge run 30672536498 passed the full compiler, sanitizer, fuzz,
-differential, persistence, single-node, four-validator, and 216-run simulator
-matrix. No delivery branch remains. No production allocation, rate, weight,
-duration, principal, threshold, signature scheme, verifier, or C++ economic
-transition is accepted. The next clean session should define one narrow,
-high-resolution solvency-and-concentration experiment around the robust
-families before proposing any production economic values.
+M2 — Native economy specification and simulator. The fifth bounded M2 slice
+now resolves exact reward-funding and within-role concentration boundaries
+around all six families that survived the broad orthogonal screen. Issue #50
+closed through PR #51 as `cbe9407`; exact candidate Actions run 30714426243
+and post-merge run 30714722297 passed the full compiler, sanitizer, fuzz,
+differential, persistence, single-node, four-validator, and simulator matrix.
+No delivery branch remains. No production allocation, issuance, fee route,
+budget, contribution weight, distribution mechanism, duration, principal,
+threshold, signature scheme, verifier, or C++ economic transition is accepted.
+The next clean session should compare one narrow set of reward-distribution
+mechanisms under contribution variance and identity splitting before proposing
+any production reward rule or value.
 
 ## Verified facts
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #50 and PR #51 accept ADR 0012's research-only exact economic
+  envelope. Its lossless profiles represent every one of 20,903,106 integer
+  issuance/budget cells around the six screened survivor families, while its
+  1,536 validator/node weight cells each exhaust all 160,000 ordered
+  four-participant contribution combinations.
+- The standard-library-only projection independently reproduces checked floor
+  entitlements, fee split, all-or-nothing treasury funding, reward
+  availability, retained remainder, and the exact rational concentration
+  alarm. Focused tests match the unchanged three-simulator composition at all
+  twelve broad-screen robust anchors, both grid extremes for every family,
+  and the exact 479/480-unit treasury threshold boundary.
+- The exact financial envelope classifies 12,535,520 cells as fully funded and
+  8,367,586 as shortfall cells, with no mixed cells. All 1,536 weight cells are
+  mixed across the complete contribution support: no weight pair in `1..16`
+  keeps both roles within the existing three-quarter maximum-share alarm for
+  every unit combination. Design digest
+  `d1c62bd5e925dfb2217db18001f1316dd52380d4527e07249c082a5c2874277d`
+  and study digest
+  `3af8b35f0ea7e0b378e1974da307dd9d16ae2475089ff4b53e582e815e48559f`
+  are frozen.
+- Economic envelope study v1 changes no accepted simulator behavior, M1 byte
+  or root, persistence, ABCI behavior, supply or fee rule, C++ transition, or
+  CometBFT validator set. Its ranges and classifications are explicitly not
+  production recommendations.
 - Issue #47 and PR #48 accept ADR 0011's research-only
   `OA(27,13,3,2)-GF3-v1` screen over issuance, fees, reward funding, validator
   and node weights, bond and penalty size, lifecycle delays, authority
@@ -202,6 +226,19 @@ families before proposing any production economic values.
 
 ## Verification evidence
 
+- The focused local command
+  `python3 -m unittest discover -s tests/simulation -p '*_test.py'` passed all
+  87 native-economy, participation, authority, cross-simulator, and exact-
+  envelope tests in 105.142 seconds. Python compilation, both strict design
+  fixture parses, staged whitespace and secret inspection, process audit, and
+  known-artifact cleanup also passed. No full local verifier ran; GitHub
+  hosted the resource-heavy gates.
+- Exact PR #51 candidate run 30714426243 passed GCC and Clang debug plus both
+  ASan/UBSan jobs on `3662986`. Rebase-merged `main` commit `cbe9407` passed
+  the same four post-merge jobs in run 30714722297. Every job included the
+  87-test simulator suite, 10,000-sequence differential coverage, SQLite
+  persistence and recovery, and both live CometBFT integrations; the Clang
+  sanitizer job also passed every bounded fuzz-smoke target.
 - The focused local command
   `python3 -m unittest discover -s tests/simulation -p '*_test.py'` passed all
   74 native-economy, participation, authority, and cross-simulator tests.
@@ -701,16 +738,17 @@ families before proposing any production economic values.
 
 In the next clean session, first reconcile this handoff with GitHub and the
 post-merge matrix. Then create one bounded M2 issue for a deterministic
-cross-simulator adversarial parameter-family study that composes accepted
-native-economy flows, participation entitlements, and threshold-authorized
-privileged actions. Specify discrete integer research ranges and explicit
-safety, solvency, conservation, liveness, concentration, and recovery
-objectives before generating scenarios. Sweep issuance, fee routing, treasury
-and reward budgets, stake and lifecycle delays, contribution weights,
-penalties, authority thresholds, rotation delays, and correlated failure
-families without selecting production values or adding C++ transitions. Record
-which parameter families are infeasible, fragile, or robust enough for later
-independent economic review.
+reward-distribution mechanism study. Compare the unchanged proportional
+baseline with a multi-epoch participant-capped accumulator and a principal-
+scoped cap under honest contribution variance, intermittent availability,
+population changes, and one principal splitting the same work across multiple
+identities. Specify integer-only ordering, cap, remainder, history, pruning,
+funding, liveness, useful-unit retention, concentration, and split-advantage
+objectives before code. Use the existing participation and native-economy
+adapters without selecting production actors, verifier policy, rates, weights,
+budgets, or C++ transitions. Record whether either mechanism improves the
+complete-support concentration failure without creating a profitable identity-
+split or unfunded liability.
 
 ## Open autonomous decisions
 
