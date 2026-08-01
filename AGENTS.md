@@ -23,6 +23,10 @@ the source of truth.
    divergence or uncommitted work. Do not assume a VS Code branch list or a
    previous handoff is current.
 6. When the owner says `proceed`, use the `proceed-project` skill.
+7. When the owner says `conclude`, `wrap up`, or asks to finish the current
+   slice and leave a clean handoff, use the `conclude-project` skill. Freeze
+   scope at work already started, finish and publish it completely, and do not
+   begin the recorded next slice.
 
 If repository state disagrees with `current-state.md`, trust Git and verified
 test evidence, then repair the state document.
@@ -130,6 +134,10 @@ On 2026-07-23 the owner granted standing authority for end-to-end autonomous
 project execution. A `proceed` instruction activates that authority for the
 session; it does not require follow-up approval for technical, product,
 protocol, economic, dependency, GitHub, release, or deployment decisions.
+
+A `conclude` instruction activates the same authority only for completing,
+publishing, verifying, documenting, and cleaning the slice or phase already in
+progress. It does not authorize starting the next recorded slice.
 
 For consequential choices, research credible alternatives, record the selected
 default and consequences in a specification or ADR, satisfy the applicable
