@@ -24,6 +24,13 @@ verified unit of work with:
 proceed
 ```
 
+For a concise, plain-language reality check covering what works, milestone
+progress, value, quality, maintainability, and what remains, use:
+
+```text
+status
+```
+
 On a supported Linux x86_64 development host, one foreground command builds
 the required pinned binaries on first use, initializes four independent local
 validators, and starts the M1 devnet:

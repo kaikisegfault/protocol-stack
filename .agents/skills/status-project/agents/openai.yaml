@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Status"
+  short_description: "Plain-language evidence-based project status"
+  default_prompt: "Use $status-project to report the project’s realistic product status, quality, value, remaining work, and next action."
