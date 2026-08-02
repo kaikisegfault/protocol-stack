@@ -4,13 +4,15 @@ Last updated: 2026-08-02
 
 ## Phase
 
-M2 — Native economy specification and simulator. Owner-requested documentation
-slice issue #65 and PR #66 add the read-only `status-project` workflow so a
+M2 — Native economy specification and simulator. Issue #65 and PR #66 added
+the read-only `status-project` workflow at merged commit `9f557d1`, so a
 one-word `status` request reconstructs and reports realistic product,
 milestone, value, quality, maintainability, and remaining-work evidence in
-plain language. Exact candidate `f43435c` passed focused hosted metadata run
-30756514571; no protocol, executable, test, build, dependency, configuration,
-or simulation behavior changes. The eighth bounded M2 slice
+plain language. Candidate run 30756514571, final-head run 30756563237, and
+post-merge run 30756598353 passed the focused metadata path. Issue #65 is
+closed and no delivery branch remains. No protocol, executable, test, build,
+dependency, configuration, or simulation behavior changed. The eighth bounded
+M2 slice
 compares strictly funded minimum-entitlement families over the eighty
 one-unit honest coordinates whose unchanged entitlement is zero. Issue #62 and
 PR #63 accept ADR 0015's research contract and implement the deterministic
@@ -375,9 +377,11 @@ across broader participant/work distributions and population change.
   `tools/verify_metadata.py` validation of five skills and twelve internal
   Markdown links, `git diff --check`, complete staged diff review, staged
   secret-pattern inspection, and known-artifact cleanup pass. PR #66 candidate
-  `f43435c` passed focused hosted Actions run 30756514571: classification and
-  metadata verification succeeded, the required aggregate succeeded, and the
-  source matrix was correctly skipped.
+  `f43435c` passed focused hosted Actions run 30756514571 and final head
+  `c573299` passed run 30756563237. Rebase-merged `main` commit `9f557d1`
+  passed post-merge run 30756598353. Classification and metadata verification
+  succeeded, the required aggregate succeeded, and the source matrix was
+  correctly skipped in every run.
 - Direct focused execution passes all 12 admission-cost tests: two reviewed
   design tests, five checked utility/partition/lock/adapter tests, and five
   frozen-evidence/replay/CLI/import tests. All 10 unchanged reward-distribution
