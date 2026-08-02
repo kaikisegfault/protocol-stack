@@ -21,6 +21,8 @@
   credit-liveness, and same-principal identity-split evidence.
 - `project/admission-cost-report-v1.md`: exact M2 cross-principal split,
   operating-cost, refundable-bond, lock, churn, and honest-entry boundaries.
+- `project/minimum-entitlement-report-v1.md`: exact M2 strictly funded floor,
+  smallest-honest-entry, and hidden-principal split boundaries.
 
 ## Architecture
 
@@ -79,8 +81,11 @@ immutable; compatible changes require a new version.
 - `specifications/admission-cost-study-v1.md`: deterministic hidden-principal
   work split, integer utility, operating-cost, refundable-bond capital-time,
   and churn study contract.
+- `specifications/minimum-entitlement-study-v1.md`: deterministic zero-floor,
+  per-participant, and work-proportional reserve comparison contract.
 
 The corresponding executable research tools and reviewed fixtures live in
 `../simulation/native_economy/`, `../simulation/participation/`,
 `../simulation/authority/`, `../simulation/economic_stress/`, and
-`../simulation/reward_distribution/`, and `../simulation/admission_cost/`.
+`../simulation/reward_distribution/`, `../simulation/admission_cost/`, and
+`../simulation/minimum_entitlement/`.
