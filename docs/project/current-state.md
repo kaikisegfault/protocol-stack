@@ -4,7 +4,13 @@ Last updated: 2026-08-02
 
 ## Phase
 
-M2 — Native economy specification and simulator. The eighth bounded M2 slice
+M2 — Native economy specification and simulator. Owner-requested documentation
+slice issue #65 and PR #66 add the read-only `status-project` workflow so a
+one-word `status` request reconstructs and reports realistic product,
+milestone, value, quality, maintainability, and remaining-work evidence in
+plain language. Exact candidate `f43435c` passed focused hosted metadata run
+30756514571; no protocol, executable, test, build, dependency, configuration,
+or simulation behavior changes. The eighth bounded M2 slice
 compares strictly funded minimum-entitlement families over the eighty
 one-unit honest coordinates whose unchanged entitlement is zero. Issue #62 and
 PR #63 accept ADR 0015's research contract and implement the deterministic
@@ -23,6 +29,13 @@ across broader participant/work distributions and population change.
 
 ## Verified facts
 
+- `status-project` distinguishes runnable behavior, development-only
+  implementation, executable research, specification-only work, and unbuilt
+  roadmap intent. It requires a read-only Git/GitHub and repository-health
+  audit, an honest no-bug-free-claim quality assessment, practical Web3
+  differentiation without marketing claims, maintainability and clutter
+  findings, milestone position, blockers, and the exact recorded next action.
+  `AGENTS.md` and `README.md` bind and document the one-word trigger.
 - Issue #62 and PR #63 accept ADR 0015's research-only comparison of the zero,
   per-participant, and per-accepted-raw-work minimum-entitlement families. A
   reserve is calculated allocation credit only; it is not a native claim,
@@ -357,6 +370,14 @@ across broader participant/work distributions and population change.
 
 ## Verification evidence
 
+- All five repository skills pass the official skill validator. Six focused
+  classifier and metadata-verifier tests, Python bytecode compilation,
+  `tools/verify_metadata.py` validation of five skills and twelve internal
+  Markdown links, `git diff --check`, complete staged diff review, staged
+  secret-pattern inspection, and known-artifact cleanup pass. PR #66 candidate
+  `f43435c` passed focused hosted Actions run 30756514571: classification and
+  metadata verification succeeded, the required aggregate succeeded, and the
+  source matrix was correctly skipped.
 - Direct focused execution passes all 12 admission-cost tests: two reviewed
   design tests, five checked utility/partition/lock/adapter tests, and five
   frozen-evidence/replay/CLI/import tests. All 10 unchanged reward-distribution
