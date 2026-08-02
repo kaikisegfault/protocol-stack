@@ -27,6 +27,9 @@ the source of truth.
    slice and leave a clean handoff, use the `conclude-project` skill. Freeze
    scope at work already started, finish and publish it completely, and do not
    begin the recorded next slice.
+8. When the owner says `status` or asks for a realistic plain-language project
+   assessment, use the `status-project` skill. Reconstruct evidence and report
+   it without changing project or GitHub state.
 
 If repository state disagrees with `current-state.md`, trust Git and verified
 test evidence, then repair the state document.
