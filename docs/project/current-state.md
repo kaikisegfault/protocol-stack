@@ -1,31 +1,59 @@
 # Current state
 
-Last updated: 2026-08-01
+Last updated: 2026-08-02
 
 ## Phase
 
-M2 — Native economy specification and simulator. The sixth bounded M2 slice
-now compares the unchanged proportional entitlement with participant- and
-registered-principal-scoped payout caps across exact contribution support,
-multi-epoch churn, and same-principal identity splitting. Issue #53 closed
-through PR #54 as `de05202`; exact candidate Actions run 30716455320 and
-post-merge run 30716797656 passed the full compiler, sanitizer, fuzz,
-differential, persistence, single-node, four-validator, and simulator matrix.
-No delivery branch remains. Repository closeout is now deterministic: issue
-#56 and PR #57 added the `conclude-project` skill and risk-proportionate hosted
-verification as `af68178`. Exact candidate run 30719386549 and post-merge run
-30719746416 passed the selected full path and aggregate gate. Pure
-documentation and repository-skill metadata now take a focused metadata path;
-code, executable, build, workflow, dependency, protocol, configuration, and
-unknown changes fail closed to the full matrix. No production allocation,
-issuance, fee route, budget, contribution weight, distribution mechanism,
-duration, principal, admission cost, threshold, signature scheme, verifier,
-or C++ economic transition is accepted. The next clean session should
-quantify cross-principal identity-split incentives and admission-cost
-tradeoffs before proposing any production reward or identity rule.
+M2 — Native economy specification and simulator. The seventh bounded M2 slice
+now derives exact operating-cost and refundable native-bond capital-time
+boundaries when one hidden principal assigns fixed useful work to `1..16`
+participant, owner, and payout labels. Issue #59 and PR #60 accept ADR 0014's
+research contract and implement the deterministic admission-cost study at
+candidate `bec784b`. Exact candidate Actions run 30752078712 passed the full
+compiler, sanitizer, fuzz, differential, persistence, single-node,
+four-validator, and simulator matrix with the required aggregate gate. The PR
+remains open only for this evidence-bearing handoff commit and its exact final
+verification. No production allocation, issuance, fee route, budget,
+contribution weight, distribution mechanism, duration, principal, admission
+cost, threshold, signature scheme, verifier, or C++ economic transition is
+accepted. The next clean slice should test whether any strictly funded minimum
+entitlement can repair the observed zero-reward honest-entry boundary without
+amplifying hidden-principal splitting.
 
 ## Verified facts
 
+- Issue #59 and PR #60 accept ADR 0014's research-only hidden-principal
+  admission-cost study. Each dominant identity has a distinct participant,
+  registered owner, and payout label; the hidden grouping is retained only as
+  a study observable. Refundable principal remains native-economy general
+  escrow value and never enters utility as a consumed cost.
+- Each mechanism evaluates 61,440 identity forms across 3,840 exact base
+  coordinates: all six ADR 0012 survivor families, both roles, selected
+  weights `1..16`, honest units `1..20`, and dominant identity counts `1..16`
+  with sixteen fixed dominant work units. The two capped mechanisms are
+  byte-identical when registered labels are distinct.
+- Both capped forms produce a profitable zero-cost split in 51,960 of 57,600
+  split comparisons. The maximum witness increases the hidden payout from 3
+  to 498 atoms, requiring a 495-atom per-identity operating cost, while 80 of
+  192 smallest-honest unsplit coordinates pay zero. The complete-support
+  deterrence-and-entry interval is therefore empty.
+- Thirty-one of 32 persistent and churn strategies per capped mechanism are
+  profitable. A persistent two-way split increases twelve-epoch payout from
+  120 to 752 atoms and raises the combined operating deterrence floor to 632;
+  the honest horizon payout is 40 and the complete-support ceiling remains
+  zero. No post-exit lock in `1..16` creates a joint capital-time rate range.
+- All 32 native lock replays reject early release, leave failure state
+  unchanged, refund all principal, end without escrow, and conserve issued
+  supply. Every payout in all 96 trajectories is accepted by an independently
+  pre-funded native-economy manifest. One-, two-, and sixteen-way proportional
+  points exactly match participation v1, `build_funding_events`, and native
+  economy v1.
+- Admission cost study v1 freezes design digest
+  `5af307b2b7dcd4421951db807d37458fddb182e1c151529eb657519ad2244f0b`
+  and study digest
+  `011c4a787a22dc72ef85e30a5b71f9444c0d53b6767674a8c5aa562e550e5da7`.
+  It changes no accepted simulator schema, digest, transition, M1 byte or root,
+  persistence, ABCI behavior, supply rule, C++ transition, or validator set.
 - Issue #56 and PR #57 add repository-local `conclude-project`, invoked by
   `conclude`, `wrap up`, or an equivalent current-slice closeout request. It
   freezes scope at work already started, requires implementation and handoff
@@ -281,6 +309,19 @@ tradeoffs before proposing any production reward or identity rule.
 
 ## Verification evidence
 
+- Direct focused execution passes all 12 admission-cost tests: two reviewed
+  design tests, five checked utility/partition/lock/adapter tests, and five
+  frozen-evidence/replay/CLI/import tests. All 10 unchanged reward-distribution
+  tests, Python compilation, strict fixture parsing, repeated and CLI byte
+  equality, standard-library/local import audit, metadata verification,
+  `git diff --check`, full staged review, staged secret inspection, process
+  audit, and known-artifact cleanup pass.
+- PR #60 exact code candidate `bec784b` passed hosted Actions run 30752078712.
+  GCC and Clang debug plus GCC ASan/UBSan passed 54/54 CTest targets; Clang
+  ASan/UBSan passed 60/60 including all six bounded fuzz targets. Every job
+  also passed pinned dependency and Go gates, the 10,000-sequence differential
+  suite, persistence and recovery coverage, all M2 research packages, and both
+  live CometBFT integrations. The required aggregate gate passed.
 - The official skill validator passes all four repository skills. Direct
   focused execution of `tools/verify_metadata.py` validates four skills and
   twelve internal Markdown links; six classification and metadata-verifier
@@ -823,21 +864,22 @@ tradeoffs before proposing any production reward or identity rule.
 
 ## Exact next action
 
-In the next clean session, first reconcile this handoff with GitHub and the
+After PR #60 merges, first reconcile this handoff with GitHub and the exact
 post-merge matrix. Then create one bounded M2 issue for a deterministic
-cross-principal admission-cost study. Hold accepted useful work fixed while a
-dominant operator splits it across `1..16` participant IDs whose owner and
-payout labels are all distinct, so neither studied cap can group them. Compare
-the zero-cost baseline with exact per-identity operating cost and refundable
-native-bond capital-time cost families. Predeclare integer utility, lock,
-churn, honest-entry, funding, concentration, split-profit, and break-even
-objectives; derive lossless cost boundaries instead of selecting a token price
-or production bond. Compose the unchanged participation, native-economy, and
-reward-distribution research paths. Record whether any cost range removes all
-profitable hidden-principal splits without excluding the smallest honest
-contributors or creating an unfunded claim. Do not select an identity provider,
-registrar, uniqueness proof, admission price, stake threshold, reward rate,
-actor, or C++ transition.
+minimum-entitlement and hidden-principal split study. Starting from the 80
+one-unit honest coordinates whose unchanged floor entitlement is zero, hold
+budgets, accepted useful work, identity counts `1..16`, and the three accepted
+reward-distribution mechanisms fixed. Compare zero floor with strictly funded
+per-participant and work-proportional minimum-entitlement families. Predeclare
+honest-entry, budget exhaustion, zero-work rejection, hidden split-profit,
+concentration, liveness, funding, and break-even objectives. Derive exact
+budget and identity-count boundaries instead of choosing a production floor
+or reward rate. Compose the unchanged participation, reward-distribution, and
+native-economy paths; record whether any floor gives every smallest honest
+contributor positive utility without increasing hidden-principal payout or
+creating an unfunded claim. Do not select an identity provider, registrar,
+uniqueness proof, admission price, bond, stake threshold, reward rate, actor,
+or C++ transition.
 
 ## Open autonomous decisions
 
