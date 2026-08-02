@@ -19,6 +19,8 @@
   within-role concentration boundaries around the screened survivor families.
 - `project/reward-distribution-report-v1.md`: exact M2 payout-cap,
   credit-liveness, and same-principal identity-split evidence.
+- `project/admission-cost-report-v1.md`: exact M2 cross-principal split,
+  operating-cost, refundable-bond, lock, churn, and honest-entry boundaries.
 
 ## Architecture
 
@@ -74,8 +76,11 @@ immutable; compatible changes require a new version.
   M2 survivor families.
 - `specifications/reward-distribution-study-v1.md`: deterministic proportional,
   participant-cap, and principal-cap mechanism comparison contract.
+- `specifications/admission-cost-study-v1.md`: deterministic hidden-principal
+  work split, integer utility, operating-cost, refundable-bond capital-time,
+  and churn study contract.
 
 The corresponding executable research tools and reviewed fixtures live in
 `../simulation/native_economy/`, `../simulation/participation/`,
 `../simulation/authority/`, `../simulation/economic_stress/`, and
-`../simulation/reward_distribution/`.
+`../simulation/reward_distribution/`, and `../simulation/admission_cost/`.

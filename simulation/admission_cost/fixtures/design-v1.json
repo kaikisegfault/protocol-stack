@@ -1,0 +1,62 @@
+{
+  "base_coordinate_count": 3840,
+  "bond_amount_normalization": 1,
+  "capital_time_rounding": "ceiling",
+  "cost_models": [
+    "zero",
+    "per_identity_operating",
+    "capital_time"
+  ],
+  "design": "ADMISSION-COST(6x2x16x20x16;8+4;L1..16)-v1",
+  "dominant_total_units": 16,
+  "honest_unit_range": {
+    "maximum": 20,
+    "minimum": 1,
+    "step": 1
+  },
+  "identity_count_range": {
+    "maximum": 16,
+    "minimum": 1,
+    "step": 1
+  },
+  "identity_form_count": 61440,
+  "mechanisms": [
+    "proportional",
+    "participant_cap",
+    "principal_cap"
+  ],
+  "post_exit_lock_range": {
+    "maximum": 16,
+    "minimum": 1,
+    "step": 1
+  },
+  "roles": [
+    "validator",
+    "node"
+  ],
+  "schema": "protocol-stack/admission-cost-design/v1",
+  "selected_weight_range": {
+    "maximum": 16,
+    "minimum": 1,
+    "step": 1
+  },
+  "survivor_case_ids": [
+    "case_00",
+    "case_01",
+    "case_09",
+    "case_15",
+    "case_21",
+    "case_24"
+  ],
+  "trajectory": {
+    "budget": 100,
+    "contribution_epochs": 8,
+    "drain_epochs": 4,
+    "honest_units": 1,
+    "selected_weight": 1,
+    "strategies": [
+      "persistent",
+      "churn"
+    ]
+  }
+}

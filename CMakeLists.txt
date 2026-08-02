@@ -889,6 +889,24 @@ add_test(
     "${Python3_EXECUTABLE}"
     "${PROJECT_SOURCE_DIR}/tests/simulation/reward_distribution_study_test.py"
 )
+add_test(
+  NAME admission-cost-design
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/admission_cost_design_test.py"
+)
+add_test(
+  NAME admission-cost-model
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/admission_cost_model_test.py"
+)
+add_test(
+  NAME admission-cost-study
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/admission_cost_study_test.py"
+)
 set_tests_properties(
   protocol-primitives-python
   ledger-transition-python
