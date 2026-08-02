@@ -103,12 +103,18 @@ issued supply, reject release before its unlock epoch, and return completely
 to its owner at unlock. No bond is slashed, spent, rewarded, or routed.
 
 For bond amount `b`, active duration `a`, post-exit lock `l`, and nonnegative
-rational capital-time rate `n/d`, define checked exposure and integer charge:
+rational capital-time rate `n/d`, define each identity's checked exposure.
+Sum those exposures before comparing a strategy with the unsplit baseline, then
+round the incremental capital-time charge once:
 
 ```text
-exposure = b * (a + l)
-capital_time_cost = ceil(exposure * n / d)
+identity_exposure = b * (a + l)
+incremental_exposure = strategy_exposure - baseline_exposure
+incremental_capital_time_cost = ceil(incremental_exposure * n / d)
 ```
+
+This keeps exact rational exposure additive before integer utility rounding;
+it does not round each identity separately or count returned principal.
 
 The report derives exact open/inclusive rational rate boundaries as functions
 of `b` for every `l = 1..16`; it does not choose `b`, `n/d`, an asset price, or

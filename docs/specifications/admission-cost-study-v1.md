@@ -130,19 +130,24 @@ the lock and is completely returned. It is never included in gross or net
 utility.
 
 For positive bond amount `b`, active duration `a`, positive post-exit lock
-`l`, and nonnegative rational rate `n/d` with `d > 0`:
+`l`, and nonnegative rational rate `n/d` with `d > 0`, first sum exact
+identity exposures for each strategy:
 
 ```text
-duration = a + l
-exposure = b * duration
-capital_time_cost = ceil(exposure * n / d)
+identity_exposure_i = b * (a_i + l)
+strategy_exposure = sum(identity_exposure_i)
+incremental_exposure = strategy_exposure - baseline_exposure
+incremental_capital_time_cost = ceil(incremental_exposure * n / d)
+net_split_advantage = zero_cost_gain - incremental_capital_time_cost
 ```
 
-All components are checked `u64`. For positive required integer cost `C`, the
-exact deterring rate boundary is open below and unbounded above:
+All components are checked `u64`; subtraction requires the strategy exposure
+to be at least the baseline exposure. The ceiling is applied once after exact
+exposures are summed, not independently per identity. For positive zero-cost
+gain `G`, the exact deterring rate boundary is open below and unbounded above:
 
 ```text
-n / d > (C - 1) / exposure
+n / d > (G - 1) / incremental_exposure
 ```
 
 For honest payout `H`, the exact entry-preserving boundary is inclusive:
@@ -156,8 +161,8 @@ inclusivity. Report normalized boundaries for unit bond `b = 1` and every
 `l = 1..16`; any positive bond amount scales the denominators exactly. The
 unit amount is a normalization, not an admission-bond recommendation.
 
-For the exact-support allocation, every identity has active duration one.
-The incremental unit-bond exposure of a `k`-way split is:
+For the exact-support allocation, every identity has active duration one. The
+incremental unit-bond exposure of a `k`-way split is:
 
 ```text
 (k - 1) * (1 + l)
@@ -178,8 +183,9 @@ Use budget `100`, dominant total units `16`, selected weight `1`, honest units
   scopes are distinct.
 
 The honest identity persists for eight epochs. Run all three unchanged reward
-mechanisms. Contribution work remains byte-for-byte equal as ordered integer
-maps within each named form; four drain epochs add no contribution.
+mechanisms. Aggregate dominant and honest work is integer-identical in every
+contribution epoch; participant labels differ exactly as declared by the
+persistent and churn strategies. Four drain epochs add no contribution.
 
 Relative to `persistent_1`, record gross dominant payout gain, distinct
 dominant identities, hidden-principal concentration, and:
