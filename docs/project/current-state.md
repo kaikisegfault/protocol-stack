@@ -8,17 +8,18 @@ M2 — Native economy specification and simulator. The eighth bounded M2 slice
 compares strictly funded minimum-entitlement families over the eighty
 one-unit honest coordinates whose unchanged entitlement is zero. Issue #62 and
 PR #63 accept ADR 0015's research contract and implement the deterministic
-minimum-entitlement study at code candidate `ec0c3b2`. Candidate Actions run
-30754372418 is terminal success on retry attempt two: every compiler,
-sanitizer, fuzz, differential, persistence, simulator, single-node,
-four-validator, and aggregate gate passed. Attempt one passed all 57 GCC
-sanitizer CTest targets and the single-node integration before one
-four-validator `broadcast_tx_commit` timed out; the identical retry passed.
-PR publication, merge, post-merge verification, and final reconciliation
-remain in progress. No production allocation, issuance, fee route, budget,
-floor, contribution weight, distribution mechanism, duration, principal,
-admission cost, threshold, signature scheme, verifier, or C++ economic
-transition is accepted.
+minimum-entitlement study at merged commit `57dac6f`. Exact code-candidate run
+30754372418, final-head run 30755201531, and post-merge run 30755604581 passed
+the full compiler, sanitizer, fuzz, differential, persistence, simulator,
+single-node, four-validator, and aggregate matrix. Candidate attempt one
+passed all 57 GCC sanitizer CTest targets and the single-node integration
+before one four-validator `broadcast_tx_commit` timed out; the identical
+retry passed. Issue #62 is closed and no delivery branch remains. No
+production allocation, issuance, fee route, budget, floor, contribution
+weight, distribution mechanism, duration, principal, admission cost,
+threshold, signature scheme, verifier, or C++ economic transition is
+accepted. The nearest gap is to stress the floor-one proportional hypothesis
+across broader participant/work distributions and population change.
 
 ## Verified facts
 
@@ -61,6 +62,14 @@ transition is accepted.
   all six bounded fuzz targets. All four jobs passed both live CometBFT
   integrations. GCC sanitizer retry attempt two passed the four-validator
   path after attempt one's isolated RPC response timeout; no source changed.
+- PR #63 final head `1186bb5` passed exact hosted Actions run 30755201531.
+  GCC debug, Clang debug, and GCC ASan/UBSan passed 57/57 CTest targets; Clang
+  ASan/UBSan passed 63/63 including all six bounded fuzz targets. Every job
+  passed both live CometBFT integrations and the required aggregate gate.
+- The rebase-merged `main` commit `57dac6f` passed post-merge Actions run
+  30755604581 with the same 57/57 or 63/63 matrix. All four jobs completed the
+  single-node transfer/restart path and the four-validator transfer, full
+  restart, and four durable C++ replica audits per stop.
 - Issue #59 and PR #60 accept ADR 0014's research-only hidden-principal
   admission-cost study. Each dominant identity has a distinct participant,
   registered owner, and payout label; the hidden grouping is retained only as
@@ -910,20 +919,19 @@ transition is accepted.
 
 ## Exact next action
 
-First finish issue #62 and PR #63: publish this handoff, require the final-head
-full matrix, rebase-merge only when green, require the post-merge full matrix,
-and reconcile branches, worktrees, runs, processes, and generated directories.
-Then create one bounded M2 issue for a distribution-wide and multi-epoch stress
-study of the floor-one proportional hypothesis. Hold accepted participation,
-role budgets, useful-work weights, and native funding paths fixed. Sweep the
-full survivor-family contribution support and deterministic population
-join/leave trajectories. Predeclare positive-work liveness, strict funding,
-zero-work rejection, contribution and weight monotonicity, split-profit,
-incumbent displacement, entrant benefit, hidden concentration, cumulative
-claims, and remainder objectives. Derive exact work, population, and budget
-regions where floor one rescues zero credit, reduces another participant's
-payout, or becomes infeasible; do not select a production floor, rate, budget,
-actor, claim, identity rule, or C++ transition.
+In the next clean session, first reconcile this handoff with GitHub and the
+post-merge metadata check. Then create one bounded M2 issue for a
+distribution-wide and multi-epoch stress study of the floor-one proportional
+hypothesis. Hold accepted participation, role budgets, useful-work weights,
+and native funding paths fixed. Sweep the full survivor-family contribution
+support and deterministic population join/leave trajectories. Predeclare
+positive-work liveness, strict funding, zero-work rejection, contribution and
+weight monotonicity, split-profit, incumbent displacement, entrant benefit,
+hidden concentration, cumulative claims, and remainder objectives. Derive
+exact work, population, and budget regions where floor one rescues zero
+credit, reduces another participant's payout, or becomes infeasible; do not
+select a production floor, rate, budget, actor, claim, identity rule, or C++
+transition.
 
 ## Open autonomous decisions
 
