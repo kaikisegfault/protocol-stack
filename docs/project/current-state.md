@@ -9,16 +9,16 @@ now derives exact operating-cost and refundable native-bond capital-time
 boundaries when one hidden principal assigns fixed useful work to `1..16`
 participant, owner, and payout labels. Issue #59 and PR #60 accept ADR 0014's
 research contract and implement the deterministic admission-cost study at
-candidate `bec784b`. Exact candidate Actions run 30752078712 passed the full
-compiler, sanitizer, fuzz, differential, persistence, single-node,
-four-validator, and simulator matrix with the required aggregate gate. The PR
-remains open only for this evidence-bearing handoff commit and its exact final
-verification. No production allocation, issuance, fee route, budget,
-contribution weight, distribution mechanism, duration, principal, admission
-cost, threshold, signature scheme, verifier, or C++ economic transition is
-accepted. The next clean slice should test whether any strictly funded minimum
-entitlement can repair the observed zero-reward honest-entry boundary without
-amplifying hidden-principal splitting.
+merged commit `ae17095`. Exact code-candidate run 30752078712, final-head run
+30752537930, and post-merge run 30752930659 passed the full compiler,
+sanitizer, fuzz, differential, persistence, single-node, four-validator, and
+simulator matrix with the required aggregate gate. Issue #59 is closed and no
+delivery branch remains. No production allocation, issuance, fee route,
+budget, contribution weight, distribution mechanism, duration, principal,
+admission cost, threshold, signature scheme, verifier, or C++ economic
+transition is accepted. The next clean slice should test whether any strictly
+funded minimum entitlement can repair the observed zero-reward honest-entry
+boundary without amplifying hidden-principal splitting.
 
 ## Verified facts
 
@@ -322,6 +322,13 @@ amplifying hidden-principal splitting.
   also passed pinned dependency and Go gates, the 10,000-sequence differential
   suite, persistence and recovery coverage, all M2 research packages, and both
   live CometBFT integrations. The required aggregate gate passed.
+- PR #60 final head `6203559` passed hosted Actions run 30752537930 with the
+  same selected full matrix and required aggregate gate. Rebase-merged `main`
+  commit `ae17095` passed post-merge run 30752930659: GCC and Clang debug plus
+  GCC ASan/UBSan passed 54/54 CTest targets, Clang ASan/UBSan passed 60/60,
+  every job passed both live CometBFT integrations, and the aggregate gate
+  passed. Issue #59 is closed, PR #60 is merged, and its local and remote
+  delivery branch is removed.
 - The official skill validator passes all four repository skills. Direct
   focused execution of `tools/verify_metadata.py` validates four skills and
   twelve internal Markdown links; six classification and metadata-verifier
@@ -864,7 +871,7 @@ amplifying hidden-principal splitting.
 
 ## Exact next action
 
-After PR #60 merges, first reconcile this handoff with GitHub and the exact
+In the next clean session, first reconcile this handoff with GitHub and the
 post-merge matrix. Then create one bounded M2 issue for a deterministic
 minimum-entitlement and hidden-principal split study. Starting from the 80
 one-unit honest coordinates whose unchanged floor entitlement is zero, hold
