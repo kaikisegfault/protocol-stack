@@ -202,10 +202,9 @@ Independently call reward-distribution v1 for all
 Require the two capped registered-scope projections to match at every feasible
 family and floor form.
 
-Choose the first retained coordinate at the minimum budget and the first at
-the maximum budget in canonical order. For each selected coordinate, family,
-mechanism, `k` in `{1, 2, 16}`, and floor in `{0, 1, 5}` that is valid and
-feasible:
+Choose the first and last retained `node` coordinates in canonical order. For
+each selected coordinate, family, mechanism, `k` in `{1, 2, 16}`, and floor in
+`{0, 1, 5}` that is valid and feasible:
 
 1. reproduce every positive raw unit and selected weight through participation
    v1 and require the finalized weighted scores to equal the study input;

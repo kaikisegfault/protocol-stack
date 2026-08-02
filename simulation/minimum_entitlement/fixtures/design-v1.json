@@ -1,0 +1,523 @@
+{
+  "common_floor_range": {
+    "maximum": 5,
+    "minimum": 0,
+    "step": 1
+  },
+  "cross_check_floors": [
+    0,
+    1,
+    5
+  ],
+  "cross_check_identity_counts": [
+    1,
+    2,
+    16
+  ],
+  "design": "MINIMUM-ENTITLEMENT(80x16x3x3;m0..5)-v1",
+  "dominant_total_units": 16,
+  "evaluated_form_count": 49920,
+  "floor_families": [
+    "zero",
+    "per_participant",
+    "work_proportional"
+  ],
+  "honest_units": 1,
+  "identity_count_range": {
+    "maximum": 16,
+    "minimum": 1,
+    "step": 1
+  },
+  "mechanisms": [
+    "proportional",
+    "participant_cap",
+    "principal_cap"
+  ],
+  "positive_family_form_count": 23040,
+  "retained_coordinate_count": 80,
+  "retained_coordinates": [
+    {
+      "budget": 100,
+      "case_id": "case_00",
+      "role": "validator",
+      "selected_weight": 7
+    },
+    {
+      "budget": 100,
+      "case_id": "case_00",
+      "role": "validator",
+      "selected_weight": 8
+    },
+    {
+      "budget": 100,
+      "case_id": "case_00",
+      "role": "validator",
+      "selected_weight": 9
+    },
+    {
+      "budget": 100,
+      "case_id": "case_00",
+      "role": "validator",
+      "selected_weight": 10
+    },
+    {
+      "budget": 100,
+      "case_id": "case_00",
+      "role": "validator",
+      "selected_weight": 11
+    },
+    {
+      "budget": 100,
+      "case_id": "case_00",
+      "role": "validator",
+      "selected_weight": 12
+    },
+    {
+      "budget": 100,
+      "case_id": "case_00",
+      "role": "validator",
+      "selected_weight": 13
+    },
+    {
+      "budget": 100,
+      "case_id": "case_00",
+      "role": "validator",
+      "selected_weight": 14
+    },
+    {
+      "budget": 100,
+      "case_id": "case_00",
+      "role": "validator",
+      "selected_weight": 15
+    },
+    {
+      "budget": 100,
+      "case_id": "case_00",
+      "role": "validator",
+      "selected_weight": 16
+    },
+    {
+      "budget": 100,
+      "case_id": "case_00",
+      "role": "node",
+      "selected_weight": 7
+    },
+    {
+      "budget": 100,
+      "case_id": "case_00",
+      "role": "node",
+      "selected_weight": 8
+    },
+    {
+      "budget": 100,
+      "case_id": "case_00",
+      "role": "node",
+      "selected_weight": 9
+    },
+    {
+      "budget": 100,
+      "case_id": "case_00",
+      "role": "node",
+      "selected_weight": 10
+    },
+    {
+      "budget": 100,
+      "case_id": "case_00",
+      "role": "node",
+      "selected_weight": 11
+    },
+    {
+      "budget": 100,
+      "case_id": "case_00",
+      "role": "node",
+      "selected_weight": 12
+    },
+    {
+      "budget": 100,
+      "case_id": "case_00",
+      "role": "node",
+      "selected_weight": 13
+    },
+    {
+      "budget": 100,
+      "case_id": "case_00",
+      "role": "node",
+      "selected_weight": 14
+    },
+    {
+      "budget": 100,
+      "case_id": "case_00",
+      "role": "node",
+      "selected_weight": 15
+    },
+    {
+      "budget": 100,
+      "case_id": "case_00",
+      "role": "node",
+      "selected_weight": 16
+    },
+    {
+      "budget": 100,
+      "case_id": "case_01",
+      "role": "validator",
+      "selected_weight": 7
+    },
+    {
+      "budget": 100,
+      "case_id": "case_01",
+      "role": "validator",
+      "selected_weight": 8
+    },
+    {
+      "budget": 100,
+      "case_id": "case_01",
+      "role": "validator",
+      "selected_weight": 9
+    },
+    {
+      "budget": 100,
+      "case_id": "case_01",
+      "role": "validator",
+      "selected_weight": 10
+    },
+    {
+      "budget": 100,
+      "case_id": "case_01",
+      "role": "validator",
+      "selected_weight": 11
+    },
+    {
+      "budget": 100,
+      "case_id": "case_01",
+      "role": "validator",
+      "selected_weight": 12
+    },
+    {
+      "budget": 100,
+      "case_id": "case_01",
+      "role": "validator",
+      "selected_weight": 13
+    },
+    {
+      "budget": 100,
+      "case_id": "case_01",
+      "role": "validator",
+      "selected_weight": 14
+    },
+    {
+      "budget": 100,
+      "case_id": "case_01",
+      "role": "validator",
+      "selected_weight": 15
+    },
+    {
+      "budget": 100,
+      "case_id": "case_01",
+      "role": "validator",
+      "selected_weight": 16
+    },
+    {
+      "budget": 100,
+      "case_id": "case_01",
+      "role": "node",
+      "selected_weight": 7
+    },
+    {
+      "budget": 100,
+      "case_id": "case_01",
+      "role": "node",
+      "selected_weight": 8
+    },
+    {
+      "budget": 100,
+      "case_id": "case_01",
+      "role": "node",
+      "selected_weight": 9
+    },
+    {
+      "budget": 100,
+      "case_id": "case_01",
+      "role": "node",
+      "selected_weight": 10
+    },
+    {
+      "budget": 100,
+      "case_id": "case_01",
+      "role": "node",
+      "selected_weight": 11
+    },
+    {
+      "budget": 100,
+      "case_id": "case_01",
+      "role": "node",
+      "selected_weight": 12
+    },
+    {
+      "budget": 100,
+      "case_id": "case_01",
+      "role": "node",
+      "selected_weight": 13
+    },
+    {
+      "budget": 100,
+      "case_id": "case_01",
+      "role": "node",
+      "selected_weight": 14
+    },
+    {
+      "budget": 100,
+      "case_id": "case_01",
+      "role": "node",
+      "selected_weight": 15
+    },
+    {
+      "budget": 100,
+      "case_id": "case_01",
+      "role": "node",
+      "selected_weight": 16
+    },
+    {
+      "budget": 100,
+      "case_id": "case_15",
+      "role": "validator",
+      "selected_weight": 7
+    },
+    {
+      "budget": 100,
+      "case_id": "case_15",
+      "role": "validator",
+      "selected_weight": 8
+    },
+    {
+      "budget": 100,
+      "case_id": "case_15",
+      "role": "validator",
+      "selected_weight": 9
+    },
+    {
+      "budget": 100,
+      "case_id": "case_15",
+      "role": "validator",
+      "selected_weight": 10
+    },
+    {
+      "budget": 100,
+      "case_id": "case_15",
+      "role": "validator",
+      "selected_weight": 11
+    },
+    {
+      "budget": 100,
+      "case_id": "case_15",
+      "role": "validator",
+      "selected_weight": 12
+    },
+    {
+      "budget": 100,
+      "case_id": "case_15",
+      "role": "validator",
+      "selected_weight": 13
+    },
+    {
+      "budget": 100,
+      "case_id": "case_15",
+      "role": "validator",
+      "selected_weight": 14
+    },
+    {
+      "budget": 100,
+      "case_id": "case_15",
+      "role": "validator",
+      "selected_weight": 15
+    },
+    {
+      "budget": 100,
+      "case_id": "case_15",
+      "role": "validator",
+      "selected_weight": 16
+    },
+    {
+      "budget": 100,
+      "case_id": "case_15",
+      "role": "node",
+      "selected_weight": 7
+    },
+    {
+      "budget": 100,
+      "case_id": "case_15",
+      "role": "node",
+      "selected_weight": 8
+    },
+    {
+      "budget": 100,
+      "case_id": "case_15",
+      "role": "node",
+      "selected_weight": 9
+    },
+    {
+      "budget": 100,
+      "case_id": "case_15",
+      "role": "node",
+      "selected_weight": 10
+    },
+    {
+      "budget": 100,
+      "case_id": "case_15",
+      "role": "node",
+      "selected_weight": 11
+    },
+    {
+      "budget": 100,
+      "case_id": "case_15",
+      "role": "node",
+      "selected_weight": 12
+    },
+    {
+      "budget": 100,
+      "case_id": "case_15",
+      "role": "node",
+      "selected_weight": 13
+    },
+    {
+      "budget": 100,
+      "case_id": "case_15",
+      "role": "node",
+      "selected_weight": 14
+    },
+    {
+      "budget": 100,
+      "case_id": "case_15",
+      "role": "node",
+      "selected_weight": 15
+    },
+    {
+      "budget": 100,
+      "case_id": "case_15",
+      "role": "node",
+      "selected_weight": 16
+    },
+    {
+      "budget": 100,
+      "case_id": "case_21",
+      "role": "validator",
+      "selected_weight": 7
+    },
+    {
+      "budget": 100,
+      "case_id": "case_21",
+      "role": "validator",
+      "selected_weight": 8
+    },
+    {
+      "budget": 100,
+      "case_id": "case_21",
+      "role": "validator",
+      "selected_weight": 9
+    },
+    {
+      "budget": 100,
+      "case_id": "case_21",
+      "role": "validator",
+      "selected_weight": 10
+    },
+    {
+      "budget": 100,
+      "case_id": "case_21",
+      "role": "validator",
+      "selected_weight": 11
+    },
+    {
+      "budget": 100,
+      "case_id": "case_21",
+      "role": "validator",
+      "selected_weight": 12
+    },
+    {
+      "budget": 100,
+      "case_id": "case_21",
+      "role": "validator",
+      "selected_weight": 13
+    },
+    {
+      "budget": 100,
+      "case_id": "case_21",
+      "role": "validator",
+      "selected_weight": 14
+    },
+    {
+      "budget": 100,
+      "case_id": "case_21",
+      "role": "validator",
+      "selected_weight": 15
+    },
+    {
+      "budget": 100,
+      "case_id": "case_21",
+      "role": "validator",
+      "selected_weight": 16
+    },
+    {
+      "budget": 100,
+      "case_id": "case_21",
+      "role": "node",
+      "selected_weight": 7
+    },
+    {
+      "budget": 100,
+      "case_id": "case_21",
+      "role": "node",
+      "selected_weight": 8
+    },
+    {
+      "budget": 100,
+      "case_id": "case_21",
+      "role": "node",
+      "selected_weight": 9
+    },
+    {
+      "budget": 100,
+      "case_id": "case_21",
+      "role": "node",
+      "selected_weight": 10
+    },
+    {
+      "budget": 100,
+      "case_id": "case_21",
+      "role": "node",
+      "selected_weight": 11
+    },
+    {
+      "budget": 100,
+      "case_id": "case_21",
+      "role": "node",
+      "selected_weight": 12
+    },
+    {
+      "budget": 100,
+      "case_id": "case_21",
+      "role": "node",
+      "selected_weight": 13
+    },
+    {
+      "budget": 100,
+      "case_id": "case_21",
+      "role": "node",
+      "selected_weight": 14
+    },
+    {
+      "budget": 100,
+      "case_id": "case_21",
+      "role": "node",
+      "selected_weight": 15
+    },
+    {
+      "budget": 100,
+      "case_id": "case_21",
+      "role": "node",
+      "selected_weight": 16
+    }
+  ],
+  "schema": "protocol-stack/minimum-entitlement-design/v1",
+  "zero_family_form_count": 3840,
+  "zero_floor_cross_check_count": 3840
+}
