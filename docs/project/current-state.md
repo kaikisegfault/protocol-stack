@@ -4,24 +4,63 @@ Last updated: 2026-08-02
 
 ## Phase
 
-M2 — Native economy specification and simulator. The seventh bounded M2 slice
-now derives exact operating-cost and refundable native-bond capital-time
-boundaries when one hidden principal assigns fixed useful work to `1..16`
-participant, owner, and payout labels. Issue #59 and PR #60 accept ADR 0014's
-research contract and implement the deterministic admission-cost study at
-merged commit `ae17095`. Exact code-candidate run 30752078712, final-head run
-30752537930, and post-merge run 30752930659 passed the full compiler,
-sanitizer, fuzz, differential, persistence, single-node, four-validator, and
-simulator matrix with the required aggregate gate. Issue #59 is closed and no
-delivery branch remains. No production allocation, issuance, fee route,
-budget, contribution weight, distribution mechanism, duration, principal,
+M2 — Native economy specification and simulator. The eighth bounded M2 slice
+compares strictly funded minimum-entitlement families over the eighty
+one-unit honest coordinates whose unchanged entitlement is zero. Issue #62 and
+PR #63 accept ADR 0015's research contract and implement the deterministic
+minimum-entitlement study at code candidate `ec0c3b2`. Candidate Actions run
+30754372418 is terminal success on retry attempt two: every compiler,
+sanitizer, fuzz, differential, persistence, simulator, single-node,
+four-validator, and aggregate gate passed. Attempt one passed all 57 GCC
+sanitizer CTest targets and the single-node integration before one
+four-validator `broadcast_tx_commit` timed out; the identical retry passed.
+PR publication, merge, post-merge verification, and final reconciliation
+remain in progress. No production allocation, issuance, fee route, budget,
+floor, contribution weight, distribution mechanism, duration, principal,
 admission cost, threshold, signature scheme, verifier, or C++ economic
-transition is accepted. The next clean slice should test whether any strictly
-funded minimum entitlement can repair the observed zero-reward honest-entry
-boundary without amplifying hidden-principal splitting.
+transition is accepted.
 
 ## Verified facts
 
+- Issue #62 and PR #63 accept ADR 0015's research-only comparison of the zero,
+  per-participant, and per-accepted-raw-work minimum-entitlement families. A
+  reserve is calculated allocation credit only; it is not a native claim,
+  balance, debt, issuance, fee, escrow, or production guarantee.
+- The study rebuilds exactly eighty ADR 0014 zero-credit coordinates: the four
+  100-atom survivor families `case_00`, `case_01`, `case_15`, and `case_21`,
+  both roles, and selected weights `7..16`. It evaluates 3,840 zero-family
+  forms and 23,040 forms per reserve family across all identity counts `1..16`
+  and three unchanged reward mechanisms, for 49,920 forms total.
+- Floor one gives every one-unit honest form a one-atom payout under
+  proportional allocation for both reserve families. Across 7,200 same-floor
+  split comparisons and 7,680 comparisons with the unchanged unsplit
+  baseline per family, no form increases hidden-principal payout; the global
+  joint break-even is one at all eighty coordinates.
+- Neither reserve family repairs either accepted cap. All 7,200 capped split
+  forms per family and mechanism are profitable, maximum same-floor gain is
+  99 atoms, and 7,600 of 7,680 forms amplify hidden-principal payout relative
+  to the zero-floor unsplit baseline. Participant-cap and principal-cap maps
+  remain byte-identical when every registered owner label is distinct.
+- For budget 100, the per-participant maximum floor is
+  `floor(100 / (k + 1))`, from 50 at `k = 1` to 5 at `k = 16`; the
+  work-proportional maximum is `floor(100 / 17) = 5` for every `k`. Every
+  exact maximum projection is funded and every next integer floor is rejected
+  before credit creation. Four per-participant boundaries exactly exhaust the
+  budget.
+- All 3,840 zero-floor forms exactly match reward-distribution v1. Six
+  weighted-work paths compose through participation v1 and its unchanged
+  zero-floor funding adapter, 126 selected payouts compose through fresh
+  native-economy reward pools, and nine zero-work probes receive no reserve.
+  Design digest
+  `b4063b2ec8b6035a1f9b76008100c3d6dbf63cfbb8f52a989f8e1d9f2daef03f`
+  and study digest
+  `e07a9d6f9e0b691a772b7195440d1c9d010dd0fd17f934c92b36dc98e2cec67b`
+  are frozen.
+- Candidate run 30754372418 on `ec0c3b2` passed 57/57 CTest targets in GCC
+  debug, Clang debug, and GCC ASan/UBSan, and 63/63 in Clang ASan/UBSan with
+  all six bounded fuzz targets. All four jobs passed both live CometBFT
+  integrations. GCC sanitizer retry attempt two passed the four-validator
+  path after attempt one's isolated RPC response timeout; no source changed.
 - Issue #59 and PR #60 accept ADR 0014's research-only hidden-principal
   admission-cost study. Each dominant identity has a distinct participant,
   registered owner, and payout label; the hidden grouping is retained only as
@@ -871,22 +910,20 @@ boundary without amplifying hidden-principal splitting.
 
 ## Exact next action
 
-In the next clean session, first reconcile this handoff with GitHub and the
-post-merge matrix. Then create one bounded M2 issue for a deterministic
-minimum-entitlement and hidden-principal split study. Starting from the 80
-one-unit honest coordinates whose unchanged floor entitlement is zero, hold
-budgets, accepted useful work, identity counts `1..16`, and the three accepted
-reward-distribution mechanisms fixed. Compare zero floor with strictly funded
-per-participant and work-proportional minimum-entitlement families. Predeclare
-honest-entry, budget exhaustion, zero-work rejection, hidden split-profit,
-concentration, liveness, funding, and break-even objectives. Derive exact
-budget and identity-count boundaries instead of choosing a production floor
-or reward rate. Compose the unchanged participation, reward-distribution, and
-native-economy paths; record whether any floor gives every smallest honest
-contributor positive utility without increasing hidden-principal payout or
-creating an unfunded claim. Do not select an identity provider, registrar,
-uniqueness proof, admission price, bond, stake threshold, reward rate, actor,
-or C++ transition.
+First finish issue #62 and PR #63: publish this handoff, require the final-head
+full matrix, rebase-merge only when green, require the post-merge full matrix,
+and reconcile branches, worktrees, runs, processes, and generated directories.
+Then create one bounded M2 issue for a distribution-wide and multi-epoch stress
+study of the floor-one proportional hypothesis. Hold accepted participation,
+role budgets, useful-work weights, and native funding paths fixed. Sweep the
+full survivor-family contribution support and deterministic population
+join/leave trajectories. Predeclare positive-work liveness, strict funding,
+zero-work rejection, contribution and weight monotonicity, split-profit,
+incumbent displacement, entrant benefit, hidden concentration, cumulative
+claims, and remainder objectives. Derive exact work, population, and budget
+regions where floor one rescues zero credit, reduces another participant's
+payout, or becomes infeasible; do not select a production floor, rate, budget,
+actor, claim, identity rule, or C++ transition.
 
 ## Open autonomous decisions
 
