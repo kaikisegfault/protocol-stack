@@ -907,6 +907,24 @@ add_test(
     "${Python3_EXECUTABLE}"
     "${PROJECT_SOURCE_DIR}/tests/simulation/admission_cost_study_test.py"
 )
+add_test(
+  NAME minimum-entitlement-design
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/minimum_entitlement_design_test.py"
+)
+add_test(
+  NAME minimum-entitlement-model
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/minimum_entitlement_model_test.py"
+)
+add_test(
+  NAME minimum-entitlement-study
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/minimum_entitlement_study_test.py"
+)
 set_tests_properties(
   protocol-primitives-python
   ledger-transition-python
