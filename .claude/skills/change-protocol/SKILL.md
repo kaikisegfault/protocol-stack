@@ -12,7 +12,7 @@ description: Design or implement consensus-visible changes in protocol-stack, in
 2. Classify the change: primitive, encoding, validation, state transition,
    economics, authority, compatibility, or adapter-only.
 3. Research credible alternatives, select a recommended default under the
-   standing delegation in `AGENTS.md`, and record the rationale and
+   standing delegation in `CLAUDE.md`, and record the rationale and
    consequences in an ADR. Do not pause for owner approval.
 4. Write or update the canonical specification before implementation.
 

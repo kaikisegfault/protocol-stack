@@ -29,11 +29,7 @@ def is_lightweight_path(raw_path: str) -> bool:
         return True
     if parts[0] == "docs" and path.suffix.lower() in STATIC_DOCUMENT_SUFFIXES:
         return True
-    return (
-        len(parts) == 5
-        and parts[:2] == (".agents", "skills")
-        and parts[-2:] == ("agents", "openai.yaml")
-    )
+    return False
 
 
 def classify(paths: list[str]) -> str:

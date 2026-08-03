@@ -22,7 +22,7 @@ status rather than appending a long work log.
 
 When the owner says `proceed`, the session should:
 
-1. Load `AGENTS.md`, the Founder Constitution, current state, charter, first
+1. Load `CLAUDE.md`, the Founder Constitution, current state, charter, first
    goal, and relevant accepted decisions.
 2. Verify GitHub access, fetch and prune, then inspect Git divergence, active
    issues and PRs, branches, worktrees, and generated build directories before

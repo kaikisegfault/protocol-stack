@@ -10,7 +10,7 @@ workflow. Do not create issues, branches, commits, PRs, or documentation edits.
 
 ## Reconstruct the evidence
 
-1. Read `AGENTS.md`, `docs/project/current-state.md`,
+1. Read `CLAUDE.md`, `docs/project/current-state.md`,
    `docs/project/founder-constitution.md`, `docs/project/charter.md`,
    `docs/project/first-goal.md`,
    `docs/project/roadmap.md`, `docs/project/vision.md`, and `README.md`.

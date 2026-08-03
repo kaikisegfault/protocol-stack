@@ -20,8 +20,8 @@ production-ready.
 - [Current state and next action](docs/project/current-state.md)
 - [Documentation index](docs/README.md)
 
-Codex sessions opened at the repository root automatically receive the
-instructions in [AGENTS.md](AGENTS.md), including the boundary between
+Claude Code sessions opened at the repository root automatically receive the
+instructions in [CLAUDE.md](CLAUDE.md), including the boundary between
 founder-reserved direction and autonomous engineering. A clean session can
 continue the next verified unit of work with:
 

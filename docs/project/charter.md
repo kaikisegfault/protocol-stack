@@ -95,7 +95,7 @@ engineering. Missing direct-mint benefits, economic recipients, content
 policy, AI delegation, bridge-asset governance, or legacy ownership behavior
 must be referred to the owner when they become an implementation dependency.
 
-Within those rules, Codex has standing authority to research, choose, document,
+Within those rules, Claude has standing authority to research, choose, document,
 implement, test, publish, and integrate technical mechanisms without approval
 pauses. Security evidence may reject an unsafe mechanism without changing the
 founder objective; another mechanism must then be selected.

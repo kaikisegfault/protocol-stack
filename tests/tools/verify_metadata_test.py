@@ -19,19 +19,13 @@ description: Exercise the repository metadata validator.
 
 # Test skill
 """
-VALID_INTERFACE = """interface:
-  display_name: "Test Skill"
-  short_description: "Validate a temporary skill fixture"
-  default_prompt: "Use $test-skill to validate this fixture."
-"""
 
 
 class VerifyMetadataTest(unittest.TestCase):
     def make_skill(self, root: Path) -> Path:
-        skill_dir = root / ".agents" / "skills" / "test-skill"
-        (skill_dir / "agents").mkdir(parents=True)
+        skill_dir = root / ".claude" / "skills" / "test-skill"
+        skill_dir.mkdir(parents=True)
         (skill_dir / "SKILL.md").write_text(VALID_SKILL, encoding="utf-8")
-        (skill_dir / "agents" / "openai.yaml").write_text(VALID_INTERFACE, encoding="utf-8")
         return skill_dir
 
     def test_valid_skill_metadata(self) -> None:
@@ -47,7 +41,7 @@ class VerifyMetadataTest(unittest.TestCase):
             (skill_dir / "SKILL.md").write_text(content.replace("test-skill", "other-skill") + "\nTODO: finish\n", encoding="utf-8")
             errors: list[str] = []
             validate_skill(skill_dir, errors)
-            self.assertGreaterEqual(len(errors), 3)
+            self.assertGreaterEqual(len(errors), 2)
 
     def test_internal_links_exist_and_external_links_are_ignored(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
