@@ -1,0 +1,169 @@
+[
+  {
+    "id": "activate-seat-3",
+    "kind": "activate_seat",
+    "seat_id": 3,
+    "referrer_seat_id": null
+  },
+  {
+    "id": "activate-seat-0",
+    "kind": "activate_seat",
+    "seat_id": 0,
+    "referrer_seat_id": 3
+  },
+  {
+    "id": "activate-seat-1",
+    "kind": "activate_seat",
+    "seat_id": 1,
+    "referrer_seat_id": null
+  },
+  {
+    "id": "activate-seat-2",
+    "kind": "activate_seat",
+    "seat_id": 2,
+    "referrer_seat_id": null
+  },
+  {
+    "id": "base-0-0-active",
+    "kind": "evaluate_base_permission",
+    "seat_id": 0,
+    "cycle_index": 0,
+    "activity_result": {
+      "seat_id": 0,
+      "cycle_index": 0,
+      "active": true
+    },
+    "performance_allocation": null
+  },
+  {
+    "id": "referral-0-0-active",
+    "kind": "evaluate_referral_permission",
+    "seat_id": 0,
+    "cycle_index": 0,
+    "activity_result": {
+      "seat_id": 0,
+      "cycle_index": 0,
+      "active": true
+    },
+    "inactive_referral_result": null
+  },
+  {
+    "id": "base-0-0-replay",
+    "kind": "evaluate_base_permission",
+    "seat_id": 0,
+    "cycle_index": 0,
+    "activity_result": {
+      "seat_id": 0,
+      "cycle_index": 0,
+      "active": true
+    },
+    "performance_allocation": null
+  },
+  {
+    "id": "exercise-base-0-0",
+    "kind": "exercise_permission",
+    "seat_id": 0,
+    "cycle_index": 0,
+    "permission_kind": "base"
+  },
+  {
+    "id": "exercise-referral-0-0",
+    "kind": "exercise_permission",
+    "seat_id": 0,
+    "cycle_index": 0,
+    "permission_kind": "referral"
+  },
+  {
+    "id": "exercise-base-0-0-again",
+    "kind": "exercise_permission",
+    "seat_id": 0,
+    "cycle_index": 0,
+    "permission_kind": "base"
+  },
+  {
+    "id": "base-0-1-missing-activity",
+    "kind": "evaluate_base_permission",
+    "seat_id": 0,
+    "cycle_index": 1,
+    "activity_result": null,
+    "performance_allocation": null
+  },
+  {
+    "id": "base-0-1-inactive",
+    "kind": "evaluate_base_permission",
+    "seat_id": 0,
+    "cycle_index": 1,
+    "activity_result": {
+      "seat_id": 0,
+      "cycle_index": 1,
+      "active": false
+    },
+    "performance_allocation": {
+      "seat_id": 0,
+      "cycle_index": 1,
+      "allocations": [
+        {
+          "seat_id": 1,
+          "amount_atomic": "17100000000"
+        },
+        {
+          "seat_id": 2,
+          "amount_atomic": "17100000000"
+        }
+      ]
+    }
+  },
+  {
+    "id": "referral-0-1-inactive-declined",
+    "kind": "evaluate_referral_permission",
+    "seat_id": 0,
+    "cycle_index": 1,
+    "activity_result": {
+      "seat_id": 0,
+      "cycle_index": 1,
+      "active": false
+    },
+    "inactive_referral_result": {
+      "seat_id": 0,
+      "cycle_index": 1,
+      "create": false
+    }
+  },
+  {
+    "id": "exercise-base-0-1",
+    "kind": "exercise_permission",
+    "seat_id": 0,
+    "cycle_index": 1,
+    "permission_kind": "base"
+  },
+  {
+    "id": "direct-liquidity-0001",
+    "kind": "direct_issue",
+    "channel": "liquidity_mining",
+    "decision_id": "research-direct-0001",
+    "beneficiary_id": "research-user-0001",
+    "amount_atomic": "100000000",
+    "eligibility_result": {
+      "channel": "liquidity_mining",
+      "decision_id": "research-direct-0001",
+      "beneficiary_id": "research-user-0001",
+      "amount_atomic": "100000000",
+      "eligible": true
+    }
+  },
+  {
+    "id": "direct-liquidity-0001-replay",
+    "kind": "direct_issue",
+    "channel": "liquidity_mining",
+    "decision_id": "research-direct-0001",
+    "beneficiary_id": "research-user-0001",
+    "amount_atomic": "100000000",
+    "eligibility_result": {
+      "channel": "liquidity_mining",
+      "decision_id": "research-direct-0001",
+      "beneficiary_id": "research-user-0001",
+      "amount_atomic": "100000000",
+      "eligible": true
+    }
+  }
+]
