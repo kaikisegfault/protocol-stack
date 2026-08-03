@@ -1,28 +1,27 @@
 #!/usr/bin/env python3
-"""Validate repository documentation and Codex skill metadata."""
+"""Validate repository documentation and Claude skill metadata."""
 
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 import re
-import tomllib
 from urllib.parse import unquote, urlsplit
 
 
 SKILL_NAME = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
-INTERFACE_VALUE = re.compile(r'^  ([a-z_]+): "([^"]*)"$')
 MARKDOWN_LINK = re.compile(r"!?\[[^]]*\]\(([^)]+)\)")
 REQUIRED_PATHS = (
-    "AGENTS.md",
-    ".codex/config.toml",
+    "CLAUDE.md",
+    ".claude/settings.json",
     "docs/project/current-state.md",
     "docs/project/charter.md",
     "docs/project/first-goal.md",
     "tools/clean-local.sh",
-    ".agents/skills/change-protocol/SKILL.md",
-    ".agents/skills/proceed-project/SKILL.md",
-    ".agents/skills/verify-project/SKILL.md",
+    ".claude/skills/change-protocol/SKILL.md",
+    ".claude/skills/proceed-project/SKILL.md",
+    ".claude/skills/verify-project/SKILL.md",
 )
 
 
@@ -48,34 +47,10 @@ def front_matter(path: Path, errors: list[str]) -> dict[str, str]:
     return values
 
 
-def interface_metadata(path: Path, errors: list[str]) -> dict[str, str]:
-    lines = path.read_text(encoding="utf-8").splitlines()
-    if not lines or lines[0] != "interface:":
-        errors.append(f"{path}: missing interface mapping")
-        return {}
-    values: dict[str, str] = {}
-    for line in lines[1:]:
-        if not line or not line.startswith(" "):
-            break
-        match = INTERFACE_VALUE.fullmatch(line)
-        if not match:
-            errors.append(f"{path}: interface strings must be two-space indented and quoted")
-            continue
-        key, value = match.groups()
-        if key in values:
-            errors.append(f"{path}: duplicate interface field {key}")
-        values[key] = value
-    required = {"display_name", "short_description", "default_prompt"}
-    if not required.issubset(values):
-        errors.append(f"{path}: missing required interface fields")
-    return values
-
-
 def validate_skill(skill_dir: Path, errors: list[str]) -> None:
     skill_file = skill_dir / "SKILL.md"
-    metadata_file = skill_dir / "agents" / "openai.yaml"
-    if not skill_file.is_file() or not metadata_file.is_file():
-        errors.append(f"{skill_dir}: missing SKILL.md or agents/openai.yaml")
+    if not skill_file.is_file():
+        errors.append(f"{skill_dir}: missing SKILL.md")
         return
     values = front_matter(skill_file, errors)
     name = values.get("name", "")
@@ -83,13 +58,6 @@ def validate_skill(skill_dir: Path, errors: list[str]) -> None:
         errors.append(f"{skill_file}: name must match its lowercase hyphenated directory")
     if not values.get("description", "").strip():
         errors.append(f"{skill_file}: description must not be empty")
-
-    interface = interface_metadata(metadata_file, errors)
-    short_description = interface.get("short_description", "")
-    if short_description and not 25 <= len(short_description) <= 64:
-        errors.append(f"{metadata_file}: short_description must contain 25-64 characters")
-    if name and f"${name}" not in interface.get("default_prompt", ""):
-        errors.append(f"{metadata_file}: default_prompt must mention ${name}")
 
     for path in skill_dir.rglob("*"):
         if path.is_file() and path.suffix in {".md", ".yaml", ".yml"}:
@@ -142,14 +110,13 @@ def main() -> int:
     for relative in REQUIRED_PATHS:
         if not (root / relative).exists():
             errors.append(f"missing required repository path: {relative}")
-    config_path = root / ".codex" / "config.toml"
+    config_path = root / ".claude" / "settings.json"
     if config_path.is_file():
         try:
-            with config_path.open("rb") as config_file:
-                tomllib.load(config_file)
-        except tomllib.TOMLDecodeError as error:
-            errors.append(f"{config_path}: invalid TOML: {error}")
-    skill_dirs = sorted(path for path in (root / ".agents" / "skills").iterdir() if path.is_dir())
+            json.loads(config_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as error:
+            errors.append(f"{config_path}: invalid JSON: {error}")
+    skill_dirs = sorted(path for path in (root / ".claude" / "skills").iterdir() if path.is_dir())
     for skill_dir in skill_dirs:
         validate_skill(skill_dir, errors)
     link_count = validate_markdown_links(root, errors)

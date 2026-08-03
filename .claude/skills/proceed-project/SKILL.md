@@ -1,11 +1,11 @@
 ---
 name: proceed-project
-description: Continue autonomous work in protocol-stack when the owner says "proceed", "continue", or asks to resume from a clean Codex session. Reconstruct verified repository state, execute the next unblocked milestone slice, verify it, update the handoff, and keep working while safe work and execution capacity remain.
+description: Continue autonomous work in protocol-stack when the owner says "proceed", "continue", or asks to resume from a clean Claude Code session. Reconstruct verified repository state, execute the next unblocked milestone slice, verify it, update the handoff, and keep working while safe work and execution capacity remain.
 ---
 
 # Proceed with the project
 
-1. Read `AGENTS.md`, `docs/project/current-state.md`,
+1. Read `CLAUDE.md`, `docs/project/current-state.md`,
    `docs/project/founder-constitution.md`, `docs/project/charter.md`, and
    `docs/project/first-goal.md`.
 2. Read only the roadmap, ADRs, specifications, and engineering documents
@@ -36,7 +36,7 @@ description: Continue autonomous work in protocol-stack when the owner says "pro
     execution capacity remains. A completed slice is not a reason to yield.
 
 Use meaningful issues, focused branches, and evidence-bearing PRs as defined in
-`AGENTS.md`. Do not manufacture activity with empty commits or vanity issues.
+`CLAUDE.md`. Do not manufacture activity with empty commits or vanity issues.
 
 The repository's standing delegation makes ordinary owner approval
 unnecessary. Do not pause for technical, product-mechanism, protocol,
@@ -49,7 +49,7 @@ resolution of conflicting unexplained user work. Complete all other unblocked
 work first.
 
 Never use chat history as the authoritative handoff. Never claim continuous
-background execution after the current Codex run ends. Never leave detached
+background execution after the current Claude Code run ends. Never leave detached
 local work running. At each phase boundary, cancel obsolete GitHub runs, audit
 local processes, and remove reproducible artifacts with
 `tools/clean-local.sh`.

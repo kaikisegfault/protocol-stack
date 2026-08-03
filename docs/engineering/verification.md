@@ -7,7 +7,7 @@ Before completing F0:
 - validate each repository skill with the official skill validator;
 - ensure no skill contains template TODO markers;
 - inspect all Markdown links and referenced paths;
-- parse `.codex/config.toml`;
+- parse `.claude/settings.json`;
 - verify Git author and committer identity;
 - inspect the complete staged diff and confirm no secrets or unrelated changes;
 - confirm a clean status after commit and push.

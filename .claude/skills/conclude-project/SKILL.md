@@ -6,12 +6,12 @@ description: Conclude active work in protocol-stack when the owner says "conclud
 # Conclude the project session
 
 Treat conclusion as a delivery workflow, not a summary request. Finish all
-in-scope work already started and leave the repository safe for a clean Codex
-session. Do not start the next roadmap slice, even when it is unblocked.
+in-scope work already started and leave the repository safe for a clean Claude
+Code session. Do not start the next roadmap slice, even when it is unblocked.
 
 ## 1. Freeze and reconstruct scope
 
-1. Read `AGENTS.md`, `docs/project/current-state.md`,
+1. Read `CLAUDE.md`, `docs/project/current-state.md`,
    `docs/project/founder-constitution.md`, `docs/project/charter.md`, and
    `docs/project/first-goal.md`.
 2. Fetch and prune `origin`, verify GitHub authentication, and inspect the

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Conclude Project"
-  short_description: "Finish and clean the active project slice"
-  default_prompt: "Use $conclude-project to finish, publish, and clean the active project slice without starting the next one."

@@ -95,7 +95,7 @@ Open a PR when the branch forms a coherent reviewable outcome. Include:
 Prefer preserving clean atomic commits with a rebase merge. Squash only when a
 branch contains fixup noise that has no durable review value.
 
-The standing delegation in `AGENTS.md` authorizes merging, tagging, publishing
+The standing delegation in `CLAUDE.md` authorizes merging, tagging, publishing
 releases, and deploying externally once the applicable verification, review,
 security, and production gates pass. Prefer rebase merges for clean atomic
 history. Never weaken an evidence gate to make an autonomous action possible.

@@ -26,7 +26,7 @@ When documents disagree:
 3. `current-state.md`, tests, and Git history control claims about what works;
 4. research fixtures never silently become production policy.
 
-Codex may autonomously research and select technical mechanisms that realize
+Claude may autonomously research and select technical mechanisms that realize
 this constitution. It may not change a founder rule, fill a missing economic
 beneficiary or authority with its own product preference, or represent a
 deferred choice as settled. A missing decision that would change ownership,
@@ -496,7 +496,7 @@ milestone supplies enough evidence and context:
 - complete AI funding, moderation, biometric, and succession frameworks; and
 - any new treasury category, participant benefit, or application-content rule.
 
-Codex should ask focused questions at those boundaries. All other mechanism,
+Claude should ask focused questions at those boundaries. All other mechanism,
 encoding, storage, consensus scheduling, networking, testing, packaging, and
 operational choices remain autonomous engineering work subject to the
 repository's evidence gates.

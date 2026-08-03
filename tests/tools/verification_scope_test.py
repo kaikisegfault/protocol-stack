@@ -17,8 +17,7 @@ class VerificationScopeTest(unittest.TestCase):
             "README.md",
             "docs/project/current-state.md",
             "docs/architecture/diagram.svg",
-            ".agents/skills/conclude-project/SKILL.md",
-            ".agents/skills/conclude-project/agents/openai.yaml",
+            ".claude/skills/conclude-project/SKILL.md",
         ]
         self.assertTrue(all(is_lightweight_path(path) for path in paths))
         self.assertEqual(classify(paths), "lightweight")
@@ -28,9 +27,9 @@ class VerificationScopeTest(unittest.TestCase):
             "src/v1/ledger.cpp",
             "tools/verify.sh",
             "tools/verification_scope.py",
-            ".agents/skills/example/scripts/check.py",
+            ".claude/skills/example/scripts/check.py",
             ".github/workflows/verify.yml",
-            ".codex/config.toml",
+            ".claude/settings.json",
             "CMakeLists.txt",
             "adapter/cometbft/go.mod",
         ]

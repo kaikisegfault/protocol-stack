@@ -189,7 +189,7 @@ where practical.
 - Map meaningful work to an issue, use a focused branch for the issue or
   milestone slice, and open a PR with verification evidence when that slice is
   coherent. Do not create vanity issues or empty commits.
-- Do not add Codex or any AI as an author, committer, co-author, or PR
+- Do not add Claude or any AI as an author, committer, co-author, or PR
   participant.
 - Do not add `Co-authored-by` trailers for AI tools.
 - Keep the configured repository identity:
