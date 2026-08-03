@@ -48,6 +48,10 @@ ADR 0016 adopts the Founder Constitution and staged realization order. It
 changes project direction but does not activate production economics or alter
 current consensus behavior.
 
+ADR 0017 selects the eight-decimal `u64` Founder Economy denomination, fixed
+manifest encoding, and outstanding-permission liability shape for M2. It does
+not activate those values in the M1 devnet.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
@@ -71,6 +75,10 @@ immutable; compatible changes require a new version.
   receipt, and ordered block semantics.
 - `specifications/consensus-application-v1.md`: adapter-neutral ordering
   lifecycle, application results, durable commit, restart, and local framing.
+- `specifications/founder-economy-manifest-v1.md`: exact eight-decimal
+  denomination, ten issuance-channel caps, 731-cycle derivation,
+  permission-liability semantics, unresolved-policy placeholders, and fixed
+  M2 manifest digest; it is not a consensus transition.
 - `specifications/native-economy-simulation-v1.md`: versioned integer-only
   accounting, authority, event, trace, and metric contract for the independent
   M2 research simulator; it is not a consensus transition.
@@ -98,3 +106,8 @@ The corresponding executable research tools and reviewed fixtures live in
 `../simulation/authority/`, `../simulation/economic_stress/`, and
 `../simulation/reward_distribution/`, `../simulation/admission_cost/`, and
 `../simulation/minimum_entitlement/`.
+
+The fixed Founder Economy manifest and derivation vectors live in
+`../test-vectors/founder-economy-manifest-v1.json` and
+`../test-vectors/founder-economy-manifest-v1.txt`. No executable Founder
+Economy simulator consumes them yet.
