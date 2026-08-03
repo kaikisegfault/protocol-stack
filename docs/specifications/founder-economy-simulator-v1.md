@@ -181,6 +181,34 @@ Outstanding permission units are liabilities against channel capacity. They are
 not issued supply, circulating supply, an account balance, or spendable escrow
 custody.
 
+### Canonical state value
+
+The state digest is taken over exactly this value, so an independent
+implementation must reproduce this shape to reproduce the digest:
+
+```text
+{
+  "seats": { "{seat:05d}": "{referrer:05d}" | null },
+  "channels": { "{channel_id}": { "issued_atomic": s, "outstanding_atomic": s } },
+  "pending_permissions": {
+    "{permission key}": {
+      "seat_id": n, "cycle_index": n, "kind": "base" | "referral",
+      "total_atomic": s,
+      "legs": [ { "channel": t, "custody_key": t, "amount_atomic": s } ]
+    }
+  },
+  "evaluated_permission_keys": [ t ],
+  "accepted_direct_decision_ids": [ t ],
+  "typed_custody": { "{custody key}": s }
+}
+```
+
+`s` is a canonical unsigned decimal string, `n` a JSON integer, and `t` a
+string. `channels` contains all ten manifest channels in every state, including
+those still at zero. `legs` preserves creation order; the two arrays are sorted
+ascending. A custody entry is absent rather than zero. JCS sorts every object
+key, so the emitted member order is not itself normative.
+
 ## Canonical event input
 
 The events input is a JSON array. Each element is an object with exactly `id`,
@@ -416,10 +444,11 @@ Each trace record contains the event index, event identifier, kind, acceptance
 flag, result code, the state digest before and after, and the journal. A
 rejected record has an empty journal and equal before and after digests.
 
-`metrics` reports issued supply, outstanding permissions, remaining capacity,
-per-channel issued and outstanding amounts, pending permission count,
-evaluated key count, and accepted decision count. Metrics are derived views; no
-invariant depends on them.
+`metrics` reports the maximum supply, issued supply, outstanding permissions,
+and remaining capacity; per channel its cap, issued, outstanding, and remaining
+amounts; and the activated seat, pending permission, evaluated key, and
+accepted decision counts. Metrics are derived views; no invariant depends on
+them, and adding one is a compatible change that alters the result digest.
 
 ## Resource limits
 
