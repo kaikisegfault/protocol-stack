@@ -91,6 +91,14 @@ bytes under the accepted `D(label)` domain separation. Every monetary value in
 a digest preimage is a canonical decimal string; only small exact counts appear
 as JSON numbers.
 
+Because counts remain JSON numbers, seat identifiers and cycle indexes are
+bounded at parse time by 9,007,199,254,740,991 rather than by `u64`. A larger
+count could not be canonicalized, so it is refused as an input-shape error
+before it can reach a digest preimage; semantic bounds inside that range remain
+ordinary modelled rejections. The canonical state value that the state digest
+covers is specified exactly, so an independent implementation can reproduce the
+digest from the document rather than from this code.
+
 ### An executed vector verifier
 
 `tools/founder-economy-vectors/verify.py` derives every value in the normative
