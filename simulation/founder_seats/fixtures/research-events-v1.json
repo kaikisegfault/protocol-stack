@@ -1,0 +1,136 @@
+[
+  {
+    "id": "purchase-0000",
+    "kind": "purchase_seat",
+    "purchase_id": "purchase-0000",
+    "principal_id": "principal-alpha",
+    "referrer_seat_id": null,
+    "payment_result": {
+      "purchase_id": "purchase-0000",
+      "principal_id": "principal-alpha",
+      "seat_id": 0,
+      "price_usd_cents": "10000",
+      "settled": true
+    }
+  },
+  {
+    "id": "purchase-0001",
+    "kind": "purchase_seat",
+    "purchase_id": "purchase-0001",
+    "principal_id": "principal-beta",
+    "referrer_seat_id": 0,
+    "payment_result": {
+      "purchase_id": "purchase-0001",
+      "principal_id": "principal-beta",
+      "seat_id": 1,
+      "price_usd_cents": "10000",
+      "settled": true
+    }
+  },
+  {
+    "id": "purchase-0002",
+    "kind": "purchase_seat",
+    "purchase_id": "purchase-0002",
+    "principal_id": "principal-alpha",
+    "referrer_seat_id": 1,
+    "payment_result": {
+      "purchase_id": "purchase-0002",
+      "principal_id": "principal-alpha",
+      "seat_id": 2,
+      "price_usd_cents": "10000",
+      "settled": true
+    }
+  },
+  {
+    "id": "purchase-0003-replay",
+    "kind": "purchase_seat",
+    "purchase_id": "purchase-0000",
+    "principal_id": "principal-gamma",
+    "referrer_seat_id": null,
+    "payment_result": {
+      "purchase_id": "purchase-0003",
+      "principal_id": "principal-gamma",
+      "seat_id": 3,
+      "price_usd_cents": "10000",
+      "settled": true
+    }
+  },
+  {
+    "id": "purchase-0003",
+    "kind": "purchase_seat",
+    "purchase_id": "purchase-0003",
+    "principal_id": "principal-gamma",
+    "referrer_seat_id": null,
+    "payment_result": {
+      "purchase_id": "purchase-0003",
+      "principal_id": "principal-gamma",
+      "seat_id": 3,
+      "price_usd_cents": "10000",
+      "settled": false
+    }
+  },
+  {
+    "id": "purchase-0003-retry",
+    "kind": "purchase_seat",
+    "purchase_id": "purchase-0003",
+    "principal_id": "principal-gamma",
+    "referrer_seat_id": null,
+    "payment_result": {
+      "purchase_id": "purchase-0003",
+      "principal_id": "principal-gamma",
+      "seat_id": 3,
+      "price_usd_cents": "10000",
+      "settled": true
+    }
+  },
+  {
+    "id": "purchase-0004-bad",
+    "kind": "purchase_seat",
+    "purchase_id": "purchase-0004-bad",
+    "principal_id": "principal-delta",
+    "referrer_seat_id": null,
+    "payment_result": {
+      "purchase_id": "purchase-0004-bad",
+      "principal_id": "principal-delta",
+      "seat_id": 99,
+      "price_usd_cents": "10000",
+      "settled": true
+    }
+  },
+  {
+    "id": "purchase-0004-ref",
+    "kind": "purchase_seat",
+    "purchase_id": "purchase-0004-ref",
+    "principal_id": "principal-delta",
+    "referrer_seat_id": 900,
+    "payment_result": {
+      "purchase_id": "purchase-0004-ref",
+      "principal_id": "principal-delta",
+      "seat_id": 4,
+      "price_usd_cents": "10000",
+      "settled": true
+    }
+  },
+  {
+    "id": "purchase-0004-missing",
+    "kind": "purchase_seat",
+    "purchase_id": "purchase-0004-missing",
+    "principal_id": "principal-delta",
+    "referrer_seat_id": null,
+    "payment_result": null
+  },
+  {
+    "id": "purchase-0004",
+    "kind": "purchase_seat",
+    "purchase_id": "purchase-0004",
+    "principal_id": "principal-delta",
+    "referrer_seat_id": 2,
+    "payment_result": {
+      "purchase_id": "purchase-0004",
+      "principal_id": "principal-delta",
+      "seat_id": 4,
+      "price_usd_cents": "10000",
+      "settled": true
+    }
+  }
+]

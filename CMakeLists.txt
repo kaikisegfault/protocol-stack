@@ -798,6 +798,32 @@ add_test(
     "${PROJECT_SOURCE_DIR}/tests/simulation/founder_economy_scenario_test.py"
 )
 add_test(
+  NAME founder-seat-vectors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tools/founder-seat-vectors/verify.py"
+    --vectors
+    "${PROJECT_SOURCE_DIR}/test-vectors/founder-seat-schedule-v1.txt"
+)
+add_test(
+  NAME founder-seat-schedule
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/founder_seat_schedule_test.py"
+)
+add_test(
+  NAME founder-seat-sale
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/founder_seat_sale_test.py"
+)
+add_test(
+  NAME founder-seat-errors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/founder_seat_errors_test.py"
+)
+add_test(
   NAME native-economy-model
   COMMAND
     "${Python3_EXECUTABLE}"

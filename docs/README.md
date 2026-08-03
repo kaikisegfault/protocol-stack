@@ -57,6 +57,11 @@ research-input encoding, creation-time beneficiary resolution, journal
 conservation rules, and digest labels. It accepts a research model contract,
 not a consensus transition.
 
+ADR 0019 selects the Founder Seat sale denomination, the exact tier boundary of
+the constitutional price schedule, pure-handler failure atomicity, and the
+separation of the seat sale model from the economy simulator. It accepts a
+research model contract, not a consensus transition.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
@@ -88,6 +93,9 @@ immutable; compatible changes require a new version.
   the five Founder Economy transitions, bound research inputs, journal
   conservation, digest labels, and vector obligations for the independent
   Python model; it is not a consensus transition.
+- `specifications/founder-seat-schedule-v1.md`: integer USD denomination, the
+  100,000-seat capacity, the block price schedule, the per-principal ownership
+  bound, and the seat purchase transition; it is not a consensus transition.
 - `specifications/native-economy-simulation-v1.md`: versioned integer-only
   accounting, authority, event, trace, and metric contract for the independent
   M2 research simulator; it is not a consensus transition.
@@ -123,3 +131,10 @@ The fixed Founder Economy manifest and derivation vectors live in
 that consumes them is `../simulation/founder_economy/`, and
 `../tools/founder-economy-vectors/verify.py` derives every recorded value from
 the loaded manifest and a live run.
+
+The Founder Seat sale model is `../simulation/founder_seats/` with vectors in
+`../test-vectors/founder-seat-schedule-v1.txt`.
+`../tools/founder-seat-vectors/verify.py` rederives the whole schedule by
+walking the constitutional rule and requires the walk, the model, and the
+recorded file to agree. Shared deterministic primitives used by both models
+live in `../simulation/common/`.

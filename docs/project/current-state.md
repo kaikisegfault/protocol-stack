@@ -10,12 +10,15 @@ eight-decimal `u64` denomination, all ten fixed issuance-channel caps, the
 731-cycle supply derivation, permission liabilities, research-only eligibility
 placeholders, ADR 0017, and normative vectors.
 
-Issue #77 then made that contract executable. It adds
-`founder-economy-simulator-v1`, ADR 0018, the independent
+Issue #77 then made that contract executable and is merged at `9aeac23`. It
+added `founder-economy-simulator-v1`, ADR 0018, the independent
 `simulation/founder_economy/` model, a second normative vector file, and a
 verifier that derives every recorded value from the loaded manifest and live
-runs. No C++, consensus, devnet, or previously accepted simulator behavior
-changed.
+runs.
+
+Issue #79 is the active slice: the Founder Seat sale model that satisfies
+`first-goal.md` requirement 8. No C++, consensus, devnet, or previously
+accepted simulator behavior changed in either.
 
 ## What works now
 
@@ -44,6 +47,11 @@ changed.
   base and referral permission evaluation, atomic exercise, and capped
   direct-channel issuance with deterministic trace, state, and result digests.
   It is research software and activates nothing.
+- The Founder Seat sale model derives the complete constitutional price
+  schedule and runs the full 100,000-seat sale end to end to exactly USD
+  4,231,855,000, enforcing the 100,000-seat capacity and the 1,000-seat
+  per-principal bound at their boundaries. It models the sale only; a purchased
+  seat is not yet an activated seat.
 - The one-word `proceed`, `conclude`, and `status` workflows reconstruct,
   deliver, and report repository state.
 
@@ -73,16 +81,20 @@ schemas, bridge, wallet, AI, biometric, or resource behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
-- Issues #71 and #77 are the M2 deliveries; PR #72 is merged.
+- Issues #71, #77, and #79 are the M2 deliveries; PRs #72 and #78 are merged.
 - After PR #72, commits `de9903e` and `4947c46` replaced the Codex agent layout
-  with Claude Code and simplified the authorship rules. Both passed hosted
-  verification; `4947c46` is the base of the current delivery branch.
-- Issue #77 is delivered on branch `feat/77-founder-economy-simulator`.
-- Local evidence on the candidate commit: 61 focused simulator tests pass
-  across the manifest, model, error, and scenario suites; the vector verifier
-  derives and matches 139 manifest and 65 simulator values; repository metadata
-  and link validation, `git diff --check`, and the focused verifier unit tests
-  pass.
+  with Claude Code and simplified the authorship rules.
+- Issue #77 and PR #78 merged at `9aeac23`. PR final-head Actions run
+  30849218092 and post-merge run 30850030514 both passed the complete hosted
+  matrix — scope classification, GCC and Clang debug, both sanitizers, and the
+  aggregate required check.
+- Issue #79 is in delivery on branch `feat/79-founder-seat-schedule`.
+- Local evidence: 67 Founder Economy tests and 49 Founder Seat tests pass; the
+  economy verifier derives 139 manifest and 65 simulator values and the seat
+  verifier derives 96 values while confirming an independent walk of the
+  constitutional rule agrees with the model on all 1,000 blocks; repository
+  metadata and link validation, `git diff --check`, and the focused verifier
+  unit tests pass.
 - The verifier reproduces 2,297 canonical JCS bytes and manifest digest
   `2a8923d40615589cc9c9ef90598c0cec56b72a7efa103cf8c05aceb5b54dc698` from the
   checked-in manifest, and fails closed when a recorded vector key is never
@@ -103,11 +115,9 @@ resource cloud, bridge, liquidity system, wallet, public testnet, or mainnet is
 implemented. The Founder issuance schedule and permission transitions now exist
 only as an independent Python model, not as C++ consensus behavior.
 
-Within `first-goal.md`, the simulator satisfies requirements 1 through 3, 4, 5,
-6, 7, and 12 in model form and contributes to 13 and 14. These remain open:
+Within `first-goal.md`, the two models satisfy requirements 1 through 8 and 12
+in model form and contribute to 13 and 14. These remain open:
 
-- requirement 8: seat capacity, the 1,000-seats-per-person bound, and the
-  USD price-schedule vectors including the USD 4,231,855,000 full-sale total;
 - requirement 9: commercial 45/45/10 routing with the 22.5/22.5 case and
   explicit integer remainder behavior;
 - requirement 10: separate 100% transaction-fee routing to eligible Founders;
@@ -117,19 +127,23 @@ Within `first-goal.md`, the simulator satisfies requirements 1 through 3, 4, 5,
   scenarios and the accepted report distinguishing proved accounting from
   unresolved policy.
 
-The simulator also models the seat graph only. Enrollment, identity, managers,
-and same-cycle liveness proof for a performance recipient are not modelled, and
-the last of those cannot be without the unresolved performance policy.
+The two models are also not joined. A seat purchased in the sale model is not
+an activated seat in the economy model, because the activation height rule and
+the purchase-to-activation transition are unsettled. Enrollment, biometric
+identity, managers, and same-cycle liveness proof for a performance recipient
+are not modelled, and the last of those cannot be without the unresolved
+performance policy. The per-principal seat bound is not yet a per-human bound.
 
 ## Exact next action
 
-Create one bounded M2 issue for Founder Seat capacity and pricing on top of
-`founder-economy-simulator-v1`. Add the exact 100,000-seat capacity, the
-1,000-seats-per-person bound, and the integer USD price schedule with fixed
-vectors for the USD 100 first block, the USD 1,000 tier boundary, the USD
-91,900 final block, and the USD 4,231,855,000 derived full-sale proceeds.
-Keep the external payment proof a bound research placeholder and do not change
-C++ consensus in that slice.
+Create one bounded M2 issue for commercial revenue and transaction-fee routing,
+satisfying `first-goal.md` requirements 9 and 10. Model the 45/45/10 commercial
+split with the 22.5/22.5 project and product creator case, explicit integer
+remainder behavior, and separate 100% transaction-fee routing to eligible
+active Founder Seats with no burn and no deduction from commercial revenue.
+Use a bound research placeholder for the active-seat snapshot, keep it additive
+so `founder-economy-simulator-v1` vectors stay frozen, and do not change C++
+consensus in that slice.
 
 ## Blockers
 
