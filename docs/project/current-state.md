@@ -7,8 +7,9 @@ Last updated: 2026-08-03
 M2 — Founder Economy specification and proof. Issue #68 is realigning the
 repository around the owner-confirmed Founder Constitution before further
 economic implementation. The active branch is
-`docs/68-founder-constitution`; hosted publication and verification are
-pending.
+`docs/68-founder-constitution`; PR #69 publishes candidate `d22383e`.
+Candidate Actions run 30774218446 passed the focused metadata path. Merge and
+post-merge verification are pending.
 
 ## What works now
 
@@ -56,11 +57,15 @@ AI, biometric, or resource behavior.
 - Repository: `kaikisegfault/protocol-stack`.
 - Base before issue #68: `main` and `origin/main` at `5e107fc`.
 - Active issue: #68.
-- Active branch: `docs/68-founder-constitution`, not yet published.
-- Open PRs: none at branch creation.
+- Active PR: #69.
+- Active branch: `docs/68-founder-constitution`, clean and published at
+  candidate `d22383e` before this handoff-only update.
 - Focused local checks pass `git diff --check`, repository metadata and link
   validation, exact economic arithmetic assertions, and lightweight-scope
   classification.
+- Candidate Actions run 30774218446 passed scope classification and the
+  required focused metadata check on exact commit `d22383e`; the compiler and
+  sanitizer matrix correctly skipped for Markdown and skill metadata only.
 - Latest base `main` verification: Actions run 30756658019 passed the focused
   metadata path for commit `5e107fc`.
 - No repository build, test, server, monitor, or helper process was running at
