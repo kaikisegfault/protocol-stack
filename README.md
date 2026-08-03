@@ -1,14 +1,18 @@
 # protocol-stack
 
 `protocol-stack` is the open-source research and implementation monorepo for a
-sovereign, single-native-asset blockchain stack.
+sovereign, single-native-asset ecosystem: deterministic blockchain rules,
+permanent Founder infrastructure, controlled applications, bounded self-hosted
+AI authority, and a restricted external-value boundary.
 
-The project is research software. Its first operational milestone is a
-reproducible four-validator local devnet backed by an original deterministic
-C++20 ledger kernel. It is not production-ready.
+The project is research software. Its Sovereign Devnet Alpha is runnable; the
+active milestone is an exact Founder Economy specification and independent
+proof before those economic rules enter C++ consensus. It is not
+production-ready.
 
 ## Start here
 
+- [Founder Constitution](docs/project/founder-constitution.md)
 - [Vision](docs/project/vision.md)
 - [Project charter](docs/project/charter.md)
 - [First operational goal](docs/project/first-goal.md)
@@ -17,8 +21,9 @@ C++20 ledger kernel. It is not production-ready.
 - [Documentation index](docs/README.md)
 
 Codex sessions opened at the repository root automatically receive the
-instructions in [AGENTS.md](AGENTS.md). A clean session can continue the next
-verified unit of work with:
+instructions in [AGENTS.md](AGENTS.md), including the boundary between
+founder-reserved direction and autonomous engineering. A clean session can
+continue the next verified unit of work with:
 
 ```text
 proceed

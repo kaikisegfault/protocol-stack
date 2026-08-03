@@ -2,9 +2,9 @@
 
 ## Mission
 
-Build a sovereign, deterministic, single-native-asset protocol stack. The
-current operational objective and completion evidence are defined in
-`docs/project/first-goal.md`.
+Build the complete sovereign, deterministic, single-native-asset ecosystem
+defined in `docs/project/founder-constitution.md`. The current operational
+objective and completion evidence are defined in `docs/project/first-goal.md`.
 
 Do not treat chat history or model memory as project state. The repository is
 the source of truth.
@@ -12,7 +12,8 @@ the source of truth.
 ## Start every session
 
 1. Read `docs/project/current-state.md`.
-2. Read `docs/project/charter.md` and `docs/project/first-goal.md`.
+2. Read `docs/project/founder-constitution.md`, `docs/project/charter.md`, and
+   `docs/project/first-goal.md`.
 3. Read only the roadmap, specifications, ADRs, and architecture documents
    relevant to the next action.
 4. Verify GitHub authentication, fetch and prune `origin`, then reconcile the
@@ -112,11 +113,18 @@ test evidence, then repair the state document.
 - Do not add JavaScript, TypeScript, Node.js, React, or npm tooling.
 - The ledger has exactly one protocol-native asset and no public asset-creation
   operation.
-- Staking, escrow, fees, treasury, validator, and node-distribution rules are
-  native protocol modules, not publicly deployed contracts.
+- BTC, ETH, and approved stablecoins may appear only at the restricted bridge
+  boundary for Founder Seat purchase, liquidity, native swaps, and withdrawal;
+  they are never general internal balances.
+- Founder admission, escrow, fees, treasury, validator, and node-distribution
+  rules are native protocol modules, not publicly deployed contracts. Do not
+  introduce production staking, slashing, or monetary penalties without an
+  explicit founder decision.
 - Never implement cryptographic primitives from scratch.
 - Never run AI inference inside consensus. AI may submit signed, bounded
   decisions that deterministic protocol rules verify.
+- Do not require AI inference on Founder Nodes. The logical Ecosystem AI is a
+  company-hosted control plane with separately bounded capabilities.
 - Do not use floating-point arithmetic for monetary or consensus state.
 - Initial consensus and storage integrations must remain replaceable adapters.
 
@@ -139,23 +147,32 @@ test evidence, then repair the state document.
 On 2026-07-23 the owner granted standing authority for end-to-end autonomous
 project execution. A `proceed` instruction activates that authority for the
 session; it does not require follow-up approval for technical, product,
-protocol, economic, dependency, GitHub, release, or deployment decisions.
+protocol-mechanism, dependency, GitHub, release, or deployment decisions that
+remain inside the Founder Constitution.
 
 A `conclude` instruction activates the same authority only for completing,
 publishing, verifying, documenting, and cleaning the slice or phase already in
 progress. It does not authorize starting the next recorded slice.
 
-For consequential choices, research credible alternatives, record the selected
-default and consequences in a specification or ADR, satisfy the applicable
-verification and review gates, and continue. Evidence gates replace approval
-pauses; they must not be bypassed merely to preserve momentum.
+For consequential engineering choices, research credible alternatives, record
+the selected default and consequences in a specification or ADR, satisfy the
+applicable verification and review gates, and continue. Evidence gates replace
+approval pauses; they must not be bypassed merely to preserve momentum.
+
+Do not autonomously change founder-directed supply, allocation, beneficiaries,
+Founder ownership, creator hierarchy, commercial routing, AI institutional
+authority, bridge scope, or content permanence. When an unresolved choice
+would materially change those values, ask the owner one focused question at
+the point it becomes the nearest dependency. Use explicit research-only inputs
+and complete other safe work first when the question is not yet blocking.
 
 Continue through bounded slices until execution limits or a genuine external
-blocker prevent useful work. Do not stop to ask for approval. When one path is
-blocked, complete other safe work first. Record a remaining blocker only when
-it requires unavailable credentials, unavailable external infrastructure,
-independent review that cannot be performed in-session, or resolution of
-conflicting unexplained user work.
+blocker prevent useful work. Do not stop to ask for ordinary approval. When one
+path is blocked, complete other safe work first. Record a remaining blocker
+only when it requires unavailable credentials, unavailable external
+infrastructure, independent review that cannot be performed in-session,
+resolution of conflicting unexplained user work, or a founder-reserved choice
+that would otherwise be invented.
 
 Use only credentials already configured for the repository, never expose or
 commit secrets, and keep destructive actions narrowly scoped and recoverable

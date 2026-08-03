@@ -12,7 +12,8 @@ session. Do not start the next roadmap slice, even when it is unblocked.
 ## 1. Freeze and reconstruct scope
 
 1. Read `AGENTS.md`, `docs/project/current-state.md`,
-   `docs/project/charter.md`, and `docs/project/first-goal.md`.
+   `docs/project/founder-constitution.md`, `docs/project/charter.md`, and
+   `docs/project/first-goal.md`.
 2. Fetch and prune `origin`, verify GitHub authentication, and inspect the
    current branch, upstreams and divergence, recent commits, working tree,
    worktrees, issues, pull requests, Actions runs, repository processes, and

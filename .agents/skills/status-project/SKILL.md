@@ -11,7 +11,8 @@ workflow. Do not create issues, branches, commits, PRs, or documentation edits.
 ## Reconstruct the evidence
 
 1. Read `AGENTS.md`, `docs/project/current-state.md`,
-   `docs/project/charter.md`, `docs/project/first-goal.md`,
+   `docs/project/founder-constitution.md`, `docs/project/charter.md`,
+   `docs/project/first-goal.md`,
    `docs/project/roadmap.md`, `docs/project/vision.md`, and `README.md`.
 2. Fetch and prune `origin`, then inspect the current commit, working tree,
    branches, worktrees, open issues and PRs, recent and active Actions runs,
@@ -60,11 +61,13 @@ Describe why the completed work saves future engineering or research effort.
 Compare the project with commonly available Web3 stacks without marketing
 hype. Separate individually common ingredients from the distinctive
 combination: original deterministic application rules, one native asset,
-native rather than public-contract economics, replaceable infrastructure, and
-AI authority outside consensus with protocol-enforced limits. State what the
-project deliberately does not yet compete with, such as production networks,
-wallet ecosystems, general smart-contract platforms, or mature operational
-tooling.
+native rather than public-contract economics, permanent Founder
+infrastructure, controlled full-stack applications, replaceable infrastructure,
+and one company-hosted AI authority outside consensus with protocol-enforced
+limits. State what is constitutional direction rather than delivered
+differentiation, and what the project does not yet compete with, such as
+production networks, wallet ecosystems, application clouds, bridges, or
+mature operational tooling.
 
 ## Response format
 
@@ -74,8 +77,8 @@ words unless the owner asks for another depth. Use this compact structure:
 1. **Bottom line** — what the project is today in two or three sentences.
 2. **What works now** — observable product-level behavior, followed by what is
    simulation or design only.
-3. **Milestone position** — whether the first milestone is complete, the
-   current milestone, and the full-program production finish line.
+3. **Milestone position** — completed M1 evidence, the current operational
+   goal, and the full Founder-Constitution production finish line.
 4. **Why it matters** — practical value and honest differentiation.
 5. **Quality and handoff** — confidence, known limits, clutter, refactor need,
    and whether experienced developers can continue smoothly.

@@ -1,6 +1,6 @@
 # ADR 0002: Native single-asset economy
 
-- Status: Accepted
+- Status: Accepted; production staking assumption superseded by ADR 0016
 - Date: 2026-07-23
 
 ## Context
@@ -12,8 +12,10 @@ standard token interface.
 ## Decision
 
 Implement accounts, supply, fees, treasury, venture escrow, general escrow,
-staking, validator rules, node-distribution rules, authority, and future bridge
-capabilities as native C++ protocol modules.
+validator rules, node-distribution rules, authority, and future bridge
+capabilities as native C++ protocol modules. Founder Seat admission is the
+current validator direction. Production staking, slashing, or monetary
+penalties require a separate founder decision under ADR 0016.
 
 Do not provide public contract deployment, a public asset-issuance operation,
 or an EVM in M1. Any later execution runtime requires an ADR addressing the
