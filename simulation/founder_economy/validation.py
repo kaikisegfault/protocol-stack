@@ -10,7 +10,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from .canonical import MAX_U64, parse_atomic
+from .canonical import MAX_JSON_INTEGER, parse_atomic
 from .manifest import ManifestError, parse_json
 
 IDENTIFIER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
@@ -182,8 +182,15 @@ def _boolean(value: Any, name: str) -> bool:
 
 
 def _count(value: Any, name: str) -> int:
-    if type(value) is bool or type(value) is not int or not 0 <= value <= MAX_U64:
-        raise InputError(f"{name} is not an unsigned JSON integer")
+    """Parse a small exact count.
+
+    The bound is the largest integer a conforming JSON stack represents
+    exactly, not `u64`. Counts are serialized as JSON numbers in digest
+    preimages, so a larger value could not be canonicalized and must be
+    rejected as input rather than reaching a digest.
+    """
+    if type(value) is bool or type(value) is not int or not 0 <= value <= MAX_JSON_INTEGER:
+        raise InputError(f"{name} is not an exact unsigned JSON integer")
     return value
 
 

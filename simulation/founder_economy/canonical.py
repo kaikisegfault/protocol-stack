@@ -8,6 +8,7 @@ import re
 from typing import Any
 
 MAX_U64 = (1 << 64) - 1
+MAX_JSON_INTEGER = (1 << 53) - 1
 DECIMAL_STRING = re.compile(r"^(?:0|[1-9][0-9]*)$")
 
 
@@ -101,7 +102,7 @@ def _assert_canonical(value: Any, name: str) -> None:
     if kind is bool or value is None or kind is str:
         return
     if kind is int:
-        if not 0 <= value <= (1 << 53) - 1:
+        if not 0 <= value <= MAX_JSON_INTEGER:
             raise InvariantError(f"{name} is an out-of-range JSON integer")
         return
     if kind is list:

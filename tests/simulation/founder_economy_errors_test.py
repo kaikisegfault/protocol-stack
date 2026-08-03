@@ -10,10 +10,15 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from simulation.founder_economy import contract as c
-from simulation.founder_economy.canonical import MAX_U64
+from simulation.founder_economy.canonical import (
+    MAX_JSON_INTEGER,
+    MAX_U64,
+    InvariantError,
+)
 from simulation.founder_economy.domain import (
     Leg,
     PendingPermission,
+    assert_invariants,
     initial_state,
     permission_key,
     state_digest,
@@ -423,6 +428,46 @@ class InputShapeTest(unittest.TestCase):
         event = evaluate_base(0, 0)
         event["activity_result"]["active"] = "true"
         self.assert_input_error([event])
+
+    def test_counts_above_the_exact_json_integer_bound_are_rejected(self) -> None:
+        """A count that could not be canonicalized must not reach a digest."""
+        for value in (MAX_JSON_INTEGER + 1, MAX_U64, 10**18):
+            with self.subTest(value=value):
+                self.assert_input_error([activate(value)])
+                self.assert_input_error([activate(0, referrer=value)])
+                self.assert_input_error([exercise(0, value)])
+
+    def test_the_largest_exact_count_parses_and_is_rejected_at_runtime(self) -> None:
+        result = run([activate(MAX_JSON_INTEGER)])
+        self.assertEqual(result["records"][-1]["result"], "CYCLE_RANGE")
+
+
+class StateInvariantTest(unittest.TestCase):
+    def test_an_unknown_referrer_violates_the_seat_invariant(self) -> None:
+        state = initial_state()
+        state.seats[0] = 7
+        with self.assertRaises(InvariantError):
+            assert_invariants(state)
+
+    def test_a_self_referrer_violates_the_seat_invariant(self) -> None:
+        state = initial_state()
+        state.seats[0] = 0
+        with self.assertRaises(InvariantError):
+            assert_invariants(state)
+
+    def test_custody_that_does_not_equal_issued_supply_is_rejected(self) -> None:
+        state = initial_state()
+        state.typed_custody["venture_escrow:global"] = 1
+        with self.assertRaises(InvariantError):
+            assert_invariants(state)
+
+    def test_a_channel_above_its_cap_is_rejected(self) -> None:
+        state = initial_state()
+        state.channels[c.REFERRAL_CHANNEL].outstanding_atomic = (
+            c.CHANNEL_CAPS[c.REFERRAL_CHANNEL] + 1
+        )
+        with self.assertRaises(InvariantError):
+            assert_invariants(state)
 
     def test_parsing_an_accepted_event_array_is_idempotent(self) -> None:
         events = [activate(3), activate(0, referrer=3), evaluate_base(0, 0), exercise(0, 0)]
