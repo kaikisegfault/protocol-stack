@@ -52,6 +52,11 @@ ADR 0017 selects the eight-decimal `u64` Founder Economy denomination, fixed
 manifest encoding, and outstanding-permission liability shape for M2. It does
 not activate those values in the M1 devnet.
 
+ADR 0018 selects the Founder Economy simulator's transition set, bound
+research-input encoding, creation-time beneficiary resolution, journal
+conservation rules, and digest labels. It accepts a research model contract,
+not a consensus transition.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
@@ -79,6 +84,10 @@ immutable; compatible changes require a new version.
   denomination, ten issuance-channel caps, 731-cycle derivation,
   permission-liability semantics, unresolved-policy placeholders, and fixed
   M2 manifest digest; it is not a consensus transition.
+- `specifications/founder-economy-simulator-v1.md`: strict manifest loading,
+  the five Founder Economy transitions, bound research inputs, journal
+  conservation, digest labels, and vector obligations for the independent
+  Python model; it is not a consensus transition.
 - `specifications/native-economy-simulation-v1.md`: versioned integer-only
   accounting, authority, event, trace, and metric contract for the independent
   M2 research simulator; it is not a consensus transition.
