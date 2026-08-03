@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from . import contract as c
-from .canonical import format_atomic, required_sum
+from ..common.canonical import format_atomic, required_sum
 from .domain import State, issued_supply, outstanding_permissions
 
 

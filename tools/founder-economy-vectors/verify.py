@@ -16,7 +16,7 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from simulation.founder_economy import contract as c
-from simulation.founder_economy.canonical import MAX_U64, label_prefix
+from simulation.common.canonical import MAX_U64, label_prefix
 from simulation.founder_economy.engine import (
     EVENTS_LABEL,
     RESULT_LABEL,

@@ -10,7 +10,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from .canonical import MAX_JSON_INTEGER, parse_atomic
+from ..common.canonical import MAX_JSON_INTEGER, parse_atomic
 from .manifest import ManifestError, parse_json
 
 IDENTIFIER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")

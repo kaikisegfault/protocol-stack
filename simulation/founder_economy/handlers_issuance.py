@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from . import contract as c
-from .canonical import checked_add, checked_sum
+from ..common.canonical import checked_add, checked_sum
 from .domain import State, direct_custody_key, permission_key
 from .operations import (
     Outcome,
