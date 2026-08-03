@@ -10,8 +10,9 @@ from .domain import State
 
 
 def build_metrics(state: State) -> dict[str, Any]:
-    next_index = c.block_index(state.seats_sold) if state.seats_sold < c.FOUNDER_SEAT_CAPACITY else None
-    current_index = c.block_index(state.seats_sold - 1) if state.seats_sold else None
+    sold = state.seats_sold
+    next_index = c.block_index(sold) if sold < c.FOUNDER_SEAT_CAPACITY else None
+    current_index = c.block_index(sold - 1) if sold else None
     counts = state.principal_seat_counts.values()
     return {
         "founder_seat_capacity": c.FOUNDER_SEAT_CAPACITY,

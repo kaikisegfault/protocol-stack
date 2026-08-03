@@ -21,7 +21,11 @@ from .validation import parse_events
 INVARIANT_STRIDE = 512
 
 
-def simulate(events_value: Any, *, invariant_stride: int = INVARIANT_STRIDE) -> dict[str, Any]:
+def simulate(
+    events_value: Any,
+    *,
+    invariant_stride: int = INVARIANT_STRIDE,
+) -> dict[str, Any]:
     """Run one deterministic seat sale simulation."""
     events = parse_events(events_value)
     state = initial_state()

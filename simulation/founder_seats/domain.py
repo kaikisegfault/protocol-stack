@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -35,9 +34,6 @@ class State:
     seats: dict[int, Seat] = field(default_factory=dict)
     principal_seat_counts: dict[str, int] = field(default_factory=dict)
     accepted_purchase_ids: set[str] = field(default_factory=set)
-
-    def clone(self) -> State:
-        return copy.deepcopy(self)
 
     @property
     def seats_remaining(self) -> int:
