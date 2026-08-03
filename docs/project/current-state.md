@@ -16,9 +16,9 @@ added `founder-economy-simulator-v1`, ADR 0018, the independent
 verifier that derives every recorded value from the loaded manifest and live
 runs.
 
-Issue #79 is the active slice: the Founder Seat sale model that satisfies
-`first-goal.md` requirement 8. No C++, consensus, devnet, or previously
-accepted simulator behavior changed in either.
+Issue #79 delivered the Founder Seat sale model satisfying `first-goal.md`
+requirement 8 and is merged at `c03262f`. No C++, consensus, devnet, or
+previously accepted simulator behavior changed in either slice.
 
 ## What works now
 
@@ -88,13 +88,20 @@ schemas, bridge, wallet, AI, biometric, or resource behavior.
   30849218092 and post-merge run 30850030514 both passed the complete hosted
   matrix — scope classification, GCC and Clang debug, both sanitizers, and the
   aggregate required check.
-- Issue #79 is in delivery on branch `feat/79-founder-seat-schedule`.
-- Local evidence: 67 Founder Economy tests and 49 Founder Seat tests pass; the
-  economy verifier derives 139 manifest and 65 simulator values and the seat
-  verifier derives 96 values while confirming an independent walk of the
-  constitutional rule agrees with the model on all 1,000 blocks; repository
-  metadata and link validation, `git diff --check`, and the focused verifier
-  unit tests pass.
+- Issue #79 and PR #80 merged at `c03262f`. PR final-head Actions run
+  30852439693 and post-merge run 30853305170 both passed the complete hosted
+  matrix — scope classification, GCC and Clang debug, both sanitizers, and the
+  aggregate required check.
+- No delivery branch, open PR, additional worktree, or generated build
+  directory remains from either delivery.
+- Local evidence on `c03262f`: 67 Founder Economy tests and 49 Founder Seat
+  tests pass; the economy verifier derives 139 manifest and 65 simulator values
+  and the seat verifier derives 96 values while confirming an independent walk
+  of the constitutional rule agrees with the model on all 1,000 blocks;
+  repository metadata and link validation, `git diff --check`, and the focused
+  verifier unit tests pass.
+- Both verifiers fail closed when a recorded vector key is never derived, and
+  the economy verifier was confirmed to fail on a tampered recorded value.
 - The verifier reproduces 2,297 canonical JCS bytes and manifest digest
   `2a8923d40615589cc9c9ef90598c0cec56b72a7efa103cf8c05aceb5b54dc698` from the
   checked-in manifest, and fails closed when a recorded vector key is never
