@@ -132,7 +132,12 @@ typed_custody[custody_key] = u64
 `kind` is `base` or `referral`. Every channel begins at zero issued and zero
 outstanding; there is no genesis allocation.
 
-### Custody keys
+### Replay and custody keys
+
+A permission replay key is rendered `{seat_id}:{cycle_index}:{kind}` with the
+seat zero-padded to five digits and the cycle to three, so the key set sorts
+identically under numeric and lexicographic ordering. `00042:007:base` is the
+base key for seat 42, cycle 7.
 
 A custody key is `{beneficiary_kind}:{beneficiary_id}` where the beneficiary
 kind is resolved at permission creation, not at exercise:
@@ -147,8 +152,10 @@ kind is resolved at permission creation, not at exercise:
 | `recorded_referrer` | `founder_seat:{referrer_seat_id}` |
 | direct-channel beneficiary | `direct_beneficiary:{beneficiary_id}` |
 
-Resolving the Founder beneficiary at creation is what makes an inactive cycle's
-reallocation permanent: a later exercise cannot restore the original seat.
+A `founder_seat` identifier is zero-padded to five digits for the same ordering
+reason. Resolving the Founder beneficiary at creation is what makes an inactive
+cycle's reallocation permanent: a later exercise cannot restore the original
+seat.
 
 ### Invariants
 
@@ -354,12 +361,16 @@ decision identifier.
 
 ## Journals and atomicity
 
-An accepted transition emits an ordered journal of `{bucket, delta}` entries.
-Buckets are `capacity:{channel}`, `outstanding:{channel}`, `issued:{channel}`,
-and `custody:{key}`. No entry has a zero delta.
+An accepted transition emits an ordered journal of
+`{bucket, direction, amount_atomic}` entries. Buckets are `capacity:{channel}`,
+`outstanding:{channel}`, `issued:{channel}`, and `custody:{key}`. `direction` is
+`increase` or `decrease` and `amount_atomic` is a positive canonical decimal
+string, so a journal never contains a signed or zero amount and never needs a
+JSON number.
 
-`capacity:{channel}` is the derived remaining capacity
-`cap - issued - outstanding`. The engine requires both:
+An entry's signed delta is `+amount_atomic` for `increase` and
+`-amount_atomic` for `decrease`. `capacity:{channel}` is the derived remaining
+capacity `cap - issued - outstanding`. The engine requires both:
 
 ```text
 sum(capacity deltas) + sum(outstanding deltas) + sum(issued deltas) = 0
@@ -436,14 +447,26 @@ exists.
 
 ## Required vectors and evidence
 
-[`founder-economy-manifest-v1.txt`](../../test-vectors/founder-economy-manifest-v1.txt)
-remains normative and must now be reproduced by an executed verifier rather
-than by review alone. The verifier must independently derive, not merely
-compare, the denomination fit and nine-decimal overflow, canonical byte length
-and digest, every channel cap and subtotal, every per-cycle leg, every
-per-seat 731-cycle product, every full-schedule product, the active,
-inactive-allocation, referral, exercise, and direct-channel fixtures, and every
-listed rejection.
+Two vector files are normative:
+
+- [`founder-economy-manifest-v1.txt`](../../test-vectors/founder-economy-manifest-v1.txt)
+  fixes the denomination, channel, schedule, fixture, rejection, and atomicity
+  values inherited from the manifest contract.
+- [`founder-economy-simulator-v1.txt`](../../test-vectors/founder-economy-simulator-v1.txt)
+  fixes this version's result schema, digest labels, and the complete trace,
+  totals, custody, and digests of the checked-in research scenario.
+
+Both must be reproduced by an executed verifier rather than by review alone.
+The verifier independently derives, rather than restates, every recorded value:
+the denomination fit and nine-decimal overflow, canonical byte length and
+digest, every channel cap and subtotal, every per-cycle leg, every per-seat
+731-cycle product, every full-schedule product, the active,
+inactive-allocation, referral, exercise, and direct-channel fixtures, the
+zero-write atomicity claims, and the scenario trace and digests.
+
+The verifier must also fail when a recorded key is never derived. A vector that
+no derivation reaches is unverified, so partial coverage must not report
+success.
 
 Test coverage must include positive, negative, boundary, replay, overflow,
 atomicity, cap-exhaustion, inactivity, and complete 731-cycle scenarios, plus

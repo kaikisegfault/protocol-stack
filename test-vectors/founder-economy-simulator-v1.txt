@@ -1,0 +1,79 @@
+# Founder Economy simulator v1 normative vectors.
+# Monetary values are atomic-unit unsigned decimal strings unless noted.
+# The scenario is simulation/founder_economy/fixtures/research-events-v1.json
+# evaluated against test-vectors/founder-economy-manifest-v1.json.
+
+schema=protocol-stack/founder-economy-simulation-result/v1
+manifest_file=test-vectors/founder-economy-manifest-v1.json
+events_file=simulation/founder_economy/fixtures/research-events-v1.json
+events_domain_label=protocol-stack:founder-economy:events-v1
+state_domain_label=protocol-stack:founder-economy:state-v1
+trace_domain_label=protocol-stack:founder-economy:trace-v1
+result_domain_label=protocol-stack:founder-economy:result-v1
+
+scenario.manifest_canonical_length=2297
+scenario.event_count=16
+scenario.accepted_count=12
+scenario.rejected_count=4
+scenario.events_digest=e91a3e914f49c50ec2dd60370ff99881bb2fc26d55fb4e00998420894164724e
+scenario.trace_digest=6e77f8f0cffe32e01cd2dd28d9e8d35d16c3eff9c3025f23c61d48ee85eb4005
+scenario.state_digest=2fcdb4d423d99cd88d019fd38c4f99876c57e9c216822349393bfa7e0854bc3f
+scenario.result_digest=57f04af4d67fdbb84852ec6efc90ede58c6614270cc61e0b421d7c1630c1f790
+
+scenario.issued_supply=116670000000
+scenario.outstanding_permissions=0
+scenario.pending_permission_count=0
+scenario.evaluated_permission_key_count=4
+scenario.accepted_direct_decision_count=1
+scenario.activated_seat_count=4
+
+# Two exercised base cycles for seat 0, one exercised referral, one direct issue.
+scenario.custody.venture_escrow=34200000000
+scenario.custody.community_grants_escrow=6840000000
+scenario.custody.developer_incentives_escrow=3420000000
+scenario.custody.system_creator_company=2000000000
+scenario.custody.founder_seat_00000=34200000000
+scenario.custody.founder_seat_00001=17100000000
+scenario.custody.founder_seat_00002=17100000000
+scenario.custody.founder_seat_00003=1710000000
+scenario.custody.direct_beneficiary=100000000
+
+# Ordered trace results for the fixture scenario.
+record0.kind=activate_seat
+record0.result=OK
+record1.kind=activate_seat
+record1.result=OK
+record2.kind=activate_seat
+record2.result=OK
+record3.kind=activate_seat
+record3.result=OK
+record4.kind=evaluate_base_permission
+record4.result=OK
+record5.kind=evaluate_referral_permission
+record5.result=OK
+record6.kind=evaluate_base_permission
+record6.result=REPLAY
+record7.kind=exercise_permission
+record7.result=OK
+record8.kind=exercise_permission
+record8.result=OK
+record9.kind=exercise_permission
+record9.result=PERMISSION_NOT_FOUND
+record10.kind=evaluate_base_permission
+record10.result=MISSING_RESEARCH_INPUT
+record11.kind=evaluate_base_permission
+record11.result=OK
+record12.kind=evaluate_referral_permission
+record12.result=OK
+record13.kind=exercise_permission
+record13.result=OK
+record14.kind=direct_issue
+record14.result=OK
+record15.kind=direct_issue
+record15.result=REPLAY
+
+# Every rejected record must leave the state digest unchanged and emit no
+# journal, and must consume no evaluated key or decision identifier.
+atomic_failure.rejected_state_writes=0
+atomic_failure.rejected_journal_entries=0
+atomic_failure.replay_identifiers_consumed=0

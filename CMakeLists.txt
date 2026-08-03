@@ -764,6 +764,40 @@ add_test(
     "${PROJECT_SOURCE_DIR}/tests/tools/verify_metadata_test.py"
 )
 add_test(
+  NAME founder-economy-vectors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tools/founder-economy-vectors/verify.py"
+    --manifest-vectors
+    "${PROJECT_SOURCE_DIR}/test-vectors/founder-economy-manifest-v1.txt"
+    --simulator-vectors
+    "${PROJECT_SOURCE_DIR}/test-vectors/founder-economy-simulator-v1.txt"
+)
+add_test(
+  NAME founder-economy-manifest
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/founder_economy_manifest_test.py"
+)
+add_test(
+  NAME founder-economy-model
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/founder_economy_model_test.py"
+)
+add_test(
+  NAME founder-economy-errors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/founder_economy_errors_test.py"
+)
+add_test(
+  NAME founder-economy-scenarios
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/founder_economy_scenario_test.py"
+)
+add_test(
   NAME native-economy-model
   COMMAND
     "${Python3_EXECUTABLE}"

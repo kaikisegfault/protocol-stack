@@ -117,6 +117,9 @@ The corresponding executable research tools and reviewed fixtures live in
 `../simulation/minimum_entitlement/`.
 
 The fixed Founder Economy manifest and derivation vectors live in
-`../test-vectors/founder-economy-manifest-v1.json` and
-`../test-vectors/founder-economy-manifest-v1.txt`. No executable Founder
-Economy simulator consumes them yet.
+`../test-vectors/founder-economy-manifest-v1.json`,
+`../test-vectors/founder-economy-manifest-v1.txt`, and
+`../test-vectors/founder-economy-simulator-v1.txt`. The independent simulator
+that consumes them is `../simulation/founder_economy/`, and
+`../tools/founder-economy-vectors/verify.py` derives every recorded value from
+the loaded manifest and a live run.
