@@ -5,6 +5,8 @@
 New sessions do not rely on previous chat context. Durable state is divided as
 follows:
 
+- `founder-constitution.md`: authoritative owner direction and the boundary
+  between founder-reserved and autonomous decisions;
 - `vision.md`: stable long-term direction;
 - `charter.md`: governing scope and constraints;
 - `first-goal.md`: active operational outcome and evidence;
@@ -20,8 +22,8 @@ status rather than appending a long work log.
 
 When the owner says `proceed`, the session should:
 
-1. Load `AGENTS.md`, current state, charter, first goal, and relevant accepted
-   decisions.
+1. Load `AGENTS.md`, the Founder Constitution, current state, charter, first
+   goal, and relevant accepted decisions.
 2. Verify GitHub access, fetch and prune, then inspect Git divergence, active
    issues and PRs, branches, worktrees, and generated build directories before
    assuming the handoff is current.
@@ -45,20 +47,24 @@ When the owner says `proceed`, the session should:
     unique work remains.
 11. Continue with another bounded slice while time, context, and tools remain.
 
-The owner's 2026-07-23 standing delegation means `proceed` requires no
-follow-up approval for project decisions or GitHub, release, and deployment
-operations. Do not stop merely because one slice, PR, or milestone completed.
-Stop only for exhausted execution limits or a genuine external blocker such as
-unavailable credentials or infrastructure, required independent review, or
-conflicting unexplained user work. Complete other unblocked work first.
+The owner's standing delegation means `proceed` requires no follow-up approval
+for engineering decisions or GitHub, release, and deployment operations that
+remain inside the Founder Constitution. Do not stop merely because one slice,
+PR, or milestone completed. Stop only for exhausted execution limits or a
+genuine external blocker such as unavailable credentials or infrastructure,
+required independent review, conflicting unexplained user work, or a missing
+founder-reserved decision that would otherwise be invented. Complete other
+unblocked work first.
 
 ## Autonomous decisions
 
-For decisions that materially change architecture, economics, cryptography,
-dependencies, authority, external state, or risk, research credible
-alternatives and record the recommended choice, rejected alternatives,
-consequences, and evidence in the relevant specification and ADR. Evidence
-gates remain mandatory even though owner approval pauses do not.
+For engineering decisions that materially change architecture, economic
+mechanics, cryptography, dependencies, authority implementation, external
+state, or risk, research credible alternatives and record the recommended
+choice, rejected alternatives, consequences, and evidence in the relevant
+specification and ADR. Evidence gates remain mandatory even though ordinary
+owner approval pauses do not. Founder values and beneficiaries are inputs, not
+autonomous design variables.
 
 ## Interrupted work
 

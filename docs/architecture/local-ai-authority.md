@@ -1,143 +1,167 @@
-# Local AI authority
+# Ecosystem AI authority
 
-Status: long-term architecture; not part of M1.
+Status: long-term architecture; not part of the current operational goal
 
-## Objective
+## Meaning of local and singular
 
-Operate venture selection and ecosystem management using self-hosted,
-purpose-adapted models and node-owned infrastructure while protecting funds and
-consensus with deterministic protocol rules.
+“Local AI” means self-hosted by the System Creator Company for exclusive use
+by the ecosystem. It does not mean a model runs on each Founder Node. Founder
+Nodes run deterministic blockchain and resource services and contain no AI
+inference requirement.
 
-The design must not require a permanent commercial model API or a fixed model
-vendor.
+There is one logical Ecosystem AI authority. It may use several models,
+specialized workflows, serving replicas, and geographically redundant data
+centers, but users do not face competing AI governments and Founders or
+community members do not vote to replace an AI case decision.
 
-## Feasibility boundary
+Logical singularity does not imply one process, one unrestricted key, or one
+failure domain. Biometric, moderation, venture, grant, developer, and other
+roles use separately scoped protocol capabilities.
 
-A dense one-trillion-parameter model requires approximately:
+## Placement
 
-- 2 TB for 16-bit weights;
-- 1 TB for 8-bit weights;
-- 500 GB for 4-bit weights.
+The company operates high-bandwidth, GPU-capable inference infrastructure in
+suitable centralized locations. Model choice, serving, retrieval, tools,
+training, evaluation, and policy execution remain outside blockchain
+consensus. They can improve without forcing every Founder Node to upgrade its
+model or reproduce probabilistic output.
 
-Runtime state, caches, activations, redundancy, and serving overhead add to
-those figures. Tightly coupled tensor or expert parallel inference requires
-fast, reliable interconnects and homogeneous execution environments. It is not
-a suitable workload to stripe across tens of thousands of unrelated,
-high-latency internet nodes for each token.
+The chain receives only small, versioned, signed decision envelopes and
+deterministically decides whether the requested action is authorized.
 
-Collaborative inference across consumer machines is a valid research
-direction, but it is not an acceptable foundation for time-critical consensus
-or unilateral control of funds.
+## Responsibility groups
 
-## Target topology
+### Founder biometric verification
 
-### AI inference clusters
+The AI evaluates camera-verification evidence for enrollment, manager
+addition, sensitive Founder withdrawals, recovery, and legacy claims. The
+decision must bind the seat, biometric identity record, requested action,
+manager address, challenge, policy version, creation point, and expiry.
 
-Small numbers of high-bandwidth, GPU-rich node clusters host the largest
-models. Multiple independent clusters provide redundancy and disagreement
-detection.
+Raw biometric evidence and private identity linkage remain outside public
+consensus state. The blockchain does not infer a face match.
 
-### General resource nodes
+### Venture and treasury management
 
-The broader node network may store content-addressed model shards, process
-batch tasks, evaluate proposals, contribute training data or adapters, and
-provide asynchronous compute. These workloads tolerate latency and churn.
+The AI may:
 
-### Local verifier models
+- evaluate raw concepts and existing application builds;
+- accept or reject an eligible project;
+- propose a bounded milestone and funding-tranche plan;
+- authorize a dedicated native venture escrow;
+- review code, tests, artifacts, and delivery evidence;
+- accept, reject, or request revision of a milestone;
+- release a permitted tranche;
+- pause or terminate future funding; and
+- record reasons and evidence commitments for audit.
 
-Validators and other important nodes may run smaller specialized models that
-check policy compliance, classify risk, compare evidence, or challenge large
-model decisions. They do not need to reproduce the full large-model inference.
+Equivalent bounded workflows manage community grants, developer incentives,
+bug bounties, and later owner-approved treasury programs.
 
-### Deterministic protocol kernel
+### Application admission and updates
 
-The blockchain verifies signed decision envelopes and applies native limits. It
-does not execute model inference.
+The AI admits complete projects to the controlled runtime and evaluates later
+versions. Creators never receive direct production mutation or delete access.
+Product creation within an accepted project follows that project's approved
+deterministic guardrails.
 
-## Venture authority
+### Moderation
 
-Community members may submit projects and inspect the resulting evidence, but
-they and node operators do not vote on venture acceptance or funding.
+AI moderation controls presentation and service eligibility without rewriting
+canonical history. The founder-directed initial content objective is to block
+NSFW material rather than apply broad political or viewpoint filtering. The
+complete policy, appeals, evidence retention, and legally required behavior
+remain a future owner-approved framework.
 
-The future AI authority is responsible for:
+## Protocol containment
 
-- initial eligibility and quality review;
-- acceptance or rejection;
-- defining a milestone and funding-tranche plan within allowed policy;
-- authorizing a dedicated native venture escrow;
-- reviewing source, tests, artifacts, and other milestone evidence;
-- accepting or rejecting milestones;
-- releasing the next funding tranche;
-- pausing, revising within delegated limits, or terminating funding;
-- recording reasons and evidence for every decision.
+Every AI action must name one exact capability and source. Native rules retain:
 
-Constitutional protocol changes, supply rules, and emergency recovery are
-separate from venture selection. They are not silently delegated merely
-because the AI controls venture funding.
-
-## Decision envelope
-
-An AI-authorized action should eventually bind at least:
-
-- unique proposal and replay-protection identifiers;
-- authority and capability identifiers;
-- policy, model, adapter, and evaluation-manifest hashes;
-- requested native action and maximum amount;
-- venture, treasury, escrow, milestone, and tranche identifiers;
-- evidence and audit-log roots;
-- creation height, expiry height, and execution conditions;
-- signatures or threshold attestations;
-- delay or emergency-containment policy where applicable.
-
-The exact format will be specified and versioned before implementation.
-
-## Authority model
-
-“AI-only venture management” means venture decisions originate only from
-accepted AI authority processes. It does not mean a model receives an
-unbounded private key.
-
-Native rules retain:
-
-- constitutional supply and mint limits;
-- per-capability and per-period spending limits;
-- treasury separation and escrow conservation;
+- the maximum supply and issuance-channel caps;
+- Founder Seat capacity, price, identity, and economic rules;
+- commercial and fee routing;
+- separate treasury and escrow custody;
+- per-decision, per-program, and per-period spending limits;
 - milestone and tranche ceilings;
-- timelocks for high-impact actions;
-- threshold requirements and independent model diversity;
-- deterministic rejection of unauthorized actions;
-- complete auditability and emergency containment.
+- policy, model, adapter, and evaluation-manifest versions;
+- replay protection, expiry, delay, and failure atomicity;
+- complete receipts and evidence roots; and
+- upgrade and emergency powers outside ordinary AI capabilities.
 
-Early research phases retain an owner-controlled recovery path. Removing it is
-a separate production decision requiring independent review.
+Compromise of a moderation capability cannot release funds. Compromise of a
+venture capability cannot mint, change a fee, enroll a seat, alter a model
+policy, or upgrade the protocol.
 
-## Model development
+## Decision envelope direction
 
-Do not hard-code a 700B or 1T parameter target into the protocol. Capability,
-latency, energy, reproducibility, calibration, and adversarial robustness are
-the relevant requirements.
+A future canonical envelope should bind at least:
 
-Prefer:
+- chain, protocol, and envelope versions;
+- unique decision, action, and replay identifiers;
+- AI authority, role, and capability identifiers;
+- policy, model, tool, adapter, and evaluation-manifest commitments;
+- exact requested native action and maximum amount;
+- project, program, treasury, escrow, milestone, and tranche identifiers;
+- evidence and audit-log commitments;
+- creation height, expiry height, and execution conditions;
+- signer and verifier evidence; and
+- any required delay or containment policy.
 
-- an open-weight base model with a documented license;
-- ecosystem-specific retrieval and tools;
-- parameter-efficient fine-tuning or adapters before full retraining;
-- versioned datasets, policies, evaluations, and model manifests;
-- benchmark examples of acceptable and unacceptable ventures;
-- shadow operation before any authority is granted;
-- multiple independent models for high-value decisions.
+The exact bytes, cryptographic suite, key custody, limits, and state transitions
+require a canonical specification and threat model.
 
-Model selection and compute scheduling belong outside the consensus protocol so
-they can improve without a chain migration.
+## Establishment and delegation
 
-## Research references
+The company selects models and controls AI policies initially. Authority moves
+to AI in explicit stages:
 
-- [vLLM distributed inference and serving](https://docs.vllm.ai/en/v0.10.0/serving/distributed_serving.html)
-  describes tensor and pipeline parallel deployment and the need for efficient
-  cross-node communication such as InfiniBand.
-- [Petals: Collaborative Inference and Fine-tuning of Large Models](https://arxiv.org/abs/2209.01188)
-  demonstrates collaborative internet inference while illustrating the
-  throughput tradeoff.
-- [LoRA: Low-Rank Adaptation of Large Language Models](https://arxiv.org/abs/2106.09685)
-  provides the foundation for parameter-efficient ecosystem specialization
-  without full-model retraining.
+1. offline evaluation against historical cases;
+2. shadow recommendations with no execution capability;
+3. bounded low-value actions with company-observed outcomes;
+4. separately delegated production programs; and
+5. later sole-AI authority for mature scopes where the constitution requires
+   human decisions to disappear.
+
+Delegation of one scope does not delegate another. An AI may recommend a
+protocol upgrade but cannot authorize it through an ordinary program key.
+
+Changing the AI model or framework remains a company responsibility during
+establishment. Future AI approval of its own successor, irrevocable scope
+delegation, and removal of company recovery are distinct founder decisions
+requiring independent evidence.
+
+## Availability behavior
+
+If AI infrastructure is unavailable, AI-managed admission, moderation
+decisions, biometric approvals, and escrow spending pause. The protocol keeps
+validating deterministic transactions and preserves custody. It does not
+silently lower authorization or transfer judgment to Founders, staff, or a
+community vote.
+
+Geographic replicas, versioned model artifacts, replayable tools, queues, and
+disaster recovery reduce downtime without changing the authority model.
+
+## Model-development direction
+
+Do not hard-code a parameter count or vendor into consensus. Prefer measurable
+capability, calibration, robustness, reproducibility, latency, and cost targets.
+Model manifests should identify weights, license, datasets, adapters, retrieval
+sources, tools, policies, evaluations, and serving configuration.
+
+Ecosystem-specific retrieval and tools, parameter-efficient adaptation,
+versioned evaluation suites, adversarial cases, and shadow operation precede
+high-value authority. Model serving remains replaceable; signed protocol
+capabilities remain stable.
+
+## Unresolved production work
+
+Before real authority, the project still needs:
+
+- the owner-approved complete AI framework for each role;
+- biometric, moderation, funding, and application threat models;
+- decision-envelope encoding and reviewed cryptography;
+- model and policy update, rollback, and recovery rules;
+- measurable evaluation and failure thresholds;
+- private evidence storage and access controls;
+- incident containment and audit procedures; and
+- independent AI-control and protocol review.

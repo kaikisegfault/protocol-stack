@@ -96,9 +96,16 @@ Consensus state must not depend on:
 - external APIs, DNS, model inference, or mutable remote data;
 - platform-native serialization or unversioned schemas.
 
-## Scale boundary
+## Founder Node scale boundary
 
-The validator set is distinct from the broader resource-node population.
-Validator consensus remains bounded. Storage, inference, training, gateways,
-and other workloads scale through separate protocols and do not participate in
-every block vote.
+Every Founder service carries the same full-node, validator-capability, and
+approved-application resource stack. Validator capability is not an optional
+commercial role, but scalable consensus still uses a bounded, deterministic
+live signer set rather than making every possible Founder vote on every block.
+An offline machine is absent from live participation until it satisfies the
+specified recovery conditions.
+
+Application compute, storage, caching, and delivery scale through separate
+resource protocols and do not enter every block vote. The company-hosted
+Ecosystem AI is a separate control plane; model inference never runs on Founder
+Nodes or inside the deterministic kernel.

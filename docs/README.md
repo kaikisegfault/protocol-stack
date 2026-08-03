@@ -2,9 +2,13 @@
 
 ## Project
 
+- `project/founder-constitution.md`: authoritative founder intent, fixed
+  end-state requirements, decision ownership, and unresolved founder gates.
 - `project/vision.md`: long-term direction and boundaries.
 - `project/charter.md`: current architecture and governing principles.
-- `project/first-goal.md`: first operational outcome and acceptance evidence.
+- `project/first-goal.md`: current operational outcome and acceptance evidence.
+- `project/goals/m1-sovereign-devnet-alpha.md`: retained acceptance contract
+  for the completed first runnable devnet milestone.
 - `project/roadmap.md`: ordered milestones.
 - `project/current-state.md`: verified handoff between sessions.
 - `project/native-economy-simulation-report-v1.md`: reproducible M2 seeded
@@ -31,13 +35,18 @@
   canonical outputs, and failure boundaries.
 - `architecture/sqlite-ledger.md`: owning persistence boundary, durable
   height-zero creation, and validated reopen behavior.
-- `architecture/local-ai-authority.md`: future self-hosted AI control plane.
+- `architecture/local-ai-authority.md`: future company-hosted logical AI
+  authority, capability containment, and delegation stages.
 
 ## Decisions
 
 Architecture decision records live in `decisions/`. Proposed records are not
 irreversible commitments. Accepted records govern implementation until
 superseded.
+
+ADR 0016 adopts the Founder Constitution and staged realization order. It
+changes project direction but does not activate production economics or alter
+current consensus behavior.
 
 ## Engineering
 

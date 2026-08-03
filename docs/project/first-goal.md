@@ -1,69 +1,79 @@
-# First operational goal: Sovereign Devnet Alpha
+# Current operational goal: Founder Economy Proof
 
 ## Objective
 
-From a clean clone, one documented command starts a reproducible
-four-validator local blockchain whose original C++20 deterministic
-account-based ledger:
+Produce an exact, reproducible, independent specification and simulator for
+the founder-directed native economy before changing C++ consensus behavior.
 
-- processes signed native-asset transfers in approximately three-second
-  blocks;
-- maintains one native asset and a configured constitutional supply limit;
-- rejects replay, invalid nonce, insufficient balance, overflow, malformed
-  encoding, and unauthorized mint attempts;
-- meters transactions and routes fees to a native protocol fee pool without
-  implicit burning;
-- persists committed state and recovers after node restarts;
-- produces identical state roots for identical ordered inputs.
-
-The proposed first network adapter uses CometBFT for BFT consensus and P2P while
-the C++ application owns all state-transition and economic behavior.
+From one reviewed manifest and deterministic event set, the model must prove
+the 55,743,940,100-unit maximum, every channel cap, per-seat 731-cycle
+issuance, commercial and fee routing, escrow conservation, inactive-seat
+beneficiary change, accumulated permissions, and cap exhaustion without
+floating point or mutable external inputs.
 
 ## Required evidence
 
 Completion requires all of the following:
 
-1. A canonical specification for primitive types, amounts, accounts,
-   signatures, transactions, blocks, encoding, hashing, and state roots.
-2. A C++20 ledger library and headless application process.
-3. Deterministic genesis, account, transfer, nonce, fee-pool, and supply-limit
-   behavior.
-4. Atomic persistent commits and verified restart/replay behavior.
-5. A four-validator local devnet with a documented start, health, transaction,
-   stop, and restart procedure.
-6. Unit and boundary tests for every state-transition rule.
-7. Property tests covering conservation, supply bounds, nonce monotonicity,
-   deterministic replay, and failed-transaction atomicity.
-8. Fuzz targets for canonical decoding and transaction validation.
-9. AddressSanitizer and UndefinedBehaviorSanitizer verification.
-10. Successful GCC and Clang builds.
-11. An independent Python reference model that matches the C++ result and
-    state root across at least 10,000 reproducibly seeded randomized
-    transaction sequences.
-12. A single documented verification command that passes from a clean clone.
+1. A canonical integer denomination whose atomic-unit maximum exactly
+   represents 55,743,940,100 display units without overflow.
+2. A versioned manifest containing every Founder Node and direct-mint channel
+   cap from the Founder Constitution; its components sum exactly to the
+   maximum.
+3. Exact per-seat activation and 731-cycle eligibility semantics represented
+   by deterministic heights or epochs rather than local time.
+4. A 574.3-unit base-permission transition that atomically routes 171, 34.2,
+   17.1, 10, and 342 display units to their typed beneficiaries.
+5. Referred-seat permission accounting bounded by the 1,250,010,000-unit
+   referral-channel cap.
+6. Inactive-cycle behavior that preserves the non-Founder beneficiaries and
+   changes only the 342-unit Founder beneficiary through a deterministic,
+   separately supplied performance result.
+7. Permission accumulation and later exercise where unexercised units are not
+   issued supply and one exercise either completes every credit or changes no
+   state.
+8. Exact 100,000-seat and 1,000-seats-per-person limits plus price-schedule
+   test vectors, including the USD 100 first block, USD 1,000 boundary, USD
+   91,900 final block, and USD 4,231,855,000 derived full-sale proceeds.
+9. Commercial-payment routing of 45% to eligible Founders, 45% to the creator
+   side, and 10% to the System Creator, including the 22.5/22.5 project/product
+   case and explicit integer remainder behavior.
+10. Separate transaction-fee routing of 100% to eligible Founders without burn
+    or deduction from commercial revenue.
+11. Separate venture, community-grant, and developer escrows whose balances
+    cannot be spent through the issuance capability and whose accepted payouts
+    cannot exceed available custody.
+12. Capped direct-mint transitions with deterministic placeholder eligibility
+    evidence; unresolved real eligibility policy is not invented.
+13. Positive, negative, boundary, replay, overflow, atomicity, population-
+    change, inactivity, concentration, and complete multi-year scenarios.
+14. An independent standard-library Python implementation, frozen fixtures and
+    digests, and a report that distinguishes proved accounting from unresolved
+    policy and production safety.
+15. An accepted ADR stating the selected economic transition shape,
+    alternatives, consequences, compatibility boundary, and remaining
+    independent review requirements.
+16. Risk-proportionate GitHub-hosted verification on the exact accepted commit
+    and a clean repository handoff naming the first M3 implementation slice.
 
-Performance claims beyond the configured local block interval are not part of
-this goal.
+## Founder-decision gate
+
+The implementation must not invent the activity grace period, performance
+winner count or tie rule, inactive-seat referral treatment, direct-channel
+eligibility, stablecoin governance, or legacy and AI frameworks. If one is
+required to satisfy a test, use an explicitly research-only bounded input and
+record the owner decision still required.
 
 ## Explicitly out of scope
 
-- Final token allocation or production tokenomics.
-- Staking, validator admission, slashing, node rewards, treasury allocation, or
-  general escrow.
-- Public testnet/mainnet, real assets, bridge, wallet, or graphical interface.
-- Public contracts, EVM, Solidity, or arbitrary application execution.
-- Production AI authority, distributed AI inference, or model training.
-- Custom consensus, node OS, device, processor, or satellite work.
+- Changing C++ ledger bytes, state, roots, or devnet economics.
+- Production biometric capture, identity decisions, or private evidence
+  storage.
+- A production Founder Node installer or validator-set change.
+- AI inference, model serving, moderation, or real treasury authority.
+- Controlled application execution or resource hosting.
+- Real BTC, ETH, stablecoin custody, liquidity, pricing, or bridge proofs.
+- Wallet, graphical interface, public testnet, mainnet, NodeOS, or hardware.
 
-## Autonomous decision gates
-
-Before implementing the affected consensus behavior, record and accept an ADR
-under the standing delegation for:
-
-- the cryptographic and hashing suite;
-- canonical encoding and address format;
-- native denomination and constitutional supply values;
-- any change to the single-asset, fee-routing, or AI authority constraints;
-- replacing the accepted initial consensus strategy.
-
-These are mandatory research and evidence gates, not owner-approval pauses.
+These systems remain roadmap commitments. Their constraints are inputs to this
+goal, not premature implementation requirements.
