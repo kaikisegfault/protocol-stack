@@ -4,12 +4,12 @@ Last updated: 2026-08-03
 
 ## Phase
 
-M2 — Founder Economy specification and proof. Issue #68 is realigning the
-repository around the owner-confirmed Founder Constitution before further
-economic implementation. The active branch is
-`docs/68-founder-constitution`; PR #69 publishes candidate `d22383e`.
-Candidate Actions run 30774218446 passed the focused metadata path. Merge and
-post-merge verification are pending.
+M2 — Founder Economy specification and proof. Issue #68 and PR #69 adopted the
+owner-confirmed Founder Constitution and dependency-ordered complete roadmap
+at merged commit `9af994f`. Final-head Actions run 30774247804 and post-merge
+run 30774269594 passed the focused metadata path. Issue #68 is closed and no
+delivery branch remains. No protocol, executable, test, build, dependency,
+configuration, or simulation behavior changed.
 
 ## What works now
 
@@ -30,7 +30,7 @@ post-merge verification are pending.
 - The one-word `proceed`, `conclude`, and `status` workflows reconstruct,
   deliver, and report repository state.
 
-## Direction being adopted in issue #68
+## Adopted founder direction
 
 - One native asset with an intended fixed maximum of 55,743,940,100 display
   units and no burn, secondary internal currency, or public asset creation.
@@ -55,21 +55,20 @@ AI, biometric, or resource behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
-- Base before issue #68: `main` and `origin/main` at `5e107fc`.
-- Active issue: #68.
-- Active PR: #69.
-- Active branch: `docs/68-founder-constitution`, clean and published at
-  candidate `d22383e` before this handoff-only update.
+- Issue #68 is closed and PR #69 is merged.
+- Before this handoff-only update, `main` and `origin/main` equal `9af994f`.
+- No delivery branch, open PR, additional worktree, or generated build
+  directory remains from issue #68.
 - Focused local checks pass `git diff --check`, repository metadata and link
   validation, exact economic arithmetic assertions, and lightweight-scope
   classification.
-- Candidate Actions run 30774218446 passed scope classification and the
-  required focused metadata check on exact commit `d22383e`; the compiler and
-  sanitizer matrix correctly skipped for Markdown and skill metadata only.
-- Latest base `main` verification: Actions run 30756658019 passed the focused
-  metadata path for commit `5e107fc`.
+- PR #69 final-head Actions run 30774247804 passed scope classification and the
+  required focused metadata check on exact commit `3d368c9`.
+- Post-merge Actions run 30774269594 passed the same focused path on exact
+  `main` commit `9af994f`; the compiler and sanitizer matrix correctly skipped
+  for Markdown and skill metadata only.
 - No repository build, test, server, monitor, or helper process was running at
-  branch creation. No generated build directory was present.
+  the issue #68 merge boundary.
 
 ## Remaining gap
 
@@ -84,18 +83,13 @@ maximum and every economic route before C++ behavior changes.
 
 ## Exact next action
 
-Finish issue #68: inspect the complete direction-alignment diff, run focused
-metadata verification, publish the candidate, require terminal GitHub checks,
-merge it, verify the exact post-merge commit, and leave a clean handoff. Do not
-begin the M2 economic manifest or simulator within the issue #68 documentation
-slice.
-
-After issue #68 is completely merged and reconciled, create one bounded M2
-issue for the canonical Founder Economy manifest and exact supply derivation.
-Specify the atomic denomination, all ten channel caps, their exact sum,
-per-seat 731-cycle arithmetic, and research-only placeholders for the still
-unresolved activity and direct-channel eligibility rules before implementing
-the independent simulator.
+Create one bounded M2 issue for the canonical Founder Economy manifest and
+exact supply derivation. Specify the atomic denomination, all ten channel caps,
+their exact sum, per-seat 731-cycle arithmetic, permission-liability model, and
+research-only placeholders for the unresolved activity, best-performer, and
+direct-channel eligibility rules. Accept the specification and fixed vectors
+before implementing the independent simulator; do not change C++ consensus in
+that first slice.
 
 ## Blockers
 
