@@ -4,13 +4,13 @@ Last updated: 2026-08-03
 
 ## Phase
 
-M2 — Founder Economy specification and proof. Issue #71 and PR #72 contain the
-first exact candidate: an eight-decimal `u64` denomination, all ten fixed
+M2 — Founder Economy specification and proof. Issue #71 and PR #72 adopted the
+first exact contract: an eight-decimal `u64` denomination, all ten fixed
 issuance-channel caps, the 731-cycle supply derivation, permission liabilities,
-research-only eligibility placeholders, ADR 0017, and normative vectors.
-Candidate `f90baa6` passed the full hosted matrix in Actions run 30775259812.
-Merge and post-merge verification remain pending. No C++ or existing simulator
-behavior changes.
+research-only eligibility placeholders, ADR 0017, and normative vectors at
+merged commit `14486cb`. Final-head Actions run 30775698847 and post-merge run
+30776173468 passed the full hosted matrix. No C++ or existing simulator
+behavior changed.
 
 ## What works now
 
@@ -28,10 +28,11 @@ behavior changes.
   participation, bounded authority, economic stress, concentration,
   identity-split incentives, and minimum entitlements. Their schemas and
   results remain research evidence, not production Founder economics.
-- The issue #71 candidate exactly represents the 55,743,940,100-unit maximum
-  as 5,574,394,010,000,000,000 eight-decimal atomic units, fixes a canonical
-  ten-channel manifest and digest, and proves every per-cycle, per-seat, and
-  complete-population supply product without activating it.
+- The accepted Founder Economy manifest exactly represents the
+  55,743,940,100-unit maximum as 5,574,394,010,000,000,000 eight-decimal atomic
+  units, fixes a canonical ten-channel manifest and digest, and proves every
+  per-cycle, per-seat, and complete-population supply product without
+  activating it.
 - The one-word `proceed`, `conclude`, and `status` workflows reconstruct,
   deliver, and report repository state.
 
@@ -52,18 +53,18 @@ behavior changes.
   liquidity, native swaps, and withdrawal; they never become general internal
   balances.
 
-These are target requirements, not runnable Founder behavior. Issue #71 adds
-a specification, JSON manifest, and fixed vectors. It does not change current
+These are target requirements, not runnable Founder behavior. Issue #71 added
+a specification, JSON manifest, and fixed vectors. It did not change current
 transaction bytes, C++ state, devnet supply, existing simulator schemas,
 bridge, wallet, AI, biometric, or resource behavior.
 
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
-- Base `main` and `origin/main` equal `996f409`.
-- Active issue: #71. Active PR: #72.
-- Active branch: `docs/71-founder-economy-manifest`, published at candidate
-  `f90baa6` before this handoff-only update and tracking its upstream exactly.
+- Issue #71 is closed and PR #72 is merged.
+- Before this handoff-only update, `main` and `origin/main` equal `14486cb`.
+- No delivery branch, open PR, additional worktree, or generated build
+  directory remains from the issue #71 delivery.
 - Strict local JSON and exact-integer cross-checks reproduce ten channels, the
   5,574,394,010,000,000,000-atomic maximum, per-seat and full schedule
   products, 2,297 canonical JCS bytes, and manifest digest
@@ -71,12 +72,14 @@ bridge, wallet, AI, biometric, or resource behavior.
 - Local `git diff --check`, repository metadata and link validation, and
   focused verifier unit tests pass. Scope classification correctly selects
   `full` because JSON and protocol vector paths are not lightweight metadata.
-- PR #72 candidate Actions run 30775259812 passed scope classification, GCC
+- PR #72 final-head Actions run 30775698847 passed scope classification, GCC
   and Clang debug builds, both sanitizer builds, bounded fuzzing, all Python
   simulations, single-node compatibility, four-validator restart/integration,
-  and the aggregate required check on exact commit `f90baa6`.
+  and the aggregate required check on exact commit `463dd3d`.
+- Post-merge Actions run 30776173468 passed the same complete matrix and
+  aggregate gate on exact `main` commit `14486cb`.
 - No dependency, workflow, executable source, generated build directory, or
-  additional worktree is part of the issue #71 candidate.
+  additional worktree is part of the issue #71 result.
 
 ## Remaining gap
 
@@ -92,12 +95,8 @@ maximum and every economic route before C++ behavior changes.
 
 ## Exact next action
 
-Finish issue #71: publish this evidence-bearing handoff update, require the
-full hosted matrix on the final PR #72 head, merge it, verify the exact
-post-merge commit, and remove the delivery branch and reproducible artifacts.
-
-After issue #71 is completely merged and reconciled, create one bounded M2
-issue for the standard-library Python Founder Economy simulator foundation.
+Create one bounded M2 issue for the standard-library Python Founder Economy
+simulator foundation.
 Strictly load the accepted manifest, reproduce its vectors, and implement
 channel issued/outstanding accounting plus base, referral, inactive-allocation,
 permission-exercise, and direct-placeholder transitions with deterministic
@@ -106,4 +105,4 @@ Do not change C++ consensus in that next slice.
 
 ## Blockers
 
-None for issue #71.
+None for the next action.
