@@ -11,7 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from simulation.founder_economy import contract as c
-from simulation.founder_economy.canonical import MAX_U64, canonical_bytes, label_prefix
+from simulation.common.canonical import MAX_U64, canonical_bytes, label_prefix
 from simulation.founder_economy.derivations import DerivationError, check_derivations
 from simulation.founder_economy.manifest import (
     ManifestError,

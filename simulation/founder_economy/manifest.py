@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from . import contract as c
-from .canonical import (
+from ..common.canonical import (
     MAX_U64,
     CodedError,
     canonical_bytes,

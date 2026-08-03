@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from .canonical import InvariantError, digest
+from ..common.canonical import InvariantError, digest
 from .domain import (
     STATE_LABEL,
     State,

@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 from . import contract as c
-from .canonical import CodedError, checked_mul, checked_sum
+from ..common.canonical import CodedError, checked_mul, checked_sum
 
 
 class DerivationError(CodedError):

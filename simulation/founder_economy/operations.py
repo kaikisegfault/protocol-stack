@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from . import contract as c
-from .canonical import checked_add, checked_sub, format_atomic
+from ..common.canonical import checked_add, checked_sub, format_atomic
 from .domain import Leg, State, credit_custody
 
 JournalEntry = dict[str, Any]

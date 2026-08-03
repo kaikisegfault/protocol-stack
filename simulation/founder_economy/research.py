@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 from . import contract as c
-from .canonical import MAX_U64, checked_add
+from ..common.canonical import MAX_U64, checked_add
 from .domain import Leg, State, founder_custody_key
 
 FOUNDER_CHANNEL = "founder_operator"

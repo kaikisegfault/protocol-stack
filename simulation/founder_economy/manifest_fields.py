@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .canonical import MAX_U64
+from ..common.canonical import MAX_U64
 
 DENOMINATION_FIELDS = {
     "storage_type",

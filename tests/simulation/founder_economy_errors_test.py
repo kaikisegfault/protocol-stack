@@ -10,7 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from simulation.founder_economy import contract as c
-from simulation.founder_economy.canonical import (
+from simulation.common.canonical import (
     MAX_JSON_INTEGER,
     MAX_U64,
     InvariantError,
