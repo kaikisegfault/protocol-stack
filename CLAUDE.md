@@ -189,11 +189,8 @@ where practical.
 - Map meaningful work to an issue, use a focused branch for the issue or
   milestone slice, and open a PR with verification evidence when that slice is
   coherent. Do not create vanity issues or empty commits.
-- Do not add Claude or any AI as an author, committer, co-author, or PR
-  participant.
-- Do not add `Co-authored-by` trailers for AI tools.
 - Keep the configured repository identity:
-  `Giorgi Chomakhashvili <133794518+kaikisegfault@users.noreply.github.com>`.
+  `kaikisegfault <133794518+kaikisegfault@users.noreply.github.com>`.
 - Bot-authored dependency and platform automation is allowed.
 - Push verified work to the current feature branch. The standing delegation
   authorizes opening and merging PRs, tagging, publishing releases, and

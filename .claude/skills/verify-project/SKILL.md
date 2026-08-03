@@ -8,8 +8,8 @@ description: Run and evaluate protocol-stack quality gates before completion, co
 1. Read `docs/engineering/verification.md` and inspect the complete change.
 2. Classify affected surfaces: documentation, build, kernel, protocol,
    persistence, adapter, network, Python model, or operations.
-3. For changes limited to Markdown, static documentation assets, `SKILL.md`,
-   and skill `agents/openai.yaml`, use the focused repository-metadata path.
+3. For changes limited to Markdown, static documentation assets, and
+   `SKILL.md`, use the focused repository-metadata path.
    Do not run the compiler/sanitizer matrix. Any executable script, source,
    build, workflow, dependency, protocol, configuration, or unclassified path
    fails closed to full verification.
