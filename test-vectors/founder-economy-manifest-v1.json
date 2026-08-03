@@ -1,0 +1,109 @@
+{
+  "schema": "protocol-stack/founder-economy-manifest/v1",
+  "research_only": true,
+  "denomination": {
+    "storage_type": "u64",
+    "decimal_places": 8,
+    "atomic_units_per_display_unit": "100000000",
+    "maximum_supply_display": "55743940100",
+    "maximum_supply_atomic": "5574394010000000000"
+  },
+  "seat_schedule": {
+    "founder_seat_capacity": 100000,
+    "maximum_seats_per_person": 1000,
+    "issuance_cycles_per_seat": 731
+  },
+  "channels": [
+    {
+      "id": "founder_operator",
+      "issuance_kind": "base_permission",
+      "cap_atomic": "2500020000000000000"
+    },
+    {
+      "id": "venture_escrow",
+      "issuance_kind": "base_permission",
+      "cap_atomic": "1250010000000000000"
+    },
+    {
+      "id": "community_grants_escrow",
+      "issuance_kind": "base_permission",
+      "cap_atomic": "250002000000000000"
+    },
+    {
+      "id": "developer_incentives_escrow",
+      "issuance_kind": "base_permission",
+      "cap_atomic": "125001000000000000"
+    },
+    {
+      "id": "founder_referral",
+      "issuance_kind": "referral_permission",
+      "cap_atomic": "125001000000000000"
+    },
+    {
+      "id": "system_creator_issuance_royalty",
+      "issuance_kind": "base_permission",
+      "cap_atomic": "73100000000000000"
+    },
+    {
+      "id": "liquidity_mining",
+      "issuance_kind": "direct_mint",
+      "cap_atomic": "750006000000000000"
+    },
+    {
+      "id": "impermanent_loss_protection",
+      "issuance_kind": "direct_mint",
+      "cap_atomic": "375003000000000000"
+    },
+    {
+      "id": "hub_verified_user_incentives",
+      "issuance_kind": "direct_mint",
+      "cap_atomic": "125001000000000000"
+    },
+    {
+      "id": "initial_mystery_box_incentives",
+      "issuance_kind": "direct_mint",
+      "cap_atomic": "1250010000000000"
+    }
+  ],
+  "base_permission": {
+    "total_atomic": "57430000000",
+    "legs": [
+      {
+        "channel": "venture_escrow",
+        "beneficiary_kind": "venture_escrow",
+        "amount_atomic": "17100000000"
+      },
+      {
+        "channel": "community_grants_escrow",
+        "beneficiary_kind": "community_grants_escrow",
+        "amount_atomic": "3420000000"
+      },
+      {
+        "channel": "developer_incentives_escrow",
+        "beneficiary_kind": "developer_incentives_escrow",
+        "amount_atomic": "1710000000"
+      },
+      {
+        "channel": "system_creator_issuance_royalty",
+        "beneficiary_kind": "system_creator_company",
+        "amount_atomic": "1000000000"
+      },
+      {
+        "channel": "founder_operator",
+        "beneficiary_kind": "cycle_founder_or_performance_result",
+        "amount_atomic": "34200000000"
+      }
+    ]
+  },
+  "referral_permission": {
+    "channel": "founder_referral",
+    "beneficiary_kind": "recorded_referrer",
+    "amount_atomic": "1710000000"
+  },
+  "research_placeholders": [
+    "activity_eligibility_result",
+    "inactive_performance_allocation_result",
+    "inactive_referral_eligibility_result",
+    "direct_channel_eligibility_result"
+  ]
+}
