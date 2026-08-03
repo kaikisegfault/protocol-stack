@@ -102,10 +102,8 @@ history. Never weaken an evidence gate to make an autonomous action possible.
 
 ## Authorship
 
-Human development activity uses the repository owner identity. Do not add AI
-tools as authors, committers, co-authors, reviewers, assignees, or PR
-participants. Automated GitHub and dependency bots may use their normal bot
-identity.
+Commits and pull requests use the repository owner identity. Automated GitHub
+and dependency bots may use their normal bot identity.
 
 ## Project quality
 

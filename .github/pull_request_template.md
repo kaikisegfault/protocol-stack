@@ -30,4 +30,3 @@ Closes #
       where applicable.
 - [ ] All required verification passed in the current working state.
 - [ ] Documentation and `current-state.md` are accurate.
-- [ ] No AI author, committer, or co-author attribution was added.
