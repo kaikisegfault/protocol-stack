@@ -189,10 +189,16 @@ The events input is a JSON array. Each element is an object with exactly `id`,
 `id` is an input-shape error that aborts the run rather than a modelled
 rejection.
 
-Seat identifiers and cycle indexes are JSON integers. Monetary values are
-canonical unsigned decimal strings. A research-input field is always present;
-the JSON value `null` models an absent research input and produces the
-modelled `MISSING_RESEARCH_INPUT` rejection.
+Seat identifiers and cycle indexes are JSON integers bounded by
+9,007,199,254,740,991, the largest integer a conforming JSON stack represents
+exactly. That bound is a parse-time input-shape error, not a modelled
+rejection: a count above it could not be canonicalized, so it must be refused
+before it can reach a digest preimage. Semantic bounds inside that range remain
+the modelled `CYCLE_RANGE` rejection.
+
+Monetary values are canonical unsigned decimal strings. A research-input field
+is always present; the JSON value `null` models an absent research input and
+produces the modelled `MISSING_RESEARCH_INPUT` rejection.
 
 | Kind | Additional fields |
 | --- | --- |

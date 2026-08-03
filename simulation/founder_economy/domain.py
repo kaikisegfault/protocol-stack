@@ -180,11 +180,11 @@ def _assert_scalars(state: State) -> None:
     if any(value == 0 for value in state.typed_custody.values()):
         raise InvariantError("a zero custody entry exists")
     if any(
-        seat_id not in state.seats or referrer == seat_id
+        referrer not in state.seats or referrer == seat_id
         for seat_id, referrer in state.seats.items()
         if referrer is not None
     ):
-        raise InvariantError("a seat references an invalid referrer")
+        raise InvariantError("a seat references an unknown or self referrer")
 
 
 def _assert_channels(state: State) -> None:
