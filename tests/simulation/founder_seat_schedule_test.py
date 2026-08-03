@@ -147,8 +147,14 @@ class RecordedVectorTest(unittest.TestCase):
             int(recorded["schedule.tier_boundary_price_cents"]),
             c.TIER_BOUNDARY_PRICE_CENTS,
         )
-        self.assertEqual(int(recorded["schedule.high_tier_step_cents"]), c.HIGH_TIER_STEP_CENTS)
-        self.assertEqual(int(recorded["schedule.last_low_tier_block"]), c.LAST_LOW_TIER_BLOCK)
+        self.assertEqual(
+            int(recorded["schedule.high_tier_step_cents"]),
+            c.HIGH_TIER_STEP_CENTS,
+        )
+        self.assertEqual(
+            int(recorded["schedule.last_low_tier_block"]),
+            c.LAST_LOW_TIER_BLOCK,
+        )
 
 
 if __name__ == "__main__":

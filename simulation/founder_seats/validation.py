@@ -136,7 +136,9 @@ def _boolean(value: Any, name: str) -> bool:
 
 
 def _count(value: Any, name: str) -> int:
-    if type(value) is bool or type(value) is not int or not 0 <= value <= MAX_JSON_INTEGER:
+    if type(value) is bool or type(value) is not int:
+        raise InputError(f"{name} is not an exact unsigned JSON integer")
+    if not 0 <= value <= MAX_JSON_INTEGER:
         raise InputError(f"{name} is not an exact unsigned JSON integer")
     return value
 

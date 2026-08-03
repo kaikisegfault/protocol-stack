@@ -117,7 +117,7 @@ def check_anchors(check: Checker, prices: list[int], cumulative: list[int]) -> N
     if prices[0] != CONSTITUTION_FIRST_BLOCK_USD * cents:
         check.failures.append("walk: first block price does not match the constitution")
     if CONSTITUTION_TIER_BOUNDARY_USD * cents not in prices:
-        check.failures.append("walk: the USD 1,000 tier boundary is never a block price")
+        check.failures.append("walk: the USD 1,000 boundary is never a block price")
     if prices[-1] != CONSTITUTION_FINAL_BLOCK_USD * cents:
         check.failures.append("walk: final block price does not match the constitution")
     if cumulative[-1] != CONSTITUTION_FULL_SALE_USD * cents:
@@ -126,14 +126,18 @@ def check_anchors(check: Checker, prices: list[int], cumulative: list[int]) -> N
         check.failures.append("walk: block count does not cover the seat capacity")
 
 
-def check_contract_agreement(check: Checker, prices: list[int], cumulative: list[int]) -> None:
+def check_contract_agreement(
+    check: Checker,
+    prices: list[int],
+    cumulative: list[int],
+) -> None:
     """Every block must agree between the walk and the contract module."""
     for index, (price, total) in enumerate(zip(prices, cumulative)):
         if c.block_price_cents(index) != price:
-            check.failures.append(f"block {index}: contract price disagrees with the walk")
+            check.failures.append(f"block {index}: price disagrees with the walk")
             return
         if c.cumulative_proceeds_cents(index) != total:
-            check.failures.append(f"block {index}: contract cumulative disagrees with the walk")
+            check.failures.append(f"block {index}: cumulative disagrees with the walk")
             return
     for seat_id in (0, 99, 100, 9_000, 9_100, 99_999):
         if c.seat_price_cents(seat_id) != prices[seat_id // 100]:
@@ -144,7 +148,11 @@ def check_contract_agreement(check: Checker, prices: list[int], cumulative: list
         check.failures.append("contract prices a seat beyond the capacity")
 
 
-def check_schedule_vectors(check: Checker, prices: list[int], cumulative: list[int]) -> None:
+def check_schedule_vectors(
+    check: Checker,
+    prices: list[int],
+    cumulative: list[int],
+) -> None:
     cents = 100
     check.equal("denomination.cents_per_usd", cents)
     check.equal("denomination.full_sale_proceeds_cents", cumulative[-1])
@@ -157,9 +165,10 @@ def check_schedule_vectors(check: Checker, prices: list[int], cumulative: list[i
 
     check.equal("schedule.first_block_price_cents", prices[0])
     check.equal("schedule.low_tier_step_cents", prices[1] - prices[0])
-    check.equal("schedule.tier_boundary_price_cents", CONSTITUTION_TIER_BOUNDARY_USD * cents)
+    boundary = CONSTITUTION_TIER_BOUNDARY_USD * cents
+    check.equal("schedule.tier_boundary_price_cents", boundary)
     check.equal("schedule.high_tier_step_cents", prices[-1] - prices[-2])
-    check.equal("schedule.last_low_tier_block", prices.index(CONSTITUTION_TIER_BOUNDARY_USD * cents))
+    check.equal("schedule.last_low_tier_block", prices.index(boundary))
     check.equal("schedule.final_block_price_cents", prices[-1])
 
     for index in (0, 1, 89, 90, 91, 998, 999):
