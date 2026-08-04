@@ -213,9 +213,12 @@ charged.
   divergence between authority and custody an invariant failure.
 - No native units are created, so the 55,743,940,100-unit maximum, every channel
   cap, and the accepted economy, seat, and routing vectors are untouched.
-- Opening custody is provably the output of an accepted economy run, which joins
-  this model to `founder-economy-simulator-v1` by digest — the first such join
-  among the M2 models, and a one-way read that changes nothing in the other.
+- Opening custody is tied to a `founder-economy-simulator-v1` state by digest —
+  the first join among the M2 models, and a one-way read that changes nothing in
+  the other. The model checks that the supplied state matches the digest it
+  claims; the verifier is what establishes that the digest is an accepted
+  economy run. Neither step alone is the whole claim, and the split is
+  deliberate rather than incidental.
 - The fixture carries a complete economy state value, so a future change to the
   economy model's canonical state shape would invalidate this model's binding
   fixture and vectors. That is intended: the binding is meant to break loudly
