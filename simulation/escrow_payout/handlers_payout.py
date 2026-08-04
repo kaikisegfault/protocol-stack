@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from . import contract as c
 from ..common.canonical import checked_add, checked_sub
 from .domain import Capability, State
 from .operations import (
@@ -20,7 +21,6 @@ from .operations import (
     entry,
     failure,
 )
-from . import contract as c
 
 
 def execute_payout(state: State, event: dict[str, Any]) -> Outcome:
