@@ -1,0 +1,138 @@
+[
+  {
+    "id": "payment-0001",
+    "kind": "route_commercial_payment",
+    "payment_id": "payment-0001",
+    "amount_atomic": "100000000",
+    "project_creator_id": "creator-alpha",
+    "product_creator_id": null
+  },
+  {
+    "id": "payment-0002",
+    "kind": "route_commercial_payment",
+    "payment_id": "payment-0002",
+    "amount_atomic": "123456789",
+    "project_creator_id": "creator-alpha",
+    "product_creator_id": "creator-beta"
+  },
+  {
+    "id": "payment-0003",
+    "kind": "route_commercial_payment",
+    "payment_id": "payment-0003",
+    "amount_atomic": "4",
+    "project_creator_id": "creator-gamma",
+    "product_creator_id": "creator-delta"
+  },
+  {
+    "id": "payment-0004",
+    "kind": "route_commercial_payment",
+    "payment_id": "payment-0004",
+    "amount_atomic": "7",
+    "project_creator_id": "creator-gamma",
+    "product_creator_id": null
+  },
+  {
+    "id": "payment-0002-replay",
+    "kind": "route_commercial_payment",
+    "payment_id": "payment-0002",
+    "amount_atomic": "123456789",
+    "project_creator_id": "creator-alpha",
+    "product_creator_id": "creator-beta"
+  },
+  {
+    "id": "payment-0005-zero",
+    "kind": "route_commercial_payment",
+    "payment_id": "payment-0005-zero",
+    "amount_atomic": "0",
+    "project_creator_id": "creator-alpha",
+    "product_creator_id": null
+  },
+  {
+    "id": "payment-0006-same-creator",
+    "kind": "route_commercial_payment",
+    "payment_id": "payment-0006-same-creator",
+    "amount_atomic": "100000000",
+    "project_creator_id": "creator-alpha",
+    "product_creator_id": "creator-alpha"
+  },
+  {
+    "id": "fee-0001",
+    "kind": "route_transaction_fee",
+    "fee_id": "fee-0001",
+    "amount_atomic": "500000000"
+  },
+  {
+    "id": "fee-0002",
+    "kind": "route_transaction_fee",
+    "fee_id": "fee-0002",
+    "amount_atomic": "8"
+  },
+  {
+    "id": "fee-0002-replay",
+    "kind": "route_transaction_fee",
+    "fee_id": "fee-0002",
+    "amount_atomic": "8"
+  },
+  {
+    "id": "fee-0003-zero",
+    "kind": "route_transaction_fee",
+    "fee_id": "fee-0003-zero",
+    "amount_atomic": "0"
+  },
+  {
+    "id": "close-skipped-cycle",
+    "kind": "close_cycle",
+    "cycle_index": 1,
+    "active_seats_result": { "cycle_index": 1, "seat_ids": [0, 1, 2] }
+  },
+  {
+    "id": "close-without-snapshot",
+    "kind": "close_cycle",
+    "cycle_index": 0,
+    "active_seats_result": null
+  },
+  {
+    "id": "close-unbound-snapshot",
+    "kind": "close_cycle",
+    "cycle_index": 0,
+    "active_seats_result": { "cycle_index": 1, "seat_ids": [0, 1, 2] }
+  },
+  {
+    "id": "close-0000",
+    "kind": "close_cycle",
+    "cycle_index": 0,
+    "active_seats_result": { "cycle_index": 0, "seat_ids": [0, 1, 2] }
+  },
+  {
+    "id": "fee-0004",
+    "kind": "route_transaction_fee",
+    "fee_id": "fee-0004",
+    "amount_atomic": "1"
+  },
+  {
+    "id": "close-0001",
+    "kind": "close_cycle",
+    "cycle_index": 1,
+    "active_seats_result": { "cycle_index": 1, "seat_ids": [] }
+  },
+  {
+    "id": "payment-0007",
+    "kind": "route_commercial_payment",
+    "payment_id": "payment-0007",
+    "amount_atomic": "400000000",
+    "project_creator_id": "creator-epsilon",
+    "product_creator_id": null
+  },
+  {
+    "id": "close-0002",
+    "kind": "close_cycle",
+    "cycle_index": 2,
+    "active_seats_result": { "cycle_index": 2, "seat_ids": [0, 1, 2, 3] }
+  },
+  {
+    "id": "close-0001-replay",
+    "kind": "close_cycle",
+    "cycle_index": 1,
+    "active_seats_result": { "cycle_index": 1, "seat_ids": [] }
+  }
+]
