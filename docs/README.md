@@ -67,6 +67,12 @@ creator sub-split shape, overflow-free share arithmetic, per-cycle Founder
 distribution with a carry, and separate fee accounting. It accepts a research
 model contract, not a consensus transition.
 
+ADR 0021 selects the separation of escrow payouts from the economy simulator,
+the digest-bound opening custody, the two-bound revocable spending capability,
+authority-before-funds rejection ordering, and the reconciliation of custody
+against capability accounting. It accepts a research model contract, not a
+consensus transition.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
@@ -105,6 +111,9 @@ immutable; compatible changes require a new version.
   22.5/22.5 creator case, the proved integer remainder rule, separate 100%
   transaction-fee routing, and per-cycle Founder distribution with a carry; it
   is not a consensus transition.
+- `specifications/escrow-payout-v1.md`: the three founder-directed escrows,
+  bounded escrow-scoped spending capabilities, custody conservation, and the
+  ordered payout rejection conditions; it is not a consensus transition.
 - `specifications/native-economy-simulation-v1.md`: versioned integer-only
   accounting, authority, event, trace, and metric contract for the independent
   M2 research simulator; it is not a consensus transition.
@@ -153,6 +162,15 @@ The revenue and transaction-fee routing model is
 `../tools/revenue-routing-vectors/verify.py` replays the whole scenario against
 an independent implementation in `walk.py` that uses the naive share form, and
 requires that replay, the model, and the recorded file to agree.
+
+The escrow payout model is `../simulation/escrow_payout/` with vectors in
+`../test-vectors/escrow-payout-v1.txt`.
+`../tools/escrow-payout-vectors/verify.py` replays the whole scenario against an
+independent implementation in `walk.py` that carries the escrow caps as
+constitutional literals and recomputes the founder-economy state digest with its
+own helper. It additionally runs `founder-economy-simulator-v1` on that model's
+accepted fixture and requires the escrow fixture's opening custody to be bound to
+that run, which is provenance the model itself cannot check.
 
 Shared deterministic primitives used by these models live in
 `../simulation/common/`.
