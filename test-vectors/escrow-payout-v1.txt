@@ -1,0 +1,199 @@
+# Escrow payout v1 normative vectors.
+# Monetary values are native atomic units of the single native asset.
+# The scenario is simulation/escrow_payout/fixtures/research-events-v1.json.
+schema=protocol-stack/escrow-payout-result/v1
+events_file=simulation/escrow_payout/fixtures/research-events-v1.json
+state_domain_label=protocol-stack:escrow-payout:state-v1
+events_domain_label=protocol-stack:escrow-payout:events-v1
+trace_domain_label=protocol-stack:escrow-payout:trace-v1
+result_domain_label=protocol-stack:escrow-payout:result-v1
+
+# Native denomination, unchanged from founder-economy-manifest-v1.
+denomination.decimal_places=8
+denomination.atomic_units_per_display_unit=100000000
+
+# The closed escrow set and its caps, converted from the Founder
+# Constitution's Founder Node distribution table.
+escrows.count=3
+escrow0.id=venture_escrow
+escrow0.cap_display=12500100000
+escrow0.cap_atomic=1250010000000000000
+escrow1.id=community_grants_escrow
+escrow1.cap_display=2500020000
+escrow1.cap_atomic=250002000000000000
+escrow2.id=developer_incentives_escrow
+escrow2.cap_display=1250010000
+escrow2.cap_atomic=125001000000000000
+
+# Opening custody is bound to a recorded founder-economy-simulator-v1
+# state. The verifier derives this digest by running that model on its own
+# accepted fixture, so the binding is provenance and not a fixture constant.
+binding.economy_state_digest=2fcdb4d423d99cd88d019fd38c4f99876c57e9c216822349393bfa7e0854bc3f
+binding.economy_state_label=protocol-stack:founder-economy:state-v1
+binding.escrow0.opening_custody=34200000000
+binding.escrow1.opening_custody=6840000000
+binding.escrow2.opening_custody=3420000000
+binding.fixture_bind_events_matching_economy_run=2
+
+# The research scenario.
+scenario.event_count=39
+scenario.accepted_count=12
+scenario.rejected_count=27
+scenario.events_digest=f2fd58bd22af928f00dd98a8ecff2445854fcc3f0cea3511710ad2306e22066f
+scenario.trace_digest=44eba39aafd964dbf2b104339c59e91f575359555203e08be8a42d119eb06c1d
+scenario.state_digest=849e4f16bfc2ca7fa9705c47b0286ab7f9e13de58dff6eb525460000bedf64b4
+scenario.result_digest=1149da7c0e1c7d2b195e08a326d22bba4269e28b2ebb9bffe9ed53e165b7de70
+scenario.bound_state_digest=2fcdb4d423d99cd88d019fd38c4f99876c57e9c216822349393bfa7e0854bc3f
+scenario.current_cycle=1
+scenario.capability_count=4
+scenario.revoked_capability_count=1
+scenario.exhausted_envelope_count=2
+scenario.accepted_payout_count=5
+scenario.paid_out_total=40260000000
+
+# Each escrow's final position.
+escrow0.opening_custody=34200000000
+escrow0.available_custody=4200000000
+escrow0.paid_out_total=30000000000
+escrow0.recipient_count=2
+escrow0.largest_recipient_balance=20000000000
+escrow1.opening_custody=6840000000
+escrow1.available_custody=0
+escrow1.paid_out_total=6840000000
+escrow1.recipient_count=1
+escrow1.largest_recipient_balance=6840000000
+escrow2.opening_custody=3420000000
+escrow2.available_custody=0
+escrow2.paid_out_total=3420000000
+escrow2.recipient_count=1
+escrow2.largest_recipient_balance=3420000000
+
+# Every opened unit is still available or credited to a recipient of the
+# same escrow, and the capability-side account of the same value agrees.
+# The three equations share no term.
+conservation.escrow0.available_plus_paid=34200000000
+conservation.escrow0.credited_recipients=30000000000
+conservation.escrow0.charged_envelopes=30000000000
+conservation.escrow1.available_plus_paid=6840000000
+conservation.escrow1.credited_recipients=6840000000
+conservation.escrow1.charged_envelopes=6840000000
+conservation.escrow2.available_plus_paid=3420000000
+conservation.escrow2.credited_recipients=3420000000
+conservation.escrow2.charged_envelopes=3420000000
+
+# Containment. Custody never rises after the bind, no payout touches two
+# escrows, and a grant, revocation, or cycle advance moves no value.
+containment.custody_increases_after_bind=0
+containment.multi_escrow_payouts=0
+containment.single_escrow_payouts=5
+containment.value_free_transitions=6
+
+# The ordered trace.
+record0.event_id=bind-tampered-digest
+record0.result=INVALID_RESEARCH_INPUT
+record1.event_id=bind-missing-input
+record1.result=MISSING_RESEARCH_INPUT
+record2.event_id=bind-above-cap
+record2.result=CUSTODY_ABOVE_CAP
+record3.event_id=payout-before-bind
+record3.result=UNKNOWN_CAPABILITY
+record4.event_id=grant-before-bind
+record4.result=NOT_BOUND
+record5.event_id=bind-economy-state
+record5.result=OK
+record6.event_id=bind-replay
+record6.result=ALREADY_BOUND
+record7.event_id=grant-venture
+record7.result=OK
+record8.event_id=grant-unknown-escrow
+record8.result=UNKNOWN_ESCROW
+record9.event_id=grant-zero-envelope
+record9.result=ZERO_AMOUNT
+record10.event_id=grant-inverted-bounds
+record10.result=INVALID_CAPABILITY
+record11.event_id=grant-venture-replay
+record11.result=REPLAY
+record12.event_id=payout-venture-0001
+record12.result=OK
+record13.event_id=payout-over-limit
+record13.result=PAYOUT_LIMIT_EXCEEDED
+record14.event_id=payout-foreign-escrow
+record14.result=ESCROW_MISMATCH
+record15.event_id=payout-missing-approval
+record15.result=MISSING_RESEARCH_INPUT
+record16.event_id=payout-bad-approval
+record16.result=INVALID_RESEARCH_INPUT
+record17.event_id=payout-withheld
+record17.result=APPROVAL_WITHHELD
+record18.event_id=payout-zero-amount
+record18.result=ZERO_AMOUNT
+record19.event_id=payout-unknown-capability
+record19.result=UNKNOWN_CAPABILITY
+record20.event_id=payout-venture-0002
+record20.result=OK
+record21.event_id=payout-venture-0003
+record21.result=OK
+record22.event_id=payout-venture-0004
+record22.result=ENVELOPE_EXCEEDED
+record23.event_id=grant-community
+record23.result=OK
+record24.event_id=payout-community-0001
+record24.result=OK
+record25.event_id=revoke-community
+record25.result=OK
+record26.event_id=payout-community-revoked
+record26.result=CAPABILITY_REVOKED
+record27.event_id=revoke-community-again
+record27.result=ALREADY_REVOKED
+record28.event_id=revoke-unknown
+record28.result=UNKNOWN_CAPABILITY
+record29.event_id=grant-developer
+record29.result=OK
+record30.event_id=payout-developer-over
+record30.result=INSUFFICIENT_CUSTODY
+record31.event_id=payout-developer-0001
+record31.result=OK
+record32.event_id=payout-developer-drained
+record32.result=INSUFFICIENT_CUSTODY
+record33.event_id=grant-developer-short
+record33.result=OK
+record34.event_id=advance-cycle-0
+record34.result=OK
+record35.event_id=advance-cycle-mismatch
+record35.result=CYCLE_MISMATCH
+record36.event_id=payout-developer-expired
+record36.result=CAPABILITY_EXPIRED
+record37.event_id=grant-expired-at-grant
+record37.result=CAPABILITY_EXPIRED
+record38.event_id=payout-venture-replay
+record38.result=REPLAY
+
+# Rejection codes this model must preserve. ARITHMETIC_OVERFLOW and
+# INVARIANT are unreachable in this scenario and are covered by the tests.
+negative.already_bound.result=ALREADY_BOUND
+negative.already_revoked.result=ALREADY_REVOKED
+negative.approval_withheld.result=APPROVAL_WITHHELD
+negative.arithmetic_overflow.result=ARITHMETIC_OVERFLOW
+negative.capability_expired.result=CAPABILITY_EXPIRED
+negative.capability_revoked.result=CAPABILITY_REVOKED
+negative.custody_above_cap.result=CUSTODY_ABOVE_CAP
+negative.cycle_mismatch.result=CYCLE_MISMATCH
+negative.envelope_exceeded.result=ENVELOPE_EXCEEDED
+negative.escrow_mismatch.result=ESCROW_MISMATCH
+negative.insufficient_custody.result=INSUFFICIENT_CUSTODY
+negative.invalid_capability.result=INVALID_CAPABILITY
+negative.invalid_research_input.result=INVALID_RESEARCH_INPUT
+negative.invariant.result=INVARIANT
+negative.missing_research_input.result=MISSING_RESEARCH_INPUT
+negative.not_bound.result=NOT_BOUND
+negative.payout_limit_exceeded.result=PAYOUT_LIMIT_EXCEEDED
+negative.replay.result=REPLAY
+negative.unknown_capability.result=UNKNOWN_CAPABILITY
+negative.unknown_escrow.result=UNKNOWN_ESCROW
+negative.zero_amount.result=ZERO_AMOUNT
+negative.codes_reached_by_scenario=19
+negative.codes_covered_by_tests_only=2
+
+# Rejections write nothing and journal nothing.
+atomic_failure.rejected_count=27
+atomic_failure.rejected_journal_entries=0

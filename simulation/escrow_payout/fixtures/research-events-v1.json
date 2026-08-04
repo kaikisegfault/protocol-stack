@@ -1,0 +1,696 @@
+[
+  {
+    "economy_state_result": {
+      "state_digest": "2fcdb4d423d99cd88d019fd38c4f99876c57e9c216822349393bfa7e0854bc30",
+      "state_value": {
+        "accepted_direct_decision_ids": [
+          "research-direct-0001"
+        ],
+        "channels": {
+          "community_grants_escrow": {
+            "issued_atomic": "6840000000",
+            "outstanding_atomic": "0"
+          },
+          "developer_incentives_escrow": {
+            "issued_atomic": "3420000000",
+            "outstanding_atomic": "0"
+          },
+          "founder_operator": {
+            "issued_atomic": "68400000000",
+            "outstanding_atomic": "0"
+          },
+          "founder_referral": {
+            "issued_atomic": "1710000000",
+            "outstanding_atomic": "0"
+          },
+          "hub_verified_user_incentives": {
+            "issued_atomic": "0",
+            "outstanding_atomic": "0"
+          },
+          "impermanent_loss_protection": {
+            "issued_atomic": "0",
+            "outstanding_atomic": "0"
+          },
+          "initial_mystery_box_incentives": {
+            "issued_atomic": "0",
+            "outstanding_atomic": "0"
+          },
+          "liquidity_mining": {
+            "issued_atomic": "100000000",
+            "outstanding_atomic": "0"
+          },
+          "system_creator_issuance_royalty": {
+            "issued_atomic": "2000000000",
+            "outstanding_atomic": "0"
+          },
+          "venture_escrow": {
+            "issued_atomic": "34200000000",
+            "outstanding_atomic": "0"
+          }
+        },
+        "evaluated_permission_keys": [
+          "00000:000:base",
+          "00000:000:referral",
+          "00000:001:base",
+          "00000:001:referral"
+        ],
+        "pending_permissions": {},
+        "seats": {
+          "00000": "00003",
+          "00001": null,
+          "00002": null,
+          "00003": null
+        },
+        "typed_custody": {
+          "community_grants_escrow:global": "6840000000",
+          "developer_incentives_escrow:global": "3420000000",
+          "direct_beneficiary:research-user-0001": "100000000",
+          "founder_seat:00000": "34200000000",
+          "founder_seat:00001": "17100000000",
+          "founder_seat:00002": "17100000000",
+          "founder_seat:00003": "1710000000",
+          "system_creator_company:global": "2000000000",
+          "venture_escrow:global": "34200000000"
+        }
+      }
+    },
+    "id": "bind-tampered-digest",
+    "kind": "bind_opening_custody"
+  },
+  {
+    "economy_state_result": null,
+    "id": "bind-missing-input",
+    "kind": "bind_opening_custody"
+  },
+  {
+    "economy_state_result": {
+      "state_digest": "21f05e465a9fff02f5e4180eaba1f513099a979c340dec7cbe581289afc4dc7f",
+      "state_value": {
+        "accepted_direct_decision_ids": [
+          "research-direct-0001"
+        ],
+        "channels": {
+          "community_grants_escrow": {
+            "issued_atomic": "6840000000",
+            "outstanding_atomic": "0"
+          },
+          "developer_incentives_escrow": {
+            "issued_atomic": "3420000000",
+            "outstanding_atomic": "0"
+          },
+          "founder_operator": {
+            "issued_atomic": "68400000000",
+            "outstanding_atomic": "0"
+          },
+          "founder_referral": {
+            "issued_atomic": "1710000000",
+            "outstanding_atomic": "0"
+          },
+          "hub_verified_user_incentives": {
+            "issued_atomic": "0",
+            "outstanding_atomic": "0"
+          },
+          "impermanent_loss_protection": {
+            "issued_atomic": "0",
+            "outstanding_atomic": "0"
+          },
+          "initial_mystery_box_incentives": {
+            "issued_atomic": "0",
+            "outstanding_atomic": "0"
+          },
+          "liquidity_mining": {
+            "issued_atomic": "100000000",
+            "outstanding_atomic": "0"
+          },
+          "system_creator_issuance_royalty": {
+            "issued_atomic": "2000000000",
+            "outstanding_atomic": "0"
+          },
+          "venture_escrow": {
+            "issued_atomic": "34200000000",
+            "outstanding_atomic": "0"
+          }
+        },
+        "evaluated_permission_keys": [
+          "00000:000:base",
+          "00000:000:referral",
+          "00000:001:base",
+          "00000:001:referral"
+        ],
+        "pending_permissions": {},
+        "seats": {
+          "00000": "00003",
+          "00001": null,
+          "00002": null,
+          "00003": null
+        },
+        "typed_custody": {
+          "community_grants_escrow:global": "6840000000",
+          "developer_incentives_escrow:global": "3420000000",
+          "direct_beneficiary:research-user-0001": "100000000",
+          "founder_seat:00000": "34200000000",
+          "founder_seat:00001": "17100000000",
+          "founder_seat:00002": "17100000000",
+          "founder_seat:00003": "1710000000",
+          "system_creator_company:global": "2000000000",
+          "venture_escrow:global": "1250010000000000001"
+        }
+      }
+    },
+    "id": "bind-above-cap",
+    "kind": "bind_opening_custody"
+  },
+  {
+    "amount_atomic": "10000000000",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-early-0001"
+    },
+    "capability_id": "cap-venture",
+    "escrow_id": "venture_escrow",
+    "id": "payout-before-bind",
+    "kind": "execute_payout",
+    "payout_id": "payout-early-0001",
+    "recipient_id": "venture-team-a"
+  },
+  {
+    "capability_id": "cap-early",
+    "envelope_total": "30000000000",
+    "escrow_id": "venture_escrow",
+    "expiry_cycle": 5,
+    "id": "grant-before-bind",
+    "kind": "grant_capability",
+    "per_payout_maximum": "10000000000"
+  },
+  {
+    "economy_state_result": {
+      "state_digest": "2fcdb4d423d99cd88d019fd38c4f99876c57e9c216822349393bfa7e0854bc3f",
+      "state_value": {
+        "accepted_direct_decision_ids": [
+          "research-direct-0001"
+        ],
+        "channels": {
+          "community_grants_escrow": {
+            "issued_atomic": "6840000000",
+            "outstanding_atomic": "0"
+          },
+          "developer_incentives_escrow": {
+            "issued_atomic": "3420000000",
+            "outstanding_atomic": "0"
+          },
+          "founder_operator": {
+            "issued_atomic": "68400000000",
+            "outstanding_atomic": "0"
+          },
+          "founder_referral": {
+            "issued_atomic": "1710000000",
+            "outstanding_atomic": "0"
+          },
+          "hub_verified_user_incentives": {
+            "issued_atomic": "0",
+            "outstanding_atomic": "0"
+          },
+          "impermanent_loss_protection": {
+            "issued_atomic": "0",
+            "outstanding_atomic": "0"
+          },
+          "initial_mystery_box_incentives": {
+            "issued_atomic": "0",
+            "outstanding_atomic": "0"
+          },
+          "liquidity_mining": {
+            "issued_atomic": "100000000",
+            "outstanding_atomic": "0"
+          },
+          "system_creator_issuance_royalty": {
+            "issued_atomic": "2000000000",
+            "outstanding_atomic": "0"
+          },
+          "venture_escrow": {
+            "issued_atomic": "34200000000",
+            "outstanding_atomic": "0"
+          }
+        },
+        "evaluated_permission_keys": [
+          "00000:000:base",
+          "00000:000:referral",
+          "00000:001:base",
+          "00000:001:referral"
+        ],
+        "pending_permissions": {},
+        "seats": {
+          "00000": "00003",
+          "00001": null,
+          "00002": null,
+          "00003": null
+        },
+        "typed_custody": {
+          "community_grants_escrow:global": "6840000000",
+          "developer_incentives_escrow:global": "3420000000",
+          "direct_beneficiary:research-user-0001": "100000000",
+          "founder_seat:00000": "34200000000",
+          "founder_seat:00001": "17100000000",
+          "founder_seat:00002": "17100000000",
+          "founder_seat:00003": "1710000000",
+          "system_creator_company:global": "2000000000",
+          "venture_escrow:global": "34200000000"
+        }
+      }
+    },
+    "id": "bind-economy-state",
+    "kind": "bind_opening_custody"
+  },
+  {
+    "economy_state_result": {
+      "state_digest": "2fcdb4d423d99cd88d019fd38c4f99876c57e9c216822349393bfa7e0854bc3f",
+      "state_value": {
+        "accepted_direct_decision_ids": [
+          "research-direct-0001"
+        ],
+        "channels": {
+          "community_grants_escrow": {
+            "issued_atomic": "6840000000",
+            "outstanding_atomic": "0"
+          },
+          "developer_incentives_escrow": {
+            "issued_atomic": "3420000000",
+            "outstanding_atomic": "0"
+          },
+          "founder_operator": {
+            "issued_atomic": "68400000000",
+            "outstanding_atomic": "0"
+          },
+          "founder_referral": {
+            "issued_atomic": "1710000000",
+            "outstanding_atomic": "0"
+          },
+          "hub_verified_user_incentives": {
+            "issued_atomic": "0",
+            "outstanding_atomic": "0"
+          },
+          "impermanent_loss_protection": {
+            "issued_atomic": "0",
+            "outstanding_atomic": "0"
+          },
+          "initial_mystery_box_incentives": {
+            "issued_atomic": "0",
+            "outstanding_atomic": "0"
+          },
+          "liquidity_mining": {
+            "issued_atomic": "100000000",
+            "outstanding_atomic": "0"
+          },
+          "system_creator_issuance_royalty": {
+            "issued_atomic": "2000000000",
+            "outstanding_atomic": "0"
+          },
+          "venture_escrow": {
+            "issued_atomic": "34200000000",
+            "outstanding_atomic": "0"
+          }
+        },
+        "evaluated_permission_keys": [
+          "00000:000:base",
+          "00000:000:referral",
+          "00000:001:base",
+          "00000:001:referral"
+        ],
+        "pending_permissions": {},
+        "seats": {
+          "00000": "00003",
+          "00001": null,
+          "00002": null,
+          "00003": null
+        },
+        "typed_custody": {
+          "community_grants_escrow:global": "6840000000",
+          "developer_incentives_escrow:global": "3420000000",
+          "direct_beneficiary:research-user-0001": "100000000",
+          "founder_seat:00000": "34200000000",
+          "founder_seat:00001": "17100000000",
+          "founder_seat:00002": "17100000000",
+          "founder_seat:00003": "1710000000",
+          "system_creator_company:global": "2000000000",
+          "venture_escrow:global": "34200000000"
+        }
+      }
+    },
+    "id": "bind-replay",
+    "kind": "bind_opening_custody"
+  },
+  {
+    "capability_id": "cap-venture",
+    "envelope_total": "30000000000",
+    "escrow_id": "venture_escrow",
+    "expiry_cycle": 5,
+    "id": "grant-venture",
+    "kind": "grant_capability",
+    "per_payout_maximum": "10000000000"
+  },
+  {
+    "capability_id": "cap-treasury",
+    "envelope_total": "10000000000",
+    "escrow_id": "treasury-escrow",
+    "expiry_cycle": 5,
+    "id": "grant-unknown-escrow",
+    "kind": "grant_capability",
+    "per_payout_maximum": "10000000000"
+  },
+  {
+    "capability_id": "cap-zero",
+    "envelope_total": "0",
+    "escrow_id": "venture_escrow",
+    "expiry_cycle": 5,
+    "id": "grant-zero-envelope",
+    "kind": "grant_capability",
+    "per_payout_maximum": "1000000000"
+  },
+  {
+    "capability_id": "cap-inverted",
+    "envelope_total": "1000000000",
+    "escrow_id": "venture_escrow",
+    "expiry_cycle": 5,
+    "id": "grant-inverted-bounds",
+    "kind": "grant_capability",
+    "per_payout_maximum": "2000000000"
+  },
+  {
+    "capability_id": "cap-venture",
+    "envelope_total": "30000000000",
+    "escrow_id": "venture_escrow",
+    "expiry_cycle": 5,
+    "id": "grant-venture-replay",
+    "kind": "grant_capability",
+    "per_payout_maximum": "10000000000"
+  },
+  {
+    "amount_atomic": "10000000000",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-venture-0001"
+    },
+    "capability_id": "cap-venture",
+    "escrow_id": "venture_escrow",
+    "id": "payout-venture-0001",
+    "kind": "execute_payout",
+    "payout_id": "payout-venture-0001",
+    "recipient_id": "venture-team-a"
+  },
+  {
+    "amount_atomic": "10000000001",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-venture-over"
+    },
+    "capability_id": "cap-venture",
+    "escrow_id": "venture_escrow",
+    "id": "payout-over-limit",
+    "kind": "execute_payout",
+    "payout_id": "payout-venture-over",
+    "recipient_id": "venture-team-a"
+  },
+  {
+    "amount_atomic": "1000000000",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-venture-foreign"
+    },
+    "capability_id": "cap-venture",
+    "escrow_id": "developer_incentives_escrow",
+    "id": "payout-foreign-escrow",
+    "kind": "execute_payout",
+    "payout_id": "payout-venture-foreign",
+    "recipient_id": "developer-fund-a"
+  },
+  {
+    "amount_atomic": "1000000000",
+    "approval_result": null,
+    "capability_id": "cap-venture",
+    "escrow_id": "venture_escrow",
+    "id": "payout-missing-approval",
+    "kind": "execute_payout",
+    "payout_id": "payout-venture-noapproval",
+    "recipient_id": "venture-team-a"
+  },
+  {
+    "amount_atomic": "1000000000",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-venture-0001"
+    },
+    "capability_id": "cap-venture",
+    "escrow_id": "venture_escrow",
+    "id": "payout-bad-approval",
+    "kind": "execute_payout",
+    "payout_id": "payout-venture-badapproval",
+    "recipient_id": "venture-team-a"
+  },
+  {
+    "amount_atomic": "1000000000",
+    "approval_result": {
+      "decision": "rejected",
+      "evaluation_reference": "ai-evaluation-0002",
+      "payout_id": "payout-venture-withheld"
+    },
+    "capability_id": "cap-venture",
+    "escrow_id": "venture_escrow",
+    "id": "payout-withheld",
+    "kind": "execute_payout",
+    "payout_id": "payout-venture-withheld",
+    "recipient_id": "venture-team-a"
+  },
+  {
+    "amount_atomic": "0",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-venture-zero"
+    },
+    "capability_id": "cap-venture",
+    "escrow_id": "venture_escrow",
+    "id": "payout-zero-amount",
+    "kind": "execute_payout",
+    "payout_id": "payout-venture-zero",
+    "recipient_id": "venture-team-a"
+  },
+  {
+    "amount_atomic": "1000000000",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-venture-nocap"
+    },
+    "capability_id": "cap-absent",
+    "escrow_id": "venture_escrow",
+    "id": "payout-unknown-capability",
+    "kind": "execute_payout",
+    "payout_id": "payout-venture-nocap",
+    "recipient_id": "venture-team-a"
+  },
+  {
+    "amount_atomic": "10000000000",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-venture-0002"
+    },
+    "capability_id": "cap-venture",
+    "escrow_id": "venture_escrow",
+    "id": "payout-venture-0002",
+    "kind": "execute_payout",
+    "payout_id": "payout-venture-0002",
+    "recipient_id": "venture-team-b"
+  },
+  {
+    "amount_atomic": "10000000000",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-venture-0003"
+    },
+    "capability_id": "cap-venture",
+    "escrow_id": "venture_escrow",
+    "id": "payout-venture-0003",
+    "kind": "execute_payout",
+    "payout_id": "payout-venture-0003",
+    "recipient_id": "venture-team-a"
+  },
+  {
+    "amount_atomic": "1",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-venture-0004"
+    },
+    "capability_id": "cap-venture",
+    "escrow_id": "venture_escrow",
+    "id": "payout-venture-0004",
+    "kind": "execute_payout",
+    "payout_id": "payout-venture-0004",
+    "recipient_id": "venture-team-a"
+  },
+  {
+    "capability_id": "cap-community",
+    "envelope_total": "6840000000",
+    "escrow_id": "community_grants_escrow",
+    "expiry_cycle": 5,
+    "id": "grant-community",
+    "kind": "grant_capability",
+    "per_payout_maximum": "6840000000"
+  },
+  {
+    "amount_atomic": "6840000000",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-community-0001"
+    },
+    "capability_id": "cap-community",
+    "escrow_id": "community_grants_escrow",
+    "id": "payout-community-0001",
+    "kind": "execute_payout",
+    "payout_id": "payout-community-0001",
+    "recipient_id": "grant-recipient-a"
+  },
+  {
+    "capability_id": "cap-community",
+    "id": "revoke-community",
+    "kind": "revoke_capability"
+  },
+  {
+    "amount_atomic": "1",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-community-0002"
+    },
+    "capability_id": "cap-community",
+    "escrow_id": "community_grants_escrow",
+    "id": "payout-community-revoked",
+    "kind": "execute_payout",
+    "payout_id": "payout-community-0002",
+    "recipient_id": "grant-recipient-a"
+  },
+  {
+    "capability_id": "cap-community",
+    "id": "revoke-community-again",
+    "kind": "revoke_capability"
+  },
+  {
+    "capability_id": "cap-absent",
+    "id": "revoke-unknown",
+    "kind": "revoke_capability"
+  },
+  {
+    "capability_id": "cap-developer",
+    "envelope_total": "10000000000",
+    "escrow_id": "developer_incentives_escrow",
+    "expiry_cycle": 5,
+    "id": "grant-developer",
+    "kind": "grant_capability",
+    "per_payout_maximum": "5000000000"
+  },
+  {
+    "amount_atomic": "3420000001",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-developer-over"
+    },
+    "capability_id": "cap-developer",
+    "escrow_id": "developer_incentives_escrow",
+    "id": "payout-developer-over",
+    "kind": "execute_payout",
+    "payout_id": "payout-developer-over",
+    "recipient_id": "developer-fund-a"
+  },
+  {
+    "amount_atomic": "3420000000",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-developer-0001"
+    },
+    "capability_id": "cap-developer",
+    "escrow_id": "developer_incentives_escrow",
+    "id": "payout-developer-0001",
+    "kind": "execute_payout",
+    "payout_id": "payout-developer-0001",
+    "recipient_id": "developer-fund-a"
+  },
+  {
+    "amount_atomic": "1",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-developer-0002"
+    },
+    "capability_id": "cap-developer",
+    "escrow_id": "developer_incentives_escrow",
+    "id": "payout-developer-drained",
+    "kind": "execute_payout",
+    "payout_id": "payout-developer-0002",
+    "recipient_id": "developer-fund-a"
+  },
+  {
+    "capability_id": "cap-developer-short",
+    "envelope_total": "1000000000",
+    "escrow_id": "developer_incentives_escrow",
+    "expiry_cycle": 0,
+    "id": "grant-developer-short",
+    "kind": "grant_capability",
+    "per_payout_maximum": "1000000000"
+  },
+  {
+    "cycle_index": 0,
+    "id": "advance-cycle-0",
+    "kind": "advance_cycle"
+  },
+  {
+    "cycle_index": 0,
+    "id": "advance-cycle-mismatch",
+    "kind": "advance_cycle"
+  },
+  {
+    "amount_atomic": "1",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-developer-0003"
+    },
+    "capability_id": "cap-developer-short",
+    "escrow_id": "developer_incentives_escrow",
+    "id": "payout-developer-expired",
+    "kind": "execute_payout",
+    "payout_id": "payout-developer-0003",
+    "recipient_id": "developer-fund-a"
+  },
+  {
+    "capability_id": "cap-late",
+    "envelope_total": "1000000000",
+    "escrow_id": "developer_incentives_escrow",
+    "expiry_cycle": 0,
+    "id": "grant-expired-at-grant",
+    "kind": "grant_capability",
+    "per_payout_maximum": "1000000000"
+  },
+  {
+    "amount_atomic": "10000000000",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-venture-0001"
+    },
+    "capability_id": "cap-venture",
+    "escrow_id": "venture_escrow",
+    "id": "payout-venture-replay",
+    "kind": "execute_payout",
+    "payout_id": "payout-venture-0001",
+    "recipient_id": "venture-team-a"
+  }
+]
