@@ -23,9 +23,15 @@ Issue #82 delivered commercial revenue and transaction-fee routing satisfying
 `first-goal.md` requirements 9 and 10 and is merged at `5029c00`. It added
 `revenue-routing-v1`, ADR 0020, the independent `simulation/revenue_routing/`
 model, a third normative vector file, and a verifier whose `walk.py` is a
-second implementation the recorded file and the model must both agree with. No
-C++, consensus, devnet, or previously accepted simulator behavior changed in
-any of these slices.
+second implementation the recorded file and the model must both agree with.
+
+Issue #85 delivered escrow payout capabilities satisfying `first-goal.md`
+requirement 11. It added `escrow-payout-v1`, ADR 0021, the independent
+`simulation/escrow_payout/` model, a fourth normative vector file, and a
+verifier that both replays the scenario against an independent walk and proves
+the fixture's opening custody is bound to a live `founder-economy-simulator-v1`
+run. No C++, consensus, devnet, or previously accepted simulator behavior
+changed in any of these slices.
 
 ## What works now
 
@@ -66,6 +72,13 @@ any of these slices.
   fee pool, and distributes both pools per accounting cycle over a bound
   active-seat snapshot while carrying each residue forward. It creates no
   native units and routes value a constitutional channel already issued.
+- The escrow payout model holds the three founder-directed escrows separately,
+  takes opening custody from a recorded `founder-economy-simulator-v1` state by
+  recomputing that model's digest, and releases value only through a capability
+  bound to exactly one escrow and bounded by a per-payout maximum, a cumulative
+  envelope, an expiry, and revocation. Each escrow conserves independently, and
+  a second capability-side account of the same value must agree. It creates no
+  native units: custody is fixed at the bind and non-increasing afterwards.
 - The one-word `proceed`, `conclude`, and `status` workflows reconstruct,
   deliver, and report repository state.
 
@@ -87,8 +100,8 @@ any of these slices.
   balances.
 
 These are target requirements, not runnable Founder behavior. Issue #71 added a
-specification, JSON manifest, and fixed vectors; issues #77, #79, and #82 each
-added a specification, ADR, Python model, vectors, and verifier for part of
+specification, JSON manifest, and fixed vectors; issues #77, #79, #82, and #85
+each added a specification, ADR, Python model, vectors, and verifier for part of
 them. None changed current transaction bytes, C++ state, devnet supply,
 existing simulator schemas, bridge, wallet, AI, biometric, or resource
 behavior.
@@ -96,8 +109,8 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
-- Issues #71, #77, #79, and #82 are the M2 deliveries; PRs #72, #78, #80, and
-  #83 are merged.
+- Issues #71, #77, #79, #82, and #85 are the M2 deliveries; PRs #72, #78, #80,
+  #83, and #86 are merged.
 - After PR #72, commits `de9903e` and `4947c46` replaced the Codex agent layout
   with Claude Code and simplified the authorship rules.
 - Issue #77 and PR #78 merged at `9aeac23`. PR final-head Actions run
@@ -109,27 +122,47 @@ behavior.
   matrix — scope classification, GCC and Clang debug, both sanitizers, and the
   aggregate required check.
 - Issue #82 and PR #83 merged by rebase at `5029c00`. PR final-head Actions run
-  30896652965 passed the complete hosted matrix. Squash merge is disabled on
-  this repository; use `--rebase`.
+  30896652965 and post-merge run 30897473243 both passed the complete hosted
+  matrix. Squash merge is disabled on this repository; use `--rebase`.
+- Issue #85 and PR #86 merged by rebase at `512dc0c`. PR final-head Actions run
+  30900989541 and post-merge run 30901790621 both passed the complete hosted
+  matrix — scope classification, GCC and Clang debug, both sanitizers, and the
+  aggregate required check.
 - No delivery branch, open PR, additional worktree, or generated build
   directory remains from any delivery.
-- Local evidence on `5029c00`: 67 Founder Economy tests, 49 Founder Seat tests,
-  and 57 revenue routing tests pass; the economy verifier derives 139 manifest
-  and 65 simulator values, the seat verifier derives 96 values while confirming
-  an independent walk of the constitutional rule agrees with the model on all
-  1,000 blocks, and the routing verifier derives 200 values while confirming an
-  independent replay agrees with the model and with 2,400 contract share
-  computations; repository metadata and link validation, `git diff --check`,
-  and the focused verifier unit tests pass.
-- All three verifiers fail closed when a recorded vector key is never derived.
-  The economy and routing verifiers were both confirmed to fail on a tampered
-  recorded value.
+- Local evidence: 67 Founder Economy tests, 49 Founder Seat tests, 57 revenue
+  routing tests, and 57 escrow payout tests pass; the economy verifier derives
+  139 manifest and 65 simulator values, the seat verifier derives 96 values
+  while confirming an independent walk of the constitutional rule agrees with
+  the model on all 1,000 blocks, the routing verifier derives 200 values while
+  confirming an independent replay agrees with the model and with 2,400
+  contract share computations, and the escrow verifier derives 169 values while
+  confirming an independent walk agrees with the model on all 39 events and
+  that three caps match the Founder Constitution; repository metadata and link
+  validation, `git diff --check`, and the focused verifier unit tests pass.
+- All four verifiers fail closed when a recorded vector key is never derived.
+  The economy, routing, and escrow verifiers were each confirmed to fail on a
+  tampered recorded value.
 - The routing remainder bound is proved, not asserted: the remainder depends
   only on `amount mod 200`, so scanning all 200 residues in both creator cases
   is complete. It is at most 2 atomic units with one creator and 3 with two.
 - Routing share arithmetic uses the amount's quotient and remainder. The direct
   `45 * amount / 100` form leaves `u64` above roughly 7.4% of maximum supply,
   so it would have rejected a representable payment as an overflow.
+- Escrow custody is fixed at the bind and never rises afterwards, because
+  `bind_opening_custody` is the only writer of a custody amount and rejects once
+  bound. The vectors record `containment.custody_increases_after_bind=0` and
+  `containment.multi_escrow_payouts=0`, both derived by the independent walk.
+- The escrow binding proves consistency, not provenance: the model only
+  recomputes the supplied economy state's digest, so a self-consistent invented
+  state would also pass it. The verifier closes that gap by running the economy
+  simulator on its accepted fixture and requiring the escrow fixture to bind
+  that exact run. Inside the model, the manifest cap is the defence, and a
+  `CUSTODY_ABOVE_CAP` vector exercises it. The specification and ADR 0021 both
+  state this split rather than overclaiming the digest check.
+- `ARITHMETIC_OVERFLOW` is unreachable through escrow events because the caps
+  are far below `u64`. The checked arithmetic is still exercised directly by
+  the tests so the guard is proved present rather than assumed.
 - The verifier reproduces 2,297 canonical JCS bytes and manifest digest
   `2a8923d40615589cc9c9ef90598c0cec56b72a7efa103cf8c05aceb5b54dc698` from the
   checked-in manifest, and fails closed when a recorded vector key is never
@@ -147,62 +180,72 @@ behavior.
 No executable Founder Seat, revenue distribution, production escrow, biometric
 verifier, packaged Founder Node, AI service, controlled application runtime,
 resource cloud, bridge, liquidity system, wallet, public testnet, or mainnet is
-implemented. The Founder issuance schedule, permission transitions, and revenue
-routing now exist only as independent Python models, not as C++ consensus
-behavior.
+implemented. The Founder issuance schedule, permission transitions, revenue
+routing, and escrow payouts now exist only as independent Python models, not as
+C++ consensus behavior.
 
-Within `first-goal.md`, the three models satisfy requirements 1 through 10 and
-12 in model form and contribute to 13 and 14. These remain open:
+Within `first-goal.md`, the four models satisfy requirements 1 through 12 in
+model form and contribute to 13 and 14. Requirements 13 through 15 remain open:
+the remaining adversarial and multi-year scenarios, and the accepted report
+distinguishing proved accounting from unresolved policy.
 
-- requirement 11: venture, community-grant, and developer escrow payout
-  capabilities that cannot spend through the issuance capability and whose
-  accepted payouts cannot exceed available custody; and
-- requirements 13 through 15: the remaining adversarial and multi-year
-  scenarios and the accepted report distinguishing proved accounting from
-  unresolved policy.
-
-The three models are also not joined. A seat purchased in the sale model is not
-an activated seat in the economy model, and a seat identifier in a routing
-snapshot is not proved to be either, because the activation height rule and the
+The four models are only partly joined. The escrow model is the first to bind
+another: it takes opening custody from a recorded `founder-economy-simulator-v1`
+state by digest, a one-way read that changes nothing in the economy model. The
+others remain unjoined. A seat purchased in the sale model is not an activated
+seat in the economy model, and a seat identifier in a routing snapshot is not
+proved to be either, because the activation height rule and the
 purchase-to-activation transition are unsettled. Enrollment, biometric
 identity, managers, and same-cycle liveness proof for a performance recipient
 are not modelled, and the last of those cannot be without the unresolved
 performance policy. The per-principal seat bound is not yet a per-human bound.
 
-Routing proves accounting, not policy. Nothing shows that the activity metric
-is fair, that a snapshot reflects a real machine, that a creator or product is
-legitimately approved, or that the transaction-fee amount rule is sound. The
-per-seat balance carry has no storage bound at 100,000 seats, and no claim or
-push mechanism moves a credited balance into a spendable account.
+Routing and escrow payouts prove accounting, not policy. Nothing shows that the
+activity metric is fair, that a snapshot reflects a real machine, that a creator
+or product is legitimately approved, that the transaction-fee amount rule is
+sound, that any AI evaluation is well made, that an approval threshold is safe,
+or that a payout recipient is legitimate. The per-seat balance carry has no
+storage bound at 100,000 seats, escrow recipient balances have no storage bound
+either, and no claim or push mechanism moves a credited balance into a spendable
+account. An escrow capability is modelled as a record; the signed envelope,
+replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Create one bounded M2 issue for escrow payout capabilities, satisfying
-`first-goal.md` requirement 11. Model separate venture, community-grant, and
-developer escrows whose accepted payouts cannot exceed available custody and
-whose spending capability is separate from any issuance capability.
+Create one bounded M2 issue for the multi-year and adversarial scenario suite,
+satisfying `first-goal.md` requirement 13. Requirements 1 through 12 now hold in
+model form, so what remains before the milestone report is evidence that the
+four models survive long runs and hostile inputs rather than only their own
+fixtures.
 
-Make it an additive model, as the two previous slices were. This is not an
-extension of `founder_economy`: that model credits escrow custody through
-`credit_custody` but has no spend transition, and its invariant is
-`typed custody == issued supply`, so custody can only grow. A payout would
-break both that invariant and the schema ADR 0018 froze. Take escrow custody as
-an opening input bound to a recorded `founder-economy-simulator-v1` state.
+Cover at minimum a complete 731-cycle population run in the economy model, a
+concentration scenario at the 1,000-seat per-principal bound, a routing run
+whose active population changes every cycle including empty cycles, and an
+escrow run that exhausts every envelope and drains every escrow. Add
+restart-equivalence evidence by replaying a prefix and comparing state digests,
+and property tests over seeded random event sequences that assert each model's
+conservation equations rather than its recorded totals.
 
-Keep the AI evaluation, milestone and tranche policy, and approval thresholds
-as supplied research inputs; prove only custody conservation and capability
-containment. Keep `founder-economy-simulator-v1`, `founder-seat-schedule-v1`,
-and `revenue-routing-v1` vectors frozen, and do not change C++ consensus in
-that slice.
+Keep this additive. Do not change the `founder-economy-manifest-v1`,
+`founder-economy-simulator-v1`, `founder-seat-schedule-v1`,
+`revenue-routing-v1`, or `escrow-payout-v1` schemas, vectors, or digests; a
+scenario that cannot be expressed in an accepted schema is evidence about the
+schema and should be recorded as such rather than met by widening it. Do not
+change C++ consensus in that slice.
+
+Requirement 15's ADR obligation is already satisfied per model by ADRs 0017
+through 0021; requirement 14's report should follow the scenario suite, not
+precede it.
 
 ## Blockers
 
 None for the next action.
 
-Three founder-reserved decisions are recorded but not yet blocking: whether an
+Four founder-reserved decisions are recorded but not yet blocking: whether an
 inactive referred cycle creates the referral permission, direct-channel
-eligibility policy, and the Founder activity metric with its grace allowance,
-performance ranking, winner count, and tie rule. Each is supplied per action as
-an explicit research input and recorded in the trace, so the models report them
-rather than inventing one. They become blocking at the M3 consensus transition,
-not in the next slice.
+eligibility policy, the Founder activity metric with its grace allowance,
+performance ranking, winner count, and tie rule, and the AI funding framework
+with its evaluation criteria, milestone and tranche policy, and approval
+thresholds. Each is supplied per action as an explicit research input and
+recorded in the trace, so the models report them rather than inventing one.
+They become blocking at the M3 consensus transition, not in the next slice.
