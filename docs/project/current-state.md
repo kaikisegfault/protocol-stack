@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-08-03
+Last updated: 2026-08-04
 
 ## Phase
 
@@ -17,8 +17,15 @@ verifier that derives every recorded value from the loaded manifest and live
 runs.
 
 Issue #79 delivered the Founder Seat sale model satisfying `first-goal.md`
-requirement 8 and is merged at `c03262f`. No C++, consensus, devnet, or
-previously accepted simulator behavior changed in either slice.
+requirement 8 and is merged at `c03262f`.
+
+Issue #82 delivered commercial revenue and transaction-fee routing satisfying
+`first-goal.md` requirements 9 and 10 and is merged at `5029c00`. It added
+`revenue-routing-v1`, ADR 0020, the independent `simulation/revenue_routing/`
+model, a third normative vector file, and a verifier whose `walk.py` is a
+second implementation the recorded file and the model must both agree with. No
+C++, consensus, devnet, or previously accepted simulator behavior changed in
+any of these slices.
 
 ## What works now
 
@@ -52,6 +59,13 @@ previously accepted simulator behavior changed in either slice.
   4,231,855,000, enforcing the 100,000-seat capacity and the 1,000-seat
   per-principal bound at their boundaries. It models the sale only; a purchased
   seat is not yet an activated seat.
+- The revenue routing model splits a native commercial payment 45/45/10, halves
+  the creator share for the 22.5/22.5 product-creator case, routes the floored
+  shares' remainder to the Founder pool under a bound proved by exhaustive scan
+  of all 200 residues, routes 100% of a transaction fee to a separate Founder
+  fee pool, and distributes both pools per accounting cycle over a bound
+  active-seat snapshot while carrying each residue forward. It creates no
+  native units and routes value a constitutional channel already issued.
 - The one-word `proceed`, `conclude`, and `status` workflows reconstruct,
   deliver, and report repository state.
 
@@ -73,15 +87,17 @@ previously accepted simulator behavior changed in either slice.
   balances.
 
 These are target requirements, not runnable Founder behavior. Issue #71 added a
-specification, JSON manifest, and fixed vectors; issue #77 added a
-specification, ADR, Python model, vectors, and verifier for them. Neither
-changed current transaction bytes, C++ state, devnet supply, existing simulator
-schemas, bridge, wallet, AI, biometric, or resource behavior.
+specification, JSON manifest, and fixed vectors; issues #77, #79, and #82 each
+added a specification, ADR, Python model, vectors, and verifier for part of
+them. None changed current transaction bytes, C++ state, devnet supply,
+existing simulator schemas, bridge, wallet, AI, biometric, or resource
+behavior.
 
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
-- Issues #71, #77, and #79 are the M2 deliveries; PRs #72 and #78 are merged.
+- Issues #71, #77, #79, and #82 are the M2 deliveries; PRs #72, #78, #80, and
+  #83 are merged.
 - After PR #72, commits `de9903e` and `4947c46` replaced the Codex agent layout
   with Claude Code and simplified the authorship rules.
 - Issue #77 and PR #78 merged at `9aeac23`. PR final-head Actions run
@@ -92,16 +108,28 @@ schemas, bridge, wallet, AI, biometric, or resource behavior.
   30852439693 and post-merge run 30853305170 both passed the complete hosted
   matrix — scope classification, GCC and Clang debug, both sanitizers, and the
   aggregate required check.
+- Issue #82 and PR #83 merged by rebase at `5029c00`. PR final-head Actions run
+  30896652965 passed the complete hosted matrix. Squash merge is disabled on
+  this repository; use `--rebase`.
 - No delivery branch, open PR, additional worktree, or generated build
-  directory remains from either delivery.
-- Local evidence on `c03262f`: 67 Founder Economy tests and 49 Founder Seat
-  tests pass; the economy verifier derives 139 manifest and 65 simulator values
-  and the seat verifier derives 96 values while confirming an independent walk
-  of the constitutional rule agrees with the model on all 1,000 blocks;
-  repository metadata and link validation, `git diff --check`, and the focused
-  verifier unit tests pass.
-- Both verifiers fail closed when a recorded vector key is never derived, and
-  the economy verifier was confirmed to fail on a tampered recorded value.
+  directory remains from any delivery.
+- Local evidence on `5029c00`: 67 Founder Economy tests, 49 Founder Seat tests,
+  and 57 revenue routing tests pass; the economy verifier derives 139 manifest
+  and 65 simulator values, the seat verifier derives 96 values while confirming
+  an independent walk of the constitutional rule agrees with the model on all
+  1,000 blocks, and the routing verifier derives 200 values while confirming an
+  independent replay agrees with the model and with 2,400 contract share
+  computations; repository metadata and link validation, `git diff --check`,
+  and the focused verifier unit tests pass.
+- All three verifiers fail closed when a recorded vector key is never derived.
+  The economy and routing verifiers were both confirmed to fail on a tampered
+  recorded value.
+- The routing remainder bound is proved, not asserted: the remainder depends
+  only on `amount mod 200`, so scanning all 200 residues in both creator cases
+  is complete. It is at most 2 atomic units with one creator and 3 with two.
+- Routing share arithmetic uses the amount's quotient and remainder. The direct
+  `45 * amount / 100` form leaves `u64` above roughly 7.4% of maximum supply,
+  so it would have rejected a representable payment as an overflow.
 - The verifier reproduces 2,297 canonical JCS bytes and manifest digest
   `2a8923d40615589cc9c9ef90598c0cec56b72a7efa103cf8c05aceb5b54dc698` from the
   checked-in manifest, and fails closed when a recorded vector key is never
@@ -112,52 +140,69 @@ schemas, bridge, wallet, AI, biometric, or resource behavior.
 - Scope classification correctly selects `full` because Python source, CMake,
   and vector paths are not lightweight metadata.
 - No dependency, workflow, C++ source, generated build directory, or additional
-  worktree is part of the issue #77 result.
+  worktree is part of any M2 result.
 
 ## Remaining gap
 
 No executable Founder Seat, revenue distribution, production escrow, biometric
 verifier, packaged Founder Node, AI service, controlled application runtime,
 resource cloud, bridge, liquidity system, wallet, public testnet, or mainnet is
-implemented. The Founder issuance schedule and permission transitions now exist
-only as an independent Python model, not as C++ consensus behavior.
+implemented. The Founder issuance schedule, permission transitions, and revenue
+routing now exist only as independent Python models, not as C++ consensus
+behavior.
 
-Within `first-goal.md`, the two models satisfy requirements 1 through 8 and 12
-in model form and contribute to 13 and 14. These remain open:
+Within `first-goal.md`, the three models satisfy requirements 1 through 10 and
+12 in model form and contribute to 13 and 14. These remain open:
 
-- requirement 9: commercial 45/45/10 routing with the 22.5/22.5 case and
-  explicit integer remainder behavior;
-- requirement 10: separate 100% transaction-fee routing to eligible Founders;
 - requirement 11: venture, community-grant, and developer escrow payout
-  capabilities that cannot spend through the issuance capability; and
+  capabilities that cannot spend through the issuance capability and whose
+  accepted payouts cannot exceed available custody; and
 - requirements 13 through 15: the remaining adversarial and multi-year
   scenarios and the accepted report distinguishing proved accounting from
   unresolved policy.
 
-The two models are also not joined. A seat purchased in the sale model is not
-an activated seat in the economy model, because the activation height rule and
-the purchase-to-activation transition are unsettled. Enrollment, biometric
+The three models are also not joined. A seat purchased in the sale model is not
+an activated seat in the economy model, and a seat identifier in a routing
+snapshot is not proved to be either, because the activation height rule and the
+purchase-to-activation transition are unsettled. Enrollment, biometric
 identity, managers, and same-cycle liveness proof for a performance recipient
 are not modelled, and the last of those cannot be without the unresolved
 performance policy. The per-principal seat bound is not yet a per-human bound.
 
+Routing proves accounting, not policy. Nothing shows that the activity metric
+is fair, that a snapshot reflects a real machine, that a creator or product is
+legitimately approved, or that the transaction-fee amount rule is sound. The
+per-seat balance carry has no storage bound at 100,000 seats, and no claim or
+push mechanism moves a credited balance into a spendable account.
+
 ## Exact next action
 
-Create one bounded M2 issue for commercial revenue and transaction-fee routing,
-satisfying `first-goal.md` requirements 9 and 10. Model the 45/45/10 commercial
-split with the 22.5/22.5 project and product creator case, explicit integer
-remainder behavior, and separate 100% transaction-fee routing to eligible
-active Founder Seats with no burn and no deduction from commercial revenue.
-Use a bound research placeholder for the active-seat snapshot, keep it additive
-so `founder-economy-simulator-v1` vectors stay frozen, and do not change C++
-consensus in that slice.
+Create one bounded M2 issue for escrow payout capabilities, satisfying
+`first-goal.md` requirement 11. Model separate venture, community-grant, and
+developer escrows whose accepted payouts cannot exceed available custody and
+whose spending capability is separate from any issuance capability.
+
+Make it an additive model, as the two previous slices were. This is not an
+extension of `founder_economy`: that model credits escrow custody through
+`credit_custody` but has no spend transition, and its invariant is
+`typed custody == issued supply`, so custody can only grow. A payout would
+break both that invariant and the schema ADR 0018 froze. Take escrow custody as
+an opening input bound to a recorded `founder-economy-simulator-v1` state.
+
+Keep the AI evaluation, milestone and tranche policy, and approval thresholds
+as supplied research inputs; prove only custody conservation and capability
+containment. Keep `founder-economy-simulator-v1`, `founder-seat-schedule-v1`,
+and `revenue-routing-v1` vectors frozen, and do not change C++ consensus in
+that slice.
 
 ## Blockers
 
 None for the next action.
 
-Two founder-reserved decisions are recorded but not yet blocking: whether an
-inactive referred cycle creates the referral permission, and direct-channel
-eligibility policy. Both are supplied per action as explicit research inputs
-and recorded in the trace, so the model reports them rather than inventing one.
-They become blocking at the M3 consensus transition, not in the next slice.
+Three founder-reserved decisions are recorded but not yet blocking: whether an
+inactive referred cycle creates the referral permission, direct-channel
+eligibility policy, and the Founder activity metric with its grace allowance,
+performance ranking, winner count, and tie rule. Each is supplied per action as
+an explicit research input and recorded in the trace, so the models report them
+rather than inventing one. They become blocking at the M3 consensus transition,
+not in the next slice.
