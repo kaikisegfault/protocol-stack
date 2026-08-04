@@ -429,11 +429,11 @@ without that field. The schema string is
 Each trace record contains the event index, event identifier, kind, acceptance
 flag, result code, and the journal. A rejected record has an empty journal.
 
-`metrics` reports the split numerators and denominator, the proved remainder
-bound, both routed totals, both pools, both carries, the System Creator
-balance, the creator and credited-seat counts, the closed-cycle count, and the
-largest single commercial and fee seat balances. Metrics are derived views; no
-invariant depends on them.
+`metrics` reports the split numerators, denominator, and creator split parts,
+both proved remainder bounds, both routed totals, both pools, both carries, the
+System Creator balance, the creator and credited-seat counts, the closed-cycle
+count, and the largest single creator, commercial seat, and fee seat balances.
+Metrics are derived views; no invariant depends on them.
 
 ## Resource limits
 
