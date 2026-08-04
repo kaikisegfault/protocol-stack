@@ -824,6 +824,32 @@ add_test(
     "${PROJECT_SOURCE_DIR}/tests/simulation/founder_seat_errors_test.py"
 )
 add_test(
+  NAME revenue-routing-vectors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tools/revenue-routing-vectors/verify.py"
+    --vectors
+    "${PROJECT_SOURCE_DIR}/test-vectors/revenue-routing-v1.txt"
+)
+add_test(
+  NAME revenue-routing-split
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/revenue_routing_split_test.py"
+)
+add_test(
+  NAME revenue-routing-model
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/revenue_routing_model_test.py"
+)
+add_test(
+  NAME revenue-routing-errors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/revenue_routing_errors_test.py"
+)
+add_test(
   NAME native-economy-model
   COMMAND
     "${Python3_EXECUTABLE}"

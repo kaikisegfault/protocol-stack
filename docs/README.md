@@ -62,6 +62,11 @@ the constitutional price schedule, pure-handler failure atomicity, and the
 separation of the seat sale model from the economy simulator. It accepts a
 research model contract, not a consensus transition.
 
+ADR 0020 selects the integer remainder rule for the commercial split, the
+creator sub-split shape, overflow-free share arithmetic, per-cycle Founder
+distribution with a carry, and separate fee accounting. It accepts a research
+model contract, not a consensus transition.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
@@ -96,6 +101,10 @@ immutable; compatible changes require a new version.
 - `specifications/founder-seat-schedule-v1.md`: integer USD denomination, the
   100,000-seat capacity, the block price schedule, the per-principal ownership
   bound, and the seat purchase transition; it is not a consensus transition.
+- `specifications/revenue-routing-v1.md`: the 45/45/10 commercial split, the
+  22.5/22.5 creator case, the proved integer remainder rule, separate 100%
+  transaction-fee routing, and per-cycle Founder distribution with a carry; it
+  is not a consensus transition.
 - `specifications/native-economy-simulation-v1.md`: versioned integer-only
   accounting, authority, event, trace, and metric contract for the independent
   M2 research simulator; it is not a consensus transition.
@@ -136,5 +145,14 @@ The Founder Seat sale model is `../simulation/founder_seats/` with vectors in
 `../test-vectors/founder-seat-schedule-v1.txt`.
 `../tools/founder-seat-vectors/verify.py` rederives the whole schedule by
 walking the constitutional rule and requires the walk, the model, and the
-recorded file to agree. Shared deterministic primitives used by both models
-live in `../simulation/common/`.
+recorded file to agree.
+
+The revenue and transaction-fee routing model is
+`../simulation/revenue_routing/` with vectors in
+`../test-vectors/revenue-routing-v1.txt`.
+`../tools/revenue-routing-vectors/verify.py` replays the whole scenario against
+an independent implementation in `walk.py` that uses the naive share form, and
+requires that replay, the model, and the recorded file to agree.
+
+Shared deterministic primitives used by these models live in
+`../simulation/common/`.
