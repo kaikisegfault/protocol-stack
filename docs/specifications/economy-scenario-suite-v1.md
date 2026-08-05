@@ -200,6 +200,14 @@ product creator, so both the 45 and the 22.5/22.5 creator cases recur.
 - After any cycle with an active population, the carry is strictly below the
   active seat count.
 
+The empty-cycle count is recorded three times over: from the generator's
+population rule, from the verifier's independent restatement of that rule, and
+from the trace, as the number of accepted closes that credited no seat. The
+third agrees with the other two only because every pool in this scenario exceeds
+its active seat count, so a per-seat share is never zero. That condition is
+stated rather than assumed, because a scenario with smaller payments would break
+the agreement without breaking the model.
+
 The run ends one cycle after an empty cycle so the recorded final state contains
 value that an empty cycle carried and a later cycle distributed.
 
@@ -304,7 +312,11 @@ not silently satisfy the property.
 
 `test-vectors/economy-scenario-suite-v1.txt` records, for each of the four
 scenarios, the event, accepted, and rejected counts, the four digests, the
-derived totals named above, and the ordered rejection codes.
+derived totals named above, and each named boundary probe's rejection code.
+
+It does not record an ordered trace. `escrow-payout-v1` records one because its
+scenario is 39 events; a 100,101-event scenario cannot be reviewed that way, and
+a file nobody reads is not evidence. The trace digest pins the order instead.
 
 The verifier in `tools/scenario-suite-vectors/` must:
 
