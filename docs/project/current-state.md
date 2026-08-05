@@ -4,7 +4,11 @@ Last updated: 2026-08-05
 
 ## Phase
 
-M2 — Founder Economy specification and proof, milestone slice M2.3. Issue #71
+M2 — Founder Economy specification and proof: **complete**. All sixteen
+`first-goal.md` requirements pass. The next milestone is M3, the Founder Economy
+devnet, and no M3 work has started.
+
+Issue #71
 and PR #72 adopted the first exact contract at merged commit `14486cb`: an
 eight-decimal `u64` denomination, all ten fixed issuance-channel caps, the
 731-cycle supply derivation, permission liabilities, research-only eligibility
@@ -37,8 +41,12 @@ Issue #88 delivered the multi-year and adversarial scenario suite satisfying
 the deterministic generators in `simulation/scenarios/`, a fifth normative
 vector file, and a verifier whose independence is closed-form derivation from
 Founder Constitution literals rather than a fifth walk. It added no model,
-transition, event kind, or canonical label. No C++, consensus, devnet, or
-previously accepted simulator behavior changed in any of these slices.
+transition, event kind, or canonical label.
+
+Issue #91 delivered `founder-economy-report-v1.md`, satisfying `first-goal.md`
+requirement 14, and this handoff satisfies requirement 16. No C++, consensus,
+devnet, or previously accepted simulator behavior changed in any of these
+slices.
 
 ## What works now
 
@@ -126,8 +134,8 @@ wallet, AI, biometric, or resource behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
-- Issues #71, #77, #79, #82, #85, and #88 are the M2 deliveries; PRs #72, #78,
-  #80, #83, #86, and #89 are merged.
+- Issues #71, #77, #79, #82, #85, #88, and #91 are the M2 deliveries; PRs #72,
+  #78, #80, #83, #86, #89, and #92 are merged.
 - After PR #72, commits `de9903e` and `4947c46` replaced the Codex agent layout
   with Claude Code and simplified the authorship rules.
 - Issue #77 and PR #78 merged at `9aeac23`. PR final-head Actions run
@@ -150,6 +158,10 @@ wallet, AI, biometric, or resource behavior.
   matrix — scope classification, GCC and Clang debug, both sanitizers, and the
   aggregate required check. Runs 31011546356 and 31011900980 were superseded by
   later pushes to the same branch and were cancelled.
+- Issue #91 and PR #92 merged by rebase at `7b4cd6a`, with post-merge run
+  31015245429 passing the focused metadata path; the hosted matrix was correctly
+  skipped for a documentation-only change. The preceding handoff merged at
+  `bc4272a` with post-merge run 31014389973.
 - No delivery branch, open PR, additional worktree, or generated build
   directory remains from any delivery.
 - Local evidence: 67 Founder Economy tests, 49 Founder Seat tests, 57 revenue
@@ -222,10 +234,11 @@ implemented. The Founder issuance schedule, permission transitions, revenue
 routing, and escrow payouts now exist only as independent Python models, not as
 C++ consensus behavior.
 
-Within `first-goal.md`, requirements 1 through 13 now hold in model and scenario
-form, and requirement 15's ADR obligation is satisfied by ADRs 0017 through
-0022. Requirement 14's report and requirement 16's milestone closure remain
-open.
+All sixteen `first-goal.md` requirements now pass: 1 through 13 in model and
+scenario form, 14 as `founder-economy-report-v1.md`, 15 as ADRs 0017 through
+0022, and 16 as hosted verification on each accepted commit plus this handoff.
+What that does and does not establish is stated in the report rather than
+summarized here.
 
 Restart equivalence is state equivalence under replay. It is not persistence,
 crash-consistency, or a snapshot format, and no model has any of those.
@@ -255,36 +268,35 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Create one bounded M2 issue for the Founder Economy proof report, satisfying
-`first-goal.md` requirement 14. Add
-`docs/project/founder-economy-report-v1.md`, following the existing
-`docs/project/*-report-v1.md` pattern. Requirements 1 through 13 now hold, so
-what remains is the accepted account of what they do and do not establish.
+M2 is closed. The first M3 implementation slice is the deterministic cycle
+boundary and the canonical Founder economy consensus encoding.
 
-The report must separate what the five accepted contracts and the scenario suite
-prove — exact integer accounting, every channel cap, conservation in every model
-that moves value, capability containment, failure atomicity, replay refusal, and
-determinism at multi-year scale — from what remains unresolved
-policy: the Founder activity metric and its grace allowance, performance ranking
-and tie rule, inactive-seat referral treatment, direct-channel eligibility, and
-the AI funding framework. It must state the models' remaining joins, the storage
-bounds the long runs make concrete, and the production-safety claims that no
-deterministic run establishes.
+Create one bounded M3 issue for a `founder-economy-consensus-v1` specification
+and its ADR, defining, before any C++ is written:
 
-Reuse the evidence already recorded rather than regenerating it: the five vector
-files, the five verifiers' derived counts, and the scenario suite's 133 vectors
-across 107,812 events are the report's inputs.
+1. the eligible cycle as a chain-defined height or epoch rule, since the
+   Founder Constitution states that local wall clocks cannot decide consensus
+   and every other Founder transition depends on this representation;
+2. the canonical state keys and encodings for seats, channels, pending
+   permissions, and typed custody, extending `protocol-primitives-v1` and
+   `ledger-transition-v1` rather than inventing a parallel scheme;
+3. the transaction encodings for seat activation, permission evaluation,
+   permission exercise, and capped direct issuance, with their numeric
+   consensus receipt codes; and
+4. the compatibility boundary against the accepted M1 transaction bytes, state,
+   and roots.
 
-Keep this additive and documentation-only. Do not change the
-`founder-economy-manifest-v1`, `founder-economy-simulator-v1`,
-`founder-seat-schedule-v1`, `revenue-routing-v1`, `escrow-payout-v1`, or
-`economy-scenario-suite-v1` schemas, vectors, or digests, and do not change C++
-consensus in that slice. It qualifies for the focused metadata verification
-path.
+This is the right first slice because the cycle rule is the one representation
+M2 explicitly deferred, `founder-economy-report-v1.md` names it first among the
+M3 obligations, and no other Founder transition can be specified without it.
 
-After the report, requirement 16 closes M2: risk-proportionate hosted
-verification on the exact accepted commit and a clean handoff naming the first
-M3 implementation slice.
+Use the `change-protocol` skill: this is consensus, encoding, and
+state-transition work. Keep the accepted M2 schemas, vectors, and digests
+frozen; the C++ implementation and cross-language vectors follow the accepted
+specification in a later slice, not this one.
+
+The four founder-reserved decisions below become blocking during M3. The cycle
+boundary itself does not depend on any of them, so this slice is unblocked.
 
 ## Blockers
 
@@ -299,5 +311,9 @@ thresholds. Each is supplied per action as an explicit research input and
 recorded in the trace, so the models report them rather than inventing one. The
 scenario suite supplies thousands of them from stated deterministic rules that
 `economy-scenario-suite-v1` records as scenario parameters, which is volume, not
-resolution. They become blocking at the M3 consensus transition, not in the next
-slice.
+resolution.
+
+They become blocking during M3, when a research input must become a consensus
+rule. The next slice specifies the cycle boundary and the canonical encoding,
+neither of which depends on any of the four, so it is unblocked. Ask the owner
+at the point where a specific transition would otherwise have to invent one.
