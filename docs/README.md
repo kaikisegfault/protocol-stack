@@ -114,6 +114,9 @@ immutable; compatible changes require a new version.
 - `specifications/escrow-payout-v1.md`: the three founder-directed escrows,
   bounded escrow-scoped spending capabilities, custody conservation, and the
   ordered payout rejection conditions; it is not a consensus transition.
+- `specifications/economy-scenario-suite-v1.md`: the multi-year and adversarial
+  scenarios the four accepted M2 models must survive, their restart-equivalence
+  method, and the seeded property tests; it defines no model or transition.
 - `specifications/native-economy-simulation-v1.md`: versioned integer-only
   accounting, authority, event, trace, and metric contract for the independent
   M2 research simulator; it is not a consensus transition.
@@ -171,6 +174,14 @@ constitutional literals and recomputes the founder-economy state digest with its
 own helper. It additionally runs `founder-economy-simulator-v1` on that model's
 accepted fixture and requires the escrow fixture's opening custody to be bound to
 that run, which is provenance the model itself cannot check.
+
+The multi-year and adversarial scenarios over all four models are
+`../simulation/scenarios/` with vectors in
+`../test-vectors/economy-scenario-suite-v1.txt`. They add no model, transition,
+or canonical label; every event parses under an accepted model's schema.
+`../tools/scenario-suite-vectors/verify.py` runs all four scenarios and requires
+each recorded total to match both the live run and a closed-form derivation from
+Founder Constitution literals that imports nothing from `../simulation/`.
 
 Shared deterministic primitives used by these models live in
 `../simulation/common/`.
