@@ -176,10 +176,11 @@ transition to either, and it is still the one-way read ADR 0021 accepted.
   fails loudly if either model's canonical state shape changes.
 - No accepted schema, vector, or digest changes. No native units are created,
   and no C++ consensus, devnet, or bridge behavior is touched.
-- The suite adds roughly 25 seconds of hosted verification. The economy
-  population run is the dominant cost because the simulator clones state per
-  event; that cost is a property of the accepted model and is not worked around
-  here.
+- The suite adds roughly a minute of hosted verification per matrix job: about
+  24 seconds for the vector verifier, 19 for the market scenarios, 15 for the
+  multi-year scenarios, and 3 for the properties. The economy population run is
+  the dominant cost because the simulator clones state per event; that cost is a
+  property of the accepted model and is not worked around here.
 - A scenario parameter is now a recorded contract. Changing one changes recorded
   digests and requires a new suite version.
 - Long-run conservation is proved. Nothing here shows that the activity metric

@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-08-04
+Last updated: 2026-08-05
 
 ## Phase
 
@@ -30,8 +30,15 @@ requirement 11. It added `escrow-payout-v1`, ADR 0021, the independent
 `simulation/escrow_payout/` model, a fourth normative vector file, and a
 verifier that both replays the scenario against an independent walk and proves
 the fixture's opening custody is bound to a live `founder-economy-simulator-v1`
-run. No C++, consensus, devnet, or previously accepted simulator behavior
-changed in any of these slices.
+run.
+
+Issue #88 delivered the multi-year and adversarial scenario suite satisfying
+`first-goal.md` requirement 13. It added `economy-scenario-suite-v1`, ADR 0022,
+the deterministic generators in `simulation/scenarios/`, a fifth normative
+vector file, and a verifier whose independence is closed-form derivation from
+Founder Constitution literals rather than a fifth walk. It added no model,
+transition, event kind, or canonical label. No C++, consensus, devnet, or
+previously accepted simulator behavior changed in any of these slices.
 
 ## What works now
 
@@ -79,6 +86,15 @@ changed in any of these slices.
   envelope, an expiry, and revocation. Each escrow conserves independently, and
   a second capability-side account of the same value must agree. It creates no
   native units: custody is fixed at the bind and non-increasing afterwards.
+- The scenario suite runs those four models at multi-year scale. Three seats
+  staggered 61 ticks apart each complete all 731 cycles with disjoint inactive
+  cycles and performance reallocation; exactly 100 principals at the 1,000-seat
+  bound absorb the whole 100,000-seat capacity; 122 routing cycles change their
+  active population every cycle, 25 of them empty; and every escrow is drained
+  and every envelope exhausted against custody the population run itself issued.
+  Restart equivalence holds under prefix replay and split resume, and seeded
+  property tests assert each model's conservation equations against its
+  published results rather than its recorded totals.
 - The one-word `proceed`, `conclude`, and `status` workflows reconstruct,
   deliver, and report repository state.
 
@@ -102,15 +118,16 @@ changed in any of these slices.
 These are target requirements, not runnable Founder behavior. Issue #71 added a
 specification, JSON manifest, and fixed vectors; issues #77, #79, #82, and #85
 each added a specification, ADR, Python model, vectors, and verifier for part of
-them. None changed current transaction bytes, C++ state, devnet supply,
-existing simulator schemas, bridge, wallet, AI, biometric, or resource
-behavior.
+them; issue #88 added a specification, ADR, deterministic generators, vectors,
+and verifier that exercise all four at multi-year scale. None changed current
+transaction bytes, C++ state, devnet supply, existing simulator schemas, bridge,
+wallet, AI, biometric, or resource behavior.
 
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
-- Issues #71, #77, #79, #82, and #85 are the M2 deliveries; PRs #72, #78, #80,
-  #83, and #86 are merged.
+- Issues #71, #77, #79, #82, #85, and #88 are the M2 deliveries; PRs #72, #78,
+  #80, #83, #86, and #89 are merged.
 - After PR #72, commits `de9903e` and `4947c46` replaced the Codex agent layout
   with Claude Code and simplified the authorship rules.
 - Issue #77 and PR #78 merged at `9aeac23`. PR final-head Actions run
@@ -128,6 +145,11 @@ behavior.
   30900989541 and post-merge run 30901790621 both passed the complete hosted
   matrix — scope classification, GCC and Clang debug, both sanitizers, and the
   aggregate required check.
+- Issue #88 and PR #89 merged by rebase at `20f7fcf`. PR final-head Actions run
+  31012045337 and post-merge run 31013129150 both passed the complete hosted
+  matrix — scope classification, GCC and Clang debug, both sanitizers, and the
+  aggregate required check. Runs 31011546356 and 31011900980 were superseded by
+  later pushes to the same branch and were cancelled.
 - No delivery branch, open PR, additional worktree, or generated build
   directory remains from any delivery.
 - Local evidence: 67 Founder Economy tests, 49 Founder Seat tests, 57 revenue
@@ -140,9 +162,25 @@ behavior.
   confirming an independent walk agrees with the model on all 39 events and
   that three caps match the Founder Constitution; repository metadata and link
   validation, `git diff --check`, and the focused verifier unit tests pass.
-- All four verifiers fail closed when a recorded vector key is never derived.
+- The scenario suite adds 48 tests — 14 multi-year, 15 market, 19 property — and
+  133 vectors derived across 107,812 events in four scenarios. Every monetary
+  total agrees with a closed-form derivation in
+  `tools/scenario-suite-vectors/expected.py`, which imports nothing from
+  `simulation/`; changing one constitutional literal there was confirmed to fail
+  five vectors, including the maximum-supply accounting.
+- All five verifiers fail closed when a recorded vector key is never derived.
   The economy, routing, and escrow verifiers were each confirmed to fail on a
-  tampered recorded value.
+  tampered recorded value. The suite verifier was confirmed to fail three ways:
+  a tampered value, a recorded key never derived, and a derived key the file
+  does not carry.
+- The escrow drain scenario binds the population run's own state digest, so the
+  escrows are proved drained of exactly what three seats issued into them across
+  their complete 731-cycle windows. The empty-cycle count is recorded three
+  times: from the generator's population rule, from the verifier's independent
+  restatement of it, and from the trace as closes that credited no seat. The
+  third agrees with the other two only because every pool in that scenario
+  exceeds its active seat count, which the specification states rather than
+  assumes.
 - The routing remainder bound is proved, not asserted: the remainder depends
   only on `amount mod 200`, so scanning all 200 residues in both creator cases
   is complete. It is at most 2 atomic units with one creator and 3 with two.
@@ -184,14 +222,19 @@ implemented. The Founder issuance schedule, permission transitions, revenue
 routing, and escrow payouts now exist only as independent Python models, not as
 C++ consensus behavior.
 
-Within `first-goal.md`, the four models satisfy requirements 1 through 12 in
-model form and contribute to 13 and 14. Requirements 13 through 15 remain open:
-the remaining adversarial and multi-year scenarios, and the accepted report
-distinguishing proved accounting from unresolved policy.
+Within `first-goal.md`, requirements 1 through 13 now hold in model and scenario
+form, and requirement 15's ADR obligation is satisfied by ADRs 0017 through
+0022. Requirement 14's report and requirement 16's milestone closure remain
+open.
 
-The four models are only partly joined. The escrow model is the first to bind
-another: it takes opening custody from a recorded `founder-economy-simulator-v1`
-state by digest, a one-way read that changes nothing in the economy model. The
+Restart equivalence is state equivalence under replay. It is not persistence,
+crash-consistency, or a snapshot format, and no model has any of those.
+
+The four models are only partly joined. The escrow model is the only one that
+binds another: it takes opening custody from a recorded
+`founder-economy-simulator-v1` state by digest, a one-way read that changes
+nothing in the economy model, and the scenario suite now exercises that binding
+against a complete 731-cycle population run rather than a small fixture. The
 others remain unjoined. A seat purchased in the sale model is not an activated
 seat in the economy model, and a seat identifier in a routing snapshot is not
 proved to be either, because the activation height rule and the
@@ -212,30 +255,36 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Create one bounded M2 issue for the multi-year and adversarial scenario suite,
-satisfying `first-goal.md` requirement 13. Requirements 1 through 12 now hold in
-model form, so what remains before the milestone report is evidence that the
-four models survive long runs and hostile inputs rather than only their own
-fixtures.
+Create one bounded M2 issue for the Founder Economy proof report, satisfying
+`first-goal.md` requirement 14. Add
+`docs/project/founder-economy-report-v1.md`, following the existing
+`docs/project/*-report-v1.md` pattern. Requirements 1 through 13 now hold, so
+what remains is the accepted account of what they do and do not establish.
 
-Cover at minimum a complete 731-cycle population run in the economy model, a
-concentration scenario at the 1,000-seat per-principal bound, a routing run
-whose active population changes every cycle including empty cycles, and an
-escrow run that exhausts every envelope and drains every escrow. Add
-restart-equivalence evidence by replaying a prefix and comparing state digests,
-and property tests over seeded random event sequences that assert each model's
-conservation equations rather than its recorded totals.
+The report must separate what the five accepted contracts and the scenario suite
+prove — exact integer accounting, every channel cap, conservation in every model
+that moves value, capability containment, failure atomicity, replay refusal, and
+determinism at multi-year scale — from what remains unresolved
+policy: the Founder activity metric and its grace allowance, performance ranking
+and tie rule, inactive-seat referral treatment, direct-channel eligibility, and
+the AI funding framework. It must state the models' remaining joins, the storage
+bounds the long runs make concrete, and the production-safety claims that no
+deterministic run establishes.
 
-Keep this additive. Do not change the `founder-economy-manifest-v1`,
-`founder-economy-simulator-v1`, `founder-seat-schedule-v1`,
-`revenue-routing-v1`, or `escrow-payout-v1` schemas, vectors, or digests; a
-scenario that cannot be expressed in an accepted schema is evidence about the
-schema and should be recorded as such rather than met by widening it. Do not
-change C++ consensus in that slice.
+Reuse the evidence already recorded rather than regenerating it: the five vector
+files, the five verifiers' derived counts, and the scenario suite's 133 vectors
+across 107,812 events are the report's inputs.
 
-Requirement 15's ADR obligation is already satisfied per model by ADRs 0017
-through 0021; requirement 14's report should follow the scenario suite, not
-precede it.
+Keep this additive and documentation-only. Do not change the
+`founder-economy-manifest-v1`, `founder-economy-simulator-v1`,
+`founder-seat-schedule-v1`, `revenue-routing-v1`, `escrow-payout-v1`, or
+`economy-scenario-suite-v1` schemas, vectors, or digests, and do not change C++
+consensus in that slice. It qualifies for the focused metadata verification
+path.
+
+After the report, requirement 16 closes M2: risk-proportionate hosted
+verification on the exact accepted commit and a clean handoff naming the first
+M3 implementation slice.
 
 ## Blockers
 
@@ -247,5 +296,8 @@ eligibility policy, the Founder activity metric with its grace allowance,
 performance ranking, winner count, and tie rule, and the AI funding framework
 with its evaluation criteria, milestone and tranche policy, and approval
 thresholds. Each is supplied per action as an explicit research input and
-recorded in the trace, so the models report them rather than inventing one.
-They become blocking at the M3 consensus transition, not in the next slice.
+recorded in the trace, so the models report them rather than inventing one. The
+scenario suite supplies thousands of them from stated deterministic rules that
+`economy-scenario-suite-v1` records as scenario parameters, which is volume, not
+resolution. They become blocking at the M3 consensus transition, not in the next
+slice.
