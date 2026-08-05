@@ -870,6 +870,32 @@ add_test(
     "${PROJECT_SOURCE_DIR}/tests/simulation/escrow_payout_errors_test.py"
 )
 add_test(
+  NAME scenario-suite-vectors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tools/scenario-suite-vectors/verify.py"
+    --vectors
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-scenario-suite-v1.txt"
+)
+add_test(
+  NAME scenario-multiyear
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/scenario_multiyear_test.py"
+)
+add_test(
+  NAME scenario-market
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/scenario_market_test.py"
+)
+add_test(
+  NAME scenario-properties
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/scenario_property_test.py"
+)
+add_test(
   NAME native-economy-model
   COMMAND
     "${Python3_EXECUTABLE}"
@@ -1042,6 +1068,15 @@ set_tests_properties(
   kernel-differential
   PROPERTIES
     TIMEOUT 300
+)
+# The multi-year scenarios run tens of thousands of events, and the economy
+# simulator clones state per event, so give them room on a slow hosted runner.
+set_tests_properties(
+  scenario-suite-vectors
+  scenario-multiyear
+  scenario-market
+  PROPERTIES
+    TIMEOUT 600
 )
 if(PROTOCOL_STACK_ENABLE_FUZZING)
   add_test(
