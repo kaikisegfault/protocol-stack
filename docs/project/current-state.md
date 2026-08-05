@@ -240,6 +240,12 @@ scenario form, 14 as `founder-economy-report-v1.md`, 15 as ADRs 0017 through
 What that does and does not establish is stated in the report rather than
 summarized here.
 
+Requirement 3 carries a qualifier worth stating plainly. The models represent a
+cycle as a deterministic integer index, so no wall clock reaches a transition,
+which is what that requirement forbids. Binding that index to a chain-defined
+height or epoch is deferred, and it is the first M3 slice for exactly that
+reason.
+
 Restart equivalence is state equivalence under replay. It is not persistence,
 crash-consistency, or a snapshot format, and no model has any of those.
 
