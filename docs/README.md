@@ -27,6 +27,10 @@
   operating-cost, refundable-bond, lock, churn, and honest-entry boundaries.
 - `project/minimum-entitlement-report-v1.md`: exact M2 strictly funded floor,
   smallest-honest-entry, and hidden-principal split boundaries.
+- `project/founder-economy-report-v1.md`: the accepted M2 milestone report,
+  separating what the six Founder Economy contracts and their verifiers prove
+  about deterministic accounting from the policy, provenance, identity,
+  storage, and production-safety claims none of them establishes.
 
 ## Architecture
 
