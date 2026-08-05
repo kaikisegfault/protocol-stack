@@ -94,20 +94,25 @@ def check_seats(check: Checker, result: dict[str, Any]) -> None:
     _probes(check, "seats", result, SEAT_PROBES)
 
 
-def check_routing(check: Checker, result: dict[str, Any]) -> None:
+def check_routing(
+    check: Checker,
+    result: dict[str, Any],
+    generated_empty_cycles: int,
+) -> None:
     _trace(check, "routing", result)
     state = result["final_state"]
     totals = x.routing_totals()
 
     check.equal("routing.cycles", x.ROUTING_CYCLES)
     check.agree("routing.cycles_closed", state["current_cycle"], x.ROUTING_CYCLES)
+    # The generator's population rule and this module's restatement of the
+    # specification are the two sides here; the trace supplies a third below.
     check.agree(
-        "routing.empty_cycles",
-        sum(
-            1
-            for cycle in range(x.ROUTING_CYCLES)
-            if x.active_seat_count(cycle) == 0
-        ),
+        "routing.empty_cycles", generated_empty_cycles, x.empty_cycle_count()
+    )
+    check.agree(
+        "routing.cycles_without_seat_credits",
+        _cycles_without_seat_credits(result),
         x.empty_cycle_count(),
     )
     check.agree(
@@ -132,6 +137,25 @@ def check_routing(check: Checker, result: dict[str, Any]) -> None:
     )
     _check_conservation(check, state, totals)
     _probes(check, "routing", result, ROUTING_PROBES)
+
+
+def _cycles_without_seat_credits(result: dict[str, Any]) -> int:
+    """Count accepted closes whose journal credited no seat.
+
+    An empty population credits nobody and carries its whole pool, so this is
+    the model's own account of how many cycles had no active seat. It agrees
+    with the population rule only because every pool in this scenario exceeds
+    its active seat count, which is what makes a per-seat share non-zero.
+    """
+    return sum(
+        1
+        for record in result["records"]
+        if record["kind"] == "close_cycle"
+        and record["accepted"]
+        and not any(
+            item["bucket"].startswith("seat:") for item in record["journal"]
+        )
+    )
 
 
 def _check_conservation(

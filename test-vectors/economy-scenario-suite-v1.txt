@@ -117,6 +117,10 @@ routing.result_digest=0a13e59db8e59e4caf56f0c574daad2fdf47dd2ef5a22c066a133ff95d
 routing.cycles=122
 routing.cycles_closed=122
 routing.empty_cycles=25
+# The model's own account of the same fact: a close that credited no
+# seat. It agrees with the population rule only because every pool here
+# exceeds its active seat count, so a per-seat share is never zero.
+routing.cycles_without_seat_credits=25
 routing.commercial_routed_total=129380875377
 routing.fee_routed_total=61716323
 routing.system_creator_balance=12938087483

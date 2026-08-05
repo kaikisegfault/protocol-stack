@@ -62,6 +62,20 @@ def check_trace(check: Checker, result: dict[str, Any]) -> None:
     )
 
 
+def _accepted_payouts(result: dict[str, Any], escrow_id: str) -> int:
+    """Count the payouts the run actually charged to one escrow."""
+    return sum(
+        1
+        for record in result["records"]
+        if record["kind"] == "execute_payout"
+        and record["accepted"]
+        and any(
+            item["bucket"] == f"custody:{escrow_id}"
+            for item in record["journal"]
+        )
+    )
+
+
 def check_drain(check: Checker, result: dict[str, Any]) -> None:
     """Each escrow opened at its closed-form total and ended empty."""
     state = result["final_state"]
@@ -83,10 +97,12 @@ def check_drain(check: Checker, result: dict[str, Any]) -> None:
             state["paid_out_total"][escrow_id],
             opening,
         )
+        # The live count comes from the trace; the closed form is the split
+        # this module derives from the opening custody it already checked.
         check.agree(
             f"escrow{index}.payout_count",
+            _accepted_payouts(result, escrow_id),
             len(x.payout_amounts(opening)),
-            x.PAYOUTS_PER_ESCROW,
         )
         check.equal(
             f"escrow{index}.recipient_count",

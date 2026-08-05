@@ -19,11 +19,24 @@ PROBES = (
     ("unreferred_referral", "probe-unreferred-referral"),
 )
 
+# (vector name, custody key, the channel whose whole issuance it holds)
 CUSTODY_SINGLETONS = (
-    ("venture_escrow", "venture_escrow:global"),
-    ("community_grants_escrow", "community_grants_escrow:global"),
-    ("developer_incentives_escrow", "developer_incentives_escrow:global"),
-    ("system_creator_company", "system_creator_company:global"),
+    ("venture_escrow", "venture_escrow:global", "venture_escrow"),
+    (
+        "community_grants_escrow",
+        "community_grants_escrow:global",
+        "community_grants_escrow",
+    ),
+    (
+        "developer_incentives_escrow",
+        "developer_incentives_escrow:global",
+        "developer_incentives_escrow",
+    ),
+    (
+        "system_creator_company",
+        "system_creator_company:global",
+        "system_creator_issuance_royalty",
+    ),
 )
 
 
@@ -100,12 +113,10 @@ def check_custody(check: Checker, result: dict[str, Any]) -> None:
         )
 
     channels = x.economy_channel_totals()
-    for name, key in CUSTODY_SINGLETONS:
-        closed_form = channels[
-            "system_creator_issuance_royalty" if name == "system_creator_company"
-            else name
-        ]
-        check.agree(f"economy.custody.{name}", custody[key], closed_form)
+    for name, key, channel_id in CUSTODY_SINGLETONS:
+        check.agree(
+            f"economy.custody.{name}", custody[key], channels[channel_id]
+        )
 
     check.agree(
         "economy.custody_total",
