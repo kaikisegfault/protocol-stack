@@ -35,6 +35,7 @@ from economy_checks import check_economy
 from escrow_checks import check_escrow
 from market_checks import check_routing, check_seats
 
+from simulation.scenarios.routing_population import empty_cycles
 from simulation.scenarios.suite import ROOT, run_suite
 
 
@@ -62,7 +63,7 @@ def main() -> int:
     check_denomination(check)
     check_economy(check, results["economy_population"])
     check_seats(check, results["seat_concentration"])
-    check_routing(check, results["routing_population"])
+    check_routing(check, results["routing_population"], len(empty_cycles()))
     check_escrow(
         check, results["escrow_drain"], results["economy_population"]
     )
