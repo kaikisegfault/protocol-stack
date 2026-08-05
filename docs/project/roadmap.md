@@ -25,7 +25,7 @@ Exit: the retained
 pass across GCC, Clang, sanitizers, differential sequences, restart, and
 four-replica audits.
 
-## M2 — Founder Economy specification and proof — active
+## M2 — Founder Economy specification and proof — complete
 
 ### M2.1 Direction adoption
 
@@ -54,7 +54,13 @@ escrows, replay, overflow, and multi-year issuance.
 Exit: every requirement in `first-goal.md` passes. No numerical rule becomes a
 production C++ transition solely because it appears in the constitution.
 
-## M3 — Founder Economy devnet
+All sixteen requirements now pass across six accepted contracts, ADRs 0017
+through 0022, five verifiers, and the multi-year scenario suite. The accepted
+account of what that does and does not establish is
+[`founder-economy-report-v1.md`](founder-economy-report-v1.md). No numerical
+rule became a C++ transition in this milestone.
+
+## M3 — Founder Economy devnet — active
 
 Specify canonical transactions and state, implement the accepted M2 economy in
 C++, extend the independent Python model and fixed cross-language vectors, and
