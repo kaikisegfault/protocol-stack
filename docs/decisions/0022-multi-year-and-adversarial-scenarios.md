@@ -1,7 +1,14 @@
 # ADR 0022: Multi-year and adversarial scenario evidence
 
-- Status: Accepted for M2 evidence; not a consensus activation
+- Status: Accepted for M2 evidence; scenario parameters superseded by ADR
+  0023; not a consensus activation
 - Date: 2026-08-05
+
+> **Superseded in part on 2026-08-07.** The scenario parameters that stood
+> in for unresolved founder decisions are answered by
+> [ADR 0023](0023-founder-decisions-activity-referrals-and-supply.md), so a
+> v2 suite derives them instead of supplying them. The evidence method below
+> still holds.
 
 ## Context
 

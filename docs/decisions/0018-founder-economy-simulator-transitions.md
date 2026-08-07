@@ -1,7 +1,14 @@
 # ADR 0018: Founder Economy simulator transition and encoding shape
 
-- Status: Accepted for M2 simulation; not a consensus activation
+- Status: Accepted for M2 simulation; referral and activity transitions
+  superseded by ADR 0023; not a consensus activation
 - Date: 2026-08-03
+
+> **Superseded in part on 2026-08-07.** The referral permission became an
+> unconditional direct-mint benefit and the supplied activity and referral
+> research inputs became derived rules, per
+> [ADR 0023](0023-founder-decisions-activity-referrals-and-supply.md). The
+> transition, journal, and atomicity shape below still hold.
 
 ## Context
 

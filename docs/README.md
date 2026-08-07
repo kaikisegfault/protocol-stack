@@ -77,6 +77,23 @@ authority-before-funds rejection ordering, and the reconciliation of custody
 against capability accounting. It accepts a research model contract, not a
 consensus transition.
 
+ADR 0022 selects closed-form derivation over a second model walk as the
+independence argument for the multi-year scenario suite, defines restart
+equivalence as state equivalence under replay, and requires seeded property
+tests to assert published values rather than a model's own invariants. It
+accepts an evidence contract, not a consensus transition.
+
+ADR 0023 records the founder decisions of 2026-08-07: the maximum supply
+revised to 56,993,950,100 before any issuance, the doubled unconditional
+referral benefit relocated to the direct-mint channels, the unreferred
+performance pool that keeps that channel exactly consumed, the 18-hour activity
+threshold with its 6-hour fragmentable grace allowance, highest-uptime
+performance reallocation with equal splitting among ties, and an uptime path
+that derives validator duties on-chain, proves resource provision by
+challenge-response, and gives the Ecosystem AI a dispute window rather than a
+signature that could freeze payment. It supersedes the economic figures in ADR
+0017 and the unresolved markers in ADRs 0018 and 0022, and activates nothing.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.

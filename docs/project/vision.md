@@ -32,8 +32,12 @@ with audited and replaceable lower-level components.
 ## Economic direction
 
 The ledger recognizes one native asset with an intended permanent maximum of
-55,743,940,100 display units. It provides no public asset creation, burn,
+56,993,950,100 display units. It provides no public asset creation, burn,
 unrestricted contract deployment, or general wrapped-asset balance.
+
+That maximum was revised upward from 55,743,940,100 on 2026-08-07 to fund the
+doubled Founder referral channel, while the project is still research software
+and nothing has been issued. The figure becomes immutable at genesis.
 
 Founder Node issuance, capped direct-mint programs, commercial revenue,
 transaction fees, treasuries, and escrows follow the founder-directed channels

@@ -1,7 +1,15 @@
 # ADR 0017: Founder Economy denomination and fixed manifest
 
-- Status: Accepted for M2 specification; not a consensus activation
+- Status: Accepted for M2 specification; economic figures superseded by ADR
+  0023; not a consensus activation
 - Date: 2026-08-03
+
+> **Superseded in part on 2026-08-07.** The maximum supply, the referral
+> channel cap, and the placement of the referral channel were revised by
+> [ADR 0023](0023-founder-decisions-activity-referrals-and-supply.md). The
+> denomination, the manifest shape, and the reasoning below still hold, and
+> this record is not rewritten: it states what was decided and proved at the
+> time.
 
 ## Context
 
