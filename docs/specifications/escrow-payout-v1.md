@@ -4,7 +4,7 @@ Status: Accepted M2 research model contract; not a consensus transition
 
 This document fixes the deterministic integer behavior of the three
 founder-directed escrows when value leaves them, as required by requirement 11
-of [`first-goal.md`](../project/first-goal.md).
+of [`m2-founder-economy-proof.md`](../project/goals/m2-founder-economy-proof.md).
 
 The change is classified as economics, authority, and state-transition shape.
 ADR 0021 records the alternatives and decision. It changes no M1 bytes, C++

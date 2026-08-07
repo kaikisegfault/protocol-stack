@@ -5,7 +5,7 @@
 
 ## Context
 
-`first-goal.md` requirement 8 asks for exact 100,000-seat and
+`m2-founder-economy-proof.md` requirement 8 asks for exact 100,000-seat and
 1,000-seats-per-person limits plus price-schedule test vectors, including the
 USD 100 first block, the USD 1,000 boundary, the USD 91,900 final block, and
 the USD 4,231,855,000 derived full-sale proceeds.

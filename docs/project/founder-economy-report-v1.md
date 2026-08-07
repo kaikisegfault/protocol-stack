@@ -4,9 +4,20 @@ Status: reproducible M2 evidence about deterministic accounting; not production
 tokenomics, not an economic-safety assessment, and not a mainnet-readiness
 claim
 
+> **The direction this report measures was revised on 2026-08-07**, after the
+> report was accepted, by
+> [ADR 0023](../decisions/0023-founder-decisions-activity-referrals-and-supply.md).
+> The maximum supply became 56,993,950,100, the referral benefit doubled and
+> moved to the direct-mint channels, and the activity and performance rules
+> that this report lists as unresolved are now decided. Every figure below
+> remains an accurate statement about `founder-economy-manifest-v1` and the
+> models built on it, which is what was actually proved. It is not rewritten,
+> because a report edited to match a later decision would no longer be
+> evidence of anything.
+
 ## Question
 
-`first-goal.md` asked for an exact, reproducible, independent specification and
+`m2-founder-economy-proof.md` asked for an exact, reproducible, independent specification and
 simulator for the founder-directed native economy before any C++ consensus
 behavior changes, and for a report that distinguishes proved accounting from
 unresolved policy and production safety.

@@ -4,7 +4,7 @@ Status: Accepted M2 research model contract; not a consensus transition
 
 This document fixes the deterministic integer routing of native-asset
 commercial payments and protocol transaction fees required by requirements 9
-and 10 of [`first-goal.md`](../project/first-goal.md).
+and 10 of [`m2-founder-economy-proof.md`](../project/goals/m2-founder-economy-proof.md).
 
 The change is classified as economics, input encoding, and state-transition
 shape. ADR 0020 records the alternatives and decision. It changes no M1 bytes,

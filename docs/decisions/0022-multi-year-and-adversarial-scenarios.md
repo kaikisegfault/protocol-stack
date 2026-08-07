@@ -12,7 +12,7 @@
 
 ## Context
 
-`first-goal.md` requirement 13 asks for positive, negative, boundary, replay,
+`m2-founder-economy-proof.md` requirement 13 asks for positive, negative, boundary, replay,
 overflow, atomicity, population-change, inactivity, concentration, and complete
 multi-year scenarios.
 

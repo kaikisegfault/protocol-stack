@@ -2,6 +2,14 @@
 
 Status: Accepted M2 research model contract; not a consensus transition
 
+> **Superseded on 2026-08-07 by
+> [ADR 0023](../decisions/0023-founder-decisions-activity-referrals-and-supply.md).**
+> The referral became an unconditional direct-mint benefit rather than a
+> permission created by a seat's cycle evaluation, and the supplied activity
+> and referral research inputs became derived rules. A version two contract is
+> M3 work. This document is not edited: it states the contract that the
+> accepted M2 models implement and that the M2 evidence proves.
+
 This document defines the deterministic input, transition, failure, and digest
 contract for the independent standard-library Python Founder Economy
 simulator. It realizes the abstract accounting state and transitions specified

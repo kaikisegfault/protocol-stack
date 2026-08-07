@@ -51,22 +51,56 @@ population changes, inactivity, accumulated permissions, cap exhaustion,
 rounding, concentration, direct-channel abuse boundaries, insufficient
 escrows, replay, overflow, and multi-year issuance.
 
-Exit: every requirement in `first-goal.md` passes. No numerical rule becomes a
-production C++ transition solely because it appears in the constitution.
+Exit: every requirement in
+[`goals/m2-founder-economy-proof.md`](goals/m2-founder-economy-proof.md)
+passes. No numerical rule becomes a production C++ transition solely because it
+appears in the constitution.
 
-All sixteen requirements now pass across six accepted contracts, ADRs 0017
+All sixteen requirements passed across six accepted contracts, ADRs 0017
 through 0022, five verifiers, and the multi-year scenario suite. The accepted
 account of what that does and does not establish is
 [`founder-economy-report-v1.md`](founder-economy-report-v1.md). No numerical
 rule became a C++ transition in this milestone.
 
+The founder direction those contracts encode was revised on 2026-08-07 by ADR
+0023. The M2 evidence stands as proof about `founder-economy-manifest-v1`; the
+revised contract is M3 work.
+
 ## M3 — Founder Economy devnet — active
 
-Specify canonical transactions and state, implement the accepted M2 economy in
-C++, extend the independent Python model and fixed cross-language vectors, and
-operate adversarial four-node economic scenarios through restart and recovery.
+Restate the economy contract under the revised direction, specify canonical
+transactions and state, implement it in C++, extend the independent Python
+model and fixed cross-language vectors, and operate adversarial four-node
+economic scenarios through restart and recovery.
 
-Exit: the devnet enforces the fixed cap and accepted Founder, commercial, fee,
+### M3.1 Revised economic contract
+
+Accept `founder-economy-manifest-v2`: the 56,993,950,100 maximum, the referral
+channel doubled and relocated to direct-mint, and the unreferred performance
+pool. Revise the simulator so the referral is unconditional, and so activity
+and performance reallocation are derived rules rather than supplied research
+inputs. Regenerate every dependent model, vector, and digest.
+
+### M3.2 Consensus encoding and cycle boundary
+
+Define the eligible cycle in chain heights or epochs, the canonical state keys,
+the transaction encodings, the numeric receipt codes, and the compatibility
+boundary against accepted M1 bytes.
+
+### M3.3 Uptime derivation
+
+Derive validator duties from on-chain participation, prove resource provision
+by challenge-response, and bound the AI dispute window so its expiry finalises
+a cycle without a signature.
+
+### M3.4 C++ implementation and devnet
+
+Implement the accepted contract in the deterministic ledger kernel with
+cross-language vectors, then operate adversarial four-node scenarios through
+restart and recovery.
+
+Exit: every requirement in [`first-goal.md`](first-goal.md) passes and the
+devnet enforces the fixed cap and accepted Founder, referral, commercial, fee,
 and escrow accounting with deterministic replica agreement.
 
 ## M4 — Founder identity, seats, and authority

@@ -9,6 +9,9 @@
 - `project/first-goal.md`: current operational outcome and acceptance evidence.
 - `project/goals/m1-sovereign-devnet-alpha.md`: retained acceptance contract
   for the completed first runnable devnet milestone.
+- `project/goals/m2-founder-economy-proof.md`: retained acceptance contract for
+  the completed Founder Economy proof milestone, whose figures predate the
+  2026-08-07 direction revision.
 - `project/roadmap.md`: ordered milestones.
 - `project/current-state.md`: verified handoff between sessions.
 - `project/native-economy-simulation-report-v1.md`: reproducible M2 seeded

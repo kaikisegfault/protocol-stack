@@ -5,7 +5,7 @@ Status: Accepted M2 research model contract; not a consensus transition
 This document fixes the integer USD denomination, the 100,000-seat capacity,
 the block price schedule, the per-principal ownership bound, and the seat sale
 transition required by requirement 8 of
-[`first-goal.md`](../project/first-goal.md).
+[`m2-founder-economy-proof.md`](../project/goals/m2-founder-economy-proof.md).
 
 The change is classified as economics, input encoding, and state-transition
 shape. ADR 0019 records the alternatives and decision. It changes no M1 bytes,

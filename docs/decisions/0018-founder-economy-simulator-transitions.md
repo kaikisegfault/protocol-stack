@@ -18,7 +18,7 @@ channels, and the permission-liability model, and
 accounting state. Both deliberately stopped before defining an executable
 transition set.
 
-`first-goal.md` requires an independent standard-library Python implementation
+`m2-founder-economy-proof.md` requires an independent standard-library Python implementation
 with frozen fixtures and digests that proves the maximum supply and every
 economic route before C++ behavior changes. Three concrete gaps blocked that:
 
@@ -142,7 +142,7 @@ vectors fail closed.
   before hashing, so an independent implementation could compute a different
   digest from semantically identical input.
 - **Model seat pricing, enrollment, commercial routing, and fee routing now:**
-  each is required by `first-goal.md` but none depends on this slice's
+  each is required by `m2-founder-economy-proof.md` but none depends on this slice's
   accounting core, and bundling them would produce one unreviewable change.
   They follow as separate bounded slices against this contract.
 - **Verify the vector file by review:** the previous slice did this, which is
@@ -164,7 +164,7 @@ vectors fail closed.
 - The simulator models the seat graph only. Seat pricing, the 1,000-seat
   per-person bound, enrollment, biometric identity, managers, commercial
   routing, fee routing, and escrow payout remain unmodelled and are named
-  explicitly as remaining `first-goal.md` requirements.
+  explicitly as remaining `m2-founder-economy-proof.md` requirements.
 - Recipient checks for an inactive cycle prove activation, uniqueness, and
   exclusion of the source seat, but cannot prove same-cycle liveness without
   the unresolved performance policy. That gap is recorded rather than filled.

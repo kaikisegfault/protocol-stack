@@ -3,9 +3,16 @@
 Status: Accepted M2 evidence contract; not a consensus transition and not a
 new model
 
+> **Superseded on 2026-08-07 by
+> [ADR 0023](../decisions/0023-founder-decisions-activity-referrals-and-supply.md).**
+> The scenario parameters that stood in for unresolved founder decisions are
+> now decided, so a version two suite derives them instead of supplying them.
+> This document is not edited: it states the contract that the accepted M2
+> models implement and that the M2 evidence proves.
+
 This document fixes the deterministic multi-year and adversarial scenarios that
 the four accepted M2 models must survive, as required by requirement 13 of
-[`first-goal.md`](../project/first-goal.md).
+[`m2-founder-economy-proof.md`](../project/goals/m2-founder-economy-proof.md).
 
 The change is classified as evidence, not economics. ADR 0022 records the
 alternatives and decision. It changes no M1 bytes, C++ state, configured devnet

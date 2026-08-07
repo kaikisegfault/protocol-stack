@@ -5,7 +5,7 @@
 
 ## Context
 
-`first-goal.md` requirement 11 asks for separate venture, community-grant, and
+`m2-founder-economy-proof.md` requirement 11 asks for separate venture, community-grant, and
 developer escrows whose balances cannot be spent through the issuance
 capability and whose accepted payouts cannot exceed available custody.
 

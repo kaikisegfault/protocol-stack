@@ -3,6 +3,14 @@
 Status: Accepted M2 economic input and liability contract; not a consensus
 transition
 
+> **Superseded on 2026-08-07 by
+> [ADR 0023](../decisions/0023-founder-decisions-activity-referrals-and-supply.md).**
+> The maximum supply became 56,993,950,100 display units, the referral channel
+> cap doubled to 2,500,020,000, and that channel moved from the Founder Node
+> group to the direct-mint group. A version two contract is M3 work. This
+> document is not edited: it states the contract that the accepted M2 models
+> implement and that the M2 evidence proves.
+
 This document fixes the integer denomination, issuance-channel manifest,
 exact supply derivation, and permission-liability semantics required before
 the Founder Economy simulator is implemented. It is normative for the M2
