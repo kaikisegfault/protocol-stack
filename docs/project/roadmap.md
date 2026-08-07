@@ -69,6 +69,13 @@ operate adversarial four-node economic scenarios through restart and recovery.
 Exit: the devnet enforces the fixed cap and accepted Founder, commercial, fee,
 and escrow accounting with deterministic replica agreement.
 
+The first slice is accepted:
+[`founder-economy-consensus-v1.md`](../specifications/founder-economy-consensus-v1.md)
+and ADR 0023 fix the height-derived cycle, the version-two genesis and chain,
+the canonical economy state and commitment, the five Founder transaction
+encodings, and the numeric receipt codes. No implementation exists yet, and the
+normative vectors and cross-language harnesses follow in the next slice.
+
 ## M4 — Founder identity, seats, and authority
 
 Specify permanent seat records, the 100,000-seat capacity, per-human limit,
