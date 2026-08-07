@@ -1,12 +1,18 @@
 # Current state
 
-Last updated: 2026-08-05
+Last updated: 2026-08-07
 
 ## Phase
 
 M2 — Founder Economy specification and proof: **complete**. All sixteen
-`first-goal.md` requirements pass. The next milestone is M3, the Founder Economy
-devnet, and no M3 work has started.
+`first-goal.md` requirements pass.
+
+M3 — Founder Economy devnet: **active**. Its first slice is delivered. Issue #94
+and PR #95 merged at `d6ad528`, adding `founder-economy-consensus-v1` and
+ADR 0023: the height-derived issuance cycle, the version-two genesis and chain
+parameters, the canonical economy state and its commitment, five transaction
+encodings, and the numeric receipt codes. It is a specification. No C++, Python,
+vector, or digest changed, and nothing in the repository executes those bytes.
 
 Issue #71
 and PR #72 adopted the first exact contract at merged commit `14486cb`: an
@@ -106,6 +112,53 @@ slices.
 - The one-word `proceed`, `conclude`, and `status` workflows reconstruct,
   deliver, and report repository state.
 
+## Accepted M3 consensus contract
+
+`founder-economy-consensus-v1` and ADR 0023 are accepted and unimplemented.
+Nothing below is runnable; it is the contract the implementation must satisfy.
+
+- The eligible cycle is a global epoch grid with a per-seat offset.
+  `epoch_index(h) = h / epoch_blocks`, a seat activated in epoch `a` holds
+  epochs `a + 1` through `a + 731`, and a cycle is evaluable only once
+  `epoch_index(h)` has passed it. Cycle zero starts at the next boundary so all
+  731 cycles are exactly `epoch_blocks` blocks for every seat. The 24-hour
+  figure is a target realized by configuration, not a guarantee: the protocol
+  counts blocks, and a halt changes a cycle's wall-clock duration with no rule
+  detecting it.
+- Schema version 2 defines a new chain, not a migration. Its 157-octet genesis
+  fixes total supply, the initial fee pool, and the account count at exactly
+  zero, making the constitution's no-genesis-allocation rule a decoder check.
+  The unchanged chain-ID derivation over different genesis bytes separates it
+  from any version-one chain.
+- Five transaction kinds carry seat activation, base and referral permission
+  evaluation, permission exercise, and capped direct issuance, each with
+  canonical bytes, a normative check order, a replay key, and a resource bound.
+  Result codes 16 through 36 sit above the unchanged version-one codes 0
+  through 8, and a 49-octet version-two receipt carries the transaction kind so
+  a code is read against the kind that produced it.
+- Economy state is six record types under a domain-separated RFC 9162 tree,
+  committed beside the unchanged accounts tree in a version-two state root.
+  Pending permissions are four `u16` watermarks per seat rather than records,
+  so a seat's whole accumulation history costs 8 octets on the active path.
+  Unconditional economy state at full seat capacity is 200,018 records and
+  6,800,388 octets.
+- Total supply now changes, replacing a version-one invariant. It rises only
+  through exercise and direct issuance, bounded by channel caps whose checked
+  sum is exactly the supply limit. There is still no burn, confiscation, or
+  public asset-creation operation.
+- Three deferred founder decisions travel as signed, payload-bound, expiring
+  attestations from three genesis-configured keys. The specification states in
+  those words that they are devnet stand-ins with total control over the
+  outcomes those policies would decide, that no production network may
+  configure them, and what consensus still contains regardless of the attester:
+  no attestation can change a leg amount, the 57,430,000,000-atomic base total,
+  a channel cap, or the supply limit.
+- Version-one transfer bytes, genesis, accounts tree, state root, and receipt
+  are unchanged, and the version-one transfer remains valid on a version-two
+  chain with its own labels and codes. Six narrowings against the frozen M2
+  models are recorded in the specification rather than by editing an accepted
+  contract.
+
 ## Adopted founder direction
 
 - One native asset with an intended fixed maximum of 55,743,940,100 display
@@ -127,15 +180,20 @@ These are target requirements, not runnable Founder behavior. Issue #71 added a
 specification, JSON manifest, and fixed vectors; issues #77, #79, #82, and #85
 each added a specification, ADR, Python model, vectors, and verifier for part of
 them; issue #88 added a specification, ADR, deterministic generators, vectors,
-and verifier that exercise all four at multi-year scale. None changed current
-transaction bytes, C++ state, devnet supply, existing simulator schemas, bridge,
-wallet, AI, biometric, or resource behavior.
+and verifier that exercise all four at multi-year scale; and issue #94 added the
+specification and ADR that fix how the accepted economy would be encoded in
+consensus. None changed current transaction bytes, C++ state, devnet supply,
+existing simulator schemas, bridge, wallet, AI, biometric, or resource behavior.
 
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
 - Issues #71, #77, #79, #82, #85, #88, and #91 are the M2 deliveries; PRs #72,
   #78, #80, #83, #86, #89, and #92 are merged.
+- Issue #94 and PR #95 are the first M3 delivery, merged by rebase at `d6ad528`.
+  PR final-head Actions run 31191322748 and post-merge run 31191385407 both
+  passed the focused metadata path; the hosted matrix was correctly skipped for
+  a documentation-only change.
 - After PR #72, commits `de9903e` and `4947c46` replaced the Codex agent layout
   with Claude Code and simplified the authorship rules.
 - Issue #77 and PR #78 merged at `9aeac23`. PR final-head Actions run
@@ -234,17 +292,22 @@ implemented. The Founder issuance schedule, permission transitions, revenue
 routing, and escrow payouts now exist only as independent Python models, not as
 C++ consensus behavior.
 
+The accepted consensus contract does not narrow that gap. No version-two byte is
+encoded or decoded anywhere, no vector file for it exists, and the C++ kernel is
+unchanged. A specification that no implementation has been checked against is
+also unproved: the encoding may contain errors that only a harness will find.
+
 All sixteen `first-goal.md` requirements now pass: 1 through 13 in model and
 scenario form, 14 as `founder-economy-report-v1.md`, 15 as ADRs 0017 through
 0022, and 16 as hosted verification on each accepted commit plus this handoff.
 What that does and does not establish is stated in the report rather than
 summarized here.
 
-Requirement 3 carries a qualifier worth stating plainly. The models represent a
-cycle as a deterministic integer index, so no wall clock reaches a transition,
-which is what that requirement forbids. Binding that index to a chain-defined
-height or epoch is deferred, and it is the first M3 slice for exactly that
-reason.
+Requirement 3's qualifier is now half closed. The models represent a cycle as a
+deterministic integer index, so no wall clock reaches a transition, which is
+what that requirement forbids. `founder-economy-consensus-v1` binds that index
+to a chain-defined epoch, but only on paper: no code derives a cycle from a
+height, and the models still take the index directly.
 
 Restart equivalence is state equivalence under replay. It is not persistence,
 crash-consistency, or a snapshot format, and no model has any of those.
@@ -274,39 +337,53 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-M2 is closed. The first M3 implementation slice is the deterministic cycle
-boundary and the canonical Founder economy consensus encoding.
+Make `founder-economy-consensus-v1` executable, starting with the reference
+encoder and the normative vectors rather than with C++.
 
-Create one bounded M3 issue for a `founder-economy-consensus-v1` specification
-and its ADR, defining, before any C++ is written:
+Create one bounded M3 issue for a standard-library Python implementation of the
+version-two bytes and the vector file it derives, following the established
+`tools/*-vectors/` pattern:
 
-1. the eligible cycle as a chain-defined height or epoch rule, since the
-   Founder Constitution states that local wall clocks cannot decide consensus
-   and every other Founder transition depends on this representation;
-2. the canonical state keys and encodings for seats, channels, pending
-   permissions, and typed custody, extending `protocol-primitives-v1` and
-   `ledger-transition-v1` rather than inventing a parallel scheme;
-3. the transaction encodings for seat activation, permission evaluation,
-   permission exercise, and capped direct issuance, with their numeric
-   consensus receipt codes; and
-4. the compatibility boundary against the accepted M1 transaction bytes, state,
-   and roots.
+1. encode and decode version-two genesis, the attestation preimage, and all five
+   transaction kinds, with the admission checks that are stateless;
+2. compute the six economy leaf layouts, the economy tree, and the version-two
+   state root, reusing the accepted version-one accounts-tree construction;
+3. execute the five transitions against the canonical state with their normative
+   check order, result codes, and no-write-on-failure behavior; and
+4. emit `test-vectors/founder-economy-consensus-v1.txt` covering the obligations
+   the specification lists, with a verifier that derives every recorded value and
+   fails closed when a recorded key is never derived or a value is tampered with.
 
-This is the right first slice because the cycle rule is the one representation
-M2 explicitly deferred, `founder-economy-report-v1.md` names it first among the
-M3 obligations, and no other Founder transition can be specified without it.
+This is the right next slice because a specification no implementation has been
+checked against is unproved, and the Python side is the cheaper place to find an
+encoding error. It is also where the version-one accounts tree, state-root
+construction, and Ed25519 handling get exercised against the new labels before
+the C++ kernel commits to them.
 
-Use the `change-protocol` skill: this is consensus, encoding, and
-state-transition work. Keep the accepted M2 schemas, vectors, and digests
-frozen; the C++ implementation and cross-language vectors follow the accepted
-specification in a later slice, not this one.
+The C++20 kernel implementing the same bytes, and the cross-language agreement
+that `protocol-primitives-v1` requires, follow in the slice after it. Keep the
+accepted M2 schemas, vectors, and digests frozen: the new model implements the
+consensus rules, not the M2 model's, and its vectors derive from the
+specification rather than from any M2 result digest.
 
-The four founder-reserved decisions below become blocking during M3. The cycle
-boundary itself does not depend on any of them, so this slice is unblocked.
+This slice is unblocked. It uses `max_performance_recipients = 64`, the devnet
+parameter the specification already fixes, so it does not depend on any of the
+four founder-reserved decisions.
 
 ## Blockers
 
 None for the next action.
+
+One founder-reserved decision is now close to blocking. The Founder performance
+winner count sets `max_performance_recipients`, and through it the reallocation
+storage bound: worst case is 1,973,700,000 octets with single-recipient
+reallocations and 57,237,300,000 at the 64-recipient ceiling, the second well
+beyond a minimum-spec Founder Node. ADR 0023 records that incentive bounds this
+in practice — exercise is permissionless and deletes the record while paying its
+recipient — but that incentive is not containment, and the consensus bound
+cannot be selected without the winner count. Ask the owner when the storage
+bound becomes the nearest dependency, which is the slice after the reference
+encoder, not this one.
 
 Four founder-reserved decisions are recorded but not yet blocking: whether an
 inactive referred cycle creates the referral permission, direct-channel
@@ -320,6 +397,14 @@ scenario suite supplies thousands of them from stated deterministic rules that
 resolution.
 
 They become blocking during M3, when a research input must become a consensus
-rule. The next slice specifies the cycle boundary and the canonical encoding,
-neither of which depends on any of the four, so it is unblocked. Ask the owner
-at the point where a specific transition would otherwise have to invent one.
+rule. That transition has now started rather than finished. The accepted
+encoding does not invent any of the four; it carries three of them as signed
+attestations from genesis-configured keys that the specification labels devnet
+stand-ins, and it fixes the referral policy result as a per-cycle supplied
+value. Each stand-in must be replaced by an accepted policy with its own
+specification before any public network, so the encoding defers the decisions
+without hiding them.
+
+Ask the owner at the point where a specific transition would otherwise have to
+invent one, or where a bound cannot be selected without an answer. The winner
+count reaches the second of those first, as recorded above.
