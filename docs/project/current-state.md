@@ -1,16 +1,30 @@
 # Current state
 
-Last updated: 2026-08-05
+Last updated: 2026-08-07
 
 ## Phase
 
-M2 — Founder Economy specification and proof: **complete**. All sixteen
-`first-goal.md` requirements pass. The next milestone is M3, the Founder Economy
-devnet, and no M3 work has started.
+M3 — Founder Economy devnet, not yet started. M2 completed on 2026-08-05 with
+all sixteen requirements of
+`goals/m2-founder-economy-proof.md` passing.
 
-Issue #71
-and PR #72 adopted the first exact contract at merged commit `14486cb`: an
-eight-decimal `u64` denomination, all ten fixed issuance-channel caps, the
+On 2026-08-07 the owner supplied the four outstanding founder decisions and
+revised the economy. ADR 0023 records them: the maximum supply is now
+56,993,950,100 display units, the Founder referral doubled to 34.2 units per
+cycle and moved to the direct-mint channels as an unconditional benefit,
+unreferred seats fund a monthly performance pool, a cycle is met at 18 hours of
+fully operational uptime with a 6-hour fragmentable grace allowance, and a
+failed cycle's 342 units go to the highest uptime that cycle.
+
+**The accepted models are therefore superseded as founder direction.** They
+implement `founder-economy-manifest-v1` and remain exactly as verified; the
+constitution now specifies a v2 they do not implement. Nothing about what runs
+today changed, because none of it activates anything.
+
+### How M2 was delivered
+
+Issue #71 and PR #72 adopted the first exact contract at merged commit
+`14486cb`: an eight-decimal `u64` denomination, all ten fixed issuance-channel caps, the
 731-cycle supply derivation, permission liabilities, research-only eligibility
 placeholders, ADR 0017, and normative vectors.
 
@@ -20,16 +34,16 @@ added `founder-economy-simulator-v1`, ADR 0018, the independent
 verifier that derives every recorded value from the loaded manifest and live
 runs.
 
-Issue #79 delivered the Founder Seat sale model satisfying `first-goal.md`
+Issue #79 delivered the Founder Seat sale model satisfying `goals/m2-founder-economy-proof.md`
 requirement 8 and is merged at `c03262f`.
 
 Issue #82 delivered commercial revenue and transaction-fee routing satisfying
-`first-goal.md` requirements 9 and 10 and is merged at `5029c00`. It added
+`goals/m2-founder-economy-proof.md` requirements 9 and 10 and is merged at `5029c00`. It added
 `revenue-routing-v1`, ADR 0020, the independent `simulation/revenue_routing/`
 model, a third normative vector file, and a verifier whose `walk.py` is a
 second implementation the recorded file and the model must both agree with.
 
-Issue #85 delivered escrow payout capabilities satisfying `first-goal.md`
+Issue #85 delivered escrow payout capabilities satisfying `goals/m2-founder-economy-proof.md`
 requirement 11. It added `escrow-payout-v1`, ADR 0021, the independent
 `simulation/escrow_payout/` model, a fourth normative vector file, and a
 verifier that both replays the scenario against an independent walk and proves
@@ -37,13 +51,13 @@ the fixture's opening custody is bound to a live `founder-economy-simulator-v1`
 run.
 
 Issue #88 delivered the multi-year and adversarial scenario suite satisfying
-`first-goal.md` requirement 13. It added `economy-scenario-suite-v1`, ADR 0022,
+`goals/m2-founder-economy-proof.md` requirement 13. It added `economy-scenario-suite-v1`, ADR 0022,
 the deterministic generators in `simulation/scenarios/`, a fifth normative
 vector file, and a verifier whose independence is closed-form derivation from
 Founder Constitution literals rather than a fifth walk. It added no model,
 transition, event kind, or canonical label.
 
-Issue #91 delivered `founder-economy-report-v1.md`, satisfying `first-goal.md`
+Issue #91 delivered `founder-economy-report-v1.md`, satisfying `goals/m2-founder-economy-proof.md`
 requirement 14, and this handoff satisfies requirement 16. No C++, consensus,
 devnet, or previously accepted simulator behavior changed in any of these
 slices.
@@ -68,13 +82,15 @@ slices.
   55,743,940,100-unit maximum as 5,574,394,010,000,000,000 eight-decimal atomic
   units, fixes a canonical ten-channel manifest and digest, and proves every
   per-cycle, per-seat, and complete-population supply product without
-  activating it.
+  activating it. That maximum is the superseded v1 figure; the constitution now
+  directs 56,993,950,100.
 - The independent Founder Economy simulator executes that contract. It loads
   the manifest under the ordered failure codes, tracks per-channel issued and
   outstanding amounts with checked `u64` arithmetic, and runs seat activation,
   base and referral permission evaluation, atomic exercise, and capped
   direct-channel issuance with deterministic trace, state, and result digests.
-  It is research software and activates nothing.
+  It is research software and activates nothing. Its referral transition is
+  superseded: a referral is now unconditional and direct-mint.
 - The Founder Seat sale model derives the complete constitutional price
   schedule and runs the full 100,000-seat sale end to end to exactly USD
   4,231,855,000, enforcing the 100,000-seat capacity and the 1,000-seat
@@ -108,11 +124,28 @@ slices.
 
 ## Adopted founder direction
 
-- One native asset with an intended fixed maximum of 55,743,940,100 display
-  units and no burn, secondary internal currency, or public asset creation.
+- One native asset with an intended fixed maximum of 56,993,950,100 display
+  units and no burn, secondary internal currency, or public asset creation. The
+  maximum was raised from 55,743,940,100 on 2026-08-07, before any issuance, to
+  fund the doubled referral channel; it becomes immutable at genesis.
 - Exactly 100,000 permanent biometric Founder Seats, all-in-one Founder Nodes,
   731-cycle issuance, fixed allocation channels, 45/45/10 commercial routing,
   and 100% Founder transaction-fee routing.
+- A cycle is met at 18 hours or more of cumulative fully operational uptime,
+  where fully operational means every node component healthy at once. The
+  6-hour grace allowance is cumulative and fragmentable.
+- A failed cycle's 342-unit Founder portion goes to the highest cumulative
+  uptime in that same cycle, shared equally among exact ties, restricted to
+  seats that met the cycle, with the integer remainder carried forward. It
+  settles when the failed seat next exercises a permission.
+- The Founder referral benefit is 34.2 units per cycle, unconditional, and a
+  direct-mint channel capped at 2,500,020,000. A seat bought without a recorded
+  referrer routes its allocation to a monthly unreferred performance pool, so
+  the channel is consumed exactly.
+- Uptime reaches consensus without trusting self-reports: validator duties are
+  derived on-chain, resource provision is proved by challenge-response, and the
+  Ecosystem AI holds a bounded dispute window rather than a signature that
+  could freeze payment.
 - One company-hosted logical Ecosystem AI outside consensus and outside
   Founder Nodes, with separately bounded biometric, moderation, project,
   treasury, and developer-program capabilities.
@@ -234,17 +267,15 @@ implemented. The Founder issuance schedule, permission transitions, revenue
 routing, and escrow payouts now exist only as independent Python models, not as
 C++ consensus behavior.
 
-All sixteen `first-goal.md` requirements now pass: 1 through 13 in model and
-scenario form, 14 as `founder-economy-report-v1.md`, 15 as ADRs 0017 through
-0022, and 16 as hosted verification on each accepted commit plus this handoff.
-What that does and does not establish is stated in the report rather than
-summarized here.
+All sixteen requirements of `goals/m2-founder-economy-proof.md` passed against
+`founder-economy-manifest-v1`. What that does and does not establish is stated
+in `founder-economy-report-v1.md` rather than summarized here.
 
-Requirement 3 carries a qualifier worth stating plainly. The models represent a
-cycle as a deterministic integer index, so no wall clock reaches a transition,
-which is what that requirement forbids. Binding that index to a chain-defined
-height or epoch is deferred, and it is the first M3 slice for exactly that
-reason.
+Two qualifiers matter for M3. The models represent a cycle as a deterministic
+integer index, so no wall clock reaches a transition, but binding that index to
+a chain-defined height or epoch is still undone. And the direction those models
+implement was superseded on 2026-08-07, so every accepted schema, vector, and
+digest is now evidence about a contract the constitution no longer directs.
 
 Restart equivalence is state equivalence under replay. It is not persistence,
 crash-consistency, or a snapshot format, and no model has any of those.
@@ -274,52 +305,53 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-M2 is closed. The first M3 implementation slice is the deterministic cycle
-boundary and the canonical Founder economy consensus encoding.
+Milestone slice M3.1: restate the economy contract under the revised direction.
+This comes before the consensus encoding, because the referral relocation and
+the derived activity rule change which transitions exist, not merely their
+parameters.
 
-Create one bounded M3 issue for a `founder-economy-consensus-v1` specification
-and its ADR, defining, before any C++ is written:
+Create one bounded M3 issue for `founder-economy-manifest-v2`, delivering:
 
-1. the eligible cycle as a chain-defined height or epoch rule, since the
-   Founder Constitution states that local wall clocks cannot decide consensus
-   and every other Founder transition depends on this representation;
-2. the canonical state keys and encodings for seats, channels, pending
-   permissions, and typed custody, extending `protocol-primitives-v1` and
-   `ledger-transition-v1` rather than inventing a parallel scheme;
-3. the transaction encodings for seat activation, permission evaluation,
-   permission exercise, and capped direct issuance, with their numeric
-   consensus receipt codes; and
-4. the compatibility boundary against the accepted M1 transaction bytes, state,
-   and roots.
+1. a specification and ADR fixing the 56,993,950,100 maximum
+   (5,699,395,010,000,000,000 atomic under the unchanged eight-decimal
+   denomination) and all ten channel caps, with the referral channel at
+   2,500,020,000 in the direct-mint group;
+2. the manifest JSON, its canonical byte length, and its digest;
+3. normative vectors and a verifier that derives every recorded value and fails
+   closed, at the standard the five existing verifiers set.
 
-This is the right first slice because the cycle rule is the one representation
-M2 explicitly deferred, `founder-economy-report-v1.md` names it first among the
-M3 obligations, and no other Founder transition can be specified without it.
+Prove in the vectors that the two subtotals — 41,981,330,000 and
+15,012,620,100 — add to the maximum exactly, and that
+`100,000 x 731 x 34.2 = 2,500,020,000` consumes the referral channel with no
+remainder.
 
-Use the `change-protocol` skill: this is consensus, encoding, and
-state-transition work. Keep the accepted M2 schemas, vectors, and digests
-frozen; the C++ implementation and cross-language vectors follow the accepted
-specification in a later slice, not this one.
+Do not change `simulation/founder_economy/` in that slice. The simulator
+revision is the next one, and it is larger: the referral becomes an
+unconditional direct-mint transition, `evaluate_referral_permission` and its
+`inactive_referral_result` input disappear, `evaluate_base_permission` takes a
+derived activity input and a derived winner set, and the unreferred performance
+pool is a new beneficiary. Every dependent model, vector, and digest —
+seat, routing, escrow, and the scenario suite — regenerates after that.
 
-The four founder-reserved decisions below become blocking during M3. The cycle
-boundary itself does not depend on any of them, so this slice is unblocked.
+Keep `founder-economy-manifest-v1` and every v1 model, vector, and digest in
+place and passing. They are the retained M2 evidence and are not edited to
+match the new direction.
 
 ## Blockers
 
 None for the next action.
 
-Four founder-reserved decisions are recorded but not yet blocking: whether an
-inactive referred cycle creates the referral permission, direct-channel
-eligibility policy, the Founder activity metric with its grace allowance,
-performance ranking, winner count, and tie rule, and the AI funding framework
-with its evaluation criteria, milestone and tranche policy, and approval
-thresholds. Each is supplied per action as an explicit research input and
-recorded in the trace, so the models report them rather than inventing one. The
-scenario suite supplies thousands of them from stated deterministic rules that
-`economy-scenario-suite-v1` records as scenario parameters, which is volume, not
-resolution.
+Two founder-reserved decisions remain open, and neither blocks M3.1 through
+M3.3: eligibility and anti-abuse mechanics for the liquidity-mining,
+impermanent-loss, HUB-verified-user, and mystery-box direct-mint channels, and
+the AI funding framework with its evaluation criteria, milestone and tranche
+policy, and approval thresholds. Both are still supplied to the models as bound
+research inputs.
 
-They become blocking during M3, when a research input must become a consensus
-rule. The next slice specifies the cycle boundary and the canonical encoding,
-neither of which depends on any of the four, so it is unblocked. Ask the owner
-at the point where a specific transition would otherwise have to invent one.
+The other two closed on 2026-08-07. Activity, grace, performance ranking, tie
+handling, inactive-seat referral treatment, and referral-channel eligibility are
+now decided in the Founder Constitution and ADR 0023, and must be implemented as
+stated rather than re-litigated or re-supplied as fixtures.
+
+Ask the owner at the point where a specific transition would otherwise have to
+invent one of the two that remain.

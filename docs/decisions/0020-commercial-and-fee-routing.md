@@ -5,7 +5,7 @@
 
 ## Context
 
-`first-goal.md` requirements 9 and 10 ask for commercial-payment routing of 45%
+`m2-founder-economy-proof.md` requirements 9 and 10 ask for commercial-payment routing of 45%
 to eligible Founders, 45% to the creator side, and 10% to the System Creator,
 including the 22.5/22.5 project and product case and explicit integer remainder
 behavior, plus separate transaction-fee routing of 100% to eligible Founders
