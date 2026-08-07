@@ -43,8 +43,9 @@ values are not project state.
 The intended production protocol must enforce:
 
 1. The ledger recognizes exactly one native asset.
-2. Issued supply never exceeds 55,743,940,100 display units expressed in the
-   accepted atomic denomination.
+2. Issued supply never exceeds 56,993,950,100 display units expressed in the
+   accepted atomic denomination. The figure is fixed at genesis; its revision
+   on 2026-08-07, before any issuance, is recorded in ADR 0023.
 3. No public operation creates another asset, burns native supply, or exceeds
    a founder-directed issuance-channel cap.
 4. Operational failure may remove a future benefit but does not slash,

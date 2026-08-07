@@ -3,7 +3,7 @@
 Status: founder-directed target for the complete ecosystem; not a claim of
 current implementation or production readiness
 
-Last affirmed: 2026-08-03
+Last affirmed: 2026-08-07
 
 ## Purpose and authority
 
@@ -144,13 +144,21 @@ bridge boundary never become generally transferable internal balances.
 The intended permanent maximum supply is exactly:
 
 ```text
-55,743,940,100 native units
+56,993,950,100 native units
 ```
 
 There is no discretionary inflation beyond the fixed channels below, no burn,
 and no deflation mechanism. Unissued capacity is not circulating supply. There
 is no founder-directed genesis allocation: native units enter circulation only
 through Founder Node issuance permissions and capped direct-mint channels.
+
+This maximum was revised on 2026-08-07, from 55,743,940,100, to fund the
+doubled Founder referral channel described below. The revision was made while
+the project is research software: no native unit has been issued, no holder
+exists, no C++ consensus enforces a supply figure, and the accepted M2 models
+activate nothing. "Permanent" binds the production protocol from genesis
+onward. After genesis the maximum is immutable, and no later revision of this
+kind is available.
 
 There is no founder-directed slashing, confiscation, or monetary penalty path.
 Operational failure removes eligibility for the applicable benefit; it does
@@ -165,29 +173,40 @@ must be accepted before these display-unit amounts become consensus values.
 
 ### Founder Node distribution channels
 
+These channels are funded by a Founder Seat's own eligible cycles.
+
 | Channel | Maximum native units |
 | --- | ---: |
 | Founder Node operator benefit | 25,000,200,000 |
 | Venture escrow | 12,500,100,000 |
 | Community-grants escrow | 2,500,020,000 |
 | Developer-incentives escrow | 1,250,010,000 |
-| Founder referral benefit | 1,250,010,000 |
 | System Creator issuance royalty | 731,000,000 |
-| **Founder Node channel subtotal** | **43,231,340,000** |
+| **Founder Node channel subtotal** | **41,981,330,000** |
 
 ### Direct-mint channels
+
+These channels are not funded by a seat's cycle evaluation, and their
+beneficiaries mint on their own schedule.
 
 | Channel | Maximum native units |
 | --- | ---: |
 | Liquidity mining | 7,500,060,000 |
 | Impermanent-loss protection | 3,750,030,000 |
+| Founder referral benefit | 2,500,020,000 |
 | HUB-verified-user incentives | 1,250,010,000 |
 | Initial mystery-box incentives | 12,500,100 |
-| **Direct-mint subtotal** | **12,512,600,100** |
+| **Direct-mint subtotal** | **15,012,620,100** |
 
 The two subtotals add exactly to the maximum supply. The channel caps are
 founder-directed. Eligibility, proof, anti-abuse, timing, and per-participant
-limits for each direct-mint channel remain to be specified and stress-tested.
+limits for each direct-mint channel other than the referral channel remain to
+be specified and stress-tested; the referral channel's eligibility is the
+recorded referrer relationship itself, which the ledger already holds.
+
+The Founder referral benefit moved from the Founder Node channels to the
+direct-mint channels on 2026-08-07, and doubled. Both changes are explained
+under [Founder referrals](#founder-referrals).
 
 ## Founder Node issuance
 
@@ -208,8 +227,9 @@ For an eligible cycle, the base permission is 574.3 native units:
 | Founder Node operator | 342.0 |
 | **Total** | **574.3** |
 
-A referred Founder Seat may additionally create a 17.1-unit permission for
-the recorded referrer, subject to the fixed referral-channel cap.
+The base permission is the whole of a seat's cycle entitlement. The referral
+benefit is no longer part of it; it is a direct-mint channel described under
+[Founder referrals](#founder-referrals).
 
 Permissions may be exercised immediately or accumulated. Until a permission
 is exercised, its units do not exist and are not circulating. Exercise is one
@@ -218,18 +238,147 @@ atomic distribution: every beneficiary is credited or none is.
 If a seat fails an eligibility cycle, the complete 574.3-unit base permission
 is retained. The escrow and System Creator portions keep their original
 beneficiaries; only the 342-unit Founder portion changes beneficiary to the
-deterministically selected best-performing active Founder Node or nodes for
-that cycle. The original inactive seat cannot recover that benefit later.
-
-The exact activity proof, grace allowance, performance metric, winner count,
-tie handling, anti-gaming rules, referral behavior during an inactive cycle,
-and bounded settlement method remain unresolved. They cannot be selected in a
-way that changes the fixed channel totals or permits population-wide hidden
-work in every transaction.
+best-performing active Founder Node or nodes for that cycle, as defined under
+[Performance reallocation](#performance-reallocation). The original inactive
+seat cannot recover that benefit later.
 
 After a seat completes its 731 eligible cycles, its issuance period ends. The
 seat remains permanent and may continue receiving active-seat commercial
 revenue and transaction-fee shares.
+
+### What counts as an eligible cycle
+
+A Founder Node is a single enclosed all-in-one service. It is not configurable,
+tunable, or partially operable by its founder: it either runs with every
+component healthy or it does not. There is no partial-credit mode, and no
+founder-side setting can change what is measured.
+
+A node is **fully operational** for a period only when every service it
+provides is healthy at once:
+
+- the full blockchain node;
+- validator duties under the deterministic active-set protocol;
+- transaction servicing;
+- application compute, storage, caching, and delivery; and
+- the workload and health agents.
+
+If any one component is degraded, failing, or absent, the node is not fully
+operational for that period, and the period counts as downtime.
+
+A cycle is **met** when cumulative fully operational uptime within the
+24-hour-target cycle is **18 hours or more**. Equivalently, a cycle fails when
+cumulative downtime exceeds **6 hours**.
+
+The 6-hour grace allowance is cumulative and may be fragmented. One outage of
+6 hours, or six separate outages of 1 hour, or any other combination summing
+to 6 hours or less, all leave the cycle met. The allowance exists so ordinary
+restarts, updates, and brief network faults do not punish an honest operator.
+
+### Performance reallocation
+
+When a seat fails a cycle, that cycle's 342-unit Founder portion is reallocated
+to the Founder Node or Nodes with the **highest cumulative fully operational
+uptime in that same cycle**.
+
+- The winner is the single highest uptime achieved that cycle, whatever value
+  that turns out to be. A perfect 24 hours is expected to be common, but it is
+  not a requirement; if the best any node reached was 19 hours, the 19-hour
+  nodes win.
+- When several nodes are tied at exactly that maximum — the ordinary case at a
+  perfect cycle — they share the 342 units equally.
+- A winner must itself have met the cycle. A failed seat never rewards another
+  failed seat.
+- The integer remainder of an equal split is carried forward rather than
+  burned.
+- If no node met the cycle at all, nothing is reallocated and the value is
+  carried forward.
+
+Each failed cycle resolves independently against its own cycle's winners. A
+seat that fails four consecutive cycles produces four separate reallocations,
+each to whoever led on that day.
+
+Reallocation is settled when the failed seat next exercises a permission. That
+exercise is one atomic transaction: the escrows and the System Creator receive
+their portions, and the reallocated Founder portion reaches that cycle's
+winners in the same transition. The failed founder can see which seats received
+the value. A seat that never exercises never triggers the reallocation, and the
+units are never created, consistent with the rule that unexercised permissions
+do not exist.
+
+Longer leaderboards over 7, 30, and 90 days and all time are reporting views
+for later incentive programmes. They carry no entitlement under this section.
+
+### How uptime is established
+
+Uptime must reach consensus without trusting a founder's own machine. Software
+running on hardware its operator controls can be patched, replayed, or
+simulated, so a self-reported "all green" is never sufficient on its own.
+
+- Validator participation and transaction servicing are **derived from
+  on-chain records**. The chain already observes votes, proposals, and serviced
+  transactions, so this part needs no attestation and cannot be forged.
+- Resource provision is proved by **challenge-response**. Random retrieval and
+  compute challenges are issued and the responses recorded, so a node must
+  actually hold and serve what it claims rather than assert that it did.
+- The Ecosystem AI **reviews and may dispute**. It may file a bounded, signed
+  dispute against a cycle result within a fixed window. Silence finalises the
+  result.
+
+The AI's signature is deliberately not required for payment. If it were, an AI
+outage or a company decision would freeze every Founder's income, which would
+make the company the effective owner of the reward path. A dispute window
+inverts that failure mode: when the AI is unavailable, results stand and
+founders are paid.
+
+Hardware-backed attestation is not available until dedicated Founder machines
+exist, so until then the challenge-response and dispute layers carry the
+anti-gaming burden. The exact challenge construction, sampling rate, dispute
+window length, dispute resolution, and settlement bounds require a
+specification and independent review. They cannot be selected in a way that
+changes the fixed channel totals or that puts population-wide hidden work into
+every transaction.
+
+## Founder referrals
+
+A Founder Seat purchased through a recorded referrer creates a **34.2-unit
+per-cycle benefit** for that referrer, for the referred seat's 731 cycles.
+
+Three properties are founder-directed:
+
+**It is unconditional.** The referrer earns the full 34.2 units for every one
+of the referred seat's 731 cycles regardless of whether that seat met the
+cycle. A referrer cannot operate, repair, or influence someone else's machine,
+so making the referrer's benefit depend on it would be unfair.
+
+**It is a direct-mint channel, not part of the base permission.** The referrer
+mints and withdraws on its own schedule and is never blocked by the referred
+seat's behavior. This is why the channel moved out of the Founder Node
+distribution table.
+
+**Unreferred seats do not waste their allocation.** A seat purchased without a
+recorded referrer contributes its 34.2 units per cycle to the **unreferred
+performance pool** instead. Nothing is left unissued merely because a buyer
+arrived without a referrer.
+
+The pool is paid to **monthly** best-performing Founder Nodes, ranked by the
+same cumulative fully operational uptime, and only one month's accrual is
+distributed per month. The pool's accrual rate rises as more unreferred seats
+are sold and never falls, so a later month never distributes less than the
+seats then sold have earned.
+
+Because every seat contributes 34.2 units per cycle to exactly one of the two
+destinations, the channel is consumed precisely:
+
+```text
+100,000 seats x 731 cycles x 34.2 = 2,500,020,000 native units
+```
+
+The referral benefit is 10% of the 342-unit operator leg. It was 17.1 units,
+or 5%, until 2026-08-07.
+
+Whether a referrer must itself hold a Founder Seat, the exact definition of a
+month in cycles, and the pool's tie and remainder rules require a
+specification.
 
 ## Commercial revenue and transaction fees
 
@@ -322,6 +471,13 @@ count toward active-seat revenue or fee distribution. The permanent Founder
 Seat record remains. Returning online restores future eligibility after the
 deterministic recovery conditions are met; it does not restore missed Founder
 benefits.
+
+Downtime within a cycle's 6-hour grace allowance does not fail that cycle, so
+brief outages, restarts, and updates cost nothing. Downtime beyond the
+allowance fails only the cycles it falls in; it never removes the seat, its
+history, or units already owned. A seat that fails every cycle of its issuance
+window still keeps its referral benefit to its own referrer, because that
+benefit is unconditional and does not depend on this seat's operation.
 
 ### Legacy succession
 
@@ -488,13 +644,19 @@ that technical production readiness follows automatically.
 The owner has intentionally deferred these value-bearing details until their
 milestone supplies enough evidence and context:
 
-- direct-mint channel eligibility and anti-abuse mechanics;
-- Founder activity grace, performance ranking, winner count, and referral
-  treatment for an inactive seat;
+- eligibility and anti-abuse mechanics for the liquidity-mining,
+  impermanent-loss, HUB-verified-user, and mystery-box direct-mint channels;
 - exact legacy inactivity bounds and contested-successor behavior;
 - stablecoin allowlist governance and any later bridge-asset change;
 - complete AI funding, moderation, biometric, and succession frameworks; and
 - any new treasury category, participant benefit, or application-content rule.
+
+Resolved on 2026-08-07, and no longer open: the activity definition and its
+grace allowance, performance ranking and tie handling, referral treatment for
+an inactive seat, and referral-channel eligibility. Their remaining detail —
+challenge construction, dispute window length, the definition of a month in
+cycles, and whether a referrer must hold a seat — is specification work, not a
+founder decision.
 
 Claude should ask focused questions at those boundaries. All other mechanism,
 encoding, storage, consensus scheduling, networking, testing, packaging, and
