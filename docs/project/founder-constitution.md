@@ -376,9 +376,17 @@ destinations, the channel is consumed precisely:
 The referral benefit is 10% of the 342-unit operator leg. It was 17.1 units,
 or 5%, until 2026-08-07.
 
-Whether a referrer must itself hold a Founder Seat, the exact definition of a
-month in cycles, and the pool's tie and remainder rules require a
-specification.
+These details require a specification and are engineering work rather than
+founder decisions:
+
+- whether a referrer must itself hold a Founder Seat;
+- the exact definition of a month in cycles, given that 731 cycles is not a
+  whole number of 30-cycle months;
+- the pool's tie and remainder rules;
+- when a referral benefit begins for a seat that is purchased but never
+  activated, since a seat's 731 cycles start at its first activation and an
+  unactivated seat has no cycles to count; and
+- the storage bound on accrued referral balances at 100,000 seats.
 
 ## Commercial revenue and transaction fees
 
