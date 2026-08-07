@@ -77,6 +77,20 @@ authority-before-funds rejection ordering, and the reconciliation of custody
 against capability accounting. It accepts a research model contract, not a
 consensus transition.
 
+ADR 0022 selects an additive scenario suite over a fifth composed model,
+closed-form derivation rather than a second walk for independence, scenario
+parameters as the record of every supplied research input, and restart
+equivalence stated as state equivalence under replay. It accepts an evidence
+contract, not a consensus transition.
+
+ADR 0023 selects the global epoch grid with a per-seat offset as the eligible
+cycle, a version-two genesis and chain rather than an M1 migration, per-seat
+watermarks rather than stored pending-permission records, signed payload-bound
+attestations as the carrier for deferred founder decisions, permissionless
+evaluation and exercise, ordinal replay protection, and the version-two receipt
+and result-code space. It accepts a consensus specification; no implementation
+exists yet.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
@@ -100,6 +114,11 @@ immutable; compatible changes require a new version.
   receipt, and ordered block semantics.
 - `specifications/consensus-application-v1.md`: adapter-neutral ordering
   lifecycle, application results, durable commit, restart, and local framing.
+- `specifications/founder-economy-consensus-v1.md`: the height-derived issuance
+  cycle, version-two genesis and chain parameters, the canonical economy state
+  and its commitment, the five Founder transaction encodings, evidence
+  attestations, and the version-two receipt and result codes. It is a consensus
+  contract; no implementation exists yet.
 - `specifications/founder-economy-manifest-v1.md`: exact eight-decimal
   denomination, ten issuance-channel caps, 731-cycle derivation,
   permission-liability semantics, unresolved-policy placeholders, and fixed
