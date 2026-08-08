@@ -363,7 +363,20 @@ behavior.
   cancelled.
 - Issue #110 and PR #111 are the M3.3b delivery, merged by rebase at `04cdd23`.
   PR final-head Actions run 31270415727 on `5ba7b14` passed the complete hosted
-  matrix; no run on that branch was superseded.
+  matrix; no run on that branch was superseded. Post-merge run 31271049373 on
+  `04cdd23` was cancelled mid-flight and re-run to a complete pass — scope
+  classification `full`, GCC and Clang debug, both sanitizers, and the aggregate
+  required check.
+- **`verify.yml` sets `cancel-in-progress: true` on a concurrency group keyed by
+  `github.ref`, so pushing the handoff commit to `main` cancels the post-merge
+  matrix of the slice just merged.** That is what cancelled run 31271049373; no
+  operator cancelled it, and nothing was wrong with the commit. Merge a slice,
+  let its post-merge run reach a terminal result, and only then push the handoff.
+  A cancelled post-merge run is not evidence of a pass, and re-running it is the
+  repair.
+- PR #112 recorded this handoff and merged by rebase at `848ba36`, with
+  post-merge run 31271183838 passing the focused metadata path; the hosted matrix
+  was correctly skipped for a documentation-only change.
 - M3.3 local evidence: eight verifiers pass. The suite derives 133 v1 and 138 v2
   vectors; escrow payout derives 169 v1 and 172 v2; the economy derives 139
   manifest and 65 simulator v1 values, 154 manifest v2 and 189 simulator v2; the
