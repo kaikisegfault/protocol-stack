@@ -1,0 +1,237 @@
+# Founder Economy simulator v2 normative vectors.
+# Monetary values are atomic-unit unsigned decimal strings and durations are
+# whole seconds. The scenario is
+# simulation/founder_economy_v2/fixtures/research-events-v2.json evaluated
+# against test-vectors/founder-economy-manifest-v2.json.
+#
+# Every value is rederived by
+# `tools/founder-economy-v2-vectors/verify_simulator.py` from the Founder
+# Constitution literals in that tool's `expected.py` and from a live simulation
+# run. `expected.py` imports nothing from `simulation/`, so a value both sources
+# agree on has been reached from the founder document and from the model
+# independently.
+
+schema=protocol-stack/founder-economy-simulation-result/v2
+manifest_file=test-vectors/founder-economy-manifest-v2.json
+events_file=simulation/founder_economy_v2/fixtures/research-events-v2.json
+
+# Domain labels. Every one ends in the version suffix, so no digest
+# computed under version one can be replayed as version two.
+events_domain_label=protocol-stack:founder-economy:events-v2
+state_domain_label=protocol-stack:founder-economy:state-v2
+trace_domain_label=protocol-stack:founder-economy:trace-v2
+result_domain_label=protocol-stack:founder-economy:result-v2
+uptime_record_domain_label=protocol-stack:founder-economy:uptime-record-v2
+labels.all_version_two=true
+
+# The accepted manifest identity, reproduced from the checked-in file.
+scenario.manifest_canonical_length=2267
+scenario.manifest_digest=84cca09865b6c62bf09d3f6bc3821a2527c7a4835652cffdc0ebefa34b314ce5
+
+# A cycle is met at 18 hours or more of cumulative fully operational
+# uptime within a 24-hour-target window, equivalently when downtime does
+# not exceed the fragmentable 6-hour allowance. The two stated forms agree
+# only because the threshold and the allowance span the window exactly.
+# The boundary is resolved in the operator's favour.
+cycle.target_seconds=86400
+cycle.activity_threshold_seconds=64800
+cycle.grace_allowance_seconds=21600
+cycle.threshold_plus_grace=86400
+cycle.boundary_met_seconds=64800
+cycle.boundary_failed_seconds=64799
+cycle.boundary_met_downtime_seconds=21600
+cycle.boundary_failed_downtime_seconds=21601
+cycle.boundary_met=true
+cycle.boundary_failed=false
+cycle.full_window_met=true
+cycle.zero_uptime_met=false
+
+# The base permission. A failed cycle retains all of it and changes only
+# the beneficiary of the Founder portion.
+base.founder_operator_leg=34200000000
+base.permission_total=57430000000
+base.fixed_leg_total=23230000000
+base.fixed_legs_sum=23230000000
+
+# The referral is an unconditional direct-mint accrual with exactly two
+# destinations, which is what consumes its channel to the unit. It is not
+# reachable through the placeholder direct-issue path.
+referral.amount=3420000000
+referral.channel=founder_referral
+referral.channel_cap=250002000000000000
+referral.full_consumption=250002000000000000
+referral.consumption_remainder=0
+referral.referred_beneficiary_kind=recorded_referrer
+referral.unreferred_beneficiary_kind=unreferred_performance_pool
+referral.unconditional=true
+referral.placeholder_direct_channels=4
+referral.direct_issue_admits_referral=false
+
+# Performance reallocation. Seven winners at a full window leave a
+# remainder of 5 atomic units, a later single winner absorbs the carried
+# remainder, an empty winner set carries the whole portion forward, and
+# the next reallocation then delivers two portions at once.
+reallocation.seven_winner_share=4885714285
+reallocation.seven_winner_remainder=5
+reallocation.seven_winner_reserved=34199999995
+reallocation.seven_winner_pot=34200000000
+reallocation.carried_pot=34200000005
+reallocation.single_winner_share=34200000005
+reallocation.single_winner_remainder=0
+reallocation.empty_winner_carry=34200000000
+reallocation.empty_winner_founder_legs=0
+reallocation.carried_forward_pot=68400000000
+reallocation.carried_forward_share=68400000000
+
+# The checked-in research scenario.
+scenario.event_count=50
+scenario.accepted_count=22
+scenario.rejected_count=28
+scenario.events_digest=8328579a622cc2ae5c29a68a06984775845a7810053e8c4f1a52adecc81e52f8
+scenario.trace_digest=37291e20f868f10e8f0e2880e434612203b679e4e1ed724eb34450075860c560
+scenario.state_digest=af426beda50a859fea7f888c703723ad688dff734d36be796c04e5af17175f7a
+scenario.result_digest=47565550b8cfb81501492487b9da3b7d54735da2a761f596a732b0ec50da6f1f
+scenario.issued_supply_atomic=91919999995
+scenario.outstanding_permissions_atomic=321350000005
+scenario.performance_carry_atomic=0
+scenario.founder_accounted_atomic=239400000000
+scenario.unreferred_pool_atomic=6840000000
+scenario.activated_seat_count=9
+scenario.pending_permission_count=5
+scenario.evaluated_permission_key_count=7
+scenario.referral_accrual_key_count=3
+scenario.bound_uptime_record_count=6
+scenario.accepted_direct_decision_count=1
+scenario.founder_accounted_identity=239400000000
+scenario.result_codes=CYCLE_RANGE,INCONSISTENT_UPTIME_RECORD,INVALID_CHANNEL,INVALID_REFERRER,INVALID_RESEARCH_INPUT,INVALID_UPTIME_RECORD,MISSING_RESEARCH_INPUT,MISSING_UPTIME_RECORD,NOT_ELIGIBLE,OK,PERMISSION_NOT_FOUND,REPLAY,SEAT_NOT_ACTIVATED,ZERO_AMOUNT
+scenario.result_codes_are_modelled=true
+
+# Typed custody after the scenario. Seats 1 through 7 hold equal shares of
+# the reallocated portion; seat 0 holds only its referral accrual, because
+# the permission that named it a winner was never exercised.
+scenario.custody.venture_escrow=34200000000
+scenario.custody.community_grants_escrow=6840000000
+scenario.custody.developer_incentives_escrow=3420000000
+scenario.custody.system_creator_company=2000000000
+scenario.custody.unreferred_performance_pool=6840000000
+scenario.custody.direct_beneficiary=1000000000
+scenario.custody.founder_seat_00000=3420000000
+scenario.custody.founder_seat_00001=4885714285
+scenario.custody.founder_seat_00002=4885714285
+scenario.custody.founder_seat_00003=4885714285
+scenario.custody.founder_seat_00004=4885714285
+scenario.custody.founder_seat_00005=4885714285
+scenario.custody.founder_seat_00006=4885714285
+scenario.custody.founder_seat_00007=4885714285
+scenario.custody_total=91919999995
+
+# Atomicity: no rejected event emitted a journal or changed the state
+# digest, no accepted journal carried a zero amount, and only a base
+# evaluation moved the performance carry.
+atomicity.rejected_events=28
+atomicity.rejected_journal_entries=0
+atomicity.rejected_state_changes=0
+atomicity.accepted_zero_amounts=0
+atomicity.carry_moving_kinds=evaluate_base_permission
+
+# Ordered trace results for the fixture scenario.
+record0.kind=activate_seat
+record0.result=OK
+record1.kind=activate_seat
+record1.result=OK
+record2.kind=activate_seat
+record2.result=OK
+record3.kind=activate_seat
+record3.result=OK
+record4.kind=activate_seat
+record4.result=OK
+record5.kind=activate_seat
+record5.result=OK
+record6.kind=activate_seat
+record6.result=OK
+record7.kind=activate_seat
+record7.result=OK
+record8.kind=activate_seat
+record8.result=OK
+record9.kind=activate_seat
+record9.result=REPLAY
+record10.kind=activate_seat
+record10.result=INVALID_REFERRER
+record11.kind=activate_seat
+record11.result=CYCLE_RANGE
+record12.kind=activate_seat
+record12.result=SEAT_NOT_ACTIVATED
+record13.kind=evaluate_base_permission
+record13.result=OK
+record14.kind=evaluate_base_permission
+record14.result=OK
+record15.kind=evaluate_base_permission
+record15.result=REPLAY
+record16.kind=evaluate_base_permission
+record16.result=INCONSISTENT_UPTIME_RECORD
+record17.kind=evaluate_base_permission
+record17.result=OK
+record18.kind=evaluate_base_permission
+record18.result=OK
+record19.kind=evaluate_base_permission
+record19.result=OK
+record20.kind=evaluate_base_permission
+record20.result=OK
+record21.kind=evaluate_base_permission
+record21.result=OK
+record22.kind=evaluate_base_permission
+record22.result=MISSING_UPTIME_RECORD
+record23.kind=evaluate_base_permission
+record23.result=INVALID_UPTIME_RECORD
+record24.kind=evaluate_base_permission
+record24.result=INVALID_UPTIME_RECORD
+record25.kind=evaluate_base_permission
+record25.result=INVALID_UPTIME_RECORD
+record26.kind=evaluate_base_permission
+record26.result=INVALID_UPTIME_RECORD
+record27.kind=evaluate_base_permission
+record27.result=INVALID_UPTIME_RECORD
+record28.kind=evaluate_base_permission
+record28.result=INVALID_UPTIME_RECORD
+record29.kind=evaluate_base_permission
+record29.result=SEAT_NOT_ACTIVATED
+record30.kind=evaluate_base_permission
+record30.result=CYCLE_RANGE
+record31.kind=accrue_referral
+record31.result=OK
+record32.kind=accrue_referral
+record32.result=REPLAY
+record33.kind=accrue_referral
+record33.result=OK
+record34.kind=accrue_referral
+record34.result=OK
+record35.kind=accrue_referral
+record35.result=SEAT_NOT_ACTIVATED
+record36.kind=accrue_referral
+record36.result=CYCLE_RANGE
+record37.kind=exercise_permission
+record37.result=OK
+record38.kind=exercise_permission
+record38.result=PERMISSION_NOT_FOUND
+record39.kind=exercise_permission
+record39.result=OK
+record40.kind=exercise_permission
+record40.result=PERMISSION_NOT_FOUND
+record41.kind=exercise_permission
+record41.result=CYCLE_RANGE
+record42.kind=direct_issue
+record42.result=OK
+record43.kind=direct_issue
+record43.result=REPLAY
+record44.kind=direct_issue
+record44.result=INVALID_CHANNEL
+record45.kind=direct_issue
+record45.result=INVALID_CHANNEL
+record46.kind=direct_issue
+record46.result=ZERO_AMOUNT
+record47.kind=direct_issue
+record47.result=MISSING_RESEARCH_INPUT
+record48.kind=direct_issue
+record48.result=INVALID_RESEARCH_INPUT
+record49.kind=direct_issue
+record49.result=NOT_ELIGIBLE

@@ -22,6 +22,7 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import expected as e
+from checker import Checker, read_vectors
 
 from simulation.common.canonical import MAX_U64, label_prefix
 from simulation.founder_economy import contract as v1
@@ -36,67 +37,6 @@ from simulation.founder_economy_v2.manifest import (
 
 ROOT = Path(__file__).resolve().parents[2]
 MANIFEST_PATH = "test-vectors/founder-economy-manifest-v2.json"
-
-
-class Checker:
-    def __init__(self, recorded: dict[str, str]) -> None:
-        self.recorded = recorded
-        self.failures: list[str] = []
-        self.seen: set[str] = set()
-
-    @property
-    def checked(self) -> int:
-        return len(self.seen)
-
-    def equal(self, key: str, derived: object) -> None:
-        if key not in self.recorded:
-            self.failures.append(f"{key}: not recorded in the vector file")
-            return
-        self.seen.add(key)
-        expected_value = self.recorded[key]
-        if str(derived) != expected_value:
-            self.failures.append(
-                f"{key}: derived {derived!r}, recorded {expected_value!r}"
-            )
-
-    def agree(
-        self,
-        key: str,
-        closed_form: object,
-        cross_check: object,
-        source: str = "the manifest",
-    ) -> None:
-        """Record a value only when two independent sources agree.
-
-        `closed_form` is always the constitutional derivation in `expected.py`.
-        `source` names where `cross_check` came from, so a mismatch says which
-        two things disagree rather than naming a source that was not consulted.
-        """
-        if str(closed_form) != str(cross_check):
-            self.failures.append(
-                f"{key}: the constitution derives {closed_form!r} but {source} "
-                f"carries {cross_check!r}"
-            )
-            return
-        self.equal(key, closed_form)
-
-    def require_full_coverage(self) -> None:
-        """Fail closed when a recorded vector was never derived."""
-        for key in sorted(set(self.recorded) - self.seen):
-            self.failures.append(f"{key}: recorded but never derived")
-
-
-def read_vectors(path: Path) -> dict[str, str]:
-    values: dict[str, str] = {}
-    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#"):
-            continue
-        key, separator, value = stripped.partition("=")
-        if not separator or key in values:
-            raise ValueError(f"{path}:{number}: malformed or duplicate vector line")
-        values[key] = value
-    return values
 
 
 def check_identity_vectors(check: Checker, manifest, source: dict[str, Any]) -> None:
