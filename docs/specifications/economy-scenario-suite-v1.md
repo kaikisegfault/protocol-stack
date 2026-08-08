@@ -7,8 +7,10 @@ new model
 > [ADR 0023](../decisions/0023-founder-decisions-activity-referrals-and-supply.md).**
 > The scenario parameters that stood in for unresolved founder decisions are
 > now decided, so a version two suite derives them instead of supplying them.
-> This document is not edited: it states the contract that the accepted M2
-> models implement and that the M2 evidence proves.
+> That suite is [`economy-scenario-suite-v2.md`](economy-scenario-suite-v2.md),
+> accepted on 2026-08-08. This document is not edited: it states the contract
+> that the accepted M2 models implement and that the M2 evidence proves, and
+> `test-vectors/economy-scenario-suite-v1.txt` remains normative and passing.
 
 This document fixes the deterministic multi-year and adversarial scenarios that
 the four accepted M2 models must survive, as required by requirement 13 of
