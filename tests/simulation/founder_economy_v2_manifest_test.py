@@ -25,6 +25,7 @@ from simulation.founder_economy_v2.manifest import (
     load_manifest_text,
 )
 from tests.simulation.founder_economy_v2_common import (
+    MANIFEST_PATH,
     manifest,
     manifest_value,
     v1_manifest_value,
@@ -66,10 +67,14 @@ class ManifestIdentityTest(unittest.TestCase):
                 load_manifest_text(shuffled).manifest_digest, c.MANIFEST_DIGEST
             )
 
-    def test_manifest_carries_no_floating_point_token(self) -> None:
-        raw = json.dumps(manifest_value())
-        self.assertNotIn(".", raw.replace("protocol-stack/", ""))
-        self.assertNotIn("e+", raw)
+    def test_checked_in_manifest_carries_no_floating_point_token(self) -> None:
+        """Parse the file itself, not a reserialization, with floats rejected."""
+
+        def reject(value: str) -> float:
+            raise AssertionError(f"floating-point token in the manifest: {value}")
+
+        raw = MANIFEST_PATH.read_text(encoding="utf-8")
+        json.loads(raw, parse_float=reject, parse_constant=reject)
 
 
 class VersionSeparationTest(unittest.TestCase):
