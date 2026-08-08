@@ -122,13 +122,14 @@ def _check_cross_version_containment(check: Checker, spec: w.Spec) -> None:
 
     walk = w.Walk(spec=spec)
     results = [walk.bind(event) for event in with_state]
+    rejected = [result for result in results if result == "INVALID_RESEARCH_INPUT"]
     if any(result == "OK" for result in results):
         raise AssertionError("a version-one economy state satisfied a version-two bind")
-    if set(results) != {"INVALID_RESEARCH_INPUT"}:
+    if len(rejected) != len(results):
         raise AssertionError(f"unexpected cross-version bind results: {sorted(set(results))}")
 
     check.equal("binding.v1_states_offered_to_v2", len(with_state))
-    check.equal("binding.v1_states_rejected_by_v2", len(results))
+    check.equal("binding.v1_states_rejected_by_v2", len(rejected))
     check.equal("binding.escrow_caps_agree_with_v1", 1 if _caps_agree() else 0)
 
 
