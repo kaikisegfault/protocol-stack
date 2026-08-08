@@ -1,12 +1,12 @@
 # Current state
 
-Last updated: 2026-08-07
+Last updated: 2026-08-08
 
 ## Phase
 
-M3 — Founder Economy devnet, not yet started. M2 completed on 2026-08-05 with
-all sixteen requirements of
-`goals/m2-founder-economy-proof.md` passing.
+M3 — Founder Economy devnet, in progress. Slice M3.1 delivered the revised
+economic contract on 2026-08-08. M2 completed on 2026-08-05 with all sixteen
+requirements of `goals/m2-founder-economy-proof.md` passing.
 
 On 2026-08-07 the owner supplied the four outstanding founder decisions and
 revised the economy. ADR 0023 records them: the maximum supply is now
@@ -20,6 +20,31 @@ failed cycle's 342 units go to the highest uptime that cycle.
 implement `founder-economy-manifest-v1` and remain exactly as verified; the
 constitution now specifies a v2 they do not implement. Nothing about what runs
 today changed, because none of it activates anything.
+
+### How M3.1 was delivered
+
+Issue #99 and PR #100 accepted `founder-economy-manifest-v2` at merged commit
+`0c05b52`. It added the specification, ADR 0024, the manifest JSON and its
+digest, 154 normative vectors, a strict loader in `simulation/founder_economy_v2/`,
+and a verifier in `tools/founder-economy-v2-vectors/`.
+
+The contract fixes the 56,993,950,100 display maximum as
+5,699,395,010,000,000,000 atomic under the unchanged eight-decimal
+denomination, and the referral at 34,200,000,000 atomic per cycle as an
+unconditional direct-mint channel capped at 250,002,000,000,000,000. The other
+nine channel caps, the seat capacity, the per-person bound, the 731-cycle
+schedule, and every base-permission leg are unchanged.
+
+Version one was not edited. Its digest names the exact byte string the M2
+evidence was verified against, and the two contracts differ in shape rather
+than only in parameters: v2 has no `referral_permission` issuance kind, no
+`referral_permission` object, and no permission `kind` discriminator. Each
+loader rejects the other's manifest, the domain labels differ, and tests assert
+both directions. ADR 0024 records that reasoning and four other structural
+decisions.
+
+No simulator, C++, consensus, devnet, or previously accepted v1 artifact
+changed. v2 has no executable model and activates nothing.
 
 ### How M2 was delivered
 
@@ -78,6 +103,14 @@ slices.
   participation, bounded authority, economic stress, concentration,
   identity-split incentives, and minimum entitlements. Their schemas and
   results remain research evidence, not production Founder economics.
+- The accepted `founder-economy-manifest-v2` contract represents the
+  56,993,950,100-unit maximum as 5,699,395,010,000,000,000 eight-decimal atomic
+  units, fixes a canonical ten-channel manifest at 2,267 JCS bytes with digest
+  `84cca09865b6c62bf09d3f6bc3821a2527c7a4835652cffdc0ebefa34b314ce5`, and puts
+  the referral in the direct-mint group at 250,002,000,000,000,000 atomic. Its
+  strict loader enforces the eight ordered failure codes and rederives every
+  product and subtotal. It is a contract and a loader, not a model: it executes
+  no transition and activates nothing.
 - The accepted Founder Economy manifest exactly represents the
   55,743,940,100-unit maximum as 5,574,394,010,000,000,000 eight-decimal atomic
   units, fixes a canonical ten-channel manifest and digest, and proves every
@@ -167,6 +200,11 @@ wallet, AI, biometric, or resource behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #99 and PR #100 are the M3.1 delivery, merged by rebase at `0c05b52`.
+  PR final-head Actions run 31262789135 on `e9de7a7` passed the complete hosted
+  matrix — scope classification `full`, GCC and Clang debug, both sanitizers,
+  and the aggregate required check. Runs 31262577723 and 31262627548 were
+  superseded by later pushes to the same branch and were cancelled.
 - Issues #71, #77, #79, #82, #85, #88, and #91 are the M2 deliveries; PRs #72,
   #78, #80, #83, #86, #89, and #92 are merged.
 - After PR #72, commits `de9903e` and `4947c46` replaced the Codex agent layout
@@ -197,6 +235,33 @@ wallet, AI, biometric, or resource behavior.
   `bc4272a` with post-merge run 31014389973.
 - No delivery branch, open PR, additional worktree, or generated build
   directory remains from any delivery.
+- M3.1 local evidence: the v2 verifier derives 154 vectors; 23 manifest and 38
+  error tests pass; all five v1 verifiers pass unchanged, so the retained M2
+  evidence is intact.
+- The v2 verifier fails closed five ways, each confirmed: a tampered recorded
+  value, a recorded key never derived, a derived key the file does not carry, a
+  manifest that disagrees with the Founder Constitution, and an edit to the
+  retained v1 contract table down to one atomic unit.
+- The fourth of those is the load-bearing one. `expected.py` imports nothing
+  from `simulation/` and restates the constitution's two allocation tables by
+  hand in tenths of a display unit. The constitution states the economy twice —
+  as per-eligible-cycle amounts and as maximum channel totals — and derives
+  neither from the other, so requiring them to agree checks the manifest against
+  the founder document rather than against a second reading of the
+  specification. A forged manifest and contract table raising the referral to
+  34.3 units per cycle, propagated consistently through the referral cap, the
+  direct-mint subtotal, and the maximum supply, passes every loader stage and is
+  still rejected by four `expected.py` comparisons.
+- Every recorded v2 rejection is produced by a live loader run over a minimally
+  mutated manifest rather than named, and five pairs carrying two defects at
+  once prove which stage reports first. A positive control asserts the same
+  entry point accepts the unmutated manifest.
+- The vectors prove the supply revision is accounted to the referral channel
+  alone: the maximum rose by 1,250,010,000 display units, the referral channel
+  rose by exactly that, and the summed change across the other nine channels is
+  zero. That sum is taken in atomic units against the retained v1 contract
+  table, because summing in display units divided a one-atomic-unit divergence
+  to zero and hid what the check exists to find.
 - Local evidence: 67 Founder Economy tests, 49 Founder Seat tests, 57 revenue
   routing tests, and 57 escrow payout tests pass; the economy verifier derives
   139 manifest and 65 simulator values, the seat verifier derives 96 values
@@ -277,6 +342,15 @@ a chain-defined height or epoch is still undone. And the direction those models
 implement was superseded on 2026-08-07, so every accepted schema, vector, and
 digest is now evidence about a contract the constitution no longer directs.
 
+M3.1 restated that contract but did not close the second qualifier. The models
+still implement v1. `founder-economy-manifest-v2` is a specification, a manifest,
+a digest, vectors, and a loader; nothing executes a v2 transition. Removing three
+research placeholders records that supplied fixtures are no longer the intended
+source of activity and performance reallocation — it does not supply the
+computation that replaces them, and the uptime record, challenge construction,
+sampling rate, dispute window, winner rule, month definition for the unreferred
+pool, and cycle boundary all remain unspecified.
+
 Restart equivalence is state equivalence under replay. It is not persistence,
 crash-consistency, or a snapshot format, and no model has any of those.
 
@@ -305,48 +379,63 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice M3.1: restate the economy contract under the revised direction.
-This comes before the consensus encoding, because the referral relocation and
-the derived activity rule change which transitions exist, not merely their
-parameters.
+Milestone slice M3.2: revise the independent Python model to implement
+`founder-economy-manifest-v2`. This still comes before the consensus encoding,
+because it settles which transitions exist rather than how they are serialized.
 
-Create one bounded M3 issue for `founder-economy-manifest-v2`, delivering:
+Create one bounded M3 issue for `founder-economy-simulator-v2`, delivering a
+specification, an ADR, the model in `simulation/founder_economy_v2/`, normative
+vectors, and a verifier at the standard the six existing verifiers set.
 
-1. a specification and ADR fixing the 56,993,950,100 maximum
-   (5,699,395,010,000,000,000 atomic under the unchanged eight-decimal
-   denomination) and all ten channel caps, with the referral channel at
-   2,500,020,000 in the direct-mint group;
-2. the manifest JSON, its canonical byte length, and its digest;
-3. normative vectors and a verifier that derives every recorded value and fails
-   closed, at the standard the five existing verifiers set.
+The transition set changes, not only its parameters:
 
-Prove in the vectors that the two subtotals — 41,981,330,000 and
-15,012,620,100 — add to the maximum exactly, and that
-`100,000 x 731 x 34.2 = 2,500,020,000` consumes the referral channel with no
-remainder.
+1. `evaluate_referral_permission` and its `inactive_referral_result` research
+   input disappear. The referral becomes an unconditional direct-mint accrual
+   keyed by `(referred_seat_id, cycle_index)`, so its replay key survives but
+   its permission does not.
+2. The permission `kind` discriminator disappears with it. `base` was one of two
+   values and is now the only one, so `pending_permissions` and
+   `evaluated_permission_keys` lose a tuple element.
+3. `evaluate_base_permission` takes a derived activity input and a derived
+   winner set in place of `activity_eligibility_result` and
+   `inactive_performance_allocation_result`.
+4. The unreferred performance pool is a new beneficiary inside the referral
+   channel, so an unreferred seat's 34,200,000,000 atomic units per cycle reach
+   it rather than going unissued.
+5. `INVALID_PERFORMANCE_ALLOCATION` does not carry forward. It validated a
+   supplied allocation list, and there is none to validate.
 
-Do not change `simulation/founder_economy/` in that slice. The simulator
-revision is the next one, and it is larger: the referral becomes an
-unconditional direct-mint transition, `evaluate_referral_permission` and its
-`inactive_referral_result` input disappear, `evaluate_base_permission` takes a
-derived activity input and a derived winner set, and the unreferred performance
-pool is a new beneficiary. Every dependent model, vector, and digest —
-seat, routing, escrow, and the scenario suite — regenerates after that.
+Two of those need a decision this slice cannot avoid. A derived activity input
+has no source until the uptime record exists, and a derived winner set has no
+source until the ranking rule does. Both are engineering work rather than
+founder-reserved, but they are M3.4's subject. The workable order is to specify
+the uptime record and winner rule as the model's abstract inputs — exact shape,
+bounds, and determinism, with the challenge construction and dispute window
+still deferred — rather than to reintroduce a supplied fixture under a new name.
+State that boundary explicitly in the specification; do not let an empty
+placeholder list imply activity is solved.
 
-Keep `founder-economy-manifest-v1` and every v1 model, vector, and digest in
-place and passing. They are the retained M2 evidence and are not edited to
-match the new direction.
+Every dependent model, vector, and digest — seat, routing, escrow, and the
+scenario suite — regenerates after that, and each regeneration must keep its
+own verifier failing closed.
+
+Keep `founder-economy-manifest-v1`, `founder-economy-simulator-v1`, and every v1
+model, vector, and digest in place and passing. They are the retained M2
+evidence and are not edited to match the new direction. `simulation/founder_economy/`
+stays untouched; the v2 package is where the revised model goes.
 
 ## Blockers
 
 None for the next action.
 
 Two founder-reserved decisions remain open, and neither blocks M3.1 through
-M3.3: eligibility and anti-abuse mechanics for the liquidity-mining,
+M3.4: eligibility and anti-abuse mechanics for the liquidity-mining,
 impermanent-loss, HUB-verified-user, and mystery-box direct-mint channels, and
 the AI funding framework with its evaluation criteria, milestone and tranche
 policy, and approval thresholds. Both are still supplied to the models as bound
-research inputs.
+research inputs, and `founder-economy-manifest-v2` keeps
+`direct_channel_eligibility_result` as its single research placeholder for
+exactly that reason.
 
 The other two closed on 2026-08-07. Activity, grace, performance ranking, tie
 handling, inactive-seat referral treatment, and referral-channel eligibility are
