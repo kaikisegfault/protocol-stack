@@ -59,6 +59,19 @@ BASE_LEGS: tuple[tuple[str, str, int], ...] = (
 )
 BASE_PERMISSION_TOTAL = 57_430_000_000
 FOUNDER_OPERATOR_LEG = 34_200_000_000
+# The four legs whose beneficiaries never change, and which a failed cycle
+# retains unaltered. Only the Founder portion can change beneficiary.
+FIXED_LEG_TOTAL = BASE_PERMISSION_TOTAL - FOUNDER_OPERATOR_LEG
+FOUNDER_CHANNEL = "founder_operator"
+
+# A cycle is a 24-hour-target window. Uptime is counted in whole seconds
+# because all three figures are exact integers in that unit. The Founder
+# Constitution states the rule twice, as a floor on uptime and as a ceiling on
+# downtime; the two agree exactly because the threshold and the allowance sum
+# to the target, which the model checks rather than assumes.
+CYCLE_TARGET_SECONDS = 86_400
+ACTIVITY_THRESHOLD_SECONDS = 64_800
+GRACE_ALLOWANCE_SECONDS = 21_600
 
 REFERRAL_CHANNEL = "founder_referral"
 REFERRAL_AMOUNT = 3_420_000_000
@@ -83,6 +96,22 @@ PLACEHOLDER_DIRECT_CHANNELS: frozenset[str] = frozenset(
 
 FOUNDER_CHANNEL_SUBTOTAL = 4_198_133_000_000_000_000
 DIRECT_CHANNEL_SUBTOTAL = 1_501_262_010_000_000_000
+
+SINGLETON_BENEFICIARY_KINDS = frozenset(
+    {
+        "venture_escrow",
+        "community_grants_escrow",
+        "developer_incentives_escrow",
+        "system_creator_company",
+    }
+)
+FOUNDER_SEAT_KIND = "founder_seat"
+DIRECT_BENEFICIARY_KIND = "direct_beneficiary"
+SINGLETON_BENEFICIARY_ID = "global"
+# An unreferred seat's referral allocation reaches this pool rather than going
+# unissued, which is what consumes the referral channel exactly. Paying the
+# pool out needs the month definition ADR 0023 leaves open and is not modelled.
+UNREFERRED_POOL_KIND = "unreferred_performance_pool"
 
 SEAT_CYCLE_POPULATION = FOUNDER_SEAT_CAPACITY * ISSUANCE_CYCLES_PER_SEAT
 
