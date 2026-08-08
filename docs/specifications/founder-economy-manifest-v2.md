@@ -448,10 +448,15 @@ is normative. It fixes:
 - every per-cycle leg, per-seat product, and complete 100,000-seat product;
 - the referral channel's exact consumption with a recorded zero remainder;
 - the supply revision accounted to the referral channel alone, with a recorded
-  zero unexplained increase and zero change across the other nine channels;
+  zero unexplained increase and zero change across the other nine channels,
+  summed in atomic units so a sub-display-unit divergence cannot round away;
 - the single remaining research placeholder and the four channels it covers; and
 - every ordered acceptance failure, each produced by a live loader run over a
   minimally mutated manifest, plus the stage-ordering pairs.
+
+Every superseded figure the file records is read from the retained v1 contract
+table and required to agree with this document's account of it, so the claim
+that version one is unchanged is checked rather than asserted.
 
 `tools/founder-economy-v2-vectors/verify.py` derives every recorded value and
 fails closed when a recorded key is never derived, when a derived key is absent

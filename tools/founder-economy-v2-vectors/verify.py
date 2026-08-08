@@ -24,6 +24,7 @@ if __package__ in {None, ""}:
 import expected as e
 
 from simulation.common.canonical import MAX_U64, label_prefix
+from simulation.founder_economy import contract as v1
 from simulation.founder_economy_v2 import contract as c
 from simulation.founder_economy_v2.derivations import DerivationError, check_derivations
 from simulation.founder_economy_v2.manifest import (
@@ -58,12 +59,23 @@ class Checker:
                 f"{key}: derived {derived!r}, recorded {expected_value!r}"
             )
 
-    def agree(self, key: str, closed_form: object, from_manifest: object) -> None:
-        """Record a value only when the closed form and the manifest agree."""
-        if str(closed_form) != str(from_manifest):
+    def agree(
+        self,
+        key: str,
+        closed_form: object,
+        cross_check: object,
+        source: str = "the manifest",
+    ) -> None:
+        """Record a value only when two independent sources agree.
+
+        `closed_form` is always the constitutional derivation in `expected.py`.
+        `source` names where `cross_check` came from, so a mismatch says which
+        two things disagree rather than naming a source that was not consulted.
+        """
+        if str(closed_form) != str(cross_check):
             self.failures.append(
-                f"{key}: constitution derives {closed_form!r} but the manifest "
-                f"carries {from_manifest!r}"
+                f"{key}: the constitution derives {closed_form!r} but {source} "
+                f"carries {cross_check!r}"
             )
             return
         self.equal(key, closed_form)
@@ -96,17 +108,32 @@ def check_identity_vectors(check: Checker, manifest, source: dict[str, Any]) -> 
     check.equal("manifest_digest", manifest.manifest_digest)
     check.equal("research_only", json.dumps(source["research_only"]))
 
-    check.equal("supersedes.schema", c.SUPERSEDED_SCHEMA)
-    check.equal("supersedes.digest", c.SUPERSEDED_DIGEST)
-    check.equal(
-        "supersedes.maximum_supply_display", e.SUPERSEDED_MAXIMUM_SUPPLY_DISPLAY
+    # Every superseded value is read from the retained v1 contract table and
+    # required to agree with this tool's hand-converted literal, so an edit to
+    # the v1 artifacts these vectors describe as unchanged fails here.
+    v1_table = "the retained v1 contract table"
+    v1_kinds = {channel: kind for channel, kind, _ in v1.CHANNELS}
+    check.agree("supersedes.schema", c.SUPERSEDED_SCHEMA, v1.MANIFEST_SCHEMA, v1_table)
+    check.agree("supersedes.digest", c.SUPERSEDED_DIGEST, v1.MANIFEST_DIGEST, v1_table)
+    check.agree(
+        "supersedes.maximum_supply_display",
+        e.SUPERSEDED_MAXIMUM_SUPPLY_DISPLAY,
+        v1.MAXIMUM_SUPPLY_DISPLAY,
+        v1_table,
     )
-    check.equal("supersedes.referral_amount", e.SUPERSEDED_REFERRAL_AMOUNT)
-    check.equal(
+    check.agree(
+        "supersedes.referral_amount",
+        e.SUPERSEDED_REFERRAL_AMOUNT,
+        v1.REFERRAL_AMOUNT,
+        v1_table,
+    )
+    check.agree(
         "supersedes.referral_channel_cap",
         e.SUPERSEDED_REFERRAL_CHANNEL_DISPLAY * e.D,
+        v1.CHANNEL_CAPS[e.REFERRAL_CHANNEL],
+        v1_table,
     )
-    check.equal("supersedes.referral_issuance_kind", "referral_permission")
+    check.equal("supersedes.referral_issuance_kind", v1_kinds[e.REFERRAL_CHANNEL])
 
 
 def check_denomination_vectors(check: Checker, source: dict[str, Any]) -> None:
@@ -249,15 +276,27 @@ def check_supply_revision_vectors(check: Checker) -> None:
         for channel, cap in current_caps.items()
         if channel != e.REFERRAL_CHANNEL
     )
+    # The same total against the retained v1 contract table rather than this
+    # tool's hand-converted copy of it. It is summed in atomic units and
+    # recorded that way: converting to display units first would divide a
+    # one-unit divergence to zero and hide exactly what this is checking.
+    other_change_atomic = sum(
+        abs(cap * e.D - v1.CHANNEL_CAPS[channel])
+        for channel, cap in current_caps.items()
+        if channel != e.REFERRAL_CHANNEL
+    )
     check.equal("supply_revision.previous_display", previous)
     check.equal("supply_revision.current_display", current)
     check.equal("supply_revision.increase_display", increase)
     check.equal("supply_revision.referral_channel_increase_display", referral_increase)
     check.equal("supply_revision.unexplained_increase_display", increase - referral_increase)
     check.equal("supply_revision.other_channel_change_display", other_change)
-    check.equal(
-        "supply_revision.previous_channel_total_display",
-        sum(e.SUPERSEDED_CHANNELS_DISPLAY.values()),
+    check.equal("supply_revision.other_channel_change_atomic", other_change_atomic)
+    check.agree(
+        "supply_revision.previous_channel_total_atomic",
+        sum(e.SUPERSEDED_CHANNELS_DISPLAY.values()) * e.D,
+        sum(v1.CHANNEL_CAPS.values()),
+        "the retained v1 contract table",
     )
 
 
@@ -274,7 +313,7 @@ def check_research_input_vectors(check: Checker, source: dict[str, Any]) -> None
     )
     check.equal(
         "research_placeholders.retired_since_v1",
-        4 - len(placeholders),
+        len(v1.RESEARCH_PLACEHOLDERS) - len(placeholders),
     )
 
 
