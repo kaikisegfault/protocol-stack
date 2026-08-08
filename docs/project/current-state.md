@@ -5,8 +5,9 @@ Last updated: 2026-08-08
 ## Phase
 
 M3 — Founder Economy devnet, in progress. Slice M3.1 delivered the revised
-economic contract on 2026-08-08. M2 completed on 2026-08-05 with all sixteen
-requirements of `goals/m2-founder-economy-proof.md` passing.
+economic contract and slice M3.2 made it executable, both on 2026-08-08. M2
+completed on 2026-08-05 with all sixteen requirements of
+`goals/m2-founder-economy-proof.md` passing.
 
 On 2026-08-07 the owner supplied the four outstanding founder decisions and
 revised the economy. ADR 0023 records them: the maximum supply is now
@@ -16,10 +17,70 @@ unreferred seats fund a monthly performance pool, a cycle is met at 18 hours of
 fully operational uptime with a 6-hour fragmentable grace allowance, and a
 failed cycle's 342 units go to the highest uptime that cycle.
 
-**The accepted models are therefore superseded as founder direction.** They
+**The accepted M2 models are therefore superseded as founder direction.** They
 implement `founder-economy-manifest-v1` and remain exactly as verified; the
-constitution now specifies a v2 they do not implement. Nothing about what runs
-today changed, because none of it activates anything.
+constitution now specifies a v2 that only the new economy model implements. The
+seat, routing, escrow, and scenario-suite models still bind v1. Nothing about
+what runs today changed, because none of it activates anything.
+
+### How M3.2 was delivered
+
+Issue #103 and PR #104 delivered `founder-economy-simulator-v2` at merged commit
+`a0521d0`. It added the specification, ADR 0025, the executable model in
+`simulation/founder_economy_v2/`, a research scenario fixture, 189 normative
+vectors, and a second verifier entry point in `tools/founder-economy-v2-vectors/`.
+
+The transition set changed shape, not only parameters. The referral left the
+permission system entirely: `accrue_referral` is unconditional, direct-mint, and
+keyed by `(referred_seat_id, cycle_index)`, with no activity and no eligibility
+input. An unreferred seat credits `unreferred_performance_pool:global` rather
+than being rejected, which is what consumes the channel exactly at capacity, so
+`SEAT_NOT_REFERRED` is gone. The permission `kind` discriminator went with the
+referral, and `INVALID_PERFORMANCE_ALLOCATION` went with the supplied allocation
+list it validated.
+
+`evaluate_base_permission` now derives the activity verdict and the winner set
+from a cycle uptime record instead of reading two supplied fixtures.
+
+**The record carries measurements only.** It cannot express a verdict, an
+eligibility flag, a winner, a ranking, or an amount, and tests assert that a
+record carrying an `active` flag or a `winners` list fails to parse. This is the
+distinction the slice existed to preserve: a research placeholder stands in for
+an undecided founder policy, while the record stands in for a rule ADR 0023 and
+the Founder Constitution already decide but whose measurement pipeline is
+unbuilt. `MISSING_UPTIME_RECORD`, `INVALID_UPTIME_RECORD`, and
+`INCONSISTENT_UPTIME_RECORD` are deliberately distinct from the research codes so
+a trace can tell a missing measurement from a missing founder decision.
+
+A `cycle_window` is separate from a seat's `cycle_index`. A seat's 731 cycles
+begin at its own first activation, so two seats' cycle 7 are different windows
+and reallocation to "the highest uptime in that same cycle" is only meaningful
+against a shared one. The model cannot verify that a supplied window is the
+correct window for a seat's cycle — that is the deferred cycle-boundary rule — so
+the separate field keeps the gap visible in every event rather than hiding it in
+a coincidence of names.
+
+The carry needed care. Carried value is unreserved channel capacity, not a fourth
+ledger dimension, so folding it into the journal's channel balance would
+double-count it and no accepted journal would balance. It is pinned by its own
+identity instead, per event in the engine and cumulatively in the state
+invariants:
+
+```text
+issued(founder_operator) + outstanding(founder_operator) + performance_carry
+  = count(evaluated_permission_keys) * 34,200,000,000
+ <= cap(founder_operator)
+```
+
+asserted as an equality rather than a bound, because a bound would admit a defect
+that lost carried value.
+
+`founder_referral` is rejected by `direct_issue`. That is containment rather than
+tidiness: admitting it would let a supplied eligibility fixture mint referral
+units outside the per-seat-cycle accounting and place a founder-decided channel
+under an undecided placeholder.
+
+No v1 artifact, C++, consensus, or devnet behavior changed.
 
 ### How M3.1 was delivered
 
@@ -109,8 +170,20 @@ slices.
   `84cca09865b6c62bf09d3f6bc3821a2527c7a4835652cffdc0ebefa34b314ce5`, and puts
   the referral in the direct-mint group at 250,002,000,000,000,000 atomic. Its
   strict loader enforces the eight ordered failure codes and rederives every
-  product and subtotal. It is a contract and a loader, not a model: it executes
-  no transition and activates nothing.
+  product and subtotal.
+- The `founder-economy-simulator-v2` model executes that contract. It runs seat
+  activation, base permission evaluation, unconditional referral accrual, atomic
+  exercise, and capped direct issuance with deterministic trace, state, and
+  result digests. A cycle is met at 64,800 seconds of cumulative fully
+  operational uptime, checked in both of the constitution's stated forms; the
+  failed-cycle winner set is the highest uptime among seats that met the same
+  window, split equally with the remainder carried; an empty winner set carries
+  the whole portion. A window's record is bound by digest on first reference, so
+  the window's uptime is one fact for a run rather than a per-event opinion. It
+  is research software and activates nothing.
+- A complete 731-cycle single-seat run reproduces the v2 per-seat schedule
+  exactly, including 25,000,200,000,000 Founder-operator, 12,500,100,000,000
+  venture-escrow, and 2,500,020,000,000 unreferred-pool atomic units.
 - The accepted Founder Economy manifest exactly represents the
   55,743,940,100-unit maximum as 5,574,394,010,000,000,000 eight-decimal atomic
   units, fixes a canonical ten-channel manifest and digest, and proves every
@@ -193,13 +266,42 @@ These are target requirements, not runnable Founder behavior. Issue #71 added a
 specification, JSON manifest, and fixed vectors; issues #77, #79, #82, and #85
 each added a specification, ADR, Python model, vectors, and verifier for part of
 them; issue #88 added a specification, ADR, deterministic generators, vectors,
-and verifier that exercise all four at multi-year scale. None changed current
-transaction bytes, C++ state, devnet supply, existing simulator schemas, bridge,
-wallet, AI, biometric, or resource behavior.
+and verifier that exercise all four at multi-year scale. Issue #99 restated the
+contract under the revised direction and issue #103 made that restatement
+executable. None changed current transaction bytes, C++ state, devnet supply,
+previously accepted simulator schemas, bridge, wallet, AI, biometric, or resource
+behavior.
 
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #103 and PR #104 are the M3.2 delivery, merged by rebase at `a0521d0`.
+  PR final-head Actions run 31266418185 on `4392d15` and post-merge run
+  31266927181 on `a0521d0` both passed the complete hosted matrix — scope
+  classification `full`, GCC and Clang debug, both sanitizers, and the aggregate
+  required check.
+- M3.2 local evidence: the simulator verifier derives 189 vectors and the
+  manifest verifier still derives 154; 96 new tests pass — 38 model, 39
+  transition-error, and 19 scenario — alongside the 61 existing v2 manifest and
+  loader tests. All five retained v1 verifiers pass unchanged, so the M2 evidence
+  is intact.
+- The simulator verifier fails closed five ways, each confirmed by execution: a
+  tampered recorded value, a recorded key no derivation reaches, a derived key
+  the file does not carry, a Founder Constitution literal that no longer spans a
+  cycle, and a model constant that disagrees with the constitution. The last is
+  the informative one: shrinking the model's threshold to 64,500 seconds does not
+  merely change a number, it makes the constitution's two stated forms of the
+  cycle rule disagree and turns an accepted evaluation into a rejection.
+- The research scenario reaches all fourteen modelled result codes, and the
+  verifier records that as a derived claim so a later scenario cannot quietly
+  lose coverage. Every prefix of a mixed scenario reproduces the state the full
+  run held at that point.
+- Two guards are unreachable at real scale and are proved present rather than
+  reached. A zero equal-split share requires the Founder portion shrunk below the
+  winner count, because the smallest possible share at the full 100,000-seat
+  capacity is 342,000 atomic units. Arithmetic overflow requires a carry near the
+  `u64` maximum, because every channel cap leaves more than double its own size
+  in headroom.
 - Issue #99 and PR #100 are the M3.1 delivery, merged by rebase at `0c05b52`.
   PR final-head Actions run 31262789135 on `e9de7a7` and post-merge run
   31263319868 both passed the complete hosted matrix — scope classification
@@ -342,18 +444,25 @@ in `founder-economy-report-v1.md` rather than summarized here.
 
 Two qualifiers matter for M3. The models represent a cycle as a deterministic
 integer index, so no wall clock reaches a transition, but binding that index to
-a chain-defined height or epoch is still undone. And the direction those models
-implement was superseded on 2026-08-07, so every accepted schema, vector, and
-digest is now evidence about a contract the constitution no longer directs.
+a chain-defined height or epoch is still undone. And the direction the M2 models
+implement was superseded on 2026-08-07, so their accepted schemas, vectors, and
+digests are evidence about a contract the constitution no longer directs.
 
-M3.1 restated that contract but did not close the second qualifier. The models
-still implement v1. `founder-economy-manifest-v2` is a specification, a manifest,
-a digest, vectors, and a loader; nothing executes a v2 transition. Removing three
-research placeholders records that supplied fixtures are no longer the intended
-source of activity and performance reallocation — it does not supply the
-computation that replaces them, and the uptime record, challenge construction,
-sampling rate, dispute window, winner rule, month definition for the unreferred
-pool, and cycle boundary all remain unspecified.
+M3.1 restated that contract and M3.2 made it executable, which closes the second
+qualifier for the economy model alone. The seat, revenue-routing, escrow-payout,
+and scenario-suite models still bind v1, so their recorded digests remain
+evidence about the v1 contract.
+
+M3.2 supplies the activity and reallocation computation that three removed
+placeholders used to stand in for, but it does not supply the measurement that
+computation reads. The uptime record is an abstract input whose shape, bounds,
+and determinism are fixed and whose challenge construction, sampling rate,
+dispute window length, and dispute resolution are not. Nothing in the model
+proves that an `uptime_seconds` value reflects a real machine, and a record that
+omits seats yields a winner set over the seats it does list without that being
+detected. The month definition for the unreferred pool, that pool's payout, tie,
+and remainder rules, and the cycle boundary in heights or epochs also remain
+unspecified. Accrual into the pool is modelled; paying it out is not.
 
 Restart equivalence is state equivalence under replay. It is not persistence,
 crash-consistency, or a snapshot format, and no model has any of those.
@@ -383,50 +492,47 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice M3.2: revise the independent Python model to implement
-`founder-economy-manifest-v2`. This still comes before the consensus encoding,
-because it settles which transitions exist rather than how they are serialized.
+Milestone slice M3.3: rebind the dependent models to
+`founder-economy-simulator-v2` and regenerate every recorded digest, satisfying
+requirement 3 of `docs/project/first-goal.md`. This still comes before the
+consensus encoding, because it settles what the models agree on before deciding
+how any of it is serialized.
 
-Create one bounded M3 issue for `founder-economy-simulator-v2`, delivering a
-specification, an ADR, the model in `simulation/founder_economy_v2/`, normative
-vectors, and a verifier at the standard the six existing verifiers set.
+Create one bounded M3 issue. The four dependents are not equally affected, and
+the slice should establish which is which by evidence rather than by assumption:
 
-The transition set changes, not only its parameters:
+1. **Escrow payout is the load-bearing one.** `simulation/escrow_payout/` takes
+   opening custody from a recorded `founder-economy-simulator-v1` state by
+   recomputing that model's digest, and its verifier requires the fixture to bind
+   a live v1 run. Both must move to the v2 model, and the v2 state value has a
+   different shape, so the binding is a real change rather than a re-run.
+2. **Revenue routing** depends on the maximum supply for its overflow reasoning:
+   the recorded bound is stated against roughly 7.4% of maximum supply, and that
+   maximum rose from 55,743,940,100 to 56,993,950,100. Recheck the bound rather
+   than only regenerating the vectors.
+3. **The scenario suite** exercises all four models and derives its independence
+   closed-form from Founder Constitution literals in
+   `tools/scenario-suite-vectors/expected.py`. Those literals include the
+   superseded figures, so the suite needs the revised ones and a rebuilt
+   population run.
+4. **The Founder Seat sale model** may need nothing. It derives a USD price
+   schedule from the seat capacity and per-principal bound, both unchanged
+   between v1 and v2. Prove that independence rather than assume it; if it holds,
+   record it as a finding instead of manufacturing a change.
 
-1. `evaluate_referral_permission` and its `inactive_referral_result` research
-   input disappear. The referral becomes an unconditional direct-mint accrual
-   keyed by `(referred_seat_id, cycle_index)`, so its replay key survives but
-   its permission does not.
-2. The permission `kind` discriminator disappears with it. `base` was one of two
-   values and is now the only one, so `pending_permissions` and
-   `evaluated_permission_keys` lose a tuple element.
-3. `evaluate_base_permission` takes a derived activity input and a derived
-   winner set in place of `activity_eligibility_result` and
-   `inactive_performance_allocation_result`.
-4. The unreferred performance pool is a new beneficiary inside the referral
-   channel, so an unreferred seat's 34,200,000,000 atomic units per cycle reach
-   it rather than going unissued.
-5. `INVALID_PERFORMANCE_ALLOCATION` does not carry forward. It validated a
-   supplied allocation list, and there is none to validate.
-
-Two of those need a decision this slice cannot avoid. A derived activity input
-has no source until the uptime record exists, and a derived winner set has no
-source until the ranking rule does. Both are engineering work rather than
-founder-reserved, but they are M3.4's subject. The workable order is to specify
-the uptime record and winner rule as the model's abstract inputs — exact shape,
-bounds, and determinism, with the challenge construction and dispute window
-still deferred — rather than to reintroduce a supplied fixture under a new name.
-State that boundary explicitly in the specification; do not let an empty
-placeholder list imply activity is solved.
-
-Every dependent model, vector, and digest — seat, routing, escrow, and the
-scenario suite — regenerates after that, and each regeneration must keep its
-own verifier failing closed.
+Every regenerated verifier must still fail closed on a tampered recorded value,
+a recorded key no derivation reaches, and a derived key the file does not carry.
 
 Keep `founder-economy-manifest-v1`, `founder-economy-simulator-v1`, and every v1
 model, vector, and digest in place and passing. They are the retained M2
-evidence and are not edited to match the new direction. `simulation/founder_economy/`
-stays untouched; the v2 package is where the revised model goes.
+evidence and are not edited to match the new direction.
+`simulation/founder_economy/` stays untouched.
+
+M3.4 remains the uptime record itself: the challenge construction, sampling rate,
+dispute window length, and dispute resolution that produce an `uptime_seconds`
+value, plus the cycle boundary in heights or epochs that would let the model
+check a `cycle_window` against a seat's `cycle_index`. M3.2 fixed the shape of
+that input; it did not build the pipeline behind it.
 
 ## Blockers
 
