@@ -196,10 +196,13 @@ class FixedValueTest(ManifestErrorTest):
             self.reject(value, "MANIFEST_MISMATCH")
 
 
-class DerivedValueTest(ManifestErrorTest):
-    """Reached only by a manifest that already matches the fixed table."""
+    def test_a_changed_base_total_is_caught_by_the_fixed_table(self) -> None:
+        """The derivation stage is reachable only past this comparison.
 
-    def test_a_supply_mismatch_is_reported_after_the_fixed_table(self) -> None:
+        Its own rejections are exercised directly in the manifest tests, which
+        is what proves the arithmetic is a real gate rather than a restatement
+        of the table above.
+        """
         value = manifest_value()
         value["base_permission"]["total_atomic"] = str(c.BASE_PERMISSION_TOTAL + 1)
         error = self.reject(value, "MANIFEST_MISMATCH")
