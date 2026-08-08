@@ -201,10 +201,14 @@ wallet, AI, biometric, or resource behavior.
 
 - Repository: `kaikisegfault/protocol-stack`.
 - Issue #99 and PR #100 are the M3.1 delivery, merged by rebase at `0c05b52`.
-  PR final-head Actions run 31262789135 on `e9de7a7` passed the complete hosted
-  matrix — scope classification `full`, GCC and Clang debug, both sanitizers,
-  and the aggregate required check. Runs 31262577723 and 31262627548 were
-  superseded by later pushes to the same branch and were cancelled.
+  PR final-head Actions run 31262789135 on `e9de7a7` and post-merge run
+  31263319868 both passed the complete hosted matrix — scope classification
+  `full`, GCC and Clang debug, both sanitizers, and the aggregate required
+  check. Runs 31262577723 and 31262627548 were superseded by later pushes to the
+  same branch and were cancelled.
+- PR #101 recorded this handoff and merged by rebase at `852e289`, with
+  post-merge run 31263846117 passing the focused metadata path; the hosted
+  matrix was correctly skipped for a documentation-only change.
 - Issues #71, #77, #79, #82, #85, #88, and #91 are the M2 deliveries; PRs #72,
   #78, #80, #83, #86, #89, and #92 are merged.
 - After PR #72, commits `de9903e` and `4947c46` replaced the Codex agent layout
