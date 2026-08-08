@@ -5,8 +5,9 @@ Last updated: 2026-08-08
 ## Phase
 
 M3 — Founder Economy devnet, in progress. Slice M3.1 delivered the revised
-economic contract and slice M3.2 made it executable, both on 2026-08-08. M2
-completed on 2026-08-05 with all sixteen requirements of
+economic contract, M3.2 made it executable, and M3.3 rebound every dependent
+model to it, all on 2026-08-08. Requirement 3 of `first-goal.md` is satisfied.
+M2 completed on 2026-08-05 with all sixteen requirements of
 `goals/m2-founder-economy-proof.md` passing.
 
 On 2026-08-07 the owner supplied the four outstanding founder decisions and
@@ -22,6 +23,71 @@ implement `founder-economy-manifest-v1` and remain exactly as verified; the
 constitution now specifies a v2 that only the new economy model implements. The
 seat, routing, escrow, and scenario-suite models still bind v1. Nothing about
 what runs today changed, because none of it activates anything.
+
+### How M3.3 was delivered
+
+Issue #108 and PR #109 delivered `escrow-payout-v2` at merged commit `a8ea180`,
+and issue #110 and PR #111 delivered `economy-scenario-suite-v2` at merged commit
+`04cdd23`. Together they satisfy requirement 3 of `first-goal.md`: all four
+dependent models are re-verified against version two, every recorded digest is
+regenerated, and both verifiers still fail closed in both directions.
+
+The slice was split because the suite binds the escrow model, so rebinding the
+suite depends on the escrow model already having a v2 binding.
+
+**Rebinding is a new version, not an edit, and the repository decided that rather
+than the session.** `escrow-payout-v1.md` fixes its research-input shapes and
+digest labels as immutable and requires a new schema and ADR to change them, and
+`economy-scenario-suite-v1.md` already recorded that its scenario parameters were
+superseded and that a version two suite would derive them. ADR 0026 records both
+halves.
+
+Escrow payout differs in exactly six strings: the five domain labels it writes
+and the one founder-economy state label it reads. Every transition, rejection
+condition, rejection order, journal bucket, and invariant is identical, so the
+two versions share one implementation selected by a `Binding` record. A duplicate
+package was rejected — `founder_economy_v2` earned one because its transition set
+changed shape, while two copies of a thousand lines of identical payout logic
+would have nothing to notice drift.
+
+The escrow v2 fixture is the v1 scenario with only its four embedded economy
+states rebound. Holding the scenario fixed is what makes the rebinding auditable:
+the two runs produce identical result codes for all 39 events in identical order,
+and their final states differ in exactly one member, `bound_state_digest`. That
+equivalence is asserted, because a rebinding defect that altered a payout rule
+would still produce a self-consistent vector file.
+
+The opening custody is unchanged at 34,200,000,000 / 6,840,000,000 /
+3,420,000,000 atomic units. The escrow legs are unrevised and both fixtures accept
+two base permissions, so the amounts coincide while the state they come from does
+not. Both facts are recorded rather than one being assumed.
+
+**The suite's scenario 1 changed shape.** Version one supplied the activity
+verdict and the performance recipient because the constitution had not decided
+them; both are now decided, so the generator supplies measurements and the model
+derives the answers. The tick is the shared `cycle_window`: three seats staggered
+61 ticks apart hold different cycle indices at the same tick, and reallocation to
+"the highest uptime in that same cycle" is only meaningful against a shared
+window. Reusing `cycle_index` would have put exactly one seat in every window, so
+no reallocation would ever have had a candidate.
+
+The intended winner is given the only maximal uptime and the model derives the
+winner set. Every other seat sits exactly on the 64,800-second threshold, so the
+founder-directed boundary is exercised in every reallocating window rather than
+only in a unit test. At most one seat may fail per window, which the generator
+asserts rather than assumes: two would make the winner set depend on evaluation
+order. A fourth seat is activated and never evaluates, because all three
+population seats consume their whole 731-cycle windows and the three uptime
+probes need an unevaluated key to reach `MISSING_UPTIME_RECORD`,
+`INVALID_UPTIME_RECORD`, and `INCONSISTENT_UPTIME_RECORD` in order.
+
+Scenarios 2 and 3 are proved version-independent rather than asserted to be: the
+19 seat and 26 routing vectors are byte-identical in both vector files.
+
+No v1 artifact, C++, consensus, or devnet behavior changed.
+`simulation/founder_economy/` is untouched, and `escrow-payout-v1.txt`, its
+fixture, and `economy-scenario-suite-v1.txt` are byte-for-byte unchanged and
+still pass.
 
 ### How M3.2 was delivered
 
@@ -225,6 +291,20 @@ slices.
   Restart equivalence holds under prefix replay and split resume, and seeded
   property tests assert each model's conservation equations against its
   published results rather than its recorded totals.
+- The escrow payout model implements two accepted contracts. `escrow-payout-v2`
+  binds `founder-economy-simulator-v2` and differs from version one in exactly
+  six strings; a state recorded under either economy version is rejected by the
+  other's bind with `INVALID_RESEARCH_INPUT`, derived in the vectors rather than
+  asserted. Both versions' transitions are identical, which the two runs' equal
+  trace codes prove.
+- The scenario suite runs under either binding. `economy-scenario-suite-v2`
+  reruns all four scenarios against the revised economy: a complete 731-cycle
+  staggered population run with derived activity and derived performance
+  winners, the 100,000-seat concentrated sale, 122 routing cycles, and an escrow
+  drain bound to the v2 population run's own state digest. The referral channel
+  is consumed exactly by its two destinations — 5,000,040,000,000 atomic units of
+  referrer custody plus a 2,500,020,000,000 unreferred pool equal its whole
+  issuance — and the performance carry ends at zero.
 - The one-word `proceed`, `conclude`, and `status` workflows reconstruct,
   deliver, and report repository state.
 
@@ -275,6 +355,26 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #108 and PR #109 are the M3.3a delivery, merged by rebase at `a8ea180`.
+  PR final-head Actions run 31268938270 on `0076d4f` and post-merge run
+  31269458528 on `a8ea180` both passed the complete hosted matrix — scope
+  classification `full`, GCC and Clang debug, both sanitizers, and the aggregate
+  required check. Run 31268730543 was superseded by a later push and was
+  cancelled.
+- Issue #110 and PR #111 are the M3.3b delivery, merged by rebase at `04cdd23`.
+  PR final-head Actions run 31270415727 on `5ba7b14` passed the complete hosted
+  matrix; no run on that branch was superseded.
+- M3.3 local evidence: eight verifiers pass. The suite derives 133 v1 and 138 v2
+  vectors; escrow payout derives 169 v1 and 172 v2; the economy derives 139
+  manifest and 65 simulator v1 values, 154 manifest v2 and 189 simulator v2; the
+  seat verifier derives 96 and the routing verifier 200, both unchanged. 50 new
+  tests pass — 19 escrow v2 and 31 scenario v2 — alongside the 57 existing escrow
+  and 48 existing scenario tests, all unchanged.
+- Both v2 verifiers fail closed four ways, each confirmed by execution at exit 1
+  with the unmutated run as a positive control: a tampered recorded value, a
+  recorded key no derivation reaches, a derived key the file does not carry, and
+  the v2 verifier run against the v1 vector file. The last is the informative
+  one for the suite: it fails first on the superseded maximum supply.
 - Issue #103 and PR #104 are the M3.2 delivery, merged by rebase at `a0521d0`.
   PR final-head Actions run 31266418185 on `4392d15` and post-merge run
   31266927181 on `a0521d0` both passed the complete hosted matrix — scope
@@ -451,10 +551,13 @@ a chain-defined height or epoch is still undone. And the direction the M2 models
 implement was superseded on 2026-08-07, so their accepted schemas, vectors, and
 digests are evidence about a contract the constitution no longer directs.
 
-M3.1 restated that contract and M3.2 made it executable, which closes the second
-qualifier for the economy model alone. The seat, revenue-routing, escrow-payout,
-and scenario-suite models still bind v1, so their recorded digests remain
-evidence about the v1 contract.
+M3.1 restated that contract, M3.2 made it executable, and M3.3 rebound every
+dependent to it, which closes the second qualifier. `escrow-payout-v2` and
+`economy-scenario-suite-v2` bind version two; the seat and revenue-routing models
+needed no change, which was re-proved rather than assumed — neither imports either
+economy package, and neither carries a supply figure, channel cap, channel
+identifier, referral amount, or issuance-cycle count. The retained v1 contracts,
+models, vectors, and digests remain in place and passing as the M2 evidence.
 
 M3.2 supplies the activity and reallocation computation that three removed
 placeholders used to stand in for, but it does not supply the measurement that
@@ -467,14 +570,23 @@ detected. The month definition for the unreferred pool, that pool's payout, tie,
 and remainder rules, and the cycle boundary in heights or epochs also remain
 unspecified. Accrual into the pool is modelled; paying it out is not.
 
+M3.3 exercised that input at multi-year scale without narrowing the gap. The
+scenario suite supplies a `cycle_window` by generator convention — the tick — and
+supplies every `uptime_seconds` value it then derives verdicts from. A suite that
+conserves value under supplied measurements is evidence about the derivation, not
+about the measurements. Its winner is also deliberately unique in every window,
+so the tie and remainder paths of the reallocation rule are covered by
+`founder-economy-simulator-v2`'s own vectors rather than by the suite.
+
 Restart equivalence is state equivalence under replay. It is not persistence,
 crash-consistency, or a snapshot format, and no model has any of those.
 
 The four models are only partly joined. The escrow model is the only one that
-binds another: it takes opening custody from a recorded
-`founder-economy-simulator-v1` state by digest, a one-way read that changes
-nothing in the economy model, and the scenario suite now exercises that binding
-against a complete 731-cycle population run rather than a small fixture. The
+binds another: it takes opening custody from a recorded founder-economy state by
+digest, a one-way read that changes nothing in the economy model, and the
+scenario suite exercises that binding against a complete 731-cycle population run
+rather than a small fixture. Version two of both preserves exactly this, and no
+more. The
 others remain unjoined. A seat purchased in the sale model is not an activated
 seat in the economy model, and a seat identifier in a routing snapshot is not
 proved to be either, because the activation height rule and the
@@ -495,59 +607,49 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice M3.3: rebind the dependent models to
-`founder-economy-simulator-v2` and regenerate every recorded digest, satisfying
-requirement 3 of `docs/project/first-goal.md`. This still comes before the
-consensus encoding, because it settles what the models agree on before deciding
-how any of it is serialized.
+Milestone slice M3.4: define the cycle boundary in chain heights or epochs,
+satisfying requirement 4 of `docs/project/first-goal.md`.
 
-Create one bounded M3 issue. Two of the four dependents need work and two do not.
-That was established by inspecting imports, constants, and vector files on
-2026-08-08 rather than assumed; the slice should re-prove it rather than trust
-this note:
+Create one bounded M3 issue. Take the cycle boundary before the rest of the
+uptime pipeline, because it is the smaller half and the other half depends on it.
+M3.2 and M3.3 left the dependency visible in every event rather than hidden: a
+`cycle_window` is a separate field from a seat's `cycle_index`, and no model can
+check that a supplied window is the correct one for a seat's cycle, because the
+mapping is exactly what this slice defines. The scenario suite currently supplies
+the tick as the window, which is a generator convention and not a rule.
 
-1. **Escrow payout is coupled and load-bearing.**
-   `simulation/escrow_payout/contract.py` imports the v1
-   `simulation/founder_economy/contract.py`, pins
-   `ECONOMY_STATE_LABEL = "protocol-stack:founder-economy:state-v1"`, and derives
-   its three escrow caps from the v1 `CHANNEL_CAPS` table. Those three caps are
-   unchanged in v2, so the work is the label, the import, and the state shape:
-   `bind_opening_custody` recomputes the economy state digest over a supplied
-   state value, and the v2 canonical state has different members. Its verifier
-   must bind a live v2 run in place of the v1 one.
-2. **The scenario suite is coupled.** `simulation/scenarios/` imports the v1
-   economy engine, manifest loader, and contract, and
-   `tools/scenario-suite-vectors/expected.py` hard-codes the superseded
-   `MAXIMUM_SUPPLY_DISPLAY = 55_743_940_100` and a 17.1-unit `REFERRAL_LEG`. It
-   also counts referral *permissions*, which v2 does not create, so its
-   population generator changes shape rather than parameters.
-3. **The Founder Seat sale model needs nothing.** It imports nothing from
-   `simulation/founder_economy/`, and neither the model, its verifier, nor
-   `test-vectors/founder-seat-schedule-v1.txt` carries a supply or channel
-   figure. Its price schedule derives from the seat capacity and the
-   per-principal bound, both unchanged between v1 and v2.
-4. **Revenue routing needs nothing either.** It imports only
-   `simulation/common/canonical.py`, and no supply figure appears in the model,
-   its verifier, or `test-vectors/revenue-routing-v1.txt`. Its overflow-free
-   share decomposition is proved against the `u64` maximum rather than against a
-   fraction of maximum supply, so a changed maximum cannot weaken it. An earlier
-   draft of this handoff claimed the opposite. The 7.4%-of-maximum-supply figure
-   recorded further up explains why the naive `45 * amount / 100` form was
-   rejected; it is not a property of the accepted implementation.
+The slice should decide and specify:
 
-Every regenerated verifier must still fail closed on a tampered recorded value,
-a recorded key no derivation reaches, and a derived key the file does not carry.
+1. **What a cycle is measured in.** Heights or epochs, and how a seat's cycle
+   `n` maps to a window identifier that two independent nodes compute
+   identically. No wall clock may be reachable from a transition.
+2. **When a seat's issuance window opens.** The Founder Constitution gives each
+   seat 731 cycles beginning at its own first activation, so the activation
+   height rule is part of this. It is also the unsettled rule behind the
+   purchase-to-activation gap, so check whether this slice closes that too or
+   only narrows it.
+3. **The check the model cannot make today**, so that
+   `evaluate_base_permission` can reject a `cycle_window` that is not the window
+   for the supplied `cycle_index`.
 
-Keep `founder-economy-manifest-v1`, `founder-economy-simulator-v1`, and every v1
-model, vector, and digest in place and passing. They are the retained M2
-evidence and are not edited to match the new direction.
-`simulation/founder_economy/` stays untouched.
+Requirement 4 says "with no wall clock reachable from a transition", which the
+models already satisfy by representing a cycle as a deterministic integer index.
+The work is binding that index to a chain-defined quantity, not removing a clock.
 
-M3.4 remains the uptime record itself: the challenge construction, sampling rate,
-dispute window length, and dispute resolution that produce an `uptime_seconds`
-value, plus the cycle boundary in heights or epochs that would let the model
-check a `cycle_window` against a seat's `cycle_index`. M3.2 fixed the shape of
-that input; it did not build the pipeline behind it.
+M3.5 is then the rest of requirement 7: the challenge construction, sampling
+rate, dispute window length, and dispute resolution that produce an
+`uptime_seconds` value. M3.2 fixed the shape of that input and M3.3 exercised it
+at multi-year scale; neither built the pipeline behind it, and nothing yet proves
+a measurement reflects a real machine.
+
+Requirements 5, 6, and 10 — canonical state keys, transaction encodings, numeric
+receipt codes, the M1 compatibility boundary, and the C++20 implementation — come
+after the boundary is defined, because they serialize what the boundary settles.
+
+Keep `founder-economy-manifest-v1`, `founder-economy-simulator-v1`,
+`escrow-payout-v1`, `economy-scenario-suite-v1`, and every v1 model, vector, and
+digest in place and passing. They are the retained M2 evidence and are not edited
+to match the new direction. `simulation/founder_economy/` stays untouched.
 
 ## Blockers
 
