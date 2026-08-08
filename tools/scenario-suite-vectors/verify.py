@@ -29,17 +29,22 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import expected as x
+from types import ModuleType
+
+import expected
+import expected_v2
 from checker import Checker, read_vectors
 from economy_checks import check_economy
 from escrow_checks import check_escrow
 from market_checks import check_routing, check_seats
 
 from simulation.scenarios.routing_population import empty_cycles
-from simulation.scenarios.suite import ROOT, run_suite
+from simulation.scenarios.suite import BINDINGS, ROOT, run_suite
+
+EXPECTATIONS: dict[str, ModuleType] = {"v1": expected, "v2": expected_v2}
 
 
-def check_denomination(check: Checker) -> None:
+def check_denomination(check: Checker, x: ModuleType) -> None:
     check.equal("denomination.decimal_places", x.DECIMAL_PLACES)
     check.equal(
         "denomination.atomic_units_per_display_unit",
@@ -50,22 +55,24 @@ def check_denomination(check: Checker) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--vectors",
-        type=Path,
-        default=ROOT / "test-vectors" / "economy-scenario-suite-v1.txt",
-    )
+    parser.add_argument("--version", choices=sorted(EXPECTATIONS), default="v1")
+    parser.add_argument("--vectors", type=Path, default=None)
     arguments = parser.parse_args()
 
-    results = run_suite()
-    check = Checker(read_vectors(arguments.vectors))
+    x = EXPECTATIONS[arguments.version]
+    vectors = arguments.vectors or (
+        ROOT / "test-vectors" / f"economy-scenario-suite-{arguments.version}.txt"
+    )
 
-    check_denomination(check)
-    check_economy(check, results["economy_population"])
+    results = run_suite(BINDINGS[arguments.version])
+    check = Checker(read_vectors(vectors))
+
+    check_denomination(check, x)
+    check_economy(check, x, results["economy_population"])
     check_seats(check, results["seat_concentration"])
     check_routing(check, results["routing_population"], len(empty_cycles()))
     check_escrow(
-        check, results["escrow_drain"], results["economy_population"]
+        check, x, results["escrow_drain"], results["economy_population"]
     )
     check.require_full_coverage()
 

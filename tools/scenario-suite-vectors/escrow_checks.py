@@ -7,9 +7,9 @@ the escrow model bound must be the digest that run produced.
 
 from __future__ import annotations
 
+from types import ModuleType
 from typing import Any
 
-import expected as x
 from checker import Checker
 
 ESCROWS = (
@@ -38,7 +38,7 @@ def check_join(
     check.equal("escrow.bound_state_digest", bound)
 
 
-def check_trace(check: Checker, result: dict[str, Any]) -> None:
+def check_trace(check: Checker, x: ModuleType, result: dict[str, Any]) -> None:
     records = result["records"]
     check.equal("escrow.schema", result["schema"])
     check.equal("escrow.event_count", len(records))
@@ -76,7 +76,7 @@ def _accepted_payouts(result: dict[str, Any], escrow_id: str) -> int:
     )
 
 
-def check_drain(check: Checker, result: dict[str, Any]) -> None:
+def check_drain(check: Checker, x: ModuleType, result: dict[str, Any]) -> None:
     """Each escrow opened at its closed-form total and ended empty."""
     state = result["final_state"]
     channels = x.economy_channel_totals()
@@ -151,11 +151,12 @@ def check_probes(check: Checker, result: dict[str, Any]) -> None:
 
 def check_escrow(
     check: Checker,
+    x: ModuleType,
     result: dict[str, Any],
     economy_result: dict[str, Any],
 ) -> None:
     check_join(check, result, economy_result)
-    check_trace(check, result)
-    check_drain(check, result)
+    check_trace(check, x, result)
+    check_drain(check, x, result)
     check_conservation(check, result)
     check_probes(check, result)
