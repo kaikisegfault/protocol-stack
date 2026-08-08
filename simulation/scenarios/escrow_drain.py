@@ -53,12 +53,12 @@ def payout_amounts(custody: int) -> list[int]:
     return amounts
 
 
-def _bind(state_value: dict[str, Any]) -> dict[str, Any]:
+def _bind(state_value: dict[str, Any], binding: c.Binding) -> dict[str, Any]:
     return {
         "id": "bind-population-run",
         "kind": "bind_opening_custody",
         "economy_state_result": {
-            "state_digest": digest(c.V1.economy_state_label, state_value),
+            "state_digest": digest(binding.economy_state_label, state_value),
             "state_value": state_value,
         },
     }
@@ -147,10 +147,18 @@ def _escrow_events(
     return generated
 
 
-def events(state_value: dict[str, Any]) -> list[dict[str, Any]]:
-    """Build the drain of every escrow opened by the supplied economy state."""
+def events(
+    state_value: dict[str, Any],
+    binding: c.Binding = c.V1,
+) -> list[dict[str, Any]]:
+    """Build the drain of every escrow opened by the supplied economy state.
+
+    The binding fixes which economy version's state may open these escrows. The
+    drain itself is version independent, because the three escrow caps and the
+    payout rules are identical under both accepted contracts.
+    """
     custody = opening_custody(state_value)
-    generated = [_bind(state_value)]
+    generated = [_bind(state_value, binding)]
     for index, escrow_id in enumerate(c.ESCROW_IDS):
         generated.extend(_escrow_events(index, escrow_id, custody[escrow_id]))
     return generated

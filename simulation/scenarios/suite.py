@@ -4,27 +4,34 @@ The escrow drain binds the economy population run's final state, so the
 economy scenario is executed once and its result is threaded into the escrow
 scenario rather than recomputed. That ordering is the join: the escrows are
 drained of exactly what the population run issued into them.
+
+Two suite versions are accepted. They differ in the economy contract scenarios
+one and four bind, and in the shape of the population generator that follows
+from it. Scenarios two and three are shared without a parameter, because the
+Founder Seat sale and revenue routing models carry no supply or channel figure
+and are identical under both economy contracts.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
+from types import ModuleType
 from typing import Any
 
+from ..escrow_payout import contract as escrow_contract
 from ..escrow_payout.engine import simulate as escrow_simulate
-from ..founder_economy.engine import simulate as economy_simulate
-from ..founder_economy.manifest import load_manifest_file
 from ..founder_seats.engine import simulate as seat_simulate
 from ..revenue_routing.engine import simulate as routing_simulate
 from . import (
     economy_population,
+    economy_population_v2,
     escrow_drain,
     routing_population,
     seat_concentration,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
-MANIFEST_PATH = ROOT / "test-vectors" / "founder-economy-manifest-v1.json"
 
 SCENARIO_NAMES = (
     "economy_population",
@@ -34,10 +41,56 @@ SCENARIO_NAMES = (
 )
 
 
-def run_economy() -> dict[str, Any]:
-    return economy_simulate(
-        load_manifest_file(MANIFEST_PATH), economy_population.events()
-    )
+@dataclass(frozen=True)
+class SuiteBinding:
+    """One accepted suite version and the economy contract it exercises."""
+
+    version: str
+    manifest_path: Path
+    population: ModuleType
+    escrow_binding: escrow_contract.Binding
+
+    def economy_simulate(self, manifest: Any, events: Any) -> dict[str, Any]:
+        if self.version == "v1":
+            from ..founder_economy.engine import simulate
+
+            return simulate(manifest, events)
+        from ..founder_economy_v2.engine import simulate
+
+        return simulate(manifest, events)
+
+    def load_manifest(self) -> Any:
+        if self.version == "v1":
+            from ..founder_economy.manifest import load_manifest_file
+
+            return load_manifest_file(self.manifest_path)
+        from ..founder_economy_v2.manifest import load_manifest_file
+
+        return load_manifest_file(self.manifest_path)
+
+
+V1 = SuiteBinding(
+    version="v1",
+    manifest_path=ROOT / "test-vectors" / "founder-economy-manifest-v1.json",
+    population=economy_population,
+    escrow_binding=escrow_contract.V1,
+)
+
+V2 = SuiteBinding(
+    version="v2",
+    manifest_path=ROOT / "test-vectors" / "founder-economy-manifest-v2.json",
+    population=economy_population_v2,
+    escrow_binding=escrow_contract.V2,
+)
+
+BINDINGS: dict[str, SuiteBinding] = {V1.version: V1, V2.version: V2}
+
+# Retained so version one's accepted callers keep their existing import.
+MANIFEST_PATH = V1.manifest_path
+
+
+def run_economy(binding: SuiteBinding = V1) -> dict[str, Any]:
+    return binding.economy_simulate(binding.load_manifest(), binding.population.events())
 
 
 def run_seats() -> dict[str, Any]:
@@ -48,18 +101,24 @@ def run_routing() -> dict[str, Any]:
     return routing_simulate(routing_population.events())
 
 
-def run_escrow(economy_result: dict[str, Any]) -> dict[str, Any]:
-    return escrow_simulate(escrow_drain.events(economy_result["final_state"]))
+def run_escrow(
+    economy_result: dict[str, Any],
+    binding: SuiteBinding = V1,
+) -> dict[str, Any]:
+    return escrow_simulate(
+        escrow_drain.events(economy_result["final_state"], binding.escrow_binding),
+        binding=binding.escrow_binding,
+    )
 
 
-def run_suite() -> dict[str, dict[str, Any]]:
+def run_suite(binding: SuiteBinding = V1) -> dict[str, dict[str, Any]]:
     """Run every scenario in the fixed order the vectors record."""
-    economy = run_economy()
+    economy = run_economy(binding)
     return {
         "economy_population": economy,
         "seat_concentration": run_seats(),
         "routing_population": run_routing(),
-        "escrow_drain": run_escrow(economy),
+        "escrow_drain": run_escrow(economy, binding),
     }
 
 
@@ -83,9 +142,13 @@ def summarize(results: dict[str, dict[str, Any]]) -> dict[str, Any]:
 
 
 __all__ = [
+    "BINDINGS",
     "MANIFEST_PATH",
     "ROOT",
     "SCENARIO_NAMES",
+    "SuiteBinding",
+    "V1",
+    "V2",
     "run_economy",
     "run_escrow",
     "run_routing",
