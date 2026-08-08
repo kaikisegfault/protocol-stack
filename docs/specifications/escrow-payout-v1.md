@@ -2,6 +2,14 @@
 
 Status: Accepted M2 research model contract; not a consensus transition
 
+> **Rebound on 2026-08-08 by
+> [ADR 0026](../decisions/0026-dependent-model-rebinding-to-economy-v2.md).**
+> [`escrow-payout-v2.md`](escrow-payout-v2.md) states the same transitions
+> binding `founder-economy-simulator-v2` instead of version one. Only the five
+> domain labels and the bound economy state label differ. This document is not
+> edited: it states the contract that the accepted M2 evidence proves, and
+> `test-vectors/escrow-payout-v1.txt` remains normative and passing.
+
 This document fixes the deterministic integer behavior of the three
 founder-directed escrows when value leaves them, as required by requirement 11
 of [`m2-founder-economy-proof.md`](../project/goals/m2-founder-economy-proof.md).
