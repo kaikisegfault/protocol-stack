@@ -280,6 +280,9 @@ behavior.
   31266927181 on `a0521d0` both passed the complete hosted matrix — scope
   classification `full`, GCC and Clang debug, both sanitizers, and the aggregate
   required check.
+- PR #105 recorded this handoff and merged by rebase at `3d23416`, with
+  post-merge run 31267484643 passing the focused metadata path; the hosted matrix
+  was correctly skipped for a documentation-only change.
 - M3.2 local evidence: the simulator verifier derives 189 vectors and the
   manifest verifier still derives 154; 96 new tests pass — 38 model, 39
   transition-error, and 19 scenario — alongside the 61 existing v2 manifest and
