@@ -90,6 +90,31 @@ BASE_PERMISSION_KIND = "base_permission"
 DIRECT_MINT_KIND = "direct_mint"
 REFERRAL_CHANNEL = "founder_referral"
 
+# "A cycle is met when cumulative fully operational uptime within the
+# 24-hour-target cycle is 18 hours or more. Equivalently, a cycle fails when
+# cumulative downtime exceeds 6 hours." The allowance is 6 hours, cumulative
+# and fragmentable, and exactly 6 hours of downtime leaves the cycle met.
+SECONDS_PER_HOUR = 3_600
+CYCLE_TARGET_HOURS = 24
+ACTIVITY_THRESHOLD_HOURS = 18
+GRACE_ALLOWANCE_HOURS = 6
+
+CYCLE_TARGET_SECONDS = CYCLE_TARGET_HOURS * SECONDS_PER_HOUR
+ACTIVITY_THRESHOLD_SECONDS = ACTIVITY_THRESHOLD_HOURS * SECONDS_PER_HOUR
+GRACE_ALLOWANCE_SECONDS = GRACE_ALLOWANCE_HOURS * SECONDS_PER_HOUR
+
+# The referral names two destinations and no third. Every seat-cycle reaches
+# exactly one of them, which is what consumes the channel to the unit.
+REFERRED_BENEFICIARY_KIND = "recorded_referrer"
+UNREFERRED_BENEFICIARY_KIND = "unreferred_performance_pool"
+
+# Direct-channel eligibility is the one remaining founder-reserved placeholder.
+# It covers the four direct-mint channels other than the referral, whose
+# eligibility is the recorded referrer relationship the ledger already holds.
+PLACEHOLDER_DIRECT_CHANNELS: frozenset[str] = frozenset(
+    set(DIRECT_MINT_CHANNELS_DISPLAY) - {REFERRAL_CHANNEL}
+)
+
 
 def _tenths_to_atomic(tenths: int) -> int:
     """Convert a display amount stated in tenths of a unit to atomic units."""
@@ -177,4 +202,23 @@ def check_constitution_is_self_consistent() -> list[str]:
         failures.append("the v1 caps do not sum to the superseded maximum supply")
     if set(SUPERSEDED_CHANNELS_DISPLAY) != set(CHANNEL_ORDER):
         failures.append("v1 and v2 do not carry the same channel identifiers")
+    # The constitution states the cycle rule twice without deriving either form
+    # from the other. They agree only because the threshold and the allowance
+    # sum to the target, so requiring that is a check and not a restatement.
+    if ACTIVITY_THRESHOLD_SECONDS + GRACE_ALLOWANCE_SECONDS != CYCLE_TARGET_SECONDS:
+        failures.append("the uptime threshold and grace allowance do not span a cycle")
     return failures
+
+
+def met_cycle(uptime_seconds: int) -> bool:
+    """Restate the cycle rule from the constitution's own two forms."""
+    by_uptime = uptime_seconds >= ACTIVITY_THRESHOLD_SECONDS
+    by_downtime = (CYCLE_TARGET_SECONDS - uptime_seconds) <= GRACE_ALLOWANCE_SECONDS
+    if by_uptime is not by_downtime:
+        raise ValueError(f"the two stated forms disagree at {uptime_seconds} seconds")
+    return by_uptime
+
+
+def equal_split(pot: int, winners: int) -> tuple[int, int]:
+    """Split a pot equally, carrying the integer remainder forward."""
+    return divmod(pot, winners)
