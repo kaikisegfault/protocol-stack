@@ -21,26 +21,56 @@ from typing import Any
 
 MAX_U64 = (1 << 64) - 1
 
-# Schema strings and digest labels as written in escrow-payout-v1, so the model
-# and the specification are compared rather than one restating the other.
-SCHEMA = "protocol-stack/escrow-payout-result/v1"
-EVENTS_LABEL = "protocol-stack:escrow-payout:events-v1"
-STATE_LABEL = "protocol-stack:escrow-payout:state-v1"
-TRACE_LABEL = "protocol-stack:escrow-payout:trace-v1"
-RESULT_LABEL = "protocol-stack:escrow-payout:result-v1"
-EVENTS_FILE = "simulation/escrow_payout/fixtures/research-events-v1.json"
+# Schema strings and digest labels as written in escrow-payout-v1 and
+# escrow-payout-v2, so the model and the specification are compared rather than
+# one restating the other. The two versions differ in exactly these six strings
+# and in the fixture; every transition below is shared, which is the claim the
+# two vector files exist to check.
+@dataclass(frozen=True)
+class Spec:
+    version: str
+    schema: str
+    events_label: str
+    state_label: str
+    trace_label: str
+    result_label: str
+    economy_state_label: str
+    events_file: str
 
-ECONOMY_STATE_LABEL = "protocol-stack:founder-economy:state-v1"
+
+V1 = Spec(
+    version="v1",
+    schema="protocol-stack/escrow-payout-result/v1",
+    events_label="protocol-stack:escrow-payout:events-v1",
+    state_label="protocol-stack:escrow-payout:state-v1",
+    trace_label="protocol-stack:escrow-payout:trace-v1",
+    result_label="protocol-stack:escrow-payout:result-v1",
+    economy_state_label="protocol-stack:founder-economy:state-v1",
+    events_file="simulation/escrow_payout/fixtures/research-events-v1.json",
+)
+
+V2 = Spec(
+    version="v2",
+    schema="protocol-stack/escrow-payout-result/v2",
+    events_label="protocol-stack:escrow-payout:events-v2",
+    state_label="protocol-stack:escrow-payout:state-v2",
+    trace_label="protocol-stack:escrow-payout:trace-v2",
+    result_label="protocol-stack:escrow-payout:result-v2",
+    economy_state_label="protocol-stack:founder-economy:state-v2",
+    events_file="simulation/escrow_payout/fixtures/research-events-v2.json",
+)
+
+SPECS: dict[str, Spec] = {V1.version: V1, V2.version: V2}
 
 
-def state_digest(value: Any) -> str:
+def state_digest(value: Any, economy_state_label: str) -> str:
     """Recompute a founder-economy state digest without the model's helpers.
 
     This is a second implementation of the accepted `D(L) || JCS(value)` rule
     from protocol-primitives-v1, so agreement with the model on the binding is
     evidence rather than a shared function call.
     """
-    label = ECONOMY_STATE_LABEL.encode("ascii")
+    label = economy_state_label.encode("ascii")
     body = json.dumps(
         value,
         sort_keys=True,
@@ -89,6 +119,7 @@ class Walk:
     paid_out: dict[str, int] = field(
         default_factory=lambda: {escrow: 0 for escrow in ESCROWS}
     )
+    spec: Spec = V1
     capabilities: dict[str, Capability] = field(default_factory=dict)
     recipients: dict[str, dict[str, int]] = field(
         default_factory=lambda: {escrow: {} for escrow in ESCROWS}
@@ -136,7 +167,8 @@ class Walk:
         supplied = event["economy_state_result"]
         if supplied is None:
             return "MISSING_RESEARCH_INPUT"
-        if state_digest(supplied["state_value"]) != supplied["state_digest"]:
+        recomputed = state_digest(supplied["state_value"], self.spec.economy_state_label)
+        if recomputed != supplied["state_digest"]:
             return "INVALID_RESEARCH_INPUT"
 
         custody = supplied["state_value"]["typed_custody"]

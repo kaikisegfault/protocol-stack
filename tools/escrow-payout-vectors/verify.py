@@ -10,11 +10,17 @@ escrow caps as literals converted from the Founder Constitution rather than
 imported from the model's contract module.
 
 The binding is checked one level further. The opening custody the fixture claims
-is only as good as the economy state digest it names, so this verifier runs
-`founder-economy-simulator-v1` on its own accepted fixture and requires that
-digest to be the one the escrow fixture binds. A fixture carrying an invented
-economy state would satisfy the model, which only recomputes consistency, and
-would fail here.
+is only as good as the economy state digest it names, so this verifier runs the
+founder-economy simulator of the selected version on its own accepted fixture
+and requires that digest to be the one the escrow fixture binds. A fixture
+carrying an invented economy state would satisfy the model, which only
+recomputes consistency, and would fail here.
+
+`--version` selects the accepted escrow contract. Version one binds
+`founder-economy-simulator-v1` and version two binds
+`founder-economy-simulator-v2`; both are accepted, and each must reproduce its
+own vector file exactly. Running one version against the other's fixture fails
+at the bind, which is the compatibility boundary ADR 0026 records.
 """
 
 from __future__ import annotations
@@ -36,7 +42,6 @@ from contract_checks import (
     check_schema_vectors,
 )
 from scenario_checks import (
-    EVENTS_FILE,
     ROOT,
     check_atomicity_vectors,
     check_negative_vectors,
@@ -45,20 +50,41 @@ from scenario_checks import (
 
 from simulation.escrow_payout import contract as c
 from simulation.escrow_payout.engine import simulate
+
 from simulation.escrow_payout.validation import load_events_file
-from simulation.founder_economy.engine import simulate as economy_simulate
-from simulation.founder_economy.manifest import load_manifest_file
-from simulation.founder_economy.validation import load_events_file as economy_events
 
-ECONOMY_EVENTS = "simulation/founder_economy/fixtures/research-events-v1.json"
-ECONOMY_MANIFEST = "test-vectors/founder-economy-manifest-v1.json"
+ECONOMY: dict[str, dict[str, str]] = {
+    "v1": {
+        "events": "simulation/founder_economy/fixtures/research-events-v1.json",
+        "manifest": "test-vectors/founder-economy-manifest-v1.json",
+    },
+    "v2": {
+        "events": "simulation/founder_economy_v2/fixtures/research-events-v2.json",
+        "manifest": "test-vectors/founder-economy-manifest-v2.json",
+    },
+}
 
 
-def economy_binding() -> tuple[str, dict[str, int]]:
-    """Run the accepted economy fixture and read its three escrow custody keys."""
+def economy_binding(version: str) -> tuple[str, dict[str, int]]:
+    """Run the accepted economy fixture and read its three escrow custody keys.
+
+    The import is selected here rather than at module scope so each version
+    loads only its own economy model, and neither can silently satisfy the
+    other's binding.
+    """
+    paths = ECONOMY[version]
+    if version == "v1":
+        from simulation.founder_economy.engine import simulate as economy_simulate
+        from simulation.founder_economy.manifest import load_manifest_file
+        from simulation.founder_economy.validation import load_events_file as events
+    else:
+        from simulation.founder_economy_v2.engine import simulate as economy_simulate
+        from simulation.founder_economy_v2.manifest import load_manifest_file
+        from simulation.founder_economy_v2.validation import load_events_file as events
+
     economy = economy_simulate(
-        load_manifest_file(ROOT / ECONOMY_MANIFEST),
-        economy_events(ROOT / ECONOMY_EVENTS),
+        load_manifest_file(ROOT / paths["manifest"]),
+        events(ROOT / paths["events"]),
     )
     custody = economy["final_state"]["typed_custody"]
     opening = {
@@ -69,25 +95,28 @@ def economy_binding() -> tuple[str, dict[str, int]]:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--vectors",
-        type=Path,
-        default=ROOT / "test-vectors" / "escrow-payout-v1.txt",
-    )
+    parser.add_argument("--version", choices=sorted(w.SPECS), default="v1")
+    parser.add_argument("--vectors", type=Path, default=None)
     arguments = parser.parse_args()
 
-    economy_digest, opening = economy_binding()
+    spec = w.SPECS[arguments.version]
+    binding = c.BINDINGS[arguments.version]
+    vectors = arguments.vectors or (
+        ROOT / "test-vectors" / f"escrow-payout-{arguments.version}.txt"
+    )
 
-    events_path = ROOT / EVENTS_FILE
-    result = simulate(load_events_file(events_path))
-    walk = w.Walk()
+    economy_digest, opening = economy_binding(arguments.version)
+
+    events_path = ROOT / spec.events_file
+    result = simulate(load_events_file(events_path), binding=binding)
+    walk = w.Walk(spec=spec)
     walk.run(w.load_events(events_path))
 
-    check = Checker(read_vectors(arguments.vectors))
-    check_schema_vectors(check)
+    check = Checker(read_vectors(vectors))
+    check_schema_vectors(check, spec)
     check_constitution_anchors(check)
-    compared = check_contract_agreement(c, c.ESCROW_CAPS)
-    check_binding_vectors(check, economy_digest, opening, events_path)
+    compared = check_contract_agreement(binding, binding.escrow_caps, spec)
+    check_binding_vectors(check, economy_digest, opening, events_path, spec)
     check_scenario_vectors(check, result, walk)
     check_negative_vectors(check, result["records"])
     check_atomicity_vectors(check, result["records"])
@@ -99,10 +128,11 @@ def main() -> int:
         return 1
 
     sys.stdout.write(
-        f"derived and matched {check.checked} escrow payout vectors; the "
-        f"independent walk agrees with the model on all {len(result['records'])} "
-        f"events, {compared} escrow caps match the Founder Constitution, and the "
-        f"bound opening custody is the output of an accepted economy run\n"
+        f"derived and matched {check.checked} escrow payout {arguments.version} "
+        f"vectors; the independent walk agrees with the model on all "
+        f"{len(result['records'])} events, {compared} escrow caps match the "
+        f"Founder Constitution, and the bound opening custody is the output of "
+        f"an accepted founder-economy-simulator-{arguments.version} run\n"
     )
     return 0
 

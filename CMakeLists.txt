@@ -900,8 +900,20 @@ add_test(
   COMMAND
     "${Python3_EXECUTABLE}"
     "${PROJECT_SOURCE_DIR}/tools/escrow-payout-vectors/verify.py"
+    --version
+    v1
     --vectors
     "${PROJECT_SOURCE_DIR}/test-vectors/escrow-payout-v1.txt"
+)
+add_test(
+  NAME escrow-payout-v2-vectors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tools/escrow-payout-vectors/verify.py"
+    --version
+    v2
+    --vectors
+    "${PROJECT_SOURCE_DIR}/test-vectors/escrow-payout-v2.txt"
 )
 add_test(
   NAME escrow-payout-model
@@ -914,6 +926,12 @@ add_test(
   COMMAND
     "${Python3_EXECUTABLE}"
     "${PROJECT_SOURCE_DIR}/tests/simulation/escrow_payout_errors_test.py"
+)
+add_test(
+  NAME escrow-payout-v2
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/escrow_payout_v2_test.py"
 )
 add_test(
   NAME scenario-suite-vectors

@@ -107,6 +107,26 @@ threshold out of the canonical bytes until the cycle boundary is defined, and
 makes the verifier's independence a hand-restated constitution rather than a
 second model. It accepts an economic contract, not a consensus transition.
 
+ADR 0025 makes that contract executable. It supplies the cycle uptime record as
+measurements only, so the activity verdict and the winner set are derived rather
+than supplied; separates a shared `cycle_window` from a seat's own
+`cycle_index`; binds a window's record by digest on first reference; carries the
+integer remainder and the whole pot of an empty winner set forward; replaces the
+conditional referral permission with an unconditional direct-mint accrual with
+two destinations; and keeps `founder_referral` out of `direct_issue` so a
+supplied eligibility fixture cannot mint referral units. It accepts a research
+model contract, not a consensus transition.
+
+ADR 0026 rebinds the dependent models to version two. It records that rebinding
+is a new version rather than an edit, because `escrow-payout-v1` fixes its
+research-input shapes as immutable; that one implementation selected by a
+`Binding` is preferred to a duplicate package, because the two versions'
+transitions are identical and duplication has no mechanism to notice drift; that
+the research scenario is held fixed so a rebinding defect is distinguishable
+from an intended scenario difference; and that a cross-version state reuses
+`INVALID_RESEARCH_INPUT` rather than gaining a code of its own. It accepts a
+compatibility boundary, not a consensus transition.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
@@ -154,6 +174,10 @@ immutable; compatible changes require a new version.
 - `specifications/escrow-payout-v1.md`: the three founder-directed escrows,
   bounded escrow-scoped spending capabilities, custody conservation, and the
   ordered payout rejection conditions; it is not a consensus transition.
+- `specifications/escrow-payout-v2.md`: the same transitions binding
+  `founder-economy-simulator-v2`, differing in exactly five domain labels and
+  the bound economy state label, with the cross-version compatibility boundary
+  and the unchanged escrow caps; it is not a consensus transition.
 - `specifications/economy-scenario-suite-v1.md`: the multi-year and adversarial
   scenarios the four accepted M2 models must survive, their restart-equivalence
   method, and the seeded property tests; it defines no model or transition.
@@ -216,13 +240,17 @@ an independent implementation in `walk.py` that uses the naive share form, and
 requires that replay, the model, and the recorded file to agree.
 
 The escrow payout model is `../simulation/escrow_payout/` with vectors in
-`../test-vectors/escrow-payout-v1.txt`.
+`../test-vectors/escrow-payout-v1.txt` and `../test-vectors/escrow-payout-v2.txt`.
 `../tools/escrow-payout-vectors/verify.py` replays the whole scenario against an
 independent implementation in `walk.py` that carries the escrow caps as
 constitutional literals and recomputes the founder-economy state digest with its
-own helper. It additionally runs `founder-economy-simulator-v1` on that model's
-accepted fixture and requires the escrow fixture's opening custody to be bound to
-that run, which is provenance the model itself cannot check.
+own helper. It additionally runs the founder-economy simulator of the selected
+version on that model's accepted fixture and requires the escrow fixture's
+opening custody to be bound to that run, which is provenance the model itself
+cannot check. `--version` selects the accepted contract; version one binds
+`founder-economy-simulator-v1` and version two binds
+`founder-economy-simulator-v2`, and the v2 vectors additionally derive that no
+version-one economy state can satisfy a version-two bind.
 
 The multi-year and adversarial scenarios over all four models are
 `../simulation/scenarios/` with vectors in

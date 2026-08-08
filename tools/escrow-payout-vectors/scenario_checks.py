@@ -9,7 +9,6 @@ import walk as w
 from checker import Checker
 
 ROOT = Path(__file__).resolve().parents[2]
-EVENTS_FILE = "simulation/escrow_payout/fixtures/research-events-v1.json"
 
 RESULT_CODES: tuple[str, ...] = (
     "already_bound",
