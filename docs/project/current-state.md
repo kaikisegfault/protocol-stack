@@ -501,27 +501,39 @@ requirement 3 of `docs/project/first-goal.md`. This still comes before the
 consensus encoding, because it settles what the models agree on before deciding
 how any of it is serialized.
 
-Create one bounded M3 issue. The four dependents are not equally affected, and
-the slice should establish which is which by evidence rather than by assumption:
+Create one bounded M3 issue. Two of the four dependents need work and two do not.
+That was established by inspecting imports, constants, and vector files on
+2026-08-08 rather than assumed; the slice should re-prove it rather than trust
+this note:
 
-1. **Escrow payout is the load-bearing one.** `simulation/escrow_payout/` takes
-   opening custody from a recorded `founder-economy-simulator-v1` state by
-   recomputing that model's digest, and its verifier requires the fixture to bind
-   a live v1 run. Both must move to the v2 model, and the v2 state value has a
-   different shape, so the binding is a real change rather than a re-run.
-2. **Revenue routing** depends on the maximum supply for its overflow reasoning:
-   the recorded bound is stated against roughly 7.4% of maximum supply, and that
-   maximum rose from 55,743,940,100 to 56,993,950,100. Recheck the bound rather
-   than only regenerating the vectors.
-3. **The scenario suite** exercises all four models and derives its independence
-   closed-form from Founder Constitution literals in
-   `tools/scenario-suite-vectors/expected.py`. Those literals include the
-   superseded figures, so the suite needs the revised ones and a rebuilt
-   population run.
-4. **The Founder Seat sale model** may need nothing. It derives a USD price
-   schedule from the seat capacity and per-principal bound, both unchanged
-   between v1 and v2. Prove that independence rather than assume it; if it holds,
-   record it as a finding instead of manufacturing a change.
+1. **Escrow payout is coupled and load-bearing.**
+   `simulation/escrow_payout/contract.py` imports the v1
+   `simulation/founder_economy/contract.py`, pins
+   `ECONOMY_STATE_LABEL = "protocol-stack:founder-economy:state-v1"`, and derives
+   its three escrow caps from the v1 `CHANNEL_CAPS` table. Those three caps are
+   unchanged in v2, so the work is the label, the import, and the state shape:
+   `bind_opening_custody` recomputes the economy state digest over a supplied
+   state value, and the v2 canonical state has different members. Its verifier
+   must bind a live v2 run in place of the v1 one.
+2. **The scenario suite is coupled.** `simulation/scenarios/` imports the v1
+   economy engine, manifest loader, and contract, and
+   `tools/scenario-suite-vectors/expected.py` hard-codes the superseded
+   `MAXIMUM_SUPPLY_DISPLAY = 55_743_940_100` and a 17.1-unit `REFERRAL_LEG`. It
+   also counts referral *permissions*, which v2 does not create, so its
+   population generator changes shape rather than parameters.
+3. **The Founder Seat sale model needs nothing.** It imports nothing from
+   `simulation/founder_economy/`, and neither the model, its verifier, nor
+   `test-vectors/founder-seat-schedule-v1.txt` carries a supply or channel
+   figure. Its price schedule derives from the seat capacity and the
+   per-principal bound, both unchanged between v1 and v2.
+4. **Revenue routing needs nothing either.** It imports only
+   `simulation/common/canonical.py`, and no supply figure appears in the model,
+   its verifier, or `test-vectors/revenue-routing-v1.txt`. Its overflow-free
+   share decomposition is proved against the `u64` maximum rather than against a
+   fraction of maximum supply, so a changed maximum cannot weaken it. An earlier
+   draft of this handoff claimed the opposite. The 7.4%-of-maximum-supply figure
+   recorded further up explains why the naive `45 * amount / 100` form was
+   rejected; it is not a property of the accepted implementation.
 
 Every regenerated verifier must still fail closed on a tampered recorded value,
 a recorded key no derivation reaches, and a derived key the file does not carry.
