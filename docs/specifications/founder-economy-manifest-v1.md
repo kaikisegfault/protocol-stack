@@ -7,9 +7,12 @@ transition
 > [ADR 0023](../decisions/0023-founder-decisions-activity-referrals-and-supply.md).**
 > The maximum supply became 56,993,950,100 display units, the referral channel
 > cap doubled to 2,500,020,000, and that channel moved from the Founder Node
-> group to the direct-mint group. A version two contract is M3 work. This
-> document is not edited: it states the contract that the accepted M2 models
-> implement and that the M2 evidence proves.
+> group to the direct-mint group. The replacement contract is
+> [`founder-economy-manifest-v2.md`](founder-economy-manifest-v2.md), accepted
+> on 2026-08-08 by
+> [ADR 0024](../decisions/0024-founder-economy-manifest-v2.md). This document is
+> not edited: it states the contract that the accepted M2 models implement and
+> that the M2 evidence proves.
 
 This document fixes the integer denomination, issuance-channel manifest,
 exact supply derivation, and permission-liability semantics required before

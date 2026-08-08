@@ -798,6 +798,26 @@ add_test(
     "${PROJECT_SOURCE_DIR}/tests/simulation/founder_economy_scenario_test.py"
 )
 add_test(
+  NAME founder-economy-v2-vectors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tools/founder-economy-v2-vectors/verify.py"
+    --vectors
+    "${PROJECT_SOURCE_DIR}/test-vectors/founder-economy-manifest-v2.txt"
+)
+add_test(
+  NAME founder-economy-v2-manifest
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/founder_economy_v2_manifest_test.py"
+)
+add_test(
+  NAME founder-economy-v2-errors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/founder_economy_v2_errors_test.py"
+)
+add_test(
   NAME founder-seat-vectors
   COMMAND
     "${Python3_EXECUTABLE}"

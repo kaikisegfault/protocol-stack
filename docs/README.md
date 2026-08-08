@@ -97,6 +97,16 @@ challenge-response, and gives the Ecosystem AI a dispute window rather than a
 signature that could freeze payment. It supersedes the economic figures in ADR
 0017 and the unresolved markers in ADRs 0018 and 0022, and activates nothing.
 
+ADR 0024 accepts a second Founder Economy manifest rather than editing the
+first, because the M2 evidence is evidence about a specific contract and the two
+differ in shape rather than only in parameters. It separates the versions at the
+digest domain label, orders the channels as the Founder Constitution's two
+allocation tables read, describes the referral by its two destinations so the
+exact-consumption claim is machine-checkable, keeps the 18-hour activity
+threshold out of the canonical bytes until the cycle boundary is defined, and
+makes the verifier's independence a hand-restated constitution rather than a
+second model. It accepts an economic contract, not a consensus transition.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
@@ -124,6 +134,12 @@ immutable; compatible changes require a new version.
   denomination, ten issuance-channel caps, 731-cycle derivation,
   permission-liability semantics, unresolved-policy placeholders, and fixed
   M2 manifest digest; it is not a consensus transition.
+- `specifications/founder-economy-manifest-v2.md`: the same denomination under
+  the 2026-08-07 founder direction — the 56,993,950,100 maximum, the referral
+  channel doubled and moved to direct-mint, both referral destinations, one
+  remaining research placeholder, and a fixed M3 manifest digest; it supersedes
+  version one as direction, retains it as evidence, and is not a consensus
+  transition.
 - `specifications/founder-economy-simulator-v1.md`: strict manifest loading,
   the five Founder Economy transitions, bound research inputs, journal
   conservation, digest labels, and vector obligations for the independent
@@ -176,6 +192,15 @@ The fixed Founder Economy manifest and derivation vectors live in
 that consumes them is `../simulation/founder_economy/`, and
 `../tools/founder-economy-vectors/verify.py` derives every recorded value from
 the loaded manifest and a live run.
+
+The revised contract is `../test-vectors/founder-economy-manifest-v2.json` with
+vectors in `../test-vectors/founder-economy-manifest-v2.txt`. Its strict loader
+is `../simulation/founder_economy_v2/`, and
+`../tools/founder-economy-v2-vectors/verify.py` derives every recorded value
+from the loaded manifest and from `expected.py`, which imports nothing from
+`../simulation/` and restates the Founder Constitution's allocation tables by
+hand. Every recorded failure code is produced by a live loader run over a
+mutated manifest. No revised model exists yet.
 
 The Founder Seat sale model is `../simulation/founder_seats/` with vectors in
 `../test-vectors/founder-seat-schedule-v1.txt`.
