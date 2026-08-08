@@ -818,6 +818,32 @@ add_test(
     "${PROJECT_SOURCE_DIR}/tests/simulation/founder_economy_v2_errors_test.py"
 )
 add_test(
+  NAME founder-economy-v2-simulator-vectors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tools/founder-economy-v2-vectors/verify_simulator.py"
+    --vectors
+    "${PROJECT_SOURCE_DIR}/test-vectors/founder-economy-simulator-v2.txt"
+)
+add_test(
+  NAME founder-economy-v2-model
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/founder_economy_v2_model_test.py"
+)
+add_test(
+  NAME founder-economy-v2-transition-errors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/founder_economy_v2_transition_errors_test.py"
+)
+add_test(
+  NAME founder-economy-v2-scenarios
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/founder_economy_v2_scenario_test.py"
+)
+add_test(
   NAME founder-seat-vectors
   COMMAND
     "${Python3_EXECUTABLE}"
