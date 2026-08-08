@@ -13,6 +13,8 @@ specification.
 
 from __future__ import annotations
 
+VERSION = "v1"
+
 DECIMAL_PLACES = 8
 ATOMIC_UNITS_PER_DISPLAY_UNIT = 100_000_000
 
@@ -55,6 +57,16 @@ POPULATION_SEATS = 3
 POPULATION_REFERRED_SEATS = 2
 INACTIVE_PERIOD = 73
 INACTIVE_PHASE = 7
+
+PROBES = (
+    ("cycle_beyond_window", "probe-cycle-beyond-window"),
+    ("base_replay", "probe-base-replay"),
+    ("exercise_replay", "probe-exercise-replay"),
+    ("activation_replay", "probe-activation-replay"),
+    ("unreferred_referral", "probe-unreferred-referral"),
+)
+
+ACTIVATED_SEATS = POPULATION_SEATS
 
 # Scenario 3 parameters.
 ROUTING_CYCLES = 122

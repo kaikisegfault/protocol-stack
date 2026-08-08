@@ -938,8 +938,26 @@ add_test(
   COMMAND
     "${Python3_EXECUTABLE}"
     "${PROJECT_SOURCE_DIR}/tools/scenario-suite-vectors/verify.py"
+    --version
+    v1
     --vectors
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-scenario-suite-v1.txt"
+)
+add_test(
+  NAME scenario-suite-v2-vectors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tools/scenario-suite-vectors/verify.py"
+    --version
+    v2
+    --vectors
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-scenario-suite-v2.txt"
+)
+add_test(
+  NAME scenario-v2
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/scenario_v2_test.py"
 )
 add_test(
   NAME scenario-multiyear

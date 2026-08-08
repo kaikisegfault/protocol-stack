@@ -181,6 +181,11 @@ immutable; compatible changes require a new version.
 - `specifications/economy-scenario-suite-v1.md`: the multi-year and adversarial
   scenarios the four accepted M2 models must survive, their restart-equivalence
   method, and the seeded property tests; it defines no model or transition.
+- `specifications/economy-scenario-suite-v2.md`: the same four scenarios with
+  the population run rebound to `founder-economy-simulator-v2` and the escrow
+  drain to `escrow-payout-v2`, supplying a cycle uptime record instead of a
+  supplied activity verdict and performance recipient; it defines no model or
+  transition.
 - `specifications/native-economy-simulation-v1.md`: versioned integer-only
   accounting, authority, event, trace, and metric contract for the independent
   M2 research simulator; it is not a consensus transition.
@@ -254,8 +259,15 @@ version-one economy state can satisfy a version-two bind.
 
 The multi-year and adversarial scenarios over all four models are
 `../simulation/scenarios/` with vectors in
-`../test-vectors/economy-scenario-suite-v1.txt`. They add no model, transition,
+`../test-vectors/economy-scenario-suite-v1.txt` and
+`../test-vectors/economy-scenario-suite-v2.txt`. They add no model, transition,
 or canonical label; every event parses under an accepted model's schema.
+`--version` selects the suite. Version two rebinds the population run to
+`founder-economy-simulator-v2` and the escrow drain to `escrow-payout-v2`, and
+supplies a cycle uptime record from which the model derives the activity verdict
+and the winner set. Scenarios 2 and 3 record identical values under both
+versions, because the Founder Seat sale and revenue routing models carry no
+supply or channel figure.
 `../tools/scenario-suite-vectors/verify.py` runs all four scenarios and requires
 each recorded total to match both the live run and a closed-form derivation from
 Founder Constitution literals that imports nothing from `../simulation/`.
