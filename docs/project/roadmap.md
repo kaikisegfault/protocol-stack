@@ -73,27 +73,36 @@ transactions and state, implement it in C++, extend the independent Python
 model and fixed cross-language vectors, and operate adversarial four-node
 economic scenarios through restart and recovery.
 
-### M3.1 Revised economic contract
+### M3.1 Revised economic contract — accepted
 
 Accept `founder-economy-manifest-v2`: the 56,993,950,100 maximum, the referral
 channel doubled and relocated to direct-mint, and the unreferred performance
-pool. Revise the simulator so the referral is unconditional, and so activity
-and performance reallocation are derived rules rather than supplied research
-inputs. Regenerate every dependent model, vector, and digest.
+pool. Delivered by ADR 0024 with a specification, manifest, digest, 154
+vectors, a strict loader, and a verifier whose independence is a hand-restated
+Founder Constitution. Version one is retained unedited as the M2 evidence.
 
-### M3.2 Consensus encoding and cycle boundary
+### M3.2 Revised simulator
+
+Revise the independent Python model so the referral is an unconditional
+direct-mint accrual and so activity and performance reallocation are derived
+rules rather than supplied research inputs. `evaluate_referral_permission`, its
+`inactive_referral_result` input, and the permission `kind` discriminator
+disappear; the unreferred performance pool becomes a beneficiary. Regenerate
+every dependent model, vector, and digest.
+
+### M3.3 Consensus encoding and cycle boundary
 
 Define the eligible cycle in chain heights or epochs, the canonical state keys,
 the transaction encodings, the numeric receipt codes, and the compatibility
 boundary against accepted M1 bytes.
 
-### M3.3 Uptime derivation
+### M3.4 Uptime derivation
 
 Derive validator duties from on-chain participation, prove resource provision
 by challenge-response, and bound the AI dispute window so its expiry finalises
 a cycle without a signature.
 
-### M3.4 C++ implementation and devnet
+### M3.5 C++ implementation and devnet
 
 Implement the accepted contract in the deterministic ledger kernel with
 cross-language vectors, then operate adversarial four-node scenarios through
