@@ -1,0 +1,1488 @@
+[
+  {
+    "economy_state_result": {
+      "state_digest": "af426beda50a859fea7f888c703723ad688dff734d36be796c04e5af17175f70",
+      "state_value": {
+        "accepted_direct_decision_ids": [
+          "d1"
+        ],
+        "bound_uptime_records": {
+          "100": "5dfee551f1d34dbfe9c037efc7f7151b7a4e77e84bc3c90223a22ffbad8b128b",
+          "101": "c61526c07a34640183f268457109b2952fce67d2b1cb9ac01d80734ecbbf6fa4",
+          "102": "f934beeb4359a9aad62eae9fa9754277d6f354995b3efa245914b8383c99e2d0",
+          "103": "f54da21581d7bb67379b2f5fe217ac2a082c599e1cc9ccd6fb13372a490f76ee",
+          "200": "fcf939906d36366c700de5af6ed19273341e8d4776230cadd47eff46ee6d81a4",
+          "300": "007f70d8f143afa4aa03cc62c2b2fa3eb9104aa90a08357138b5da35d2783393"
+        },
+        "channels": {
+          "community_grants_escrow": {
+            "issued_atomic": "6840000000",
+            "outstanding_atomic": "17100000000"
+          },
+          "developer_incentives_escrow": {
+            "issued_atomic": "3420000000",
+            "outstanding_atomic": "8550000000"
+          },
+          "founder_operator": {
+            "issued_atomic": "34199999995",
+            "outstanding_atomic": "205200000005"
+          },
+          "founder_referral": {
+            "issued_atomic": "10260000000",
+            "outstanding_atomic": "0"
+          },
+          "hub_verified_user_incentives": {
+            "issued_atomic": "0",
+            "outstanding_atomic": "0"
+          },
+          "impermanent_loss_protection": {
+            "issued_atomic": "0",
+            "outstanding_atomic": "0"
+          },
+          "initial_mystery_box_incentives": {
+            "issued_atomic": "0",
+            "outstanding_atomic": "0"
+          },
+          "liquidity_mining": {
+            "issued_atomic": "1000000000",
+            "outstanding_atomic": "0"
+          },
+          "system_creator_issuance_royalty": {
+            "issued_atomic": "2000000000",
+            "outstanding_atomic": "5000000000"
+          },
+          "venture_escrow": {
+            "issued_atomic": "34200000000",
+            "outstanding_atomic": "85500000000"
+          }
+        },
+        "evaluated_permission_keys": [
+          "00000:000",
+          "00001:000",
+          "00002:000",
+          "00004:000",
+          "00005:000",
+          "00006:000",
+          "00008:000"
+        ],
+        "pending_permissions": {
+          "00001:000": {
+            "cycle_index": 0,
+            "cycle_window": 101,
+            "legs": [
+              {
+                "amount_atomic": "17100000000",
+                "channel": "venture_escrow",
+                "custody_key": "venture_escrow:global"
+              },
+              {
+                "amount_atomic": "3420000000",
+                "channel": "community_grants_escrow",
+                "custody_key": "community_grants_escrow:global"
+              },
+              {
+                "amount_atomic": "1710000000",
+                "channel": "developer_incentives_escrow",
+                "custody_key": "developer_incentives_escrow:global"
+              },
+              {
+                "amount_atomic": "1000000000",
+                "channel": "system_creator_issuance_royalty",
+                "custody_key": "system_creator_company:global"
+              },
+              {
+                "amount_atomic": "34200000005",
+                "channel": "founder_operator",
+                "custody_key": "founder_seat:00000"
+              }
+            ],
+            "met_cycle": false,
+            "seat_id": 1,
+            "total_atomic": "57430000005"
+          },
+          "00004:000": {
+            "cycle_index": 0,
+            "cycle_window": 103,
+            "legs": [
+              {
+                "amount_atomic": "17100000000",
+                "channel": "venture_escrow",
+                "custody_key": "venture_escrow:global"
+              },
+              {
+                "amount_atomic": "3420000000",
+                "channel": "community_grants_escrow",
+                "custody_key": "community_grants_escrow:global"
+              },
+              {
+                "amount_atomic": "1710000000",
+                "channel": "developer_incentives_escrow",
+                "custody_key": "developer_incentives_escrow:global"
+              },
+              {
+                "amount_atomic": "1000000000",
+                "channel": "system_creator_issuance_royalty",
+                "custody_key": "system_creator_company:global"
+              },
+              {
+                "amount_atomic": "68400000000",
+                "channel": "founder_operator",
+                "custody_key": "founder_seat:00003"
+              }
+            ],
+            "met_cycle": false,
+            "seat_id": 4,
+            "total_atomic": "91630000000"
+          },
+          "00005:000": {
+            "cycle_index": 0,
+            "cycle_window": 200,
+            "legs": [
+              {
+                "amount_atomic": "17100000000",
+                "channel": "venture_escrow",
+                "custody_key": "venture_escrow:global"
+              },
+              {
+                "amount_atomic": "3420000000",
+                "channel": "community_grants_escrow",
+                "custody_key": "community_grants_escrow:global"
+              },
+              {
+                "amount_atomic": "1710000000",
+                "channel": "developer_incentives_escrow",
+                "custody_key": "developer_incentives_escrow:global"
+              },
+              {
+                "amount_atomic": "1000000000",
+                "channel": "system_creator_issuance_royalty",
+                "custody_key": "system_creator_company:global"
+              },
+              {
+                "amount_atomic": "34200000000",
+                "channel": "founder_operator",
+                "custody_key": "founder_seat:00005"
+              }
+            ],
+            "met_cycle": true,
+            "seat_id": 5,
+            "total_atomic": "57430000000"
+          },
+          "00006:000": {
+            "cycle_index": 0,
+            "cycle_window": 300,
+            "legs": [
+              {
+                "amount_atomic": "17100000000",
+                "channel": "venture_escrow",
+                "custody_key": "venture_escrow:global"
+              },
+              {
+                "amount_atomic": "3420000000",
+                "channel": "community_grants_escrow",
+                "custody_key": "community_grants_escrow:global"
+              },
+              {
+                "amount_atomic": "1710000000",
+                "channel": "developer_incentives_escrow",
+                "custody_key": "developer_incentives_escrow:global"
+              },
+              {
+                "amount_atomic": "1000000000",
+                "channel": "system_creator_issuance_royalty",
+                "custody_key": "system_creator_company:global"
+              },
+              {
+                "amount_atomic": "34200000000",
+                "channel": "founder_operator",
+                "custody_key": "founder_seat:00007"
+              }
+            ],
+            "met_cycle": false,
+            "seat_id": 6,
+            "total_atomic": "57430000000"
+          },
+          "00008:000": {
+            "cycle_index": 0,
+            "cycle_window": 100,
+            "legs": [
+              {
+                "amount_atomic": "17100000000",
+                "channel": "venture_escrow",
+                "custody_key": "venture_escrow:global"
+              },
+              {
+                "amount_atomic": "3420000000",
+                "channel": "community_grants_escrow",
+                "custody_key": "community_grants_escrow:global"
+              },
+              {
+                "amount_atomic": "1710000000",
+                "channel": "developer_incentives_escrow",
+                "custody_key": "developer_incentives_escrow:global"
+              },
+              {
+                "amount_atomic": "1000000000",
+                "channel": "system_creator_issuance_royalty",
+                "custody_key": "system_creator_company:global"
+              },
+              {
+                "amount_atomic": "34200000000",
+                "channel": "founder_operator",
+                "custody_key": "founder_seat:00008"
+              }
+            ],
+            "met_cycle": true,
+            "seat_id": 8,
+            "total_atomic": "57430000000"
+          }
+        },
+        "performance_carry_atomic": "0",
+        "referral_accrual_keys": [
+          "00000:000",
+          "00001:000",
+          "00008:000"
+        ],
+        "seats": {
+          "00000": null,
+          "00001": "00000",
+          "00002": "00000",
+          "00003": "00000",
+          "00004": "00000",
+          "00005": "00000",
+          "00006": "00000",
+          "00007": "00000",
+          "00008": null
+        },
+        "typed_custody": {
+          "community_grants_escrow:global": "6840000000",
+          "developer_incentives_escrow:global": "3420000000",
+          "direct_beneficiary:b1": "1000000000",
+          "founder_seat:00000": "3420000000",
+          "founder_seat:00001": "4885714285",
+          "founder_seat:00002": "4885714285",
+          "founder_seat:00003": "4885714285",
+          "founder_seat:00004": "4885714285",
+          "founder_seat:00005": "4885714285",
+          "founder_seat:00006": "4885714285",
+          "founder_seat:00007": "4885714285",
+          "system_creator_company:global": "2000000000",
+          "unreferred_performance_pool:global": "6840000000",
+          "venture_escrow:global": "34200000000"
+        }
+      }
+    },
+    "id": "bind-tampered-digest",
+    "kind": "bind_opening_custody"
+  },
+  {
+    "economy_state_result": null,
+    "id": "bind-missing-input",
+    "kind": "bind_opening_custody"
+  },
+  {
+    "economy_state_result": {
+      "state_digest": "f5033e9d37609b5cbac563dedf953caba883c8016806ac7af94253ad2aa79438",
+      "state_value": {
+        "accepted_direct_decision_ids": [
+          "d1"
+        ],
+        "bound_uptime_records": {
+          "100": "5dfee551f1d34dbfe9c037efc7f7151b7a4e77e84bc3c90223a22ffbad8b128b",
+          "101": "c61526c07a34640183f268457109b2952fce67d2b1cb9ac01d80734ecbbf6fa4",
+          "102": "f934beeb4359a9aad62eae9fa9754277d6f354995b3efa245914b8383c99e2d0",
+          "103": "f54da21581d7bb67379b2f5fe217ac2a082c599e1cc9ccd6fb13372a490f76ee",
+          "200": "fcf939906d36366c700de5af6ed19273341e8d4776230cadd47eff46ee6d81a4",
+          "300": "007f70d8f143afa4aa03cc62c2b2fa3eb9104aa90a08357138b5da35d2783393"
+        },
+        "channels": {
+          "community_grants_escrow": {
+            "issued_atomic": "6840000000",
+            "outstanding_atomic": "17100000000"
+          },
+          "developer_incentives_escrow": {
+            "issued_atomic": "3420000000",
+            "outstanding_atomic": "8550000000"
+          },
+          "founder_operator": {
+            "issued_atomic": "34199999995",
+            "outstanding_atomic": "205200000005"
+          },
+          "founder_referral": {
+            "issued_atomic": "10260000000",
+            "outstanding_atomic": "0"
+          },
+          "hub_verified_user_incentives": {
+            "issued_atomic": "0",
+            "outstanding_atomic": "0"
+          },
+          "impermanent_loss_protection": {
+            "issued_atomic": "0",
+            "outstanding_atomic": "0"
+          },
+          "initial_mystery_box_incentives": {
+            "issued_atomic": "0",
+            "outstanding_atomic": "0"
+          },
+          "liquidity_mining": {
+            "issued_atomic": "1000000000",
+            "outstanding_atomic": "0"
+          },
+          "system_creator_issuance_royalty": {
+            "issued_atomic": "2000000000",
+            "outstanding_atomic": "5000000000"
+          },
+          "venture_escrow": {
+            "issued_atomic": "34200000000",
+            "outstanding_atomic": "85500000000"
+          }
+        },
+        "evaluated_permission_keys": [
+          "00000:000",
+          "00001:000",
+          "00002:000",
+          "00004:000",
+          "00005:000",
+          "00006:000",
+          "00008:000"
+        ],
+        "pending_permissions": {
+          "00001:000": {
+            "cycle_index": 0,
+            "cycle_window": 101,
+            "legs": [
+              {
+                "amount_atomic": "17100000000",
+                "channel": "venture_escrow",
+                "custody_key": "venture_escrow:global"
+              },
+              {
+                "amount_atomic": "3420000000",
+                "channel": "community_grants_escrow",
+                "custody_key": "community_grants_escrow:global"
+              },
+              {
+                "amount_atomic": "1710000000",
+                "channel": "developer_incentives_escrow",
+                "custody_key": "developer_incentives_escrow:global"
+              },
+              {
+                "amount_atomic": "1000000000",
+                "channel": "system_creator_issuance_royalty",
+                "custody_key": "system_creator_company:global"
+              },
+              {
+                "amount_atomic": "34200000005",
+                "channel": "founder_operator",
+                "custody_key": "founder_seat:00000"
+              }
+            ],
+            "met_cycle": false,
+            "seat_id": 1,
+            "total_atomic": "57430000005"
+          },
+          "00004:000": {
+            "cycle_index": 0,
+            "cycle_window": 103,
+            "legs": [
+              {
+                "amount_atomic": "17100000000",
+                "channel": "venture_escrow",
+                "custody_key": "venture_escrow:global"
+              },
+              {
+                "amount_atomic": "3420000000",
+                "channel": "community_grants_escrow",
+                "custody_key": "community_grants_escrow:global"
+              },
+              {
+                "amount_atomic": "1710000000",
+                "channel": "developer_incentives_escrow",
+                "custody_key": "developer_incentives_escrow:global"
+              },
+              {
+                "amount_atomic": "1000000000",
+                "channel": "system_creator_issuance_royalty",
+                "custody_key": "system_creator_company:global"
+              },
+              {
+                "amount_atomic": "68400000000",
+                "channel": "founder_operator",
+                "custody_key": "founder_seat:00003"
+              }
+            ],
+            "met_cycle": false,
+            "seat_id": 4,
+            "total_atomic": "91630000000"
+          },
+          "00005:000": {
+            "cycle_index": 0,
+            "cycle_window": 200,
+            "legs": [
+              {
+                "amount_atomic": "17100000000",
+                "channel": "venture_escrow",
+                "custody_key": "venture_escrow:global"
+              },
+              {
+                "amount_atomic": "3420000000",
+                "channel": "community_grants_escrow",
+                "custody_key": "community_grants_escrow:global"
+              },
+              {
+                "amount_atomic": "1710000000",
+                "channel": "developer_incentives_escrow",
+                "custody_key": "developer_incentives_escrow:global"
+              },
+              {
+                "amount_atomic": "1000000000",
+                "channel": "system_creator_issuance_royalty",
+                "custody_key": "system_creator_company:global"
+              },
+              {
+                "amount_atomic": "34200000000",
+                "channel": "founder_operator",
+                "custody_key": "founder_seat:00005"
+              }
+            ],
+            "met_cycle": true,
+            "seat_id": 5,
+            "total_atomic": "57430000000"
+          },
+          "00006:000": {
+            "cycle_index": 0,
+            "cycle_window": 300,
+            "legs": [
+              {
+                "amount_atomic": "17100000000",
+                "channel": "venture_escrow",
+                "custody_key": "venture_escrow:global"
+              },
+              {
+                "amount_atomic": "3420000000",
+                "channel": "community_grants_escrow",
+                "custody_key": "community_grants_escrow:global"
+              },
+              {
+                "amount_atomic": "1710000000",
+                "channel": "developer_incentives_escrow",
+                "custody_key": "developer_incentives_escrow:global"
+              },
+              {
+                "amount_atomic": "1000000000",
+                "channel": "system_creator_issuance_royalty",
+                "custody_key": "system_creator_company:global"
+              },
+              {
+                "amount_atomic": "34200000000",
+                "channel": "founder_operator",
+                "custody_key": "founder_seat:00007"
+              }
+            ],
+            "met_cycle": false,
+            "seat_id": 6,
+            "total_atomic": "57430000000"
+          },
+          "00008:000": {
+            "cycle_index": 0,
+            "cycle_window": 100,
+            "legs": [
+              {
+                "amount_atomic": "17100000000",
+                "channel": "venture_escrow",
+                "custody_key": "venture_escrow:global"
+              },
+              {
+                "amount_atomic": "3420000000",
+                "channel": "community_grants_escrow",
+                "custody_key": "community_grants_escrow:global"
+              },
+              {
+                "amount_atomic": "1710000000",
+                "channel": "developer_incentives_escrow",
+                "custody_key": "developer_incentives_escrow:global"
+              },
+              {
+                "amount_atomic": "1000000000",
+                "channel": "system_creator_issuance_royalty",
+                "custody_key": "system_creator_company:global"
+              },
+              {
+                "amount_atomic": "34200000000",
+                "channel": "founder_operator",
+                "custody_key": "founder_seat:00008"
+              }
+            ],
+            "met_cycle": true,
+            "seat_id": 8,
+            "total_atomic": "57430000000"
+          }
+        },
+        "performance_carry_atomic": "0",
+        "referral_accrual_keys": [
+          "00000:000",
+          "00001:000",
+          "00008:000"
+        ],
+        "seats": {
+          "00000": null,
+          "00001": "00000",
+          "00002": "00000",
+          "00003": "00000",
+          "00004": "00000",
+          "00005": "00000",
+          "00006": "00000",
+          "00007": "00000",
+          "00008": null
+        },
+        "typed_custody": {
+          "community_grants_escrow:global": "6840000000",
+          "developer_incentives_escrow:global": "3420000000",
+          "direct_beneficiary:b1": "1000000000",
+          "founder_seat:00000": "3420000000",
+          "founder_seat:00001": "4885714285",
+          "founder_seat:00002": "4885714285",
+          "founder_seat:00003": "4885714285",
+          "founder_seat:00004": "4885714285",
+          "founder_seat:00005": "4885714285",
+          "founder_seat:00006": "4885714285",
+          "founder_seat:00007": "4885714285",
+          "system_creator_company:global": "2000000000",
+          "unreferred_performance_pool:global": "6840000000",
+          "venture_escrow:global": "1250010000000000001"
+        }
+      }
+    },
+    "id": "bind-above-cap",
+    "kind": "bind_opening_custody"
+  },
+  {
+    "amount_atomic": "10000000000",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-early-0001"
+    },
+    "capability_id": "cap-venture",
+    "escrow_id": "venture_escrow",
+    "id": "payout-before-bind",
+    "kind": "execute_payout",
+    "payout_id": "payout-early-0001",
+    "recipient_id": "venture-team-a"
+  },
+  {
+    "capability_id": "cap-early",
+    "envelope_total": "30000000000",
+    "escrow_id": "venture_escrow",
+    "expiry_cycle": 5,
+    "id": "grant-before-bind",
+    "kind": "grant_capability",
+    "per_payout_maximum": "10000000000"
+  },
+  {
+    "economy_state_result": {
+      "state_digest": "af426beda50a859fea7f888c703723ad688dff734d36be796c04e5af17175f7a",
+      "state_value": {
+        "accepted_direct_decision_ids": [
+          "d1"
+        ],
+        "bound_uptime_records": {
+          "100": "5dfee551f1d34dbfe9c037efc7f7151b7a4e77e84bc3c90223a22ffbad8b128b",
+          "101": "c61526c07a34640183f268457109b2952fce67d2b1cb9ac01d80734ecbbf6fa4",
+          "102": "f934beeb4359a9aad62eae9fa9754277d6f354995b3efa245914b8383c99e2d0",
+          "103": "f54da21581d7bb67379b2f5fe217ac2a082c599e1cc9ccd6fb13372a490f76ee",
+          "200": "fcf939906d36366c700de5af6ed19273341e8d4776230cadd47eff46ee6d81a4",
+          "300": "007f70d8f143afa4aa03cc62c2b2fa3eb9104aa90a08357138b5da35d2783393"
+        },
+        "channels": {
+          "community_grants_escrow": {
+            "issued_atomic": "6840000000",
+            "outstanding_atomic": "17100000000"
+          },
+          "developer_incentives_escrow": {
+            "issued_atomic": "3420000000",
+            "outstanding_atomic": "8550000000"
+          },
+          "founder_operator": {
+            "issued_atomic": "34199999995",
+            "outstanding_atomic": "205200000005"
+          },
+          "founder_referral": {
+            "issued_atomic": "10260000000",
+            "outstanding_atomic": "0"
+          },
+          "hub_verified_user_incentives": {
+            "issued_atomic": "0",
+            "outstanding_atomic": "0"
+          },
+          "impermanent_loss_protection": {
+            "issued_atomic": "0",
+            "outstanding_atomic": "0"
+          },
+          "initial_mystery_box_incentives": {
+            "issued_atomic": "0",
+            "outstanding_atomic": "0"
+          },
+          "liquidity_mining": {
+            "issued_atomic": "1000000000",
+            "outstanding_atomic": "0"
+          },
+          "system_creator_issuance_royalty": {
+            "issued_atomic": "2000000000",
+            "outstanding_atomic": "5000000000"
+          },
+          "venture_escrow": {
+            "issued_atomic": "34200000000",
+            "outstanding_atomic": "85500000000"
+          }
+        },
+        "evaluated_permission_keys": [
+          "00000:000",
+          "00001:000",
+          "00002:000",
+          "00004:000",
+          "00005:000",
+          "00006:000",
+          "00008:000"
+        ],
+        "pending_permissions": {
+          "00001:000": {
+            "cycle_index": 0,
+            "cycle_window": 101,
+            "legs": [
+              {
+                "amount_atomic": "17100000000",
+                "channel": "venture_escrow",
+                "custody_key": "venture_escrow:global"
+              },
+              {
+                "amount_atomic": "3420000000",
+                "channel": "community_grants_escrow",
+                "custody_key": "community_grants_escrow:global"
+              },
+              {
+                "amount_atomic": "1710000000",
+                "channel": "developer_incentives_escrow",
+                "custody_key": "developer_incentives_escrow:global"
+              },
+              {
+                "amount_atomic": "1000000000",
+                "channel": "system_creator_issuance_royalty",
+                "custody_key": "system_creator_company:global"
+              },
+              {
+                "amount_atomic": "34200000005",
+                "channel": "founder_operator",
+                "custody_key": "founder_seat:00000"
+              }
+            ],
+            "met_cycle": false,
+            "seat_id": 1,
+            "total_atomic": "57430000005"
+          },
+          "00004:000": {
+            "cycle_index": 0,
+            "cycle_window": 103,
+            "legs": [
+              {
+                "amount_atomic": "17100000000",
+                "channel": "venture_escrow",
+                "custody_key": "venture_escrow:global"
+              },
+              {
+                "amount_atomic": "3420000000",
+                "channel": "community_grants_escrow",
+                "custody_key": "community_grants_escrow:global"
+              },
+              {
+                "amount_atomic": "1710000000",
+                "channel": "developer_incentives_escrow",
+                "custody_key": "developer_incentives_escrow:global"
+              },
+              {
+                "amount_atomic": "1000000000",
+                "channel": "system_creator_issuance_royalty",
+                "custody_key": "system_creator_company:global"
+              },
+              {
+                "amount_atomic": "68400000000",
+                "channel": "founder_operator",
+                "custody_key": "founder_seat:00003"
+              }
+            ],
+            "met_cycle": false,
+            "seat_id": 4,
+            "total_atomic": "91630000000"
+          },
+          "00005:000": {
+            "cycle_index": 0,
+            "cycle_window": 200,
+            "legs": [
+              {
+                "amount_atomic": "17100000000",
+                "channel": "venture_escrow",
+                "custody_key": "venture_escrow:global"
+              },
+              {
+                "amount_atomic": "3420000000",
+                "channel": "community_grants_escrow",
+                "custody_key": "community_grants_escrow:global"
+              },
+              {
+                "amount_atomic": "1710000000",
+                "channel": "developer_incentives_escrow",
+                "custody_key": "developer_incentives_escrow:global"
+              },
+              {
+                "amount_atomic": "1000000000",
+                "channel": "system_creator_issuance_royalty",
+                "custody_key": "system_creator_company:global"
+              },
+              {
+                "amount_atomic": "34200000000",
+                "channel": "founder_operator",
+                "custody_key": "founder_seat:00005"
+              }
+            ],
+            "met_cycle": true,
+            "seat_id": 5,
+            "total_atomic": "57430000000"
+          },
+          "00006:000": {
+            "cycle_index": 0,
+            "cycle_window": 300,
+            "legs": [
+              {
+                "amount_atomic": "17100000000",
+                "channel": "venture_escrow",
+                "custody_key": "venture_escrow:global"
+              },
+              {
+                "amount_atomic": "3420000000",
+                "channel": "community_grants_escrow",
+                "custody_key": "community_grants_escrow:global"
+              },
+              {
+                "amount_atomic": "1710000000",
+                "channel": "developer_incentives_escrow",
+                "custody_key": "developer_incentives_escrow:global"
+              },
+              {
+                "amount_atomic": "1000000000",
+                "channel": "system_creator_issuance_royalty",
+                "custody_key": "system_creator_company:global"
+              },
+              {
+                "amount_atomic": "34200000000",
+                "channel": "founder_operator",
+                "custody_key": "founder_seat:00007"
+              }
+            ],
+            "met_cycle": false,
+            "seat_id": 6,
+            "total_atomic": "57430000000"
+          },
+          "00008:000": {
+            "cycle_index": 0,
+            "cycle_window": 100,
+            "legs": [
+              {
+                "amount_atomic": "17100000000",
+                "channel": "venture_escrow",
+                "custody_key": "venture_escrow:global"
+              },
+              {
+                "amount_atomic": "3420000000",
+                "channel": "community_grants_escrow",
+                "custody_key": "community_grants_escrow:global"
+              },
+              {
+                "amount_atomic": "1710000000",
+                "channel": "developer_incentives_escrow",
+                "custody_key": "developer_incentives_escrow:global"
+              },
+              {
+                "amount_atomic": "1000000000",
+                "channel": "system_creator_issuance_royalty",
+                "custody_key": "system_creator_company:global"
+              },
+              {
+                "amount_atomic": "34200000000",
+                "channel": "founder_operator",
+                "custody_key": "founder_seat:00008"
+              }
+            ],
+            "met_cycle": true,
+            "seat_id": 8,
+            "total_atomic": "57430000000"
+          }
+        },
+        "performance_carry_atomic": "0",
+        "referral_accrual_keys": [
+          "00000:000",
+          "00001:000",
+          "00008:000"
+        ],
+        "seats": {
+          "00000": null,
+          "00001": "00000",
+          "00002": "00000",
+          "00003": "00000",
+          "00004": "00000",
+          "00005": "00000",
+          "00006": "00000",
+          "00007": "00000",
+          "00008": null
+        },
+        "typed_custody": {
+          "community_grants_escrow:global": "6840000000",
+          "developer_incentives_escrow:global": "3420000000",
+          "direct_beneficiary:b1": "1000000000",
+          "founder_seat:00000": "3420000000",
+          "founder_seat:00001": "4885714285",
+          "founder_seat:00002": "4885714285",
+          "founder_seat:00003": "4885714285",
+          "founder_seat:00004": "4885714285",
+          "founder_seat:00005": "4885714285",
+          "founder_seat:00006": "4885714285",
+          "founder_seat:00007": "4885714285",
+          "system_creator_company:global": "2000000000",
+          "unreferred_performance_pool:global": "6840000000",
+          "venture_escrow:global": "34200000000"
+        }
+      }
+    },
+    "id": "bind-economy-state",
+    "kind": "bind_opening_custody"
+  },
+  {
+    "economy_state_result": {
+      "state_digest": "af426beda50a859fea7f888c703723ad688dff734d36be796c04e5af17175f7a",
+      "state_value": {
+        "accepted_direct_decision_ids": [
+          "d1"
+        ],
+        "bound_uptime_records": {
+          "100": "5dfee551f1d34dbfe9c037efc7f7151b7a4e77e84bc3c90223a22ffbad8b128b",
+          "101": "c61526c07a34640183f268457109b2952fce67d2b1cb9ac01d80734ecbbf6fa4",
+          "102": "f934beeb4359a9aad62eae9fa9754277d6f354995b3efa245914b8383c99e2d0",
+          "103": "f54da21581d7bb67379b2f5fe217ac2a082c599e1cc9ccd6fb13372a490f76ee",
+          "200": "fcf939906d36366c700de5af6ed19273341e8d4776230cadd47eff46ee6d81a4",
+          "300": "007f70d8f143afa4aa03cc62c2b2fa3eb9104aa90a08357138b5da35d2783393"
+        },
+        "channels": {
+          "community_grants_escrow": {
+            "issued_atomic": "6840000000",
+            "outstanding_atomic": "17100000000"
+          },
+          "developer_incentives_escrow": {
+            "issued_atomic": "3420000000",
+            "outstanding_atomic": "8550000000"
+          },
+          "founder_operator": {
+            "issued_atomic": "34199999995",
+            "outstanding_atomic": "205200000005"
+          },
+          "founder_referral": {
+            "issued_atomic": "10260000000",
+            "outstanding_atomic": "0"
+          },
+          "hub_verified_user_incentives": {
+            "issued_atomic": "0",
+            "outstanding_atomic": "0"
+          },
+          "impermanent_loss_protection": {
+            "issued_atomic": "0",
+            "outstanding_atomic": "0"
+          },
+          "initial_mystery_box_incentives": {
+            "issued_atomic": "0",
+            "outstanding_atomic": "0"
+          },
+          "liquidity_mining": {
+            "issued_atomic": "1000000000",
+            "outstanding_atomic": "0"
+          },
+          "system_creator_issuance_royalty": {
+            "issued_atomic": "2000000000",
+            "outstanding_atomic": "5000000000"
+          },
+          "venture_escrow": {
+            "issued_atomic": "34200000000",
+            "outstanding_atomic": "85500000000"
+          }
+        },
+        "evaluated_permission_keys": [
+          "00000:000",
+          "00001:000",
+          "00002:000",
+          "00004:000",
+          "00005:000",
+          "00006:000",
+          "00008:000"
+        ],
+        "pending_permissions": {
+          "00001:000": {
+            "cycle_index": 0,
+            "cycle_window": 101,
+            "legs": [
+              {
+                "amount_atomic": "17100000000",
+                "channel": "venture_escrow",
+                "custody_key": "venture_escrow:global"
+              },
+              {
+                "amount_atomic": "3420000000",
+                "channel": "community_grants_escrow",
+                "custody_key": "community_grants_escrow:global"
+              },
+              {
+                "amount_atomic": "1710000000",
+                "channel": "developer_incentives_escrow",
+                "custody_key": "developer_incentives_escrow:global"
+              },
+              {
+                "amount_atomic": "1000000000",
+                "channel": "system_creator_issuance_royalty",
+                "custody_key": "system_creator_company:global"
+              },
+              {
+                "amount_atomic": "34200000005",
+                "channel": "founder_operator",
+                "custody_key": "founder_seat:00000"
+              }
+            ],
+            "met_cycle": false,
+            "seat_id": 1,
+            "total_atomic": "57430000005"
+          },
+          "00004:000": {
+            "cycle_index": 0,
+            "cycle_window": 103,
+            "legs": [
+              {
+                "amount_atomic": "17100000000",
+                "channel": "venture_escrow",
+                "custody_key": "venture_escrow:global"
+              },
+              {
+                "amount_atomic": "3420000000",
+                "channel": "community_grants_escrow",
+                "custody_key": "community_grants_escrow:global"
+              },
+              {
+                "amount_atomic": "1710000000",
+                "channel": "developer_incentives_escrow",
+                "custody_key": "developer_incentives_escrow:global"
+              },
+              {
+                "amount_atomic": "1000000000",
+                "channel": "system_creator_issuance_royalty",
+                "custody_key": "system_creator_company:global"
+              },
+              {
+                "amount_atomic": "68400000000",
+                "channel": "founder_operator",
+                "custody_key": "founder_seat:00003"
+              }
+            ],
+            "met_cycle": false,
+            "seat_id": 4,
+            "total_atomic": "91630000000"
+          },
+          "00005:000": {
+            "cycle_index": 0,
+            "cycle_window": 200,
+            "legs": [
+              {
+                "amount_atomic": "17100000000",
+                "channel": "venture_escrow",
+                "custody_key": "venture_escrow:global"
+              },
+              {
+                "amount_atomic": "3420000000",
+                "channel": "community_grants_escrow",
+                "custody_key": "community_grants_escrow:global"
+              },
+              {
+                "amount_atomic": "1710000000",
+                "channel": "developer_incentives_escrow",
+                "custody_key": "developer_incentives_escrow:global"
+              },
+              {
+                "amount_atomic": "1000000000",
+                "channel": "system_creator_issuance_royalty",
+                "custody_key": "system_creator_company:global"
+              },
+              {
+                "amount_atomic": "34200000000",
+                "channel": "founder_operator",
+                "custody_key": "founder_seat:00005"
+              }
+            ],
+            "met_cycle": true,
+            "seat_id": 5,
+            "total_atomic": "57430000000"
+          },
+          "00006:000": {
+            "cycle_index": 0,
+            "cycle_window": 300,
+            "legs": [
+              {
+                "amount_atomic": "17100000000",
+                "channel": "venture_escrow",
+                "custody_key": "venture_escrow:global"
+              },
+              {
+                "amount_atomic": "3420000000",
+                "channel": "community_grants_escrow",
+                "custody_key": "community_grants_escrow:global"
+              },
+              {
+                "amount_atomic": "1710000000",
+                "channel": "developer_incentives_escrow",
+                "custody_key": "developer_incentives_escrow:global"
+              },
+              {
+                "amount_atomic": "1000000000",
+                "channel": "system_creator_issuance_royalty",
+                "custody_key": "system_creator_company:global"
+              },
+              {
+                "amount_atomic": "34200000000",
+                "channel": "founder_operator",
+                "custody_key": "founder_seat:00007"
+              }
+            ],
+            "met_cycle": false,
+            "seat_id": 6,
+            "total_atomic": "57430000000"
+          },
+          "00008:000": {
+            "cycle_index": 0,
+            "cycle_window": 100,
+            "legs": [
+              {
+                "amount_atomic": "17100000000",
+                "channel": "venture_escrow",
+                "custody_key": "venture_escrow:global"
+              },
+              {
+                "amount_atomic": "3420000000",
+                "channel": "community_grants_escrow",
+                "custody_key": "community_grants_escrow:global"
+              },
+              {
+                "amount_atomic": "1710000000",
+                "channel": "developer_incentives_escrow",
+                "custody_key": "developer_incentives_escrow:global"
+              },
+              {
+                "amount_atomic": "1000000000",
+                "channel": "system_creator_issuance_royalty",
+                "custody_key": "system_creator_company:global"
+              },
+              {
+                "amount_atomic": "34200000000",
+                "channel": "founder_operator",
+                "custody_key": "founder_seat:00008"
+              }
+            ],
+            "met_cycle": true,
+            "seat_id": 8,
+            "total_atomic": "57430000000"
+          }
+        },
+        "performance_carry_atomic": "0",
+        "referral_accrual_keys": [
+          "00000:000",
+          "00001:000",
+          "00008:000"
+        ],
+        "seats": {
+          "00000": null,
+          "00001": "00000",
+          "00002": "00000",
+          "00003": "00000",
+          "00004": "00000",
+          "00005": "00000",
+          "00006": "00000",
+          "00007": "00000",
+          "00008": null
+        },
+        "typed_custody": {
+          "community_grants_escrow:global": "6840000000",
+          "developer_incentives_escrow:global": "3420000000",
+          "direct_beneficiary:b1": "1000000000",
+          "founder_seat:00000": "3420000000",
+          "founder_seat:00001": "4885714285",
+          "founder_seat:00002": "4885714285",
+          "founder_seat:00003": "4885714285",
+          "founder_seat:00004": "4885714285",
+          "founder_seat:00005": "4885714285",
+          "founder_seat:00006": "4885714285",
+          "founder_seat:00007": "4885714285",
+          "system_creator_company:global": "2000000000",
+          "unreferred_performance_pool:global": "6840000000",
+          "venture_escrow:global": "34200000000"
+        }
+      }
+    },
+    "id": "bind-replay",
+    "kind": "bind_opening_custody"
+  },
+  {
+    "capability_id": "cap-venture",
+    "envelope_total": "30000000000",
+    "escrow_id": "venture_escrow",
+    "expiry_cycle": 5,
+    "id": "grant-venture",
+    "kind": "grant_capability",
+    "per_payout_maximum": "10000000000"
+  },
+  {
+    "capability_id": "cap-treasury",
+    "envelope_total": "10000000000",
+    "escrow_id": "treasury-escrow",
+    "expiry_cycle": 5,
+    "id": "grant-unknown-escrow",
+    "kind": "grant_capability",
+    "per_payout_maximum": "10000000000"
+  },
+  {
+    "capability_id": "cap-zero",
+    "envelope_total": "0",
+    "escrow_id": "venture_escrow",
+    "expiry_cycle": 5,
+    "id": "grant-zero-envelope",
+    "kind": "grant_capability",
+    "per_payout_maximum": "1000000000"
+  },
+  {
+    "capability_id": "cap-inverted",
+    "envelope_total": "1000000000",
+    "escrow_id": "venture_escrow",
+    "expiry_cycle": 5,
+    "id": "grant-inverted-bounds",
+    "kind": "grant_capability",
+    "per_payout_maximum": "2000000000"
+  },
+  {
+    "capability_id": "cap-venture",
+    "envelope_total": "30000000000",
+    "escrow_id": "venture_escrow",
+    "expiry_cycle": 5,
+    "id": "grant-venture-replay",
+    "kind": "grant_capability",
+    "per_payout_maximum": "10000000000"
+  },
+  {
+    "amount_atomic": "10000000000",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-venture-0001"
+    },
+    "capability_id": "cap-venture",
+    "escrow_id": "venture_escrow",
+    "id": "payout-venture-0001",
+    "kind": "execute_payout",
+    "payout_id": "payout-venture-0001",
+    "recipient_id": "venture-team-a"
+  },
+  {
+    "amount_atomic": "10000000001",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-venture-over"
+    },
+    "capability_id": "cap-venture",
+    "escrow_id": "venture_escrow",
+    "id": "payout-over-limit",
+    "kind": "execute_payout",
+    "payout_id": "payout-venture-over",
+    "recipient_id": "venture-team-a"
+  },
+  {
+    "amount_atomic": "1000000000",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-venture-foreign"
+    },
+    "capability_id": "cap-venture",
+    "escrow_id": "developer_incentives_escrow",
+    "id": "payout-foreign-escrow",
+    "kind": "execute_payout",
+    "payout_id": "payout-venture-foreign",
+    "recipient_id": "developer-fund-a"
+  },
+  {
+    "amount_atomic": "1000000000",
+    "approval_result": null,
+    "capability_id": "cap-venture",
+    "escrow_id": "venture_escrow",
+    "id": "payout-missing-approval",
+    "kind": "execute_payout",
+    "payout_id": "payout-venture-noapproval",
+    "recipient_id": "venture-team-a"
+  },
+  {
+    "amount_atomic": "1000000000",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-venture-0001"
+    },
+    "capability_id": "cap-venture",
+    "escrow_id": "venture_escrow",
+    "id": "payout-bad-approval",
+    "kind": "execute_payout",
+    "payout_id": "payout-venture-badapproval",
+    "recipient_id": "venture-team-a"
+  },
+  {
+    "amount_atomic": "1000000000",
+    "approval_result": {
+      "decision": "rejected",
+      "evaluation_reference": "ai-evaluation-0002",
+      "payout_id": "payout-venture-withheld"
+    },
+    "capability_id": "cap-venture",
+    "escrow_id": "venture_escrow",
+    "id": "payout-withheld",
+    "kind": "execute_payout",
+    "payout_id": "payout-venture-withheld",
+    "recipient_id": "venture-team-a"
+  },
+  {
+    "amount_atomic": "0",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-venture-zero"
+    },
+    "capability_id": "cap-venture",
+    "escrow_id": "venture_escrow",
+    "id": "payout-zero-amount",
+    "kind": "execute_payout",
+    "payout_id": "payout-venture-zero",
+    "recipient_id": "venture-team-a"
+  },
+  {
+    "amount_atomic": "1000000000",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-venture-nocap"
+    },
+    "capability_id": "cap-absent",
+    "escrow_id": "venture_escrow",
+    "id": "payout-unknown-capability",
+    "kind": "execute_payout",
+    "payout_id": "payout-venture-nocap",
+    "recipient_id": "venture-team-a"
+  },
+  {
+    "amount_atomic": "10000000000",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-venture-0002"
+    },
+    "capability_id": "cap-venture",
+    "escrow_id": "venture_escrow",
+    "id": "payout-venture-0002",
+    "kind": "execute_payout",
+    "payout_id": "payout-venture-0002",
+    "recipient_id": "venture-team-b"
+  },
+  {
+    "amount_atomic": "10000000000",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-venture-0003"
+    },
+    "capability_id": "cap-venture",
+    "escrow_id": "venture_escrow",
+    "id": "payout-venture-0003",
+    "kind": "execute_payout",
+    "payout_id": "payout-venture-0003",
+    "recipient_id": "venture-team-a"
+  },
+  {
+    "amount_atomic": "1",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-venture-0004"
+    },
+    "capability_id": "cap-venture",
+    "escrow_id": "venture_escrow",
+    "id": "payout-venture-0004",
+    "kind": "execute_payout",
+    "payout_id": "payout-venture-0004",
+    "recipient_id": "venture-team-a"
+  },
+  {
+    "capability_id": "cap-community",
+    "envelope_total": "6840000000",
+    "escrow_id": "community_grants_escrow",
+    "expiry_cycle": 5,
+    "id": "grant-community",
+    "kind": "grant_capability",
+    "per_payout_maximum": "6840000000"
+  },
+  {
+    "amount_atomic": "6840000000",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-community-0001"
+    },
+    "capability_id": "cap-community",
+    "escrow_id": "community_grants_escrow",
+    "id": "payout-community-0001",
+    "kind": "execute_payout",
+    "payout_id": "payout-community-0001",
+    "recipient_id": "grant-recipient-a"
+  },
+  {
+    "capability_id": "cap-community",
+    "id": "revoke-community",
+    "kind": "revoke_capability"
+  },
+  {
+    "amount_atomic": "1",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-community-0002"
+    },
+    "capability_id": "cap-community",
+    "escrow_id": "community_grants_escrow",
+    "id": "payout-community-revoked",
+    "kind": "execute_payout",
+    "payout_id": "payout-community-0002",
+    "recipient_id": "grant-recipient-a"
+  },
+  {
+    "capability_id": "cap-community",
+    "id": "revoke-community-again",
+    "kind": "revoke_capability"
+  },
+  {
+    "capability_id": "cap-absent",
+    "id": "revoke-unknown",
+    "kind": "revoke_capability"
+  },
+  {
+    "capability_id": "cap-developer",
+    "envelope_total": "10000000000",
+    "escrow_id": "developer_incentives_escrow",
+    "expiry_cycle": 5,
+    "id": "grant-developer",
+    "kind": "grant_capability",
+    "per_payout_maximum": "5000000000"
+  },
+  {
+    "amount_atomic": "3420000001",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-developer-over"
+    },
+    "capability_id": "cap-developer",
+    "escrow_id": "developer_incentives_escrow",
+    "id": "payout-developer-over",
+    "kind": "execute_payout",
+    "payout_id": "payout-developer-over",
+    "recipient_id": "developer-fund-a"
+  },
+  {
+    "amount_atomic": "3420000000",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-developer-0001"
+    },
+    "capability_id": "cap-developer",
+    "escrow_id": "developer_incentives_escrow",
+    "id": "payout-developer-0001",
+    "kind": "execute_payout",
+    "payout_id": "payout-developer-0001",
+    "recipient_id": "developer-fund-a"
+  },
+  {
+    "amount_atomic": "1",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-developer-0002"
+    },
+    "capability_id": "cap-developer",
+    "escrow_id": "developer_incentives_escrow",
+    "id": "payout-developer-drained",
+    "kind": "execute_payout",
+    "payout_id": "payout-developer-0002",
+    "recipient_id": "developer-fund-a"
+  },
+  {
+    "capability_id": "cap-developer-short",
+    "envelope_total": "1000000000",
+    "escrow_id": "developer_incentives_escrow",
+    "expiry_cycle": 0,
+    "id": "grant-developer-short",
+    "kind": "grant_capability",
+    "per_payout_maximum": "1000000000"
+  },
+  {
+    "cycle_index": 0,
+    "id": "advance-cycle-0",
+    "kind": "advance_cycle"
+  },
+  {
+    "cycle_index": 0,
+    "id": "advance-cycle-mismatch",
+    "kind": "advance_cycle"
+  },
+  {
+    "amount_atomic": "1",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-developer-0003"
+    },
+    "capability_id": "cap-developer-short",
+    "escrow_id": "developer_incentives_escrow",
+    "id": "payout-developer-expired",
+    "kind": "execute_payout",
+    "payout_id": "payout-developer-0003",
+    "recipient_id": "developer-fund-a"
+  },
+  {
+    "capability_id": "cap-late",
+    "envelope_total": "1000000000",
+    "escrow_id": "developer_incentives_escrow",
+    "expiry_cycle": 0,
+    "id": "grant-expired-at-grant",
+    "kind": "grant_capability",
+    "per_payout_maximum": "1000000000"
+  },
+  {
+    "amount_atomic": "10000000000",
+    "approval_result": {
+      "decision": "approved",
+      "evaluation_reference": "ai-evaluation-0001",
+      "payout_id": "payout-venture-0001"
+    },
+    "capability_id": "cap-venture",
+    "escrow_id": "venture_escrow",
+    "id": "payout-venture-replay",
+    "kind": "execute_payout",
+    "payout_id": "payout-venture-0001",
+    "recipient_id": "venture-team-a"
+  }
+]
