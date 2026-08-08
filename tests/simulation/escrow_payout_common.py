@@ -9,23 +9,26 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "simulation" / "escrow_payout" / "fixtures"
 VECTORS_PATH = ROOT / "test-vectors" / "escrow-payout-v1.txt"
+VECTORS_V2_PATH = ROOT / "test-vectors" / "escrow-payout-v2.txt"
 ECONOMY_FIXTURES = ROOT / "simulation" / "founder_economy" / "fixtures"
 ECONOMY_MANIFEST = ROOT / "test-vectors" / "founder-economy-manifest-v1.json"
+ECONOMY_V2_FIXTURES = ROOT / "simulation" / "founder_economy_v2" / "fixtures"
+ECONOMY_V2_MANIFEST = ROOT / "test-vectors" / "founder-economy-manifest-v2.json"
 
 VENTURE = "venture_escrow"
 COMMUNITY = "community_grants_escrow"
 DEVELOPER = "developer_incentives_escrow"
 
 
-def research_events() -> list[dict[str, Any]]:
+def research_events(version: str = "v1") -> list[dict[str, Any]]:
     return json.loads(
-        (FIXTURES / "research-events-v1.json").read_text(encoding="utf-8")
+        (FIXTURES / f"research-events-{version}.json").read_text(encoding="utf-8")
     )
 
 
-def vectors() -> dict[str, str]:
+def vectors(path: Path | None = None) -> dict[str, str]:
     values: dict[str, str] = {}
-    for line in VECTORS_PATH.read_text(encoding="utf-8").splitlines():
+    for line in (path or VECTORS_PATH).read_text(encoding="utf-8").splitlines():
         stripped = line.strip()
         if stripped and not stripped.startswith("#"):
             key, _, value = stripped.partition("=")
@@ -42,6 +45,19 @@ def economy_state() -> tuple[str, dict[str, Any]]:
     result = economy_simulate(
         load_manifest_file(ECONOMY_MANIFEST),
         load_events_file(ECONOMY_FIXTURES / "research-events-v1.json"),
+    )
+    return result["state_digest"], result["final_state"]
+
+
+def economy_state_v2() -> tuple[str, dict[str, Any]]:
+    """The same for version two, which the v2 escrow binding must accept."""
+    from simulation.founder_economy_v2.engine import simulate as economy_simulate
+    from simulation.founder_economy_v2.manifest import load_manifest_file
+    from simulation.founder_economy_v2.validation import load_events_file
+
+    result = economy_simulate(
+        load_manifest_file(ECONOMY_V2_MANIFEST),
+        load_events_file(ECONOMY_V2_FIXTURES / "research-events-v2.json"),
     )
     return result["state_digest"], result["final_state"]
 
@@ -63,16 +79,22 @@ def bind(
     digest: str | None = None,
     *,
     event_id: str = "bind-0001",
+    version: str = "v1",
 ) -> dict[str, Any]:
-    """Build a bind whose supplied digest defaults to the honest one."""
+    """Build a bind whose supplied digest defaults to the honest one.
+
+    The honest digest is version specific, so a bind built for one version is
+    rejected by the other. That is the property, not an inconvenience.
+    """
     from simulation.common.canonical import digest as compute
     from simulation.escrow_payout import contract as c
 
     if state_value is None:
         supplied = None
     else:
+        label = c.BINDINGS[version].economy_state_label
         supplied = {
-            "state_digest": digest or compute(c.ECONOMY_STATE_LABEL, state_value),
+            "state_digest": digest or compute(label, state_value),
             "state_value": state_value,
         }
     return {
