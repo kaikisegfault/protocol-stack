@@ -26,8 +26,8 @@ rather than inherited from the handoff:
 - `simulation/revenue_routing/` likewise imports only
   `simulation/common/canonical.py` and carries no supply figure.
 
-This ADR records the decisions for the escrow payout model. The scenario suite
-is the following slice and will extend this record rather than restate it.
+This ADR records the decisions for the escrow payout model and, in the second
+half, for the scenario suite that followed it.
 
 ## Decision
 
@@ -118,6 +118,86 @@ model cannot distinguish a foreign-version state from a corrupted one without
 attempting a second digest under every known label, which would make the set of
 accepted provenances grow with every future version.
 
+## Decisions for the scenario suite
+
+### The suite is versioned, and version one keeps running
+
+`economy-scenario-suite-v1.md` already recorded that its scenario parameters
+were superseded and that a version two suite would derive them, and its
+versioning section requires a new suite version for a changed scenario
+parameter. Version one is therefore retained, unedited and passing, which it can
+be because `simulation/founder_economy/` is untouched.
+
+Retiring version one instead was considered. It was rejected because version one
+is the accepted M2 requirement-13 evidence for a contract that still has a
+working model; deleting the evidence while keeping the model would leave the v1
+economy simulator with no multi-year coverage at all.
+
+### Scenarios 2 and 3 are shared, not duplicated
+
+The Founder Seat sale and revenue routing generators are used by both suite
+versions without a parameter. This was re-proved rather than assumed: neither
+model, verifier, nor vector file imports either economy package or contains a
+supply figure, channel cap, channel identifier, referral amount, or
+issuance-cycle count, and the seat price schedule derives only from the
+100,000-seat capacity and the 1,000-seat per-principal bound, both unrevised.
+
+`expected_v2.py` likewise re-uses `expected.py` for the seat schedule and the
+routing shares. Copying them would create two hand-restatements of one
+constitutional rule with nothing keeping them equal, which is the failure the
+closed-form method exists to avoid.
+
+### The tick is the shared cycle window
+
+Reallocation to "the highest uptime in that same cycle" needs a shared window,
+and three seats staggered 61 ticks apart hold different cycle indices at the
+same tick. The tick is therefore the `cycle_window`.
+
+The alternative, reusing each seat's `cycle_index`, was rejected because it
+would silently assert that every seat's cycles coincide, which the
+constitution's own activation rule contradicts. It would also have made every
+window contain exactly one seat, so no reallocation would ever have a candidate
+and scenario 1 would have proved nothing about the winner rule.
+
+### The generator supplies uptimes, not a winner
+
+The intended winner is given the only maximal uptime in its window and the model
+derives the winner set independently. Every other seat sits exactly on the
+64,800-second threshold, so the founder-directed boundary is exercised in every
+reallocating window rather than only in a unit test.
+
+Giving the winner a unique maximum makes the derived winner set a single seat,
+so the equal split has no remainder and the carry ends at zero. That is a
+deliberate limitation of this scenario and is recorded as one: the tie and
+remainder paths are covered by `founder-economy-simulator-v2`'s own vectors, not
+here.
+
+The generator asserts that at most one seat fails per window rather than
+assuming it. Two failures in one window would make the winner set depend on
+evaluation order and would quietly change what the recorded totals mean.
+
+### A fourth seat exists so the uptime probes have a key
+
+All three population seats consume their whole 731-cycle windows, so no
+unevaluated `(seat, cycle)` key remains for a probe to reach the uptime
+rejections with. A fourth seat is activated and never evaluates.
+
+The alternative, shortening one seat's window, was rejected because "every seat
+completes exactly 731 cycles" is the property scenario 1 exists to demonstrate.
+
+### Hostile traffic straddles the parser boundary deliberately
+
+An out-of-range count is an input-shape error that aborts a run, while an
+over-target `uptime_seconds` is a modelled rejection that must produce a trace
+record. `random_economy_v2.py` draws hostile uptimes above the 86,400-second
+cycle target but far inside the parser's bounds, so the property runs reach
+`INVALID_UPTIME_RECORD` instead of dying. Windows are drawn from a small set so
+records collide often, which is what reaches `INCONSISTENT_UPTIME_RECORD`.
+
+`founder_referral` is left in the `direct_issue` channel draw on purpose, so the
+containment that keeps referral units inside the per-seat-cycle accounting is
+exercised by seeded traffic rather than only by a named probe.
+
 ## Consequences
 
 - `simulation/escrow_payout/` implements two accepted contracts. Version one's
@@ -128,12 +208,20 @@ accepted provenances grow with every future version.
   the other's binding.
 - `test-vectors/escrow-payout-v2.txt` records 172 values: version one's 169
   under v2 labels and digests, plus three derived compatibility values.
-- `simulation/scenarios/` still binds version one of both the economy and the
-  escrow model, and now names that binding explicitly as `c.V1` rather than
-  relying on a module default. Its recorded digests remain evidence about the v1
-  contracts until the next slice rebinds it.
+- `simulation/scenarios/` runs under either suite binding. `suite.py` selects the
+  economy contract, the population generator, and the escrow binding together,
+  so a scenario cannot half-rebind.
+- `test-vectors/economy-scenario-suite-v2.txt` records 138 values against
+  version one's 133. Scenarios 2 and 3 record identical values in both files.
 - The Founder Seat sale and revenue routing models are unchanged, because
   neither imports the economy model nor carries a supply or channel figure.
+- Requirement 3 of `first-goal.md` is satisfied: all four dependent models are
+  re-verified against version two, every recorded digest is regenerated, and
+  both verifiers still fail closed in both directions.
+- The suite's own limits are unchanged and two are sharpened. The uptime record
+  and the cycle window are supplied and unchecked, and the unreferred pool's
+  payout is still unmodelled, because its month definition remains an open
+  founder decision.
 - No C++, consensus, devnet, bridge, wallet, AI, biometric, or resource behavior
   changes. The model activates nothing and issues no native unit.
 

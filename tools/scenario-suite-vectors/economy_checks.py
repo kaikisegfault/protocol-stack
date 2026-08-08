@@ -6,18 +6,10 @@ from the Founder Constitution before it is compared with the recorded file.
 
 from __future__ import annotations
 
+from types import ModuleType
 from typing import Any
 
-import expected as x
 from checker import Checker
-
-PROBES = (
-    ("cycle_beyond_window", "probe-cycle-beyond-window"),
-    ("base_replay", "probe-base-replay"),
-    ("exercise_replay", "probe-exercise-replay"),
-    ("activation_replay", "probe-activation-replay"),
-    ("unreferred_referral", "probe-unreferred-referral"),
-)
 
 # (vector name, custody key, the channel whose whole issuance it holds)
 CUSTODY_SINGLETONS = (
@@ -40,7 +32,7 @@ CUSTODY_SINGLETONS = (
 )
 
 
-def check_parameters(check: Checker) -> None:
+def check_parameters(check: Checker, x: ModuleType) -> None:
     check.equal("economy.seats", x.POPULATION_SEATS)
     check.equal("economy.referred_seats", x.POPULATION_REFERRED_SEATS)
     check.equal("economy.cycles_per_seat", x.ISSUANCE_CYCLES_PER_SEAT)
@@ -50,7 +42,7 @@ def check_parameters(check: Checker) -> None:
     check.equal("economy.referral_leg", x.REFERRAL_LEG)
 
 
-def check_trace(check: Checker, result: dict[str, Any]) -> None:
+def check_trace(check: Checker, x: ModuleType, result: dict[str, Any]) -> None:
     records = result["records"]
     check.equal("economy.schema", result["schema"])
     check.equal("economy.event_count", len(records))
@@ -66,7 +58,7 @@ def check_trace(check: Checker, result: dict[str, Any]) -> None:
         check.equal(f"economy.{name}", result[name])
 
 
-def check_totals(check: Checker, result: dict[str, Any]) -> None:
+def check_totals(check: Checker, x: ModuleType, result: dict[str, Any]) -> None:
     metrics = result["metrics"]
     channels = x.economy_channel_totals()
     issued = 0
@@ -85,13 +77,27 @@ def check_totals(check: Checker, result: dict[str, Any]) -> None:
         metrics["evaluated_permission_key_count"],
         x.evaluated_permission_keys(),
     )
-    check.agree(
-        "economy.referral_permissions_created",
-        int(metrics["channels"]["founder_referral"]["issued_atomic"])
-        // x.REFERRAL_LEG,
-        x.referral_permissions_created(),
+    # The referral channel's issuance divided by one leg counts the referrals
+    # the run created. Version one created permissions conditionally; version
+    # two accrues unconditionally, so the vector is named for what it counts.
+    referral_count = (
+        int(metrics["channels"]["founder_referral"]["issued_atomic"]) // x.REFERRAL_LEG
     )
-    check.equal("economy.activated_seats", metrics["activated_seat_count"])
+    if x.VERSION == "v1":
+        check.agree(
+            "economy.referral_permissions_created",
+            referral_count,
+            x.referral_permissions_created(),
+        )
+    else:
+        check.agree(
+            "economy.referral_accruals_created",
+            referral_count,
+            x.referral_accruals_created(),
+        )
+    check.agree(
+        "economy.activated_seats", metrics["activated_seat_count"], x.ACTIVATED_SEATS
+    )
     check.equal("economy.pending_permissions", metrics["pending_permission_count"])
 
     remaining = int(metrics["remaining_capacity_atomic"])
@@ -102,7 +108,7 @@ def check_totals(check: Checker, result: dict[str, Any]) -> None:
     )
 
 
-def check_custody(check: Checker, result: dict[str, Any]) -> None:
+def check_custody(check: Checker, x: ModuleType, result: dict[str, Any]) -> None:
     """Custody must equal issued supply and match the per-seat closed form."""
     custody = result["final_state"]["typed_custody"]
     for seat_id, closed_form in x.economy_seat_custody().items():
@@ -118,6 +124,16 @@ def check_custody(check: Checker, result: dict[str, Any]) -> None:
             f"economy.custody.{name}", custody[key], channels[channel_id]
         )
 
+    if x.VERSION != "v1":
+        # The unreferred seats' share of the referral channel. Version one had
+        # no such destination: an unreferred seat's referral was rejected, so
+        # the channel's realised total depended on how seats were referred.
+        check.agree(
+            "economy.custody.unreferred_performance_pool",
+            custody["unreferred_performance_pool:global"],
+            x.unreferred_pool_custody(),
+        )
+
     check.agree(
         "economy.custody_total",
         sum(int(value) for value in custody.values()),
@@ -125,10 +141,10 @@ def check_custody(check: Checker, result: dict[str, Any]) -> None:
     )
 
 
-def check_probes(check: Checker, result: dict[str, Any]) -> None:
+def check_probes(check: Checker, x: ModuleType, result: dict[str, Any]) -> None:
     """Every boundary probe must still be refused after 7,303 accepted events."""
     codes = {record["event_id"]: record for record in result["records"]}
-    for name, event_id in PROBES:
+    for name, event_id in x.PROBES:
         record = codes[event_id]
         check.equal(f"economy.probe.{name}", record["result"])
         if record["accepted"] or record["journal"]:
@@ -137,7 +153,7 @@ def check_probes(check: Checker, result: dict[str, Any]) -> None:
             check.failures.append(f"economy.probe.{name}: changed state")
 
 
-def check_chaining(check: Checker, result: dict[str, Any]) -> None:
+def check_chaining(check: Checker, x: ModuleType, result: dict[str, Any]) -> None:
     """Each record's digest must chain to the next and to the final state."""
     records = result["records"]
     breaks = sum(
@@ -150,10 +166,10 @@ def check_chaining(check: Checker, result: dict[str, Any]) -> None:
         check.failures.append("economy.trace_digest_breaks: final digest differs")
 
 
-def check_economy(check: Checker, result: dict[str, Any]) -> None:
-    check_parameters(check)
-    check_trace(check, result)
-    check_totals(check, result)
-    check_custody(check, result)
-    check_probes(check, result)
-    check_chaining(check, result)
+def check_economy(check: Checker, x: ModuleType, result: dict[str, Any]) -> None:
+    check_parameters(check, x)
+    check_trace(check, x, result)
+    check_totals(check, x, result)
+    check_custody(check, x, result)
+    check_probes(check, x, result)
+    check_chaining(check, x, result)
