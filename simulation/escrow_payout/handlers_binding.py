@@ -1,9 +1,14 @@
 """The opening-custody binding transition.
 
 Escrow custody is not a free parameter. The supplied value must be a complete
-recorded founder-economy-simulator-v1 canonical state whose digest this model
-recomputes before reading a single amount, so custody that no accepted economy
-run produced cannot enter here.
+recorded founder-economy canonical state whose digest this model recomputes
+before reading a single amount, so custody that no accepted economy run
+produced cannot enter here.
+
+Which economy version that state must come from is the binding's one
+version-specific decision, and it is the only place a version reads outside its
+own model. A v1 state cannot satisfy a v2 bind, because the digest is computed
+over the version's own domain label.
 """
 
 from __future__ import annotations
@@ -24,7 +29,11 @@ from .operations import (
 )
 
 
-def bind_opening_custody(state: State, event: dict[str, Any]) -> Outcome:
+def bind_opening_custody(
+    state: State,
+    event: dict[str, Any],
+    binding: c.Binding = c.V1,
+) -> Outcome:
     if state.bound:
         return failure("ALREADY_BOUND")
 
@@ -32,7 +41,7 @@ def bind_opening_custody(state: State, event: dict[str, Any]) -> Outcome:
     if supplied is None:
         return failure("MISSING_RESEARCH_INPUT")
 
-    recomputed = _economy_digest(supplied["state_value"])
+    recomputed = _economy_digest(supplied["state_value"], binding)
     if recomputed is None or recomputed != supplied["state_digest"]:
         return failure("INVALID_RESEARCH_INPUT")
 
@@ -40,8 +49,12 @@ def bind_opening_custody(state: State, event: dict[str, Any]) -> Outcome:
     if opening is None:
         return failure("INVALID_RESEARCH_INPUT")
 
+    # The cap comes from the bound economy contract rather than the module
+    # default, because this is the one transition whose meaning is version
+    # specific. Both accepted versions happen to agree; a future one need not.
+    caps = binding.escrow_caps
     for escrow_id, amount in opening:
-        if amount > c.ESCROW_CAPS[escrow_id]:
+        if amount > caps[escrow_id]:
             return failure("CUSTODY_ABOVE_CAP")
 
     return Outcome(
@@ -51,12 +64,12 @@ def bind_opening_custody(state: State, event: dict[str, Any]) -> Outcome:
     )
 
 
-def _economy_digest(state_value: Any) -> str | None:
+def _economy_digest(state_value: Any, binding: c.Binding) -> str | None:
     """Recompute the accepted economy state digest over the supplied value."""
     if type(state_value) is not dict:
         return None
     try:
-        return digest(c.ECONOMY_STATE_LABEL, state_value)
+        return digest(binding.economy_state_label, state_value)
     except InvariantError:
         return None
 

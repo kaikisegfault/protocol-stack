@@ -127,8 +127,8 @@ def _amount_map(amounts: dict[str, int]) -> dict[str, str]:
     }
 
 
-def state_digest(state: State) -> str:
-    return digest(c.STATE_LABEL, state_value(state))
+def state_digest(state: State, binding: c.Binding = c.V1) -> str:
+    return digest(binding.state_label, state_value(state))
 
 
 def assert_invariants(state: State) -> None:

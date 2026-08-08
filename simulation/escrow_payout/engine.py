@@ -47,19 +47,35 @@ SILENT_KINDS = frozenset({"grant_capability", "revoke_capability", "advance_cycl
 INVARIANT_STRIDE = 64
 
 
+def handlers_for(binding: c.Binding) -> dict[str, Handler]:
+    """Bind the one version-specific handler and leave the rest untouched.
+
+    Only `bind_opening_custody` reads the economy contract, so the other four
+    transitions are shared rather than re-declared per version. A version that
+    needed a second version-specific handler would replace it here and would be
+    visible in this one table.
+    """
+
+    def bind(state: State, event: dict[str, Any]) -> Outcome:
+        return bind_opening_custody(state, event, binding)
+
+    return {**HANDLERS, "bind_opening_custody": bind}
+
+
 def simulate(
     events_value: Any,
     *,
+    binding: c.Binding = c.V1,
     invariant_stride: int = INVARIANT_STRIDE,
 ) -> dict[str, Any]:
-    """Run one deterministic escrow payout simulation."""
+    """Run one deterministic escrow payout simulation under one binding."""
     events = parse_events(events_value)
     state = initial_state()
     assert_invariants(state)
 
     records: list[dict[str, Any]] = []
     for index, event in enumerate(events):
-        record = apply_event(state, event, index)
+        record = apply_event(state, event, index, binding=binding)
         records.append(record)
         if invariant_stride and record["accepted"] and index % invariant_stride == 0:
             assert_invariants(state)
@@ -67,23 +83,29 @@ def simulate(
 
     final_state = state_value(state)
     result = {
-        "schema": c.SCHEMA,
-        "events_digest": digest(c.EVENTS_LABEL, events),
+        "schema": binding.schema,
+        "events_digest": digest(binding.events_label, events),
         "records": records,
-        "trace_digest": digest(c.TRACE_LABEL, records),
+        "trace_digest": digest(binding.trace_label, records),
         "final_state": final_state,
-        "state_digest": digest(c.STATE_LABEL, final_state),
+        "state_digest": digest(binding.state_label, final_state),
         "metrics": build_metrics(state),
     }
-    result["result_digest"] = digest(c.RESULT_LABEL, result)
+    result["result_digest"] = digest(binding.result_label, result)
     return result
 
 
-def apply_event(state: State, event: dict[str, Any], index: int) -> dict[str, Any]:
+def apply_event(
+    state: State,
+    event: dict[str, Any],
+    index: int,
+    *,
+    binding: c.Binding = c.V1,
+) -> dict[str, Any]:
     """Evaluate one event and commit it only if it was accepted."""
     summary_before = state.summary()
     try:
-        outcome = HANDLERS[event["kind"]](state, event)
+        outcome = handlers_for(binding)[event["kind"]](state, event)
         if outcome.accepted:
             assert_balanced(outcome, state, event)
             apply_effect(state, outcome.effect)
@@ -191,6 +213,7 @@ __all__ = [
     "INCREASE",
     "apply_event",
     "assert_balanced",
+    "handlers_for",
     "simulate",
     "state_digest",
 ]

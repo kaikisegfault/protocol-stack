@@ -58,7 +58,7 @@ def _bind(state_value: dict[str, Any]) -> dict[str, Any]:
         "id": "bind-population-run",
         "kind": "bind_opening_custody",
         "economy_state_result": {
-            "state_digest": digest(c.ECONOMY_STATE_LABEL, state_value),
+            "state_digest": digest(c.V1.economy_state_label, state_value),
             "state_value": state_value,
         },
     }

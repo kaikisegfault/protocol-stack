@@ -97,7 +97,7 @@ def _synthetic_bind() -> dict[str, Any]:
         "kind": "bind_opening_custody",
         "economy_state_result": {
             "state_digest": digest(
-                escrow_contract.ECONOMY_STATE_LABEL, state_value
+                escrow_contract.V1.economy_state_label, state_value
             ),
             "state_value": state_value,
         },
