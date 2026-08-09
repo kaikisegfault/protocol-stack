@@ -537,13 +537,26 @@ behavior.
   matrix — scope classification `full`, GCC and Clang debug, both sanitizers, and
   the aggregate required check. Runs 31318883966 and 31319061179 were superseded
   by later pushes to the same branch and were cancelled.
-- **That run took 16m55s against the workflow's 20-minute per-job timeout.** The
-  M3.5 tests add about 80 seconds to every preset, most of it the model test
-  rebuilding the scenario in each fixture. The margin is now thin enough that the
-  next slice should trim it before adding tests: caching the scenario per test
-  class and reusing it is the cheap fix, and it is the first thing M3.6 should do.
-- M3.5 local evidence: the uptime verifier derives 114 vectors and 90 tests pass
-  — 22 slot-grid, 59 model, and 9 cross-model. All ten retained verifiers pass
+- **That run took 16m55s against the workflow's 20-minute per-job timeout, and
+  issue #122 and PR #123 reclaimed the margin at `a38598f`.** The M3.5 fixtures
+  rebuilt the scenario in `setUp` rather than once, running a complete
+  28,800-block window for a single assertion. Each run shape is now executed once
+  and deep-copied per use in `tests/simulation/uptime_measurement_common.py`,
+  matching the convention the economy, escrow, and authority suites already use.
+  The model test fell from 58.2s to 13.4s and the cross-model test from 8.2s to
+  4.5s, about 49 seconds per preset.
+- The measurement that matters is the hosted one. PR run 31321119542 completed in
+  15m14s with its slowest job, `clang-sanitizers`, taking 14m52s, so the per-job
+  margin is about five minutes rather than three. No assertion, boundary,
+  rejection condition, or result code moved, and the suite gained one test rather
+  than losing any.
+- Two tests deliberately do not use the shared fixture. `test_two_runs_agree` and
+  `test_a_prefix_reproduces_the_state_it_held` exist to prove a run is
+  deterministic, and a cached run would make both tautologies. The one added test
+  guards the risk the change introduces: two callers get distinct objects from the
+  same state, and mutating one leaves the other whole.
+- M3.5 local evidence: the uptime verifier derives 114 vectors and 91 tests pass
+  — 22 slot-grid, 60 model, and 9 cross-model. All ten retained verifiers pass
   unchanged: economy v1 derives 139 manifest and 65 simulator values, manifest v2
   154, simulator v2 189, seat 96, routing 200, escrow v1 169 and v2 172, the suite
   133 v1 and 138 v2, and the cycle boundary 101. The M2 and M3.1 through M3.4
@@ -919,10 +932,12 @@ Milestone slice M3.6: bind `founder-economy-simulator-v3` to the cycle boundary
 and the uptime pipeline at once, satisfying requirements 8 and 9 of
 `docs/project/first-goal.md` in enforced rather than specified form.
 
-Create one bounded M3 issue. Before adding any test, trim the M3.5 test runtime:
-the post-merge matrix now runs 16m55s against a 20-minute per-job timeout, and
-most of the added 80 seconds is the model test rebuilding the scenario in every
-fixture. Cache it per test class and reuse it.
+Create one bounded M3 issue. The CI margin this used to name as a prerequisite
+is reclaimed: PR #123 took the hosted matrix to 15m14s with a 14m52s slowest job
+against a 20-minute per-job timeout. Reuse the shared fixture in
+`tests/simulation/uptime_measurement_common.py` for any new scenario run rather
+than rebuilding one per test, and re-measure the hosted duration at the end of
+the slice, because three new model versions will spend that margin again.
 
 The slice should deliver, as one economy contract version:
 
