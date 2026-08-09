@@ -21,6 +21,7 @@ if __package__ in {None, ""}:
 import expected as e
 from checker import Checker, read_vectors
 
+from simulation.common.canonical import CodedError
 from simulation.cycle_boundary import contract as c
 from simulation.cycle_boundary import grid, scenario
 from simulation.cycle_boundary.model import CycleBoundary
@@ -257,15 +258,19 @@ def check_rejection_vectors(check: Checker, boundary: CycleBoundary) -> None:
     check.equal("coverage.codes_modelled", len(MODELLED_CODES))
     check.equal("coverage.unreached_codes", ",".join(sorted(MODELLED_CODES - reached)) or "none")
 
-    # A rejection writes nothing: the state after every attempt is the state
-    # before it.
-    after = CycleBoundary()
-    for seat_id, height in scenario.ACTIVATIONS:
-        after.record_activation(seat_id, height)
-    scenario.activation_rejection_codes()
+    # A rejection writes nothing. This must be measured on one instance across
+    # the attempts: comparing two separately built models would only show that
+    # the model is deterministic, which is a different claim.
+    probe = scenario.build()
+    before_rejections = probe.state_digest()
+    for _, seat_id, height in scenario.ACTIVATION_REJECTIONS:
+        try:
+            probe.record_activation(seat_id, height)
+        except CodedError:
+            pass
     check.equal(
         "containment.rejections_leave_state_unchanged",
-        after.state_digest() == boundary.state_digest(),
+        probe.state_digest() == before_rejections,
     )
 
     # A check is a pure query and cannot alter a schedule.
