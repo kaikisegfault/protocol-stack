@@ -9,33 +9,22 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from simulation.common.canonical import CodedError, InvariantError
+from simulation.common.canonical import InvariantError
 from simulation.cycle_boundary.model import CycleBoundary
 from simulation.uptime_measurement import contract as c
 from simulation.uptime_measurement.model import DutyReport, UptimeMeasurement
-from simulation.uptime_measurement.scenario import AI_KEY, beacon_for, build_schedule, run
+from simulation.uptime_measurement.scenario import run
 from simulation.uptime_measurement.slots import is_selected, slot_last_height, slot_of_height
-
-
-def bound_model() -> UptimeMeasurement:
-    schedule = build_schedule()
-    model = UptimeMeasurement(ai_key=AI_KEY)
-    model.bind_schedule(schedule, schedule.state_digest())
-    return model
-
-
-def advance(model: UptimeMeasurement, through: int) -> None:
-    start = 0 if model.height is None else model.height + 1
-    for height in range(start, through + 1):
-        model.execute_block(height, beacon_for(height))
-
-
-def code_of(action) -> str:
-    try:
-        action()
-    except CodedError as error:
-        return error.code
-    return "ACCEPTED"
+from tests.simulation.uptime_measurement_common import (
+    AI_KEY,
+    advance,
+    beacon_for,
+    bound_model,
+    build_schedule,
+    code_of,
+    open_dispute_window,
+    scenario,
+)
 
 
 class BindingTest(unittest.TestCase):
@@ -240,7 +229,7 @@ class ChallengeResponseTest(unittest.TestCase):
 
 class DisputeTest(unittest.TestCase):
     def setUp(self) -> None:
-        self.model = run(windows=1, stop_height=2 * c.CYCLE_BLOCKS + 1).model
+        self.model = open_dispute_window()
 
     def test_the_window_is_closed_but_not_final(self) -> None:
         self.assertIn(1, self.model.closed_windows)
@@ -325,7 +314,7 @@ class DisputeTest(unittest.TestCase):
         )
 
     def test_a_reason_code_carries_no_protocol_effect(self) -> None:
-        other = run(windows=1, stop_height=2 * c.CYCLE_BLOCKS + 1).model
+        other = open_dispute_window()
         self.model.file_dispute(1, 0, 0, "STALE", AI_KEY)
         other.file_dispute(1, 0, 0, "A COMPLETELY DIFFERENT REASON", AI_KEY)
         self.assertEqual(self.model.state_digest(), other.state_digest())
@@ -333,29 +322,29 @@ class DisputeTest(unittest.TestCase):
 
 class FinalisationTest(unittest.TestCase):
     def test_silence_finalises_without_a_signature(self) -> None:
-        result = run(windows=1)
+        result = scenario(windows=1)
         self.assertTrue(result.model.is_final(1))
         self.assertEqual(result.model.disputed, {})
 
     def test_a_final_window_cannot_be_disputed(self) -> None:
-        model = run(windows=1).model
+        model = scenario(windows=1).model
         self.assertEqual(
             code_of(lambda: model.file_dispute(1, 0, 0, "STALE", AI_KEY)),
             "DISPUTE_WINDOW_CLOSED",
         )
 
     def test_a_record_before_finalisation_is_refused(self) -> None:
-        model = run(windows=1, stop_height=2 * c.CYCLE_BLOCKS + 1).model
+        model = open_dispute_window()
         self.assertEqual(code_of(lambda: model.emit_record(1)), "RECORD_NOT_FINAL")
 
     def test_a_window_with_no_seats_emits_nothing(self) -> None:
-        model = run(windows=1).model
+        model = scenario(windows=1).model
         self.assertEqual(code_of(lambda: model.emit_record(0)), "WINDOW_HAS_NO_SEATS")
 
 
 class RecordTest(unittest.TestCase):
     def setUp(self) -> None:
-        self.result = run(windows=2)
+        self.result = scenario(windows=2)
         self.record = self.result.model.emit_record(1)
 
     def test_the_seat_set_is_the_in_scope_set(self) -> None:
@@ -408,23 +397,37 @@ class DeterminismTest(unittest.TestCase):
         self.assertEqual(prefix.state_digest(), again.state_digest())
 
     def test_the_state_digest_changes_when_credit_changes(self) -> None:
-        model = run(windows=1, stop_height=2 * c.CYCLE_BLOCKS + 1).model
+        model = open_dispute_window()
         before = model.state_digest()
         model.file_dispute(1, 0, 0, "STALE", AI_KEY)
         self.assertNotEqual(model.state_digest(), before)
+
+    def test_a_shared_fixture_hands_out_independent_models(self) -> None:
+        """The risk the cached fixture introduces, guarded rather than assumed.
+
+        `scenario` executes each run once and copies it, so a test that mutates
+        its model must not reach the next test's. Two callers therefore get
+        distinct objects that start from the same state.
+        """
+        first, second = open_dispute_window(), open_dispute_window()
+        self.assertIsNot(first, second)
+        self.assertEqual(first.state_digest(), second.state_digest())
+        first.file_dispute(1, 0, 0, "STALE", AI_KEY)
+        self.assertNotEqual(first.state_digest(), second.state_digest())
+        self.assertEqual(second.credited_slots(1, 0), c.SLOTS_PER_WINDOW)
 
 
 class InvariantTest(unittest.TestCase):
     def test_a_cap_that_breaks_containment_is_refused(self) -> None:
         """Invariant 5 is asserted rather than left to the cap arithmetic."""
-        model = run(windows=1, stop_height=2 * c.CYCLE_BLOCKS + 1).model
+        model = open_dispute_window()
         voided = model.disputed.setdefault(1, {}).setdefault(0, set())
         voided.update(range(c.GRACE_ALLOWANCE_SLOTS + 1))
         with self.assertRaises(InvariantError):
             model._assert_dispute_containment(1, 0)
 
     def test_uptime_never_exceeds_a_window(self) -> None:
-        model = run(windows=1).model
+        model = scenario(windows=1).model
         for seat in model.in_scope(1):
             self.assertLessEqual(model.uptime_seconds(1, seat), 86_400)
 

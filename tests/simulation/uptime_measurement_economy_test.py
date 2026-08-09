@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from simulation.founder_economy_v2 import contract as ec
 from simulation.founder_economy_v2.engine import simulate
 from simulation.uptime_measurement import contract as c
-from simulation.uptime_measurement.scenario import AI_KEY, beacon_for, run
+from tests.simulation.uptime_measurement_common import AI_KEY, beacon_for, scenario
 from tests.simulation.founder_economy_v2_common import (
     activate,
     codes,
@@ -32,7 +32,7 @@ class RecordAcceptedByEconomyTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.result = run(windows=2)
+        cls.result = scenario(windows=2)
         cls.record = cls.result.model.emit_record(1).as_economy_input()
 
     def economy_run(self, seat_id: int, cycle_index: int = 0) -> dict:
@@ -90,7 +90,7 @@ class CompletenessTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.result = run(windows=2)
+        cls.result = scenario(windows=2)
         cls.record = cls.result.model.emit_record(1).as_economy_input()
 
     def test_the_economy_accepts_a_record_missing_seats(self) -> None:
@@ -124,7 +124,7 @@ class DisputeReachesTheEconomyTest(unittest.TestCase):
         against a seat credited for every slot, silence finalises the result,
         and the economy model still evaluates that seat as having met its cycle.
         """
-        model = run(windows=1, stop_height=2 * c.CYCLE_BLOCKS + 1).model
+        model = scenario(windows=1, stop_height=2 * c.CYCLE_BLOCKS + 1).model
         self.assertEqual(model.credited_slots(1, 0), c.SLOTS_PER_WINDOW)
         for slot in range(c.DISPUTE_CAP_SLOTS_PER_SEAT):
             model.file_dispute(1, 0, slot, "STALE", AI_KEY)
