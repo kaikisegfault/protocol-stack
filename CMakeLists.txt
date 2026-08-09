@@ -864,6 +864,32 @@ add_test(
     "${PROJECT_SOURCE_DIR}/tests/simulation/cycle_boundary_model_test.py"
 )
 add_test(
+  NAME uptime-measurement-vectors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tools/uptime-measurement-vectors/verify.py"
+    --vectors
+    "${PROJECT_SOURCE_DIR}/test-vectors/uptime-measurement-v1.txt"
+)
+add_test(
+  NAME uptime-measurement-slots
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/uptime_measurement_slots_test.py"
+)
+add_test(
+  NAME uptime-measurement-model
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/uptime_measurement_model_test.py"
+)
+add_test(
+  NAME uptime-measurement-economy-join
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/uptime_measurement_economy_test.py"
+)
+add_test(
   NAME founder-seat-vectors
   COMMAND
     "${Python3_EXECUTABLE}"
