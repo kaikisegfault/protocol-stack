@@ -127,6 +127,17 @@ from an intended scenario difference; and that a cross-version state reuses
 `INVALID_RESEARCH_INPUT` rather than gaining a code of its own. It accepts a
 compatibility boundary, not a consensus transition.
 
+ADR 0027 defines the cycle boundary in chain heights. It records that a cycle is
+28,800 blocks on one global grid rather than a per-seat grid, because
+reallocation to the highest uptime "in that same cycle" needs a window several
+seats share; that 28,800 is chosen because the pinned 3-second commit interval
+divides all three founder-directed durations exactly, so no threshold is
+rounded; that a seat's cycles begin at the next full window, because counting the
+activating window would fail a seat for where in a window its activation landed;
+that activation heights may not decrease; and that a window's nominal duration is
+86,400 seconds, so a measurement is denominated against the window rather than a
+clock. It defines a schedule and a check, not a consensus transition.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
@@ -186,6 +197,11 @@ immutable; compatible changes require a new version.
   drain to `escrow-payout-v2`, supplying a cycle uptime record instead of a
   supplied activity verdict and performance recipient; it defines no model or
   transition.
+- `specifications/cycle-boundary-v1.md`: the 28,800-block window grid a cycle is
+  cut from, the mapping from a seat's activation height to its 731-window
+  issuance span, the ordered conditions of the window check, and the exact block
+  equivalents of the founder-directed activity threshold and grace allowance; it
+  defines a schedule and measures nothing.
 - `specifications/native-economy-simulation-v1.md`: versioned integer-only
   accounting, authority, event, trace, and metric contract for the independent
   M2 research simulator; it is not a consensus transition.
@@ -271,6 +287,15 @@ supply or channel figure.
 `../tools/scenario-suite-vectors/verify.py` runs all four scenarios and requires
 each recorded total to match both the live run and a closed-form derivation from
 Founder Constitution literals that imports nothing from `../simulation/`.
+
+The cycle boundary model is `../simulation/cycle_boundary/` with vectors in
+`../test-vectors/cycle-boundary-v1.txt`.
+`../tools/cycle-boundary-vectors/verify.py` derives every recorded value twice,
+once from a live model run and once from an `expected.py` that imports nothing
+from `../simulation/` and restates the Founder Constitution's 24, 18, and 6
+hours and the pinned M1 commit interval by hand. It holds a seat activation
+table and answers whether a window is the window for a seat's cycle; it measures
+no uptime and is not bound by any economy model yet.
 
 Shared deterministic primitives used by these models live in
 `../simulation/common/`.
