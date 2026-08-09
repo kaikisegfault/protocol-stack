@@ -433,6 +433,20 @@ class InvariantTest(unittest.TestCase):
         with self.assertRaises(InvariantError):
             model.execute_block("0", beacon_for(0))
 
+    def test_the_height_bound_contains_the_slot_arithmetic(self) -> None:
+        """A height beyond the bound is a coded rejection, not an overflow.
+
+        The checked arithmetic beyond that bound raises rather than returning a
+        code, which is why no overflow code is declared.
+        """
+        model = bound_model()
+        self.assertEqual(
+            code_of(lambda: model.execute_block(c.MAX_HEIGHT + 1, beacon_for(0))),
+            "HEIGHT_RANGE",
+        )
+        with self.assertRaises(InvariantError):
+            slot_of_height(c.MAX_HEIGHT + 1)
+
 
 if __name__ == "__main__":
     unittest.main()

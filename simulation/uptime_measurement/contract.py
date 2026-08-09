@@ -80,8 +80,13 @@ RESULT_CODES: tuple[str, ...] = (
     "DISPUTE_CAP_EXCEEDED",
     "RECORD_NOT_FINAL",
     "WINDOW_HAS_NO_SEATS",
-    "ARITHMETIC_OVERFLOW",
 )
+# There is deliberately no ARITHMETIC_OVERFLOW code. Every quantity this model
+# accumulates is bounded far below u64 by an earlier condition - credited slots
+# by 24, uptime seconds by 86,400, and a height by HEIGHT_RANGE - so an overflow
+# is not a rejectable input but a defect, and the checked height arithmetic
+# raises an invariant failure rather than returning a code. Declaring a code no
+# path produces would claim coverage the vectors could not show.
 
 
 def assert_exact_derivation() -> None:

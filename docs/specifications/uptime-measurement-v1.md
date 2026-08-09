@@ -502,8 +502,9 @@ schedule independently of the emitting code.
    `ACTIVITY_THRESHOLD_SECONDS` after any admissible set of disputes.
 6. An emitted record's seat set equals the in-scope set for that window.
 7. `slot_issued` and `slot_answered` are zero at every slot boundary.
-8. Every arithmetic result is checked against the `u64` bound; an overflow is
-   `ARITHMETIC_OVERFLOW` rather than a wrapped value.
+8. Every arithmetic result is checked against the `u64` bound. A value that
+   would exceed it is an invariant failure rather than a wrapped value, because
+   every accumulated quantity here is already bounded by an earlier condition.
 
 Invariant 5 is the containment theorem stated as a checkable property, and the
 model asserts it after every dispute rather than relying on the cap arithmetic
@@ -520,8 +521,21 @@ RESPONSE_TOO_LATE          RESPONSE_REPLAY            RESPONSE_INVALID
 UNAUTHORIZED_DISPUTE       SLOT_RANGE                 WINDOW_NOT_CLOSED
 DISPUTE_WINDOW_CLOSED      DISPUTE_REPLAY             DISPUTE_SLOT_NOT_CREDITED
 DISPUTE_CAP_EXCEEDED       RECORD_NOT_FINAL           WINDOW_HAS_NO_SEATS
-ARITHMETIC_OVERFLOW
 ```
+
+Every one of these is produced by executing a mutated input in the vectors, and
+the vectors record that as a derived claim so a later change cannot quietly lose
+a code.
+
+**There is deliberately no `ARITHMETIC_OVERFLOW`.** Every quantity accumulated
+here is bounded far below `u64` by an earlier condition: credited slots by
+`SLOTS_PER_WINDOW`, uptime seconds by `CYCLE_TARGET_SECONDS`, and a height by
+`HEIGHT_RANGE`. Beyond those bounds an overflow is a defect rather than a
+rejectable input, so the checked height arithmetic raises an invariant failure
+instead of returning a code, in the same way this model treats a non-integer
+input. Declaring a code no path produces would claim coverage the vectors could
+not show, which is the opposite of what invariant 8 is for: the arithmetic is
+checked, and what a check finds here is a bug.
 
 These are model codes. The numeric consensus receipts for a C++ transition are
 requirement 5 and are not defined here.
