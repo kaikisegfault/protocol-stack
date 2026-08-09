@@ -224,19 +224,27 @@ the constitution rather than a change to it.
 
 ### Range and overflow
 
-`activation_height` is a `u64`. Both derived quantities are checked rather than
-assumed representable:
+`activation_height` is a `u64`. A window identifier must itself be addressable,
+meaning its own first and last heights are representable, which bounds windows
+by
 
 ```text
-window_of_height(a) <= MAX_HEIGHT / CYCLE_BLOCKS
-last_cycle_window(a) <= MAX_HEIGHT
+MAX_WINDOW = MAX_HEIGHT / CYCLE_BLOCKS = 640,511,947,003,803
 ```
 
-Neither is reachable at any plausible height — the first admits every `u64`
-height and the second leaves more than 640 trillion windows of headroom — so
-they are guards proved present rather than conditions expected to fire. They are
-still computed with checked arithmetic and are exercised directly by tests, in
-the same way the economy model exercises `ARITHMETIC_OVERFLOW`.
+A seat's span is representable only when its whole span stays inside that bound:
+
+```text
+last_cycle_window(a) <= MAX_WINDOW
+```
+
+An activation height failing this is rejected rather than wrapped, because a
+wrapped window would silently alias another seat's schedule. The condition is
+unreachable at any plausible height — the grid represents 876,213,333,794
+back-to-back 731-window seat spans — so it is a guard proved present rather than
+one expected to fire. It is still computed with checked arithmetic and is
+exercised directly by tests, in the same way the economy model exercises
+`ARITHMETIC_OVERFLOW`.
 
 ## Model state
 

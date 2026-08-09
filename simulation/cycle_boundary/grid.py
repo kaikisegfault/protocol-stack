@@ -64,9 +64,10 @@ def last_cycle_window(activation_height: int) -> int:
 def span_is_representable(activation_height: int) -> bool:
     """Whether a seat's complete 731-window span fits in u64.
 
-    Unreachable at any plausible height: the check leaves more than 640 trillion
-    windows of headroom. It is a guard proved present, exercised directly by
-    tests rather than by a scenario.
+    A wrapped window would silently alias another seat's schedule, so an
+    unrepresentable span is refused rather than truncated. Unreachable at any
+    plausible height: the grid holds 876,213,333,794 back-to-back spans. It is a
+    guard proved present, exercised directly by tests rather than by a scenario.
     """
     if activation_height > MAX_HEIGHT:
         return False
