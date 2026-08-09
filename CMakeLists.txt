@@ -844,6 +844,26 @@ add_test(
     "${PROJECT_SOURCE_DIR}/tests/simulation/founder_economy_v2_scenario_test.py"
 )
 add_test(
+  NAME cycle-boundary-vectors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tools/cycle-boundary-vectors/verify.py"
+    --vectors
+    "${PROJECT_SOURCE_DIR}/test-vectors/cycle-boundary-v1.txt"
+)
+add_test(
+  NAME cycle-boundary-grid
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/cycle_boundary_grid_test.py"
+)
+add_test(
+  NAME cycle-boundary-model
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/cycle_boundary_model_test.py"
+)
+add_test(
   NAME founder-seat-vectors
   COMMAND
     "${Python3_EXECUTABLE}"
