@@ -161,10 +161,21 @@ approval pauses; they must not be bypassed merely to preserve momentum.
 
 Do not autonomously change founder-directed supply, allocation, beneficiaries,
 Founder ownership, creator hierarchy, commercial routing, AI institutional
-authority, bridge scope, or content permanence. When an unresolved choice
-would materially change those values, ask the owner one focused question at
-the point it becomes the nearest dependency. Use explicit research-only inputs
-and complete other safe work first when the question is not yet blocking.
+authority, bridge scope, or content permanence. The same applies to what an end
+user must do, own, run, or receive in order to participate or be paid. When an
+unresolved choice would materially change those values, ask the owner one
+focused question at the point it becomes the nearest dependency. Use explicit
+research-only inputs and complete other safe work first when the question is
+not yet blocking.
+
+Ask with the selectable-option tool rather than in prose, batch every open
+question into one call, and place that call at the end of the response after
+all other reporting, so a questionnaire is never buried mid-answer. Give each
+question concrete options with their consequences and the researched
+recommendation first. Before starting a slice, run the founder-decision gate in
+the `proceed-project` skill and report its result even when nothing is
+reserved, so a silent session is evidence that the check ran rather than that
+it was skipped.
 
 Continue through bounded slices until execution limits or a genuine external
 blocker prevent useful work. Do not stop to ask for ordinary approval. When one
