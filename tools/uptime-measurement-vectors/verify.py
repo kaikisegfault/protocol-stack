@@ -275,8 +275,17 @@ def _record(checker: Checker, result) -> None:
 
 def _rejections(checker: Checker) -> None:
     """Every recorded rejection is produced by execution, not named."""
-    for key, code in sorted(_run_rejections().items()):
+    codes = _run_rejections()
+    for key, code in sorted(codes.items()):
         checker.equal(f"reject.{key}", code)
+
+    # Coverage recorded as a derived claim, so a later change cannot quietly
+    # lose a code or declare one no path produces.
+    produced = {code for code in codes.values() if code.isupper() and code != "ACCEPTED"}
+    declared = {code for code in c.RESULT_CODES if code != "ACCEPTED"}
+    checker.equal("coverage.declared_result_codes", len(declared))
+    checker.equal("coverage.result_codes_produced_by_execution", len(produced))
+    checker.equal("coverage.every_declared_code_is_produced", declared == produced)
 
 
 def _fresh(bind: bool = True) -> UptimeMeasurement:

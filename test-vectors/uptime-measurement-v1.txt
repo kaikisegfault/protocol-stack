@@ -12,6 +12,9 @@
 # sources agree on has been reached from the founder document and from the
 # model independently.
 
+coverage.declared_result_codes=23
+coverage.every_declared_code_is_produced=true
+coverage.result_codes_produced_by_execution=23
 dispute.cap_equals_grace_allowance=true
 dispute.cap_slots_per_seat=6
 dispute.perfect_seat_survives_maximal_dispute=true

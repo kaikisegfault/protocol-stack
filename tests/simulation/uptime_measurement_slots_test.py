@@ -57,6 +57,16 @@ class ConstantTest(unittest.TestCase):
     def test_every_result_code_is_unique(self) -> None:
         self.assertEqual(len(c.RESULT_CODES), len(set(c.RESULT_CODES)))
 
+    def test_no_overflow_code_is_declared(self) -> None:
+        """Overflow is a defect here, not a rejectable input.
+
+        Every accumulated quantity is bounded far below u64 by an earlier
+        condition, so the checked arithmetic raises rather than returning a
+        code. Declaring one no path produces would claim coverage the vectors
+        could not show.
+        """
+        self.assertNotIn("ARITHMETIC_OVERFLOW", c.RESULT_CODES)
+
 
 class GridTest(unittest.TestCase):
     def test_the_slots_tile_a_window_exactly(self) -> None:
