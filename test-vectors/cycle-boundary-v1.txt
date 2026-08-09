@@ -1,0 +1,173 @@
+# Cycle boundary v1 normative vectors.
+# Heights, windows, block counts, and seconds are unsigned decimal integers.
+# The scenario is simulation/cycle_boundary/scenario.py, whose activation
+# heights sit at grid boundaries rather than at round numbers, because an
+# off-by-one in the grid is invisible at a height in the middle of a window.
+#
+# Every value is rederived by `tools/cycle-boundary-vectors/verify.py` from the
+# founder documents restated by hand in that tool's `expected.py` and from a
+# live model run. `expected.py` imports nothing from `simulation/`, so a value
+# both sources agree on has been reached from the Founder Constitution and from
+# the model independently.
+
+# The founder-directed durations, the pinned M1 commit interval they are cut
+# by, and the block counts that result.
+cycle.target_seconds=86400
+cycle.activity_threshold_seconds=64800
+cycle.grace_allowance_seconds=21600
+cycle.target_commit_seconds=3
+cycle.blocks=28800
+cycle.activity_threshold_blocks=21600
+cycle.grace_allowance_blocks=7200
+cycle.issuance_cycles_per_seat=731
+cycle.founder_seat_capacity=100000
+grid.genesis_height=0
+grid.max_window=640511947003803
+
+# The whole grid rests on 3 seconds dividing all three founder-directed
+# durations exactly. A nonzero remainder would put the 18-hour threshold
+# between two blocks, where the rule could only be applied by rounding a
+# founder-directed value toward the operator or against them.
+exactness.cycle_target_remainder_seconds=0
+exactness.activity_threshold_remainder_seconds=0
+exactness.grace_allowance_remainder_seconds=0
+
+# The two identities founder-economy-simulator-v2 states in seconds, preserved
+# in blocks, and the block-to-seconds conversion at both ends of a window and
+# at the threshold.
+identity.threshold_plus_grace_blocks=28800
+identity.threshold_plus_grace_seconds=86400
+identity.threshold_blocks_to_seconds=64800
+conversion.zero_blocks_seconds=0
+conversion.threshold_blocks_seconds=64800
+conversion.full_window_blocks_seconds=86400
+
+# One u64 activation height per seat at full capacity. No per-cycle row is
+# stored, because every window identifier is derived on demand.
+storage.schedule_bytes_at_capacity=800000
+
+# Window membership at the heights where an off-by-one shows: genesis, the
+# first block, and both sides of two window boundaries.
+grid.window_of.genesis=0
+grid.window_of.first_block=0
+grid.window_of.window_0_last=0
+grid.window_of.window_1_first=1
+grid.window_of.window_1_last=1
+grid.window_of.window_2_first=2
+
+# Each window's inclusive height span, its exact height count, and the round
+# trip that a window's first height lands back in that window.
+grid.window_0_first_height=0
+grid.window_0_last_height=28799
+grid.window_0_height_count=28800
+grid.window_0_round_trip=true
+grid.window_1_first_height=28800
+grid.window_1_last_height=57599
+grid.window_1_height_count=28800
+grid.window_1_round_trip=true
+grid.window_2_first_height=57600
+grid.window_2_last_height=86399
+grid.window_2_height_count=28800
+grid.window_2_round_trip=true
+grid.windows_are_contiguous=true
+
+# Each recorded seat's activation height and inclusive span endpoints. Seat 0
+# activates at genesis, seat 1 at the last height of the same window, seat 2 at
+# the first height of the next, and seats 3 and 7 in one block inside window 3.
+schedule.seat_0.activation_height=0
+schedule.seat_0.first_cycle_window=1
+schedule.seat_0.last_cycle_window=731
+schedule.seat_0.window_count=731
+schedule.seat_1.activation_height=28799
+schedule.seat_1.first_cycle_window=1
+schedule.seat_1.last_cycle_window=731
+schedule.seat_1.window_count=731
+schedule.seat_2.activation_height=28800
+schedule.seat_2.first_cycle_window=2
+schedule.seat_2.last_cycle_window=732
+schedule.seat_2.window_count=731
+schedule.seat_3.activation_height=100000
+schedule.seat_3.first_cycle_window=4
+schedule.seat_3.last_cycle_window=734
+schedule.seat_3.window_count=731
+schedule.seat_7.activation_height=100000
+schedule.seat_7.first_cycle_window=4
+schedule.seat_7.last_cycle_window=734
+schedule.seat_7.window_count=731
+
+# The grid is shared rather than per-seat. Two seats activated 28,799 heights
+# apart in the same window hold the identical span, one block later shifts the
+# span by exactly one window, and two seats activated in one block coincide. If
+# windows were anchored at each seat's own activation the first of these would
+# be false, and a performance reallocation would have no shared window to rank
+# uptime in.
+schedule.same_window_activations_share_span=true
+schedule.next_window_activation_shifts_span=true
+schedule.same_block_activations_share_span=true
+
+# A complete 731-window span walked cycle by cycle rather than at its endpoints
+# alone: every cycle maps to a window, every window inverts to its own cycle,
+# and every one is accepted by the check. The two windows immediately outside
+# the span invert to no cycle at all.
+span.cycles_walked=731
+span.window_mismatches=0
+span.inverse_mismatches=0
+span.rejected_cycles=0
+span.window_before_inverts_to_nothing=true
+span.window_after_inverts_to_nothing=true
+span.length=731
+
+# Every activation rejection, produced by a live run and by the independently
+# restated order. The last two carry two defects at once, so the recorded order
+# is proved rather than asserted: a seat bound is reported before a height
+# bound, and a replayed seat before a stale height.
+activation.seat_above_capacity=SEAT_RANGE
+activation.height_span_unrepresentable=HEIGHT_RANGE
+activation.replayed_seat=REPLAY
+activation.height_below_recorded=HEIGHT_NOT_MONOTONIC
+activation.seat_and_height_both_out_of_range=SEAT_RANGE
+activation.replayed_seat_with_stale_height=REPLAY
+
+# Every window check. The last two also carry two defects at once: a seat bound
+# is reported before a cycle bound, and a cycle bound before activation.
+check.first_cycle=ACCEPTED
+check.last_cycle=ACCEPTED
+check.interior_cycle=ACCEPTED
+check.window_before_span=WINDOW_BEFORE_ISSUANCE
+check.window_after_span=WINDOW_AFTER_ISSUANCE
+check.window_in_span_wrong_cycle=WINDOW_NOT_FOR_CYCLE
+check.unactivated_seat=SEAT_NOT_ACTIVATED
+check.cycle_above_span=CYCLE_RANGE
+check.seat_above_capacity=SEAT_RANGE
+check.seat_and_cycle_both_out_of_range=SEAT_RANGE
+check.unactivated_seat_and_cycle_out_of_range=CYCLE_RANGE
+
+# The scenario reaches every modelled code, recorded as a derived claim so a
+# later scenario cannot quietly lose coverage while still passing every other
+# vector.
+coverage.codes_reached=10
+coverage.codes_modelled=10
+coverage.unreached_codes=none
+
+# A rejected activation writes nothing and a check is a pure query, so neither
+# can alter a recorded schedule.
+containment.rejections_leave_state_unchanged=true
+containment.checks_leave_state_unchanged=true
+
+# Overflow guards proved present rather than reached. The u64 maximum height
+# has no representable 731-window span and is refused; the highest height that
+# does have one is accepted. The span count states how unreachable that is in
+# chain units rather than as a claim.
+overflow.max_height_span_representable=false
+overflow.highest_usable_activation_representable=true
+overflow.highest_usable_activation_height=18446744073688473600
+overflow.representable_seat_spans=876213333794
+
+# The canonical state of the recorded scenario. Seats are ordered by ascending
+# identifier, so the digest covers the schedule rather than the order the
+# activations arrived in.
+state.schema=protocol-stack/cycle-boundary-state/v1
+state.label=protocol-stack:cycle-boundary:state-v1
+state.seat_count=5
+state.last_activation_height=100000
+state.digest=6adf635a5cabcb046e8d9d82906421a5ec077c68e3946fce3340e327d0535402
