@@ -294,6 +294,12 @@ counters are discarded at slot close and never accumulate. And a dispute records
 a cleared bit in a bitmap that already exists rather than a new row, so the
 dispute layer adds nothing.
 
+The bound is per seat because nothing else scales with the population. A beacon
+is the canonical state root of a block, which a node already holds as ledger
+state, so recomputing selection from it costs no storage at all; only the open
+slot's beacons are ever needed, because a response may not name a challenge from
+a closed slot. The model discards them at slot close for the same reason.
+
 This answers the per-cycle uptime-record part of requirement 12. Per-seat
 balances and escrow recipient balances are unaffected and remain open.
 
@@ -359,17 +365,27 @@ Rejection conditions, in this order:
 1. An unbound model is `SCHEDULE_NOT_BOUND`.
 2. A `seat_id` outside `0..99,999` is `SEAT_RANGE`.
 3. A seat not in scope for the open window is `SEAT_NOT_IN_SCOPE`.
-4. A `challenge_height` for which `selected(seat_id, challenge_height)` is false
+4. A `challenge_height` outside the open slot is `CHALLENGE_NOT_OPEN`.
+5. A `challenge_height` for which `selected(seat_id, challenge_height)` is false
    is `CHALLENGE_NOT_ISSUED`.
-5. A `challenge_height` outside the open slot is `CHALLENGE_NOT_OPEN`.
 6. A response at a height above `challenge_height + RESPONSE_DEADLINE_BLOCKS`
    is `RESPONSE_TOO_LATE`.
 7. A second response to the same challenge is `RESPONSE_REPLAY`.
 8. A response whose answer predicate is false is `RESPONSE_INVALID`.
 
-Conditions 4 and 7 are the containment conditions. A seat cannot manufacture
+The slot check precedes the selection check because a beacon is discarded at
+slot close, so a challenge from an earlier slot is no longer recomputable.
+Reporting it as never issued would be false; it was issued and its slot is over.
+
+Conditions 5 and 7 are the containment conditions. A seat cannot manufacture
 credit by answering a challenge it was never issued, and cannot cover a missed
 challenge by answering an issued one twice.
+
+A response is carried by a block like any transaction, so its inclusion height
+is the executed height at the time it is submitted. A slot therefore closes when
+the first height of the next slot executes rather than at the end of its own
+last height; closing eagerly would discard a response to the slot's last
+challenge.
 
 `RESPONSE_INVALID` is a rejection here and a lost slot at slot close, not a
 separate penalty. A wrong answer and a missing answer cost the same, because the
