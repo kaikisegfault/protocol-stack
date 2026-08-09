@@ -18,7 +18,7 @@ from simulation.cycle_boundary.grid import window_first_height, window_of_height
 from simulation.cycle_boundary.model import CycleBoundary
 
 from . import contract as c
-from .slots import is_selected, slot_last_height, slot_of_height
+from .slots import is_selected, slot_of_height
 
 
 @dataclass(frozen=True)
@@ -62,7 +62,6 @@ class UptimeMeasurement:
     slot_issued: dict[int, int] = field(default_factory=dict)
     slot_answered: dict[int, int] = field(default_factory=dict)
     answered: set[tuple[int, int]] = field(default_factory=set)
-    duties_seen: set[tuple[int, str]] = field(default_factory=set)
     disputed: dict[int, dict[int, set[int]]] = field(default_factory=dict)
     beacons: dict[int, str] = field(default_factory=dict)
     closed_windows: set[int] = field(default_factory=set)
@@ -177,9 +176,13 @@ class UptimeMeasurement:
     def submit_response(self, seat_id: int, challenge_height: int, answer_ok: bool) -> None:
         """Record a seat's answer to a challenge issued at `challenge_height`.
 
-        Conditions 4 and 7 are the containment conditions: a seat cannot
-        manufacture credit by answering a challenge it was never issued, and
-        cannot cover a missed challenge by answering an issued one twice.
+        The open-slot check precedes the selection check because a beacon is
+        discarded at slot close, so an earlier slot's challenge is no longer
+        recomputable and reporting it as never issued would be false.
+
+        A seat cannot manufacture credit by answering a challenge it was never
+        issued, and cannot cover a missed challenge by answering an issued one
+        twice.
         """
         self._require_bound()
         _require_count(seat_id, "seat_id")

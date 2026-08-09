@@ -23,7 +23,6 @@ import expected  # noqa: E402
 from checker import Checker, read_vectors, render  # noqa: E402
 
 from simulation.common.canonical import CodedError  # noqa: E402
-from simulation.cycle_boundary.model import CycleBoundary  # noqa: E402
 from simulation.uptime_measurement import contract as c  # noqa: E402
 from simulation.uptime_measurement.model import DutyReport, UptimeMeasurement  # noqa: E402
 from simulation.uptime_measurement.scenario import AI_KEY, build_schedule, run  # noqa: E402
