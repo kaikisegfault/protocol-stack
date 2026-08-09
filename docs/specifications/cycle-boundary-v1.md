@@ -285,6 +285,12 @@ per-cycle uptime records, and recipient balances are unaffected and remain open.
 
 ## Transitions
 
+Every input is a count. A negative value, a non-integer, or a boolean is outside
+the domain this specification defines and is an input-shape error rather than a
+modelled rejection, in the same way `founder-economy-simulator-v2` treats a value
+it could not canonicalize. The ordered conditions below apply to inputs that are
+already counts.
+
 ### Record activation
 
 Records `activation_height` for a seat. Reads the seat table and

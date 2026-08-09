@@ -1,12 +1,13 @@
 # Current state
 
-Last updated: 2026-08-08
+Last updated: 2026-08-09
 
 ## Phase
 
 M3 — Founder Economy devnet, in progress. Slice M3.1 delivered the revised
 economic contract, M3.2 made it executable, and M3.3 rebound every dependent
-model to it, all on 2026-08-08. Requirement 3 of `first-goal.md` is satisfied.
+model to it, all on 2026-08-08. M3.4 defined the cycle boundary in chain heights
+on 2026-08-09. Requirements 3 and 4 of `first-goal.md` are satisfied.
 M2 completed on 2026-08-05 with all sixteen requirements of
 `goals/m2-founder-economy-proof.md` passing.
 
@@ -23,6 +24,71 @@ implement `founder-economy-manifest-v1` and remain exactly as verified; the
 constitution now specifies a v2 that only the new economy model implements. The
 seat, routing, escrow, and scenario-suite models still bind v1. Nothing about
 what runs today changed, because none of it activates anything.
+
+### How M3.4 was delivered
+
+Issue #114 and PR #115 delivered `cycle-boundary-v1` at merged commit `7dd6a84`.
+It added the specification, ADR 0027, the model in `simulation/cycle_boundary/`,
+101 normative vectors, a verifier in `tools/cycle-boundary-vectors/`, and 57
+tests. It satisfies requirement 4 of `first-goal.md`.
+
+A cycle is 28,800 block heights on one global grid. Window `w` is the inclusive
+height span `[w * 28,800, w * 28,800 + 28,799]`, and a seat's 731 cycles are the
+731 consecutive windows beginning with the first window that starts after its
+activation height.
+
+**The grid is shared, and that is the load-bearing decision.** Performance
+reallocation sends a failed cycle's 342-unit Founder portion to the highest
+uptime "in that same cycle", so a cycle must name a period several seats can be
+compared over. With per-seat windows anchored at each seat's own activation, two
+seats share a window only when their activation heights are congruent modulo
+28,800, so essentially every reallocation would rank a population of one — the
+failed seat, which cannot win. The winner set would be empty and the whole
+portion would carry forward indefinitely, which is not a conservative reading of
+the founder rule but the rule not running. The vectors record this as a derived
+property rather than a claim: seats activated at genesis and at the last height
+of the same window hold identical spans, and one block later shifts the span by
+exactly one window.
+
+**28,800 was chosen for exactness, not convenience.** The pinned M1
+`timeout_commit = "3s"` divides all three founder-directed durations without
+remainder, so 18 hours is exactly 21,600 blocks and the fragmentable 6-hour
+allowance exactly 7,200. A grid leaving a remainder would put a founder-directed
+threshold between two blocks, appliable only by rounding it toward the operator
+or against them, which is a change to a founder-directed value that the standing
+delegation does not authorize. The model computes each quotient and requires a
+zero remainder rather than trusting the arithmetic to have worked out.
+
+**A seat begins at the next full window.** Counting the activating window would
+give a seat activated one block before a boundary a first cycle of one block, in
+which the 18-hour threshold is unreachable; it would fail a cycle it was never
+able to meet and have that cycle's Founder portion reallocated to other seats
+purely because of where in a window its activation was included. The cost is at
+most one window of delay, and the constitution fixes how many cycles a seat
+receives rather than the height at which the first opens.
+
+**The drift between a window and a day is stated rather than smoothed over.**
+28,800 blocks is 24 hours only at exactly 3 seconds a block, so a slow chain
+stretches a window in real time and a node up throughout it would accumulate more
+wall-clock uptime than `founder-economy-simulator-v2` accepts in a record. The
+grid is not what changes: a window's nominal duration is 86,400 seconds and a
+measurement is a statement about a window rather than about a clock, so
+`uptime_seconds = uptime_blocks * 3` for `0 <= uptime_blocks <= 28,800`, exact
+because the divisions are exact. Widening the economy model's containment bound
+to admit wall-clock seconds was rejected: it would let a slow chain inflate every
+node's measured uptime against a fixed threshold.
+
+Activation heights may not decrease, because a real activation executes inside
+the block that includes it, so a replayed or reordered activation cannot install
+a schedule in the past and claim windows the seat did not hold. Equal heights are
+accepted, since one block may activate several seats.
+
+**Nothing is bound to this yet.** Applying the check inside
+`evaluate_base_permission` adds a rejection condition and requires the seat
+record to carry an activation height, which under the rule ADR 0024 and ADR 0026
+established is a new economy contract version rather than an edit.
+`simulation/founder_economy_v2/` is untouched and its recorded gap stays
+recorded. No v1 or v2 artifact, C++, consensus, or devnet behavior changed.
 
 ### How M3.3 was delivered
 
@@ -305,6 +371,13 @@ slices.
   is consumed exactly by its two destinations — 5,000,040,000,000 atomic units of
   referrer custody plus a 2,500,020,000,000 unreferred pool equal its whole
   issuance — and the performance carry ends at zero.
+- The cycle boundary model holds a seat activation table and answers whether a
+  supplied window is the window for a supplied cycle index. A cycle is 28,800
+  block heights on one global grid shared by every seat, a seat's 731 cycles are
+  the 731 consecutive windows beginning after its activation height, activation
+  heights may not decrease, and a wrong window yields three distinct codes for
+  before the span, after it, and inside it but attached to another cycle. It
+  derives no measurement and no economy model is bound to it yet.
 - The one-word `proceed`, `conclude`, and `status` workflows reconstruct,
   deliver, and report repository state.
 
@@ -355,6 +428,33 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #114 and PR #115 are the M3.4 delivery, merged by rebase at `7dd6a84`.
+  PR final-head Actions run 31308600720 on `7d812bd` passed the complete hosted
+  matrix — scope classification `full`, GCC and Clang debug, both sanitizers, and
+  the aggregate required check. Runs 31308454760 and 31308516536 were superseded
+  by later pushes to the same branch and were cancelled.
+- M3.4 local evidence: the cycle-boundary verifier derives 101 vectors and 57 new
+  tests pass — 24 grid and 33 model. All nine retained verifiers pass unchanged:
+  economy v1 derives 139 manifest and 65 simulator values, manifest v2 154,
+  simulator v2 189, seat 96, routing 200, escrow v1 169 and v2 172, and the suite
+  133 v1 and 138 v2. The M2 and M3.1 through M3.3 evidence is intact.
+- The cycle-boundary verifier fails closed four ways, each confirmed by execution
+  at exit 1 with the unmutated run as a positive control: a tampered recorded
+  value, a recorded key no derivation reaches, a derived key the file does not
+  carry, and a model constant that disagrees with the founder derivation. The
+  last is the informative one. Forcing the model's commit interval to four
+  seconds leaves it internally self-consistent — every division stays exact, both
+  identities still hold, and the model's own `assert_exact_derivation` passes —
+  and the run is still rejected, because `expected.py` reaches three seconds from
+  the pinned M1 configuration without importing anything from `simulation/`.
+- One containment vector was corrected during self-review before merge. It
+  compared two separately built models, which proves the model is deterministic
+  rather than that a rejected activation writes nothing, so it would have passed
+  a defect that wrote a height before raising. It now measures one instance
+  before and after the rejection attempts; forcing a replayed activation to
+  record its height was confirmed to fail the corrected derivation and to pass
+  the old one. The recorded value never changed, only the derivation's ability to
+  fail. The model test already measured this correctly on a single instance.
 - Issue #108 and PR #109 are the M3.3a delivery, merged by rebase at `a8ea180`.
   PR final-head Actions run 31268938270 on `0076d4f` and post-merge run
   31269458528 on `a8ea180` both passed the complete hosted matrix — scope
@@ -558,11 +658,19 @@ All sixteen requirements of `goals/m2-founder-economy-proof.md` passed against
 `founder-economy-manifest-v1`. What that does and does not establish is stated
 in `founder-economy-report-v1.md` rather than summarized here.
 
-Two qualifiers matter for M3. The models represent a cycle as a deterministic
-integer index, so no wall clock reaches a transition, but binding that index to
-a chain-defined height or epoch is still undone. And the direction the M2 models
-implement was superseded on 2026-08-07, so their accepted schemas, vectors, and
-digests are evidence about a contract the constitution no longer directs.
+Two qualifiers mattered for M3, and both are now closed as specifications. The
+models represented a cycle as a deterministic integer index with no wall clock
+reachable from a transition, but that index was not bound to a chain-defined
+quantity; M3.4 defines the binding. And the direction the M2 models implement was
+superseded on 2026-08-07, so their accepted schemas, vectors, and digests are
+evidence about a contract the constitution no longer directs; M3.1 through M3.3
+restated it.
+
+Closing them as specifications is not the same as closing them in the models.
+`cycle-boundary-v1` defines the mapping and the check, and nothing applies it
+yet, so `founder-economy-simulator-v2` still cannot tell whether a supplied
+window is the correct one for a seat's cycle. The gap moved from undefined to
+unenforced.
 
 M3.1 restated that contract, M3.2 made it executable, and M3.3 rebound every
 dependent to it, which closes the second qualifier. `escrow-payout-v2` and
@@ -579,9 +687,10 @@ and determinism are fixed and whose challenge construction, sampling rate,
 dispute window length, and dispute resolution are not. Nothing in the model
 proves that an `uptime_seconds` value reflects a real machine, and a record that
 omits seats yields a winner set over the seats it does list without that being
-detected. The month definition for the unreferred pool, that pool's payout, tie,
-and remainder rules, and the cycle boundary in heights or epochs also remain
-unspecified. Accrual into the pool is modelled; paying it out is not.
+detected. The month definition for the unreferred pool and that pool's payout,
+tie, and remainder rules also remain unspecified; accrual into the pool is
+modelled and paying it out is not. The cycle boundary was on that list and is
+now specified by M3.4.
 
 M3.3 exercised that input at multi-year scale without narrowing the gap. The
 scenario suite supplies a `cycle_window` by generator convention — the tick — and
@@ -590,6 +699,18 @@ conserves value under supplied measurements is evidence about the derivation, no
 about the measurements. Its winner is also deliberately unique in every window,
 so the tie and remainder paths of the reallocation rule are covered by
 `founder-economy-simulator-v2`'s own vectors rather than by the suite.
+
+M3.4 makes that tick convention checkable without yet checking it. The suite
+binds the economy model rather than the boundary model, so its supplied windows
+are still a generator convention that nothing enforces. What changed is that
+there is now a rule they could be wrong against.
+
+M3.4 also establishes nothing about measurement. The grid states how many blocks
+a window holds and what a block count means in the constitution's seconds; it
+observes no node and proves no seat was operational for any block. The 800,000
+byte storage bound it derives covers the activation schedule alone, so the
+per-seat balance, per-cycle uptime record, and recipient balance bounds of
+requirement 12 remain open.
 
 Restart equivalence is state equivalence under replay. It is not persistence,
 crash-consistency, or a snapshot format, and no model has any of those.
@@ -602,8 +723,9 @@ rather than a small fixture. Version two of both preserves exactly this, and no
 more. The
 others remain unjoined. A seat purchased in the sale model is not an activated
 seat in the economy model, and a seat identifier in a routing snapshot is not
-proved to be either, because the activation height rule and the
-purchase-to-activation transition are unsettled. Enrollment, biometric
+proved to be either. M3.4 narrows that: what a seat's schedule is, given an
+activation height, is now defined, so what remains unsettled is only which
+transition records that height and under what preconditions. Enrollment, biometric
 identity, managers, and same-cycle liveness proof for a performance recipient
 are not modelled, and the last of those cannot be without the unresolved
 performance policy. The per-principal seat bound is not yet a per-human bound.
@@ -620,56 +742,63 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice M3.4: define the cycle boundary in chain heights or epochs,
-satisfying requirement 4 of `docs/project/first-goal.md`.
+Milestone slice M3.5: specify the uptime measurement pipeline, satisfying
+requirement 7 of `docs/project/first-goal.md`.
 
-Create one bounded M3 issue. Take the cycle boundary before the rest of the
-uptime pipeline, because it is the smaller half and the other half depends on it.
-M3.2 and M3.3 left the dependency visible in every event rather than hidden: a
-`cycle_window` is a separate field from a seat's `cycle_index`, and no model can
-check that a supplied window is the correct one for a seat's cycle, because the
-mapping is exactly what this slice defines. The scenario suite currently supplies
-the tick as the window, which is a generator convention and not a rule.
+Create one bounded M3 issue. Take the measurement before binding the economy
+model to the cycle boundary, and take it in that order for a reason M3.4
+produced rather than a preference. `founder-economy-simulator-v2` denominates its
+record in `uptime_seconds`, and that field appears in the record's digest
+preimage, in its validity conditions, and in the activity derivation. M3.4
+established that the chain-derived measurement is naturally a count of a window's
+own blocks and that `uptime_seconds = uptime_blocks * 3` exactly. So if the
+economy model were rebound to the boundary first and the measurement were then
+denominated in blocks, the record's shape would change twice and two economy
+contract versions would be spent where one does.
 
 The slice should decide and specify:
 
-1. **What a cycle is measured in.** Heights or epochs, and how a seat's cycle
-   `n` maps to a window identifier that two independent nodes compute
-   identically. No wall clock may be reachable from a transition.
-2. **When a seat's issuance window opens.** The Founder Constitution gives each
-   seat 731 cycles beginning at its own first activation, so the activation
-   height rule is part of this. It is also the unsettled rule behind the
-   purchase-to-activation gap, so check whether this slice closes that too or
-   only narrows it.
-3. **The check the model cannot make today**, so that
-   `evaluate_base_permission` can reject a `cycle_window` that is not the window
-   for the supplied `cycle_index`.
+1. **What a node earns a block for.** The Founder Constitution derives validator
+   participation and transaction servicing from on-chain records, which need no
+   attestation and cannot be forged. Resource provision is proved by
+   challenge-response, so the challenge construction, the sampling rate, and how
+   a response is recorded are the substance of this slice.
+2. **The dispute window.** ADR 0023 fixes that the Ecosystem AI may file a
+   bounded signed dispute and that silence finalises the result, so an AI outage
+   can never freeze payment. The window's length in windows or heights, what a
+   dispute may assert, and how one resolves are open and are specification work
+   rather than founder-reserved.
+3. **Record completeness.** M3.2 and M3.4 both record that a record omitting
+   seats yields a winner set over the seats it does list without that being
+   detected. The pipeline is where completeness can be established, and the
+   boundary now gives a window identity to establish it against.
+4. **The storage bound** on per-cycle uptime records at 100,000 seats, which is
+   the part of requirement 12 that M3.4's 800,000-byte schedule bound does not
+   answer.
 
-Requirement 4 says "with no wall clock reachable from a transition", which the
-models already satisfy by representing a cycle as a deterministic integer index.
-The work is binding that index to a chain-defined quantity, not removing a clock.
-
-M3.5 is then the rest of requirement 7: the challenge construction, sampling
-rate, dispute window length, and dispute resolution that produce an
-`uptime_seconds` value. M3.2 fixed the shape of that input and M3.3 exercised it
-at multi-year scale; neither built the pipeline behind it, and nothing yet proves
-a measurement reflects a real machine.
+M3.6 then binds `founder-economy-simulator-v3` to both at once: the cycle
+boundary check on `evaluate_base_permission`, an `activation_height` on the seat
+record, and whatever denomination M3.5 settles. That is one economy version
+carrying both changes, and it is what turns M3.4 from a defined rule into an
+enforced one.
 
 Requirements 5, 6, and 10 — canonical state keys, transaction encodings, numeric
 receipt codes, the M1 compatibility boundary, and the C++20 implementation — come
-after the boundary is defined, because they serialize what the boundary settles.
+after, because they serialize what these slices settle.
 
 Keep `founder-economy-manifest-v1`, `founder-economy-simulator-v1`,
-`escrow-payout-v1`, `economy-scenario-suite-v1`, and every v1 model, vector, and
-digest in place and passing. They are the retained M2 evidence and are not edited
-to match the new direction. `simulation/founder_economy/` stays untouched.
+`escrow-payout-v1`, `economy-scenario-suite-v1`, and every v1 and v2 model,
+vector, and digest in place and passing. They are the retained M2 and M3
+evidence and are not edited to match a later direction.
+`simulation/founder_economy/` and `simulation/founder_economy_v2/` stay
+untouched.
 
 ## Blockers
 
 None for the next action.
 
 Two founder-reserved decisions remain open, and neither blocks M3.1 through
-M3.4: eligibility and anti-abuse mechanics for the liquidity-mining,
+M3.6: eligibility and anti-abuse mechanics for the liquidity-mining,
 impermanent-loss, HUB-verified-user, and mystery-box direct-mint channels, and
 the AI funding framework with its evaluation criteria, milestone and tranche
 policy, and approval thresholds. Both are still supplied to the models as bound
@@ -684,3 +813,19 @@ stated rather than re-litigated or re-supplied as fixtures.
 
 Ask the owner at the point where a specific transition would otherwise have to
 invent one of the two that remain.
+
+M3.5 touches the Ecosystem AI but does not reach either. ADR 0023 already decides
+that the AI reviews and may dispute, that its signature is deliberately not a
+precondition for payment, and that silence finalises a result. Choosing the
+window's length and the resolution procedure inside those decided bounds is
+specification work. The AI *funding* framework, which is the reserved one, is a
+separate question and M3.5 must not touch it.
+
+ADR 0027 records two claims that are design intent rather than proof and need
+independent review before the boundary carries value: that the grid is safe
+against an adversary able to influence block production rate, since a slow chain
+stretches every window in real time while the nominal accounting stays fixed;
+and the interaction between the schedule and the unbuilt measurement pipeline,
+since nothing yet proves a block credited to a node reflects a real machine.
+Neither blocks M3.5, and both belong in the independent review requirement of
+`first-goal.md` requirement 15.
