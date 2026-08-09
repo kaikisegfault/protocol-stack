@@ -1,0 +1,125 @@
+# Uptime measurement v1 normative vectors.
+# Heights, blocks, slots, and seconds are unsigned decimal integers.
+# The scenario is simulation/uptime_measurement/scenario.py: four seats over two
+# complete windows, one answering every challenge, one answering none, one
+# failing an assigned duty, and one activated inside window 1 so that it is out
+# of scope there and in scope afterwards.
+#
+# Every value is rederived by `tools/uptime-measurement-vectors/verify.py` from
+# the founder documents restated by hand in that tool's `expected.py` and from a
+# live model run. `expected.py` imports nothing from `simulation/` and
+# reimplements challenge selection from the specification, so a value both
+# sources agree on has been reached from the founder document and from the
+# model independently.
+
+dispute.cap_equals_grace_allowance=true
+dispute.cap_slots_per_seat=6
+dispute.perfect_seat_survives_maximal_dispute=true
+dispute.perfect_seat_surviving_seconds_meet_threshold=true
+dispute.perfect_seat_surviving_slots=18
+dispute.window_windows=1
+grid.activity_threshold_slots=18
+grid.challenge_period_blocks=1200
+grid.challengeable_heights_per_slot=1180
+grid.cycle_blocks=28800
+grid.derivation_is_exact=true
+grid.grace_allowance_slots=6
+grid.response_deadline_blocks=20
+grid.slot_blocks=1200
+grid.slot_seconds=3600
+grid.slots_per_window=24
+grid.threshold_slots_equal_threshold_seconds=true
+grid.window_slots_equal_target_seconds=true
+record.window_1.completeness_holds=true
+record.window_1.entry_count=3
+record.window_1.every_value_is_whole_slots=true
+record.window_1.seat.0.uptime_seconds=86400
+record.window_1.seat.0.within_containment_bound=true
+record.window_1.seat.1.uptime_seconds=32400
+record.window_1.seat.1.within_containment_bound=true
+record.window_1.seat.2.uptime_seconds=82800
+record.window_1.seat.2.within_containment_bound=true
+record.window_1.seats=[0, 1, 2]
+reject.bind_wrong_digest=INVALID_BOUND_SCHEDULE
+reject.control_dispute_accepted=ACCEPTED
+reject.control_duty_accepted=ACCEPTED
+reject.control_execute_block_accepted=ACCEPTED
+reject.control_record_final=ACCEPTED
+reject.control_response_accepted=ACCEPTED
+reject.control_response_at_deadline=ACCEPTED
+reject.dispute_cap_exceeded=DISPUTE_CAP_EXCEEDED
+reject.dispute_perfect_seat_credited_slots=18
+reject.dispute_perfect_seat_still_meets=true
+reject.dispute_replay=DISPUTE_REPLAY
+reject.dispute_seat_not_in_scope=SEAT_NOT_IN_SCOPE
+reject.dispute_seat_range=SEAT_RANGE
+reject.dispute_slot_not_credited=DISPUTE_SLOT_NOT_CREDITED
+reject.dispute_slot_range=SLOT_RANGE
+reject.dispute_unauthorized=UNAUTHORIZED_DISPUTE
+reject.dispute_window_closed=DISPUTE_WINDOW_CLOSED
+reject.dispute_window_not_closed=WINDOW_NOT_CLOSED
+reject.duty_invalid_kind=INVALID_DUTY_KIND
+reject.duty_replay=DUTY_REPLAY
+reject.duty_seat_not_in_scope=SEAT_NOT_IN_SCOPE
+reject.duty_seat_range=SEAT_RANGE
+reject.height_not_monotonic=HEIGHT_NOT_MONOTONIC
+reject.height_range=HEIGHT_RANGE
+reject.rebind_schedule=REPLAY
+reject.record_not_final=RECORD_NOT_FINAL
+reject.record_window_has_no_seats=WINDOW_HAS_NO_SEATS
+reject.response_challenge_not_issued=CHALLENGE_NOT_ISSUED
+reject.response_challenge_not_open=CHALLENGE_NOT_OPEN
+reject.response_invalid=RESPONSE_INVALID
+reject.response_replay=RESPONSE_REPLAY
+reject.response_seat_not_in_scope=SEAT_NOT_IN_SCOPE
+reject.response_seat_range=SEAT_RANGE
+reject.response_too_late=RESPONSE_TOO_LATE
+reject.unbound_execute_block=SCHEDULE_NOT_BOUND
+sampling.silent_seat_credited_slots=9
+sampling.silent_seat_fails_cycle=true
+sampling.silent_seat_slots_below_threshold=9
+scenario.binds_live_schedule_run=true
+scenario.bound_schedule_digest=a310ebf10a0f1cba6341f86b3273f078ea4aea04a2d07844995286bf7255ef3d
+scenario.height=115200
+scenario.prefix_replay_matches=true
+scenario.state_digest=0d2d10b755095d2a78bad1e54354c5e3be1469cd8fa2f6b63834ac5ed846de9b
+selection.deadline_of_last_challenge_is_slot_last=true
+selection.first_slot_last_height=29999
+selection.independent_disagreements_in_slot=0
+selection.last_challengeable_height=29979
+selection.last_challengeable_is_challengeable=true
+selection.next_height_is_not_challengeable=false
+selection.seat_0_challenges_in_first_slot=0
+selection.seat_0_challenges_in_window_1=19
+selection.slot_of_window_first_height=0
+selection.slot_of_window_last_height=23
+storage.measurement_bytes=800000
+storage.retained_windows=2
+storage.window_bitmap_bytes_per_seat=3
+window.1.closed=true
+window.1.final=true
+window.1.scope=[0, 1, 2]
+window.1.seat.0.credited_slots=24
+window.1.seat.0.met_cycle=true
+window.1.seat.0.uptime_seconds=86400
+window.1.seat.1.credited_slots=9
+window.1.seat.1.met_cycle=false
+window.1.seat.1.uptime_seconds=32400
+window.1.seat.2.credited_slots=23
+window.1.seat.2.met_cycle=true
+window.1.seat.2.uptime_seconds=82800
+window.2.closed=true
+window.2.final=true
+window.2.scope=[0, 1, 2, 3]
+window.2.seat.0.credited_slots=24
+window.2.seat.0.met_cycle=true
+window.2.seat.0.uptime_seconds=86400
+window.2.seat.1.credited_slots=8
+window.2.seat.1.met_cycle=false
+window.2.seat.1.uptime_seconds=28800
+window.2.seat.2.credited_slots=24
+window.2.seat.2.met_cycle=true
+window.2.seat.2.uptime_seconds=86400
+window.2.seat.3.credited_slots=24
+window.2.seat.3.met_cycle=true
+window.2.seat.3.uptime_seconds=86400
