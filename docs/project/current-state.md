@@ -7,9 +7,21 @@ Last updated: 2026-08-09
 M3 — Founder Economy devnet, in progress. Slice M3.1 delivered the revised
 economic contract, M3.2 made it executable, and M3.3 rebound every dependent
 model to it, all on 2026-08-08. M3.4 defined the cycle boundary in chain heights
-on 2026-08-09. Requirements 3 and 4 of `first-goal.md` are satisfied.
+and M3.5 defined the uptime measurement pipeline, both on 2026-08-09.
+Requirements 3, 4, and 7 of `first-goal.md` are satisfied, and requirement 12 is
+answered for the activation schedule and per-cycle uptime records.
 M2 completed on 2026-08-05 with all sixteen requirements of
 `goals/m2-founder-economy-proof.md` passing.
+
+On 2026-08-09 the owner also made the founder-decision gate an explicit step of
+`proceed`. Issue #117 and PR #118 merged at `0b8c7c2`. The gate now runs after a
+slice is selected and before its work begins, enumerates that slice's decisions
+before judging them, classifies each with a citation, and reports a result even
+when nothing is reserved, so a silent session is evidence that the check ran
+rather than that it was skipped. Questions go in one batched selectable-option
+call at the end of a response. `CLAUDE.md` gained one clause the reserved set was
+missing: what an end user must do, own, run, or receive in order to participate
+or be paid.
 
 On 2026-08-07 the owner supplied the four outstanding founder decisions and
 revised the economy. ADR 0023 records them: the maximum supply is now
@@ -24,6 +36,83 @@ implement `founder-economy-manifest-v1` and remain exactly as verified; the
 constitution now specifies a v2 that only the new economy model implements. The
 seat, routing, escrow, and scenario-suite models still bind v1. Nothing about
 what runs today changed, because none of it activates anything.
+
+### How M3.5 was delivered
+
+Issue #119 and PR #120 delivered `uptime-measurement-v1` at merged commit
+`646cfb5`. It added the specification, ADR 0028, the model in
+`simulation/uptime_measurement/`, 114 normative vectors, a verifier in
+`tools/uptime-measurement-vectors/`, and 90 tests. It satisfies requirement 7 of
+`first-goal.md` and the per-cycle uptime-record part of requirement 12.
+
+**Credit is per slot, and a slot is one hour.** A window is 24 slots of 1,200
+blocks, so the constitution's own 24-hour, 18-hour, and 6-hour figures are whole
+slots and the rule is applied in the units it was written in. Crediting partial
+slots was rejected: it needs evidence at a granularity the chain cannot supply
+for a node holding no validator duty in the period, so it would interpolate
+between two probes and credit blocks no evidence covers, and the constitution
+states there is no partial-credit mode. The coarseness is paid for by the
+founder-directed allowance, which is six whole slots.
+
+**The record's shape did not change, which is what the slice order was for.**
+`uptime_seconds = credited_slots * 3,600` lands exactly on the units
+`founder-economy-simulator-v2` already validates, and whole hours are a strict
+subset of the `0..86,400` range it checks. Had the economy model been rebound to
+the cycle boundary first and the measurement then denominated in blocks, the
+record's shape would have changed twice and two economy contract versions would
+have been spent where one does. A cross-model test runs the accepted economy
+model on a record this pipeline emits, reaching none of its three uptime-record
+failures.
+
+**A seat is credited for the duties it was assigned, not for signing.** The
+constitution requires validator capability of every eligible node while stating
+that this does not require all 100,000 machines to vote on every block and that
+the protocol must select and rotate a bounded live signing set. Crediting only
+seats that signed would fail every unselected seat in every slot and reallocate
+essentially the whole population's Founder portion to that small set, which is
+not a strict reading of the constitution but a contradiction of the sentence
+bounding the signing set. An empty assignment is satisfied vacuously.
+
+**Challenge selection is derived per height from a beacon nobody can predict.**
+The beacon is the canonical state root at `height - 1`, so a seat learns of its
+audit at most one block — three seconds — before it must answer and cannot
+schedule uptime around it. `CHALLENGE_PERIOD_BLOCKS` equals `SLOT_BLOCKS`, so a
+seat expects exactly one probe per credited unit: the sampling rate is one probe
+per slot, which fixes the load at about 83 responses per block at full capacity
+and adds nothing to an ordinary transaction. Selection excludes the final 20
+heights of a slot, so a challenge and its 60-second deadline always lie inside
+one slot, which is what makes the per-slot state disposable at the boundary.
+
+**The dispute may only subtract, and only up to the grace allowance.** There is
+no transition by which a dispute adds credit, so a captured Ecosystem AI key can
+reduce a result and never manufacture one: it cannot mint, cannot direct value,
+and cannot make a failed node appear to have met a cycle. The cap is 6 slots per
+seat per window, and `24 - 6 = 18` is exactly the threshold, so **a seat credited
+for every slot still meets its cycle after a maximal dispute.** The AI can
+consume an operator's entire allowance and cannot by itself fail a fully
+operational node. That is the constitution's own containment argument applied in
+the second direction: it refuses to make the AI's signature a precondition for
+payment because a company able to freeze income would own the reward path, and an
+unbounded void power restores exactly that ownership through a different door.
+The model asserts the theorem after every dispute rather than trusting the cap
+arithmetic, and refuses a cap that would break it.
+
+**Silence finalises after one window.** A window's dispute period is the whole of
+the following window, and the result is final at the start of the window after
+that regardless of AI availability. Reusing the existing grid makes finalisation
+a window comparison rather than a second period, and delays a seat's exercise of
+a cycle by at most two windows.
+
+**Completeness is derived, not validated.** A record's seat set is every seat
+activated strictly before the window's first height, derived from the bound
+cycle-boundary activation table, so an omission is unrepresentable rather than
+detected. This closes the gap `founder-economy-simulator-v2` and ADR 0027 both
+record. The tests demonstrate it rather than describe it: the economy model
+accepts a truncated record, and this pipeline has no way to emit one.
+
+**Nothing is bound to this yet.** `simulation/founder_economy_v2/` and
+`simulation/cycle_boundary/` are untouched. No v1 or v2 artifact, C++, consensus,
+or devnet behavior changed.
 
 ### How M3.4 was delivered
 
@@ -378,8 +467,19 @@ slices.
   heights may not decrease, and a wrong window yields three distinct codes for
   before the span, after it, and inside it but attached to another cycle. It
   derives no measurement and no economy model is bound to it yet.
+- The uptime measurement model turns evidence into a finalised record. It
+  subdivides a window into 24 one-hour slots, credits a slot only when every
+  assigned duty in it was performed and every challenge issued in it was answered
+  correctly and on time, selects challenges from a beacon no participant can
+  compute before the block commits, applies bounded Ecosystem AI disputes that
+  can only subtract, finalises by expiry without any signature, and emits the
+  `cycle_uptime_record` shape `founder-economy-simulator-v2` accepts unchanged. It
+  observes no real machine: the challenge protocol is defined and the challenge
+  content is not.
 - The one-word `proceed`, `conclude`, and `status` workflows reconstruct,
-  deliver, and report repository state.
+  deliver, and report repository state. `proceed` runs an explicit
+  founder-decision gate before starting a slice and reports its result whether or
+  not anything is reserved.
 
 ## Adopted founder direction
 
@@ -428,6 +528,51 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #117 and PR #118 are the founder-decision gate change, merged by rebase
+  at `0b8c7c2`. PR run 31317461354 and post-merge run 31317481539 both passed the
+  focused metadata path; the hosted matrix was correctly skipped for a
+  documentation and skill-instruction change.
+- Issue #119 and PR #120 are the M3.5 delivery, merged by rebase at `646cfb5`.
+  PR final-head Actions run 31319226328 on `5c91dc3` passed the complete hosted
+  matrix — scope classification `full`, GCC and Clang debug, both sanitizers, and
+  the aggregate required check. Runs 31318883966 and 31319061179 were superseded
+  by later pushes to the same branch and were cancelled.
+- **That run took 16m55s against the workflow's 20-minute per-job timeout.** The
+  M3.5 tests add about 80 seconds to every preset, most of it the model test
+  rebuilding the scenario in each fixture. The margin is now thin enough that the
+  next slice should trim it before adding tests: caching the scenario per test
+  class and reusing it is the cheap fix, and it is the first thing M3.6 should do.
+- M3.5 local evidence: the uptime verifier derives 114 vectors and 90 tests pass
+  — 22 slot-grid, 59 model, and 9 cross-model. All ten retained verifiers pass
+  unchanged: economy v1 derives 139 manifest and 65 simulator values, manifest v2
+  154, simulator v2 189, seat 96, routing 200, escrow v1 169 and v2 172, the suite
+  133 v1 and 138 v2, and the cycle boundary 101. The M2 and M3.1 through M3.4
+  evidence is intact.
+- The uptime verifier fails closed five ways, each confirmed by execution at exit
+  1 with the unmutated run as a positive control: a tampered recorded value, a
+  recorded key no derivation reaches, a derived key the file does not carry, a
+  slot count that disagrees with the founder derivation, and a dispute cap one
+  above the grace allowance. The last is the informative one. Raising the cap to
+  seven leaves the model internally self-consistent and is still refused, because
+  a maximal dispute would then leave a perfect seat 17 slots against an 18-slot
+  threshold, and the model asserts that theorem rather than trusting its own
+  arithmetic.
+- `expected.py` reimplements challenge selection from the specification rather
+  than importing it, so a recorded selection is agreement between two
+  implementations of the rule. It walks the whole scenario independently and
+  derives the credited slots the model must also produce.
+- The sampling claim is recorded as a measurement rather than as a probability. A
+  seat that answers no challenge at all is still credited for the slots it
+  happened not to be sampled in, and that is 9 of 24 in the scenario, 9 slots
+  below the threshold, so sampling alone fails a fully absent node.
+- One defect was found by self-review before merge and fixed at `646cfb5`. The
+  result-code table declared `ARITHMETIC_OVERFLOW` and no path could return it:
+  every accumulated quantity is bounded far below `u64` by an earlier condition,
+  so an overflow there is a defect rather than a rejectable input and the checked
+  arithmetic raises. The code was removed rather than given a fabricated path, and
+  result-code coverage is now a recorded vector — the declared count, the count
+  produced by execution, and their equality — so a later change cannot quietly
+  lose a code or add one no path reaches.
 - Issue #114 and PR #115 are the M3.4 delivery, merged by rebase at `7dd6a84`.
   PR final-head Actions run 31308600720 on `7d812bd` and post-merge run
   31309236144 on `7dd6a84` both passed the complete hosted matrix — scope
@@ -684,16 +829,32 @@ identifier, referral amount, or issuance-cycle count. The retained v1 contracts,
 models, vectors, and digests remain in place and passing as the M2 evidence.
 
 M3.2 supplies the activity and reallocation computation that three removed
-placeholders used to stand in for, but it does not supply the measurement that
-computation reads. The uptime record is an abstract input whose shape, bounds,
-and determinism are fixed and whose challenge construction, sampling rate,
-dispute window length, and dispute resolution are not. Nothing in the model
-proves that an `uptime_seconds` value reflects a real machine, and a record that
-omits seats yields a winner set over the seats it does list without that being
-detected. The month definition for the unreferred pool and that pool's payout,
-tie, and remainder rules also remain unspecified; accrual into the pool is
-modelled and paying it out is not. The cycle boundary was on that list and is
-now specified by M3.4.
+placeholders used to stand in for, and M3.5 supplies the measurement that
+computation reads. The challenge construction, sampling rate, dispute window
+length, dispute resolution, and record completeness are now specified, and the
+cycle boundary was specified by M3.4. The month definition for the unreferred
+pool and that pool's payout, tie, and remainder rules remain unspecified; accrual
+into the pool is modelled and paying it out is not.
+
+**What M3.5 does not establish is one undecided value, not an oversight.** The
+challenge *protocol* is specified and the challenge *content* is not, so an
+answered challenge proves that something able to produce it was reachable within
+sixty seconds. That is liveness of a responder rather than possession of a
+resource, and every anti-gaming property the specification claims inherits that
+limit. The concrete resource commitment — what a Founder Node must prove it holds
+— sets what an operator must own in order to be paid, so it is founder-reserved
+and belongs to the Founder Node and resource-network milestone rather than being
+invented here.
+
+Three further claims are design intent rather than proof and go to the
+independent review of requirement 15. The pipeline consumes duty reports and does
+not derive them, so a chain that fails to report an assigned duty credits a seat
+that did not perform it. A proposer with influence over the state root at
+`h - 1` has some influence over who is challenged at `h`, which is the same
+adversary ADR 0027 refers to review for the block production rate. And whether a
+sampling margin that catches a lost slot about 63% of the time is adequate
+against a founder with physical machine access is the question ADR 0023 already
+records as unreviewed.
 
 M3.3 exercised that input at multi-year scale without narrowing the gap. The
 scenario suite supplies a `cycle_window` by generator convention — the tick — and
@@ -708,12 +869,21 @@ binds the economy model rather than the boundary model, so its supplied windows
 are still a generator convention that nothing enforces. What changed is that
 there is now a rule they could be wrong against.
 
-M3.4 also establishes nothing about measurement. The grid states how many blocks
-a window holds and what a block count means in the constitution's seconds; it
-observes no node and proves no seat was operational for any block. The 800,000
-byte storage bound it derives covers the activation schedule alone, so the
-per-seat balance, per-cycle uptime record, and recipient balance bounds of
-requirement 12 remain open.
+M3.4 established nothing about measurement and M3.5 does. The grid states how
+many blocks a window holds; the pipeline states how a seat earns them. Requirement
+12 is now answered in two parts — 800,000 bytes for the activation schedule and
+800,000 bytes for per-cycle uptime records at full seat capacity — leaving
+per-seat balances and escrow recipient balances open.
+
+**Specified is still not enforced, in both directions.** `cycle-boundary-v1`
+defines the window check and nothing applies it; `uptime-measurement-v1` produces
+a complete record and no economy model consumes one. The two ends are proved to
+fit — a record this pipeline emits is accepted by
+`founder-economy-simulator-v2` unchanged, with both models deriving the same
+activity verdict from the one measurement — but fitting is not binding. M3.6 is
+where they meet, and until then `founder-economy-simulator-v2` still cannot tell
+whether a supplied window is the correct one for a seat's cycle and still accepts
+a record that omits seats.
 
 Restart equivalence is state equivalence under replay. It is not persistence,
 crash-consistency, or a snapshot format, and no model has any of those.
@@ -745,69 +915,73 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice M3.5: specify the uptime measurement pipeline, satisfying
-requirement 7 of `docs/project/first-goal.md`.
+Milestone slice M3.6: bind `founder-economy-simulator-v3` to the cycle boundary
+and the uptime pipeline at once, satisfying requirements 8 and 9 of
+`docs/project/first-goal.md` in enforced rather than specified form.
 
-Create one bounded M3 issue. Take the measurement before binding the economy
-model to the cycle boundary, and take it in that order for a reason M3.4
-produced rather than a preference. `founder-economy-simulator-v2` denominates its
-record in `uptime_seconds`, and that field appears in the record's digest
-preimage, in its validity conditions, and in the activity derivation. M3.4
-established that the chain-derived measurement is naturally a count of a window's
-own blocks and that `uptime_seconds = uptime_blocks * 3` exactly. So if the
-economy model were rebound to the boundary first and the measurement were then
-denominated in blocks, the record's shape would change twice and two economy
-contract versions would be spent where one does.
+Create one bounded M3 issue. Before adding any test, trim the M3.5 test runtime:
+the post-merge matrix now runs 16m55s against a 20-minute per-job timeout, and
+most of the added 80 seconds is the model test rebuilding the scenario in every
+fixture. Cache it per test class and reuse it.
 
-The slice should decide and specify:
+The slice should deliver, as one economy contract version:
 
-1. **What a node earns a block for.** The Founder Constitution derives validator
-   participation and transaction servicing from on-chain records, which need no
-   attestation and cannot be forged. Resource provision is proved by
-   challenge-response, so the challenge construction, the sampling rate, and how
-   a response is recorded are the substance of this slice.
-2. **The dispute window.** ADR 0023 fixes that the Ecosystem AI may file a
-   bounded signed dispute and that silence finalises the result, so an AI outage
-   can never freeze payment. The window's length in windows or heights, what a
-   dispute may assert, and how one resolves are open and are specification work
-   rather than founder-reserved.
-3. **Record completeness.** M3.2 and M3.4 both record that a record omitting
-   seats yields a winner set over the seats it does list without that being
-   detected. The pipeline is where completeness can be established, and the
-   boundary now gives a window identity to establish it against.
-4. **The storage bound** on per-cycle uptime records at 100,000 seats, which is
-   the part of requirement 12 that M3.4's 800,000-byte schedule bound does not
-   answer.
+1. **An `activation_height` on the seat record**, and an `activate_seat` that
+   accepts one. This is the input `cycle-boundary-v1` takes as given.
+2. **The cycle boundary check inside `evaluate_base_permission`**, rejecting a
+   `cycle_window` that is not the window for a supplied `cycle_index` with the
+   three codes `cycle-boundary-v1` already distinguishes.
+3. **Record completeness enforced at the consuming end**, so a record whose seat
+   set is not the in-scope set for its window is rejected rather than ranked. The
+   producing end already cannot emit one; this closes the other direction.
+4. **Rebinding the dependent models**, which under the rule ADR 0024 and ADR 0026
+   established is `escrow-payout-v3` and `economy-scenario-suite-v3` rather than
+   an edit. The suite's supplied `cycle_window` becomes a derived one, which is
+   what finally turns its tick convention into a checked rule.
 
-M3.6 then binds `founder-economy-simulator-v3` to both at once: the cycle
-boundary check on `evaluate_base_permission`, an `activation_height` on the seat
-record, and whatever denomination M3.5 settles. That is one economy version
-carrying both changes, and it is what turns M3.4 from a defined rule into an
-enforced one.
+One economy version carries all of it, because M3.5 confirmed the record's shape
+is stable: `uptime_seconds` remains the denomination and whole hours are a strict
+subset of the range v2 already validates. Splitting it would spend two versions
+where one does.
 
 Requirements 5, 6, and 10 — canonical state keys, transaction encodings, numeric
 receipt codes, the M1 compatibility boundary, and the C++20 implementation — come
-after, because they serialize what these slices settle.
+after, because they serialize what M3.6 settles.
 
 Keep `founder-economy-manifest-v1`, `founder-economy-simulator-v1`,
 `escrow-payout-v1`, `economy-scenario-suite-v1`, and every v1 and v2 model,
-vector, and digest in place and passing. They are the retained M2 and M3
-evidence and are not edited to match a later direction.
-`simulation/founder_economy/` and `simulation/founder_economy_v2/` stay
-untouched.
+vector, and digest in place and passing. They are the retained M2 and M3 evidence
+and are not edited to match a later direction. `simulation/founder_economy/`,
+`simulation/founder_economy_v2/`, `simulation/cycle_boundary/`, and
+`simulation/uptime_measurement/` stay untouched.
 
 ## Blockers
 
 None for the next action.
 
-Two founder-reserved decisions remain open, and neither blocks M3.1 through
-M3.6: eligibility and anti-abuse mechanics for the liquidity-mining,
-impermanent-loss, HUB-verified-user, and mystery-box direct-mint channels, and
-the AI funding framework with its evaluation criteria, milestone and tranche
-policy, and approval thresholds. Both are still supplied to the models as bound
-research inputs, and `founder-economy-manifest-v2` keeps
+Three founder-reserved decisions remain open, and none blocks M3.6.
+
+Two were already recorded: eligibility and anti-abuse mechanics for the
+liquidity-mining, impermanent-loss, HUB-verified-user, and mystery-box
+direct-mint channels, and the AI funding framework with its evaluation criteria,
+milestone and tranche policy, and approval thresholds. Both are still supplied to
+the models as bound research inputs, and `founder-economy-manifest-v2` keeps
 `direct_channel_eligibility_result` as its single research placeholder for
 exactly that reason.
+
+**M3.5 identified a third: the concrete resource commitment.** What a Founder
+Node must prove it holds — the storage, compute, and delivery capacity a
+challenge is answered against — sets what an operator must own in order to be
+paid, which is founder-reserved under the clause added to `CLAUDE.md` on
+2026-08-09. It is not in the constitution's list of explicitly unresolved details
+and is recorded here and in ADR 0028 rather than added to that document.
+
+It becomes the nearest dependency at the Founder Node and resource-network
+milestone, not at M3.6, which consumes a record and never issues a challenge.
+Until it is decided, `uptime-measurement-v1` proves liveness of a responder
+rather than possession of a resource, and says so. Ask the owner when a challenge
+must actually be constructed, and do not invent a minimum specification to make
+one testable — use an abstract answer predicate, as the model already does.
 
 The other two closed on 2026-08-07. Activity, grace, performance ranking, tie
 handling, inactive-seat referral treatment, and referral-channel eligibility are
@@ -815,20 +989,29 @@ now decided in the Founder Constitution and ADR 0023, and must be implemented as
 stated rather than re-litigated or re-supplied as fixtures.
 
 Ask the owner at the point where a specific transition would otherwise have to
-invent one of the two that remain.
+invent one of the three that remain, using the founder-decision gate in the
+`proceed-project` skill.
 
-M3.5 touches the Ecosystem AI but does not reach either. ADR 0023 already decides
+M3.5 ran that gate and passed it. It touches the Ecosystem AI without reaching
+the reserved AI question: ADR 0023 and the Founder Constitution already decide
 that the AI reviews and may dispute, that its signature is deliberately not a
-precondition for payment, and that silence finalises a result. Choosing the
-window's length and the resolution procedure inside those decided bounds is
-specification work. The AI *funding* framework, which is the reserved one, is a
-separate question and M3.5 must not touch it.
+precondition for payment, and that silence finalises a result, and the
+constitution states outright that the challenge construction, sampling rate,
+dispute window length, and dispute resolution are specification work rather than
+founder decisions. The AI *funding* framework is the reserved one and M3.5 did
+not touch it. The dispute cap was derived from the founder-directed grace
+allowance rather than chosen, which is why it needed no decision.
 
-ADR 0027 records two claims that are design intent rather than proof and need
-independent review before the boundary carries value: that the grid is safe
-against an adversary able to influence block production rate, since a slow chain
-stretches every window in real time while the nominal accounting stays fixed;
-and the interaction between the schedule and the unbuilt measurement pipeline,
-since nothing yet proves a block credited to a node reflects a real machine.
-Neither blocks M3.5, and both belong in the independent review requirement of
-`first-goal.md` requirement 15.
+ADR 0027 and ADR 0028 together record five claims that are design intent rather
+than proof and need independent review before the pipeline carries value. From
+ADR 0027: that the grid is safe against an adversary able to influence block
+production rate, since a slow chain stretches every window in real time while the
+nominal accounting stays fixed; and the interaction between the schedule and the
+measurement pipeline. From ADR 0028: that an answered challenge reflects a real
+machine, which is bounded by the undecided resource commitment; that the sampling
+margin is adequate against a founder with physical machine access; and that
+beacon bias is tolerable, since a proposer with influence over the state root at
+`h - 1` has some influence over who is challenged at `h`. The last should be
+reviewed together with ADR 0027's block-production-rate adversary, because they
+are the same adversary. None blocks M3.6, and all belong in the independent
+review requirement of `first-goal.md` requirement 15.
