@@ -429,10 +429,13 @@ behavior.
 
 - Repository: `kaikisegfault/protocol-stack`.
 - Issue #114 and PR #115 are the M3.4 delivery, merged by rebase at `7dd6a84`.
-  PR final-head Actions run 31308600720 on `7d812bd` passed the complete hosted
-  matrix — scope classification `full`, GCC and Clang debug, both sanitizers, and
-  the aggregate required check. Runs 31308454760 and 31308516536 were superseded
-  by later pushes to the same branch and were cancelled.
+  PR final-head Actions run 31308600720 on `7d812bd` and post-merge run
+  31309236144 on `7dd6a84` both passed the complete hosted matrix — scope
+  classification `full`, GCC and Clang debug, both sanitizers, and the aggregate
+  required check. Runs 31308454760 and 31308516536 were superseded by later
+  pushes to the same branch and were cancelled. The post-merge run was allowed to
+  reach a terminal result before the handoff branch was merged, which is the
+  procedure the M3.3b cancellation established.
 - M3.4 local evidence: the cycle-boundary verifier derives 101 vectors and 57 new
   tests pass — 24 grid and 33 model. All nine retained verifiers pass unchanged:
   economy v1 derives 139 manifest and 65 simulator values, manifest v2 154,
