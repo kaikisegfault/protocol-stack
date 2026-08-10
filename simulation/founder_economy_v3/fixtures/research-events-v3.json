@@ -1,0 +1,1026 @@
+[
+  {
+    "id": "act-000",
+    "kind": "activate_seat",
+    "seat_id": 0,
+    "referrer_seat_id": null,
+    "activation_height": "0"
+  },
+  {
+    "id": "act-001",
+    "kind": "activate_seat",
+    "seat_id": 1,
+    "referrer_seat_id": 0,
+    "activation_height": "1"
+  },
+  {
+    "id": "act-002",
+    "kind": "activate_seat",
+    "seat_id": 2,
+    "referrer_seat_id": 0,
+    "activation_height": "2"
+  },
+  {
+    "id": "act-003",
+    "kind": "activate_seat",
+    "seat_id": 3,
+    "referrer_seat_id": 0,
+    "activation_height": "3"
+  },
+  {
+    "id": "act-004",
+    "kind": "activate_seat",
+    "seat_id": 4,
+    "referrer_seat_id": 0,
+    "activation_height": "4"
+  },
+  {
+    "id": "act-005",
+    "kind": "activate_seat",
+    "seat_id": 5,
+    "referrer_seat_id": 0,
+    "activation_height": "5"
+  },
+  {
+    "id": "act-006",
+    "kind": "activate_seat",
+    "seat_id": 6,
+    "referrer_seat_id": 0,
+    "activation_height": "6"
+  },
+  {
+    "id": "act-007",
+    "kind": "activate_seat",
+    "seat_id": 7,
+    "referrer_seat_id": 0,
+    "activation_height": "7"
+  },
+  {
+    "id": "act-008",
+    "kind": "activate_seat",
+    "seat_id": 8,
+    "referrer_seat_id": null,
+    "activation_height": "28800"
+  },
+  {
+    "id": "act-replay",
+    "kind": "activate_seat",
+    "seat_id": 0,
+    "referrer_seat_id": null,
+    "activation_height": "28800"
+  },
+  {
+    "id": "act-self-referrer",
+    "kind": "activate_seat",
+    "seat_id": 9,
+    "referrer_seat_id": 9,
+    "activation_height": "28800"
+  },
+  {
+    "id": "act-out-of-range",
+    "kind": "activate_seat",
+    "seat_id": 100000,
+    "referrer_seat_id": null,
+    "activation_height": "28800"
+  },
+  {
+    "id": "act-unknown-referrer",
+    "kind": "activate_seat",
+    "seat_id": 9,
+    "referrer_seat_id": 60,
+    "activation_height": "28800"
+  },
+  {
+    "id": "act-height-range",
+    "kind": "activate_seat",
+    "seat_id": 9,
+    "referrer_seat_id": null,
+    "activation_height": "18446744073709551615"
+  },
+  {
+    "id": "act-height-not-monotonic",
+    "kind": "activate_seat",
+    "seat_id": 9,
+    "referrer_seat_id": null,
+    "activation_height": "0"
+  },
+  {
+    "id": "act-range-before-height",
+    "kind": "activate_seat",
+    "seat_id": 100000,
+    "referrer_seat_id": null,
+    "activation_height": "18446744073709551615"
+  },
+  {
+    "id": "act-height-before-referrer",
+    "kind": "activate_seat",
+    "seat_id": 9,
+    "referrer_seat_id": 9,
+    "activation_height": "18446744073709551615"
+  },
+  {
+    "id": "act-replay-before-monotonic",
+    "kind": "activate_seat",
+    "seat_id": 0,
+    "referrer_seat_id": null,
+    "activation_height": "0"
+  },
+  {
+    "id": "act-referrer-before-monotonic",
+    "kind": "activate_seat",
+    "seat_id": 9,
+    "referrer_seat_id": 60,
+    "activation_height": "0"
+  },
+  {
+    "id": "eval-000-c0",
+    "kind": "evaluate_base_permission",
+    "seat_id": 0,
+    "cycle_index": 0,
+    "cycle_uptime_record": {
+      "cycle_window": 1,
+      "entries": [
+        {
+          "seat_id": 0,
+          "uptime_seconds": 3600
+        },
+        {
+          "seat_id": 1,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 2,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 3,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 4,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 5,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 6,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 7,
+          "uptime_seconds": 86400
+        }
+      ]
+    }
+  },
+  {
+    "id": "eval-001-c0",
+    "kind": "evaluate_base_permission",
+    "seat_id": 1,
+    "cycle_index": 0,
+    "cycle_uptime_record": {
+      "cycle_window": 1,
+      "entries": [
+        {
+          "seat_id": 0,
+          "uptime_seconds": 3600
+        },
+        {
+          "seat_id": 1,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 2,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 3,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 4,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 5,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 6,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 7,
+          "uptime_seconds": 86400
+        }
+      ]
+    }
+  },
+  {
+    "id": "eval-000-c0-replay",
+    "kind": "evaluate_base_permission",
+    "seat_id": 0,
+    "cycle_index": 0,
+    "cycle_uptime_record": {
+      "cycle_window": 1,
+      "entries": [
+        {
+          "seat_id": 0,
+          "uptime_seconds": 3600
+        },
+        {
+          "seat_id": 1,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 2,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 3,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 4,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 5,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 6,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 7,
+          "uptime_seconds": 86400
+        }
+      ]
+    }
+  },
+  {
+    "id": "eval-002-c0",
+    "kind": "evaluate_base_permission",
+    "seat_id": 2,
+    "cycle_index": 0,
+    "cycle_uptime_record": {
+      "cycle_window": 1,
+      "entries": [
+        {
+          "seat_id": 0,
+          "uptime_seconds": 3600
+        },
+        {
+          "seat_id": 1,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 2,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 3,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 4,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 5,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 6,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 7,
+          "uptime_seconds": 86400
+        }
+      ]
+    }
+  },
+  {
+    "id": "eval-001-c1",
+    "kind": "evaluate_base_permission",
+    "seat_id": 1,
+    "cycle_index": 1,
+    "cycle_uptime_record": {
+      "cycle_window": 2,
+      "entries": [
+        {
+          "seat_id": 0,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 1,
+          "uptime_seconds": 3600
+        },
+        {
+          "seat_id": 2,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 3,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 4,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 5,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 6,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 7,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 8,
+          "uptime_seconds": 86400
+        }
+      ]
+    }
+  },
+  {
+    "id": "eval-000-c1",
+    "kind": "evaluate_base_permission",
+    "seat_id": 0,
+    "cycle_index": 1,
+    "cycle_uptime_record": {
+      "cycle_window": 2,
+      "entries": [
+        {
+          "seat_id": 0,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 1,
+          "uptime_seconds": 3600
+        },
+        {
+          "seat_id": 2,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 3,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 4,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 5,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 6,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 7,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 8,
+          "uptime_seconds": 86400
+        }
+      ]
+    }
+  },
+  {
+    "id": "eval-008-c0",
+    "kind": "evaluate_base_permission",
+    "seat_id": 8,
+    "cycle_index": 0,
+    "cycle_uptime_record": {
+      "cycle_window": 2,
+      "entries": [
+        {
+          "seat_id": 0,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 1,
+          "uptime_seconds": 3600
+        },
+        {
+          "seat_id": 2,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 3,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 4,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 5,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 6,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 7,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 8,
+          "uptime_seconds": 86400
+        }
+      ]
+    }
+  },
+  {
+    "id": "eval-002-c2",
+    "kind": "evaluate_base_permission",
+    "seat_id": 2,
+    "cycle_index": 2,
+    "cycle_uptime_record": {
+      "cycle_window": 3,
+      "entries": [
+        {
+          "seat_id": 0,
+          "uptime_seconds": 3600
+        },
+        {
+          "seat_id": 1,
+          "uptime_seconds": 3600
+        },
+        {
+          "seat_id": 2,
+          "uptime_seconds": 3600
+        },
+        {
+          "seat_id": 3,
+          "uptime_seconds": 3600
+        },
+        {
+          "seat_id": 4,
+          "uptime_seconds": 3600
+        },
+        {
+          "seat_id": 5,
+          "uptime_seconds": 3600
+        },
+        {
+          "seat_id": 6,
+          "uptime_seconds": 3600
+        },
+        {
+          "seat_id": 7,
+          "uptime_seconds": 3600
+        },
+        {
+          "seat_id": 8,
+          "uptime_seconds": 3600
+        }
+      ]
+    }
+  },
+  {
+    "id": "eval-missing-record",
+    "kind": "evaluate_base_permission",
+    "seat_id": 3,
+    "cycle_index": 0,
+    "cycle_uptime_record": null
+  },
+  {
+    "id": "eval-empty-record",
+    "kind": "evaluate_base_permission",
+    "seat_id": 3,
+    "cycle_index": 0,
+    "cycle_uptime_record": {
+      "cycle_window": 1,
+      "entries": []
+    }
+  },
+  {
+    "id": "eval-duplicate-seat",
+    "kind": "evaluate_base_permission",
+    "seat_id": 3,
+    "cycle_index": 0,
+    "cycle_uptime_record": {
+      "cycle_window": 1,
+      "entries": [
+        {
+          "seat_id": 3,
+          "uptime_seconds": 100
+        },
+        {
+          "seat_id": 3,
+          "uptime_seconds": 200
+        }
+      ]
+    }
+  },
+  {
+    "id": "eval-unactivated-listed",
+    "kind": "evaluate_base_permission",
+    "seat_id": 3,
+    "cycle_index": 0,
+    "cycle_uptime_record": {
+      "cycle_window": 1,
+      "entries": [
+        {
+          "seat_id": 3,
+          "uptime_seconds": 100
+        },
+        {
+          "seat_id": 50,
+          "uptime_seconds": 200
+        }
+      ]
+    }
+  },
+  {
+    "id": "eval-above-target",
+    "kind": "evaluate_base_permission",
+    "seat_id": 3,
+    "cycle_index": 0,
+    "cycle_uptime_record": {
+      "cycle_window": 1,
+      "entries": [
+        {
+          "seat_id": 3,
+          "uptime_seconds": 86401
+        }
+      ]
+    }
+  },
+  {
+    "id": "eval-seat-absent",
+    "kind": "evaluate_base_permission",
+    "seat_id": 3,
+    "cycle_index": 0,
+    "cycle_uptime_record": {
+      "cycle_window": 1,
+      "entries": [
+        {
+          "seat_id": 1,
+          "uptime_seconds": 86400
+        }
+      ]
+    }
+  },
+  {
+    "id": "eval-listed-out-of-range",
+    "kind": "evaluate_base_permission",
+    "seat_id": 3,
+    "cycle_index": 0,
+    "cycle_uptime_record": {
+      "cycle_window": 1,
+      "entries": [
+        {
+          "seat_id": 100000,
+          "uptime_seconds": 100
+        },
+        {
+          "seat_id": 3,
+          "uptime_seconds": 100
+        }
+      ]
+    }
+  },
+  {
+    "id": "eval-window-before-issuance",
+    "kind": "evaluate_base_permission",
+    "seat_id": 3,
+    "cycle_index": 0,
+    "cycle_uptime_record": {
+      "cycle_window": 0,
+      "entries": [
+        {
+          "seat_id": 3,
+          "uptime_seconds": 86400
+        }
+      ]
+    }
+  },
+  {
+    "id": "eval-window-after-issuance",
+    "kind": "evaluate_base_permission",
+    "seat_id": 3,
+    "cycle_index": 0,
+    "cycle_uptime_record": {
+      "cycle_window": 732,
+      "entries": [
+        {
+          "seat_id": 3,
+          "uptime_seconds": 86400
+        }
+      ]
+    }
+  },
+  {
+    "id": "eval-window-not-for-cycle",
+    "kind": "evaluate_base_permission",
+    "seat_id": 3,
+    "cycle_index": 0,
+    "cycle_uptime_record": {
+      "cycle_window": 2,
+      "entries": [
+        {
+          "seat_id": 3,
+          "uptime_seconds": 86400
+        }
+      ]
+    }
+  },
+  {
+    "id": "eval-record-out-of-scope",
+    "kind": "evaluate_base_permission",
+    "seat_id": 3,
+    "cycle_index": 0,
+    "cycle_uptime_record": {
+      "cycle_window": 1,
+      "entries": [
+        {
+          "seat_id": 0,
+          "uptime_seconds": 3600
+        },
+        {
+          "seat_id": 1,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 2,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 3,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 4,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 5,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 6,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 7,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 8,
+          "uptime_seconds": 86400
+        }
+      ]
+    }
+  },
+  {
+    "id": "eval-scope-before-completeness",
+    "kind": "evaluate_base_permission",
+    "seat_id": 3,
+    "cycle_index": 0,
+    "cycle_uptime_record": {
+      "cycle_window": 1,
+      "entries": [
+        {
+          "seat_id": 0,
+          "uptime_seconds": 3600
+        },
+        {
+          "seat_id": 1,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 2,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 3,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 4,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 5,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 6,
+          "uptime_seconds": 86400
+        },
+        {
+          "seat_id": 8,
+          "uptime_seconds": 86400
+        }
+      ]
+    }
+  },
+  {
+    "id": "eval-record-incomplete",
+    "kind": "evaluate_base_permission",
+    "seat_id": 3,
+    "cycle_index": 0,
+    "cycle_uptime_record": {
+      "cycle_window": 1,
+      "entries": [
+        {
+          "seat_id": 0,
+          "uptime_seconds": 3600
+        },
+        {
+          "seat_id": 1,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 2,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 3,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 4,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 5,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 6,
+          "uptime_seconds": 64800
+        }
+      ]
+    }
+  },
+  {
+    "id": "eval-record-inconsistent",
+    "kind": "evaluate_base_permission",
+    "seat_id": 3,
+    "cycle_index": 0,
+    "cycle_uptime_record": {
+      "cycle_window": 1,
+      "entries": [
+        {
+          "seat_id": 0,
+          "uptime_seconds": 3600
+        },
+        {
+          "seat_id": 1,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 2,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 3,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 4,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 5,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 6,
+          "uptime_seconds": 64800
+        },
+        {
+          "seat_id": 7,
+          "uptime_seconds": 64800
+        }
+      ]
+    }
+  },
+  {
+    "id": "eval-unactivated-seat",
+    "kind": "evaluate_base_permission",
+    "seat_id": 50,
+    "cycle_index": 0,
+    "cycle_uptime_record": {
+      "cycle_window": 1,
+      "entries": [
+        {
+          "seat_id": 50,
+          "uptime_seconds": 86400
+        }
+      ]
+    }
+  },
+  {
+    "id": "eval-cycle-out-of-range",
+    "kind": "evaluate_base_permission",
+    "seat_id": 3,
+    "cycle_index": 731,
+    "cycle_uptime_record": {
+      "cycle_window": 1,
+      "entries": [
+        {
+          "seat_id": 3,
+          "uptime_seconds": 86400
+        }
+      ]
+    }
+  },
+  {
+    "id": "accrue-001-c0",
+    "kind": "accrue_referral",
+    "seat_id": 1,
+    "cycle_index": 0
+  },
+  {
+    "id": "accrue-001-c0-replay",
+    "kind": "accrue_referral",
+    "seat_id": 1,
+    "cycle_index": 0
+  },
+  {
+    "id": "accrue-000-c0",
+    "kind": "accrue_referral",
+    "seat_id": 0,
+    "cycle_index": 0
+  },
+  {
+    "id": "accrue-008-c0",
+    "kind": "accrue_referral",
+    "seat_id": 8,
+    "cycle_index": 0
+  },
+  {
+    "id": "accrue-unactivated",
+    "kind": "accrue_referral",
+    "seat_id": 50,
+    "cycle_index": 0
+  },
+  {
+    "id": "accrue-cycle-out-of-range",
+    "kind": "accrue_referral",
+    "seat_id": 1,
+    "cycle_index": 731
+  },
+  {
+    "id": "exercise-000-c0",
+    "kind": "exercise_permission",
+    "seat_id": 0,
+    "cycle_index": 0
+  },
+  {
+    "id": "exercise-000-c0-replay",
+    "kind": "exercise_permission",
+    "seat_id": 0,
+    "cycle_index": 0
+  },
+  {
+    "id": "exercise-002-c0",
+    "kind": "exercise_permission",
+    "seat_id": 2,
+    "cycle_index": 0
+  },
+  {
+    "id": "exercise-003-c0-absent",
+    "kind": "exercise_permission",
+    "seat_id": 3,
+    "cycle_index": 0
+  },
+  {
+    "id": "exercise-out-of-range",
+    "kind": "exercise_permission",
+    "seat_id": 100000,
+    "cycle_index": 0
+  },
+  {
+    "id": "direct-accept",
+    "kind": "direct_issue",
+    "channel": "liquidity_mining",
+    "decision_id": "d1",
+    "beneficiary_id": "b1",
+    "amount_atomic": "1000000000",
+    "eligibility_result": {
+      "channel": "liquidity_mining",
+      "decision_id": "d1",
+      "beneficiary_id": "b1",
+      "amount_atomic": "1000000000",
+      "eligible": true
+    }
+  },
+  {
+    "id": "direct-replay",
+    "kind": "direct_issue",
+    "channel": "liquidity_mining",
+    "decision_id": "d1",
+    "beneficiary_id": "b1",
+    "amount_atomic": "1000000000",
+    "eligibility_result": {
+      "channel": "liquidity_mining",
+      "decision_id": "d1",
+      "beneficiary_id": "b1",
+      "amount_atomic": "1000000000",
+      "eligible": true
+    }
+  },
+  {
+    "id": "direct-referral-channel",
+    "kind": "direct_issue",
+    "channel": "founder_referral",
+    "decision_id": "d2",
+    "beneficiary_id": "b1",
+    "amount_atomic": "1000000000",
+    "eligibility_result": {
+      "channel": "founder_referral",
+      "decision_id": "d2",
+      "beneficiary_id": "b1",
+      "amount_atomic": "1000000000",
+      "eligible": true
+    }
+  },
+  {
+    "id": "direct-base-channel",
+    "kind": "direct_issue",
+    "channel": "founder_operator",
+    "decision_id": "d3",
+    "beneficiary_id": "b1",
+    "amount_atomic": "1000000000",
+    "eligibility_result": {
+      "channel": "founder_operator",
+      "decision_id": "d3",
+      "beneficiary_id": "b1",
+      "amount_atomic": "1000000000",
+      "eligible": true
+    }
+  },
+  {
+    "id": "direct-zero",
+    "kind": "direct_issue",
+    "channel": "liquidity_mining",
+    "decision_id": "d4",
+    "beneficiary_id": "b1",
+    "amount_atomic": "0",
+    "eligibility_result": {
+      "channel": "liquidity_mining",
+      "decision_id": "d4",
+      "beneficiary_id": "b1",
+      "amount_atomic": "0",
+      "eligible": true
+    }
+  },
+  {
+    "id": "direct-missing-input",
+    "kind": "direct_issue",
+    "channel": "liquidity_mining",
+    "decision_id": "d5",
+    "beneficiary_id": "b1",
+    "amount_atomic": "500",
+    "eligibility_result": null
+  },
+  {
+    "id": "direct-unbound-input",
+    "kind": "direct_issue",
+    "channel": "liquidity_mining",
+    "decision_id": "d6",
+    "beneficiary_id": "b1",
+    "amount_atomic": "500",
+    "eligibility_result": {
+      "channel": "liquidity_mining",
+      "decision_id": "d6",
+      "beneficiary_id": "b1",
+      "amount_atomic": "600",
+      "eligible": true
+    }
+  },
+  {
+    "id": "direct-not-eligible",
+    "kind": "direct_issue",
+    "channel": "impermanent_loss_protection",
+    "decision_id": "d7",
+    "beneficiary_id": "b2",
+    "amount_atomic": "700",
+    "eligibility_result": {
+      "channel": "impermanent_loss_protection",
+      "decision_id": "d7",
+      "beneficiary_id": "b2",
+      "amount_atomic": "700",
+      "eligible": false
+    }
+  }
+]
