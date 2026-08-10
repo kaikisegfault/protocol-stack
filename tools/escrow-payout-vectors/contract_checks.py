@@ -101,44 +101,69 @@ def check_binding_vectors(
     ]
     check.equal("binding.fixture_bind_events_matching_economy_run", len(bound))
 
-    if spec.version == "v2":
+    if spec.version != "v1":
         _check_cross_version_containment(check, spec)
 
 
+# Every accepted version that precedes another, in acceptance order. A version
+# must contain the states of all of them, not only its immediate predecessor.
+PREDECESSORS: dict[str, tuple[str, ...]] = {
+    "v1": (),
+    "v2": ("v1",),
+    "v3": ("v1", "v2"),
+}
+
+
 def _check_cross_version_containment(check: Checker, spec: w.Spec) -> None:
-    """Prove a version-one economy state cannot satisfy a version-two bind.
+    """Prove no earlier economy state can satisfy this version's bind.
 
     This is the compatibility boundary, derived rather than asserted. Every bind
-    event in the retained v1 fixture is replayed through the v2 walk, which
-    recomputes the supplied state's digest under the v2 economy label. None may
-    be accepted, and the digest-carrying ones must fail as inconsistent rather
-    than as missing input, which is what shows the label did the rejecting.
+    event in each earlier fixture is replayed through this version's walk, which
+    recomputes the supplied state's digest under this version's economy label.
+    None may be accepted, and the digest-carrying ones must fail as inconsistent
+    rather than as missing input, which is what shows the label did the
+    rejecting.
+
+    Each predecessor is checked separately rather than only the immediate one,
+    because containment against v2 would not imply containment against v1: the
+    three labels are distinct strings, not a chain.
     """
-    v1_events = w.load_events(ROOT / w.V1.events_file)
-    binds = [event for event in v1_events if event["kind"] == "bind_opening_custody"]
-    with_state = [
-        event for event in binds if event["economy_state_result"] is not None
-    ]
+    for earlier_version in PREDECESSORS[spec.version]:
+        earlier = w.SPECS[earlier_version]
+        events = w.load_events(ROOT / earlier.events_file)
+        binds = [event for event in events if event["kind"] == "bind_opening_custody"]
+        with_state = [
+            event for event in binds if event["economy_state_result"] is not None
+        ]
 
-    walk = w.Walk(spec=spec)
-    results = [walk.bind(event) for event in with_state]
-    rejected = [result for result in results if result == "INVALID_RESEARCH_INPUT"]
-    if any(result == "OK" for result in results):
-        raise AssertionError("a version-one economy state satisfied a version-two bind")
-    if len(rejected) != len(results):
-        raise AssertionError(f"unexpected cross-version bind results: {sorted(set(results))}")
+        walk = w.Walk(spec=spec)
+        results = [walk.bind(event) for event in with_state]
+        rejected = [result for result in results if result == "INVALID_RESEARCH_INPUT"]
+        if any(result == "OK" for result in results):
+            raise AssertionError(
+                f"a {earlier_version} economy state satisfied a {spec.version} bind"
+            )
+        if len(rejected) != len(results):
+            raise AssertionError(
+                f"unexpected cross-version bind results: {sorted(set(results))}"
+            )
 
-    check.equal("binding.v1_states_offered_to_v2", len(with_state))
-    check.equal("binding.v1_states_rejected_by_v2", len(rejected))
+        check.equal(
+            f"binding.{earlier_version}_states_offered_to_{spec.version}", len(with_state)
+        )
+        check.equal(
+            f"binding.{earlier_version}_states_rejected_by_{spec.version}", len(rejected)
+        )
     check.equal("binding.escrow_caps_agree_with_v1", 1 if _caps_agree() else 0)
 
 
 def _caps_agree() -> bool:
-    """Whether both accepted economy contracts give the same three escrow caps.
+    """Whether every accepted economy contract gives the same three escrow caps.
 
-    The two versions share one cap table in the model, and this is the check
-    that keeps that from being an assumption. ADR 0023 raised the maximum supply
-    through the referral channel alone, so the three escrow caps are unchanged.
+    The versions share one cap table in the model, and this is the check that
+    keeps that from being an assumption. ADR 0023 raised the maximum supply
+    through the referral channel alone, and economy version three does not
+    re-version the manifest, so the three escrow caps are unchanged throughout.
     """
     from simulation.escrow_payout import contract as c
 

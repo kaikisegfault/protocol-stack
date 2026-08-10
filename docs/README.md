@@ -164,6 +164,18 @@ the intrinsic record checks precede the run-history binding check so a code
 means one thing. It accepts a research model contract, not a consensus
 transition.
 
+ADR 0030 rebinds the escrow payout model to economy version three. It records
+that a third `Binding` is correct where the economy model earned a sibling
+package, because economy version three revised the economy model's transitions
+and not this model's, which is the same test ADR 0026 stated and ADR 0029
+applied in the other direction; that containment is checked against every
+predecessor rather than only the immediate one, because the three economy
+labels are distinct strings and not a chain; that the scenario is held fixed
+again so a rebinding defect stays distinguishable from a scenario difference;
+and that the cap agreement is now derived across every registered binding
+without rewriting the accepted version-two vectors. It accepts a compatibility
+boundary, not a consensus transition.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
@@ -226,6 +238,11 @@ immutable; compatible changes require a new version.
   `founder-economy-simulator-v2`, differing in exactly five domain labels and
   the bound economy state label, with the cross-version compatibility boundary
   and the unchanged escrow caps; it is not a consensus transition.
+- `specifications/escrow-payout-v3.md`: the same transitions binding
+  `founder-economy-simulator-v3`, again differing in exactly five domain labels
+  and the bound economy state label, with containment proved against both
+  earlier economy versions rather than only the immediate one; it is not a
+  consensus transition.
 - `specifications/economy-scenario-suite-v1.md`: the multi-year and adversarial
   scenarios the four accepted M2 models must survive, their restart-equivalence
   method, and the seeded property tests; it defines no model or transition.

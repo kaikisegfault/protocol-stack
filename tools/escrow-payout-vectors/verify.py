@@ -62,6 +62,12 @@ ECONOMY: dict[str, dict[str, str]] = {
         "events": "simulation/founder_economy_v2/fixtures/research-events-v2.json",
         "manifest": "test-vectors/founder-economy-manifest-v2.json",
     },
+    # Version three loads the accepted v2 manifest, because it re-versions the
+    # simulator and not the economic contract.
+    "v3": {
+        "events": "simulation/founder_economy_v3/fixtures/research-events-v3.json",
+        "manifest": "test-vectors/founder-economy-manifest-v2.json",
+    },
 }
 
 
@@ -77,10 +83,14 @@ def economy_binding(version: str) -> tuple[str, dict[str, int]]:
         from simulation.founder_economy.engine import simulate as economy_simulate
         from simulation.founder_economy.manifest import load_manifest_file
         from simulation.founder_economy.validation import load_events_file as events
-    else:
+    elif version == "v2":
         from simulation.founder_economy_v2.engine import simulate as economy_simulate
         from simulation.founder_economy_v2.manifest import load_manifest_file
         from simulation.founder_economy_v2.validation import load_events_file as events
+    else:
+        from simulation.founder_economy_v2.manifest import load_manifest_file
+        from simulation.founder_economy_v3.engine import simulate as economy_simulate
+        from simulation.founder_economy_v3.validation import load_events_file as events
 
     economy = economy_simulate(
         load_manifest_file(ROOT / paths["manifest"]),
