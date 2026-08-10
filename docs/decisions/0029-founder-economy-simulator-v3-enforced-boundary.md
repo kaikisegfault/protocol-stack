@@ -209,6 +209,12 @@ replaying the run.
 - `escrow-payout-v2` and `economy-scenario-suite-v2` still bind version two.
   Rebinding them is the next slice and is `escrow-payout-v3` and
   `economy-scenario-suite-v3` rather than an edit, on the same grounds.
+- Completeness is measured against the seat table as it stands, and the model has
+  no current height for an evaluation, so it cannot require that every in-scope
+  seat has already activated. `HEIGHT_NOT_MONOTONIC` bounds the residue to an
+  event ordering a chain does not produce, because a record is emitted only after
+  its window is final. The limit is recorded in the specification and derived in
+  the vectors rather than asserted away.
 - No C++, consensus, devnet, bridge, wallet, AI, biometric, or resource behavior
   changes. The model activates nothing and issues no native unit.
 

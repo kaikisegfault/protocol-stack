@@ -44,7 +44,15 @@ HANDLERS: dict[str, Handler] = {
 
 
 def simulate(manifest: Manifest | str, events_value: Any) -> dict[str, Any]:
-    """Run one deterministic simulation over an accepted v2 manifest."""
+    """Run one deterministic simulation over an accepted v2 manifest.
+
+    The bound contracts are re-proved to agree before anything is executed.
+    Version three owns no founder-directed figure: it reads the manifest layer
+    from the accepted v2 contract and the window grid from the accepted
+    cycle-boundary contract. A drift between them would silently change what a
+    window means, so a run refuses to start rather than reporting a result.
+    """
+    c.assert_agrees_with_bindings()
     accepted_manifest = (
         manifest if isinstance(manifest, Manifest) else load_manifest_file(manifest)
     )
