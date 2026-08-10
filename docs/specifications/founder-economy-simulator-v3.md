@@ -302,6 +302,26 @@ heights, which is what makes them agree. The verifier proves that agreement by
 deriving one model's in-scope set and requiring the other to produce it, rather
 than by both reading one implementation.
 
+### What completeness is measured against
+
+The in-scope set is derived from the seat table **as it stands when the
+evaluation runs**. Membership itself is a function of the seat's activation
+height and the window alone, so it does not drift; what the model cannot know is
+whether a seat that will be in scope has not yet activated.
+
+A chain closes that by ordering: a record is emitted only after its window is
+final, which is at least two windows after every in-scope seat's activation
+height has passed, so every such seat is already recorded. This model has no
+current height for an evaluation and cannot require it.
+
+`HEIGHT_NOT_MONOTONIC` narrows the gap rather than leaving it open. Once any
+activation has been recorded at or above a window's first height, no later
+activation can be in scope for that window, because a lower height is refused.
+The residue is an event array that evaluates a window while every activation so
+far still lies inside it — an ordering a chain does not produce and this model
+does not reject. It is stated here rather than asserted away, and the vectors
+record the narrowing as a derived property.
+
 ## Base permission evaluation
 
 The complete ordered rejection set, with version two's conditions unchanged and
@@ -540,6 +560,12 @@ open items are now closed and the rest are unchanged:
 - **Seat provenance** — open. A seat purchased in the Founder Seat sale model is
   still not proved to be an activated seat here, and the per-principal bound is
   still not a per-human bound.
+- **Evaluation ordering** — open, and new. Completeness is measured against the
+  seat table as it stands, and this model has no current height for an
+  evaluation, so it cannot require that every in-scope seat has already
+  activated. Monotonicity bounds the residue to an ordering a chain does not
+  produce, as [What completeness is measured against](#what-completeness-is-measured-against)
+  states.
 
 Enforcing a schedule is not the same as proving one is right. This version proves
 that a supplied window is the window the accepted grid assigns and that a record
