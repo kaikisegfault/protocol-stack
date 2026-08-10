@@ -60,7 +60,18 @@ V2 = Spec(
     events_file="simulation/escrow_payout/fixtures/research-events-v2.json",
 )
 
-SPECS: dict[str, Spec] = {V1.version: V1, V2.version: V2}
+V3 = Spec(
+    version="v3",
+    schema="protocol-stack/escrow-payout-result/v3",
+    events_label="protocol-stack:escrow-payout:events-v3",
+    state_label="protocol-stack:escrow-payout:state-v3",
+    trace_label="protocol-stack:escrow-payout:trace-v3",
+    result_label="protocol-stack:escrow-payout:result-v3",
+    economy_state_label="protocol-stack:founder-economy:state-v3",
+    events_file="simulation/escrow_payout/fixtures/research-events-v3.json",
+)
+
+SPECS: dict[str, Spec] = {V1.version: V1, V2.version: V2, V3.version: V3}
 
 
 def state_digest(value: Any, economy_state_label: str) -> str:

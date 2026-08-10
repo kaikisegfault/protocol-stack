@@ -10,10 +10,12 @@ ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "simulation" / "escrow_payout" / "fixtures"
 VECTORS_PATH = ROOT / "test-vectors" / "escrow-payout-v1.txt"
 VECTORS_V2_PATH = ROOT / "test-vectors" / "escrow-payout-v2.txt"
+VECTORS_V3_PATH = ROOT / "test-vectors" / "escrow-payout-v3.txt"
 ECONOMY_FIXTURES = ROOT / "simulation" / "founder_economy" / "fixtures"
 ECONOMY_MANIFEST = ROOT / "test-vectors" / "founder-economy-manifest-v1.json"
 ECONOMY_V2_FIXTURES = ROOT / "simulation" / "founder_economy_v2" / "fixtures"
 ECONOMY_V2_MANIFEST = ROOT / "test-vectors" / "founder-economy-manifest-v2.json"
+ECONOMY_V3_FIXTURES = ROOT / "simulation" / "founder_economy_v3" / "fixtures"
 
 VENTURE = "venture_escrow"
 COMMUNITY = "community_grants_escrow"
@@ -58,6 +60,23 @@ def economy_state_v2() -> tuple[str, dict[str, Any]]:
     result = economy_simulate(
         load_manifest_file(ECONOMY_V2_MANIFEST),
         load_events_file(ECONOMY_V2_FIXTURES / "research-events-v2.json"),
+    )
+    return result["state_digest"], result["final_state"]
+
+
+def economy_state_v3() -> tuple[str, dict[str, Any]]:
+    """The same for version three, which loads the accepted v2 manifest.
+
+    Version three re-versions the simulator and not the economic contract, so
+    the manifest path is deliberately the same one version two uses.
+    """
+    from simulation.founder_economy_v2.manifest import load_manifest_file
+    from simulation.founder_economy_v3.engine import simulate as economy_simulate
+    from simulation.founder_economy_v3.validation import load_events_file
+
+    result = economy_simulate(
+        load_manifest_file(ECONOMY_V2_MANIFEST),
+        load_events_file(ECONOMY_V3_FIXTURES / "research-events-v3.json"),
     )
     return result["state_digest"], result["final_state"]
 
