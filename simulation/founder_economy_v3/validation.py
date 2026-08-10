@@ -163,7 +163,7 @@ def _exact_fields(value: dict[str, Any], expected: set[str], name: str) -> None:
 
 def _identifier(value: Any, name: str) -> str:
     if type(value) is not str or IDENTIFIER.fullmatch(value) is None:
-        raise InputError(f"{name} is not a version-two identifier")
+        raise InputError(f"{name} is not a version-three identifier")
     return value
 
 
