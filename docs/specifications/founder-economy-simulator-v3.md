@@ -450,12 +450,27 @@ WINDOW_AFTER_ISSUANCE     WINDOW_NOT_FOR_CYCLE     SEAT_NOT_IN_SCOPE
 INCOMPLETE_UPTIME_RECORD
 ```
 
-No code is removed. Every declared code must be produced by executing a mutated
-input in the vectors, and the declared count, the count produced by execution,
-and their equality are recorded, so a later change cannot quietly lose a code or
-declare one no path reaches. That obligation was added to
-`uptime-measurement-v1` after a declared-but-unreachable code was found by
-self-review, and it applies here.
+No code is removed.
+
+Coverage is recorded as a derived claim rather than asserted, so a later change
+cannot quietly lose a code or declare one no path reaches. The obligation was
+added to `uptime-measurement-v1` after a declared-but-unreachable code was found
+by self-review, and it applies here with one distinction that model did not need.
+
+The declared set is partitioned. Every code except two must be produced by
+executing an event array, and the vectors record the declared count, the
+event-reachable count, the count actually produced, and their equality.
+`ARITHMETIC_OVERFLOW` and `INVARIANT` are **guards**: every accumulated quantity
+is bounded far below `u64` by a channel cap, so an overflow inside a transition
+means the arithmetic is wrong rather than that the input was, and an invariant
+failure means a transition wrote a state its own rules forbid. Neither is
+reachable from an event array at any representable scale.
+
+`uptime-measurement-v1` deleted its unreachable code because no path produced it
+at all. These two are different: paths do produce them, and the vectors prove it
+by exercising those paths directly rather than through a scenario. Deleting them
+would remove a real check; declaring them reachable would claim coverage the
+vectors could not show. The partition is what makes both statements true at once.
 
 These are model result codes. The numeric consensus receipts for a C++ transition
 are requirement 5 and are not defined here.
