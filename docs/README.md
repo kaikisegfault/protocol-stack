@@ -138,6 +138,32 @@ that activation heights may not decrease; and that a window's nominal duration i
 86,400 seconds, so a measurement is denominated against the window rather than a
 clock. It defines a schedule and a check, not a consensus transition.
 
+ADR 0028 defines the uptime measurement pipeline. It records that credit is per
+one-hour slot, because all three founder-directed figures are whole slots and
+partial credit would interpolate between probes; that a seat is credited for the
+duties it was assigned rather than for signing, because the constitution bounds
+the live signing set; that challenges are selected from the previous height's
+state root, so a seat cannot schedule uptime around its own audit; that the
+Ecosystem AI's dispute may only subtract and only up to the grace allowance, so
+a captured key cannot fail a fully operational node; that silence finalises a
+window after one further window; and that a record's seat set is derived from
+the bound activation schedule, so an omission is unrepresentable. It measures
+and settles no value.
+
+ADR 0029 enforces the cycle boundary and record completeness in the economy
+model. It records that one economy version carries both, because the record's
+denomination is stable; that the manifest is not re-versioned, because no
+founder-directed figure moves; that a sibling package is preferred to a
+`Binding` here, on the condition ADR 0026 itself named for when that choice
+inverts; that the manifest layer and the window grid are bound rather than
+copied; that monotonicity moves to the writer of activation heights; that the
+in-scope seat set has no upper bound, because a seat past its issuance span
+still runs a node and may still win a reallocation; that an omitted and an
+added seat are two codes because they have opposite economic effects; and that
+the intrinsic record checks precede the run-history binding check so a code
+means one thing. It accepts a research model contract, not a consensus
+transition.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
@@ -175,6 +201,17 @@ immutable; compatible changes require a new version.
   the five Founder Economy transitions, bound research inputs, journal
   conservation, digest labels, and vector obligations for the independent
   Python model; it is not a consensus transition.
+- `specifications/founder-economy-simulator-v2.md`: the same model under the
+  2026-08-07 direction — the cycle uptime record carrying measurements only, the
+  derived activity verdict and winner set, the unconditional direct-mint
+  referral with its two destinations, and the performance carry with its
+  conservation identity; it is not a consensus transition.
+- `specifications/founder-economy-simulator-v3.md`: the same accounting with the
+  cycle boundary and record completeness enforced — an `activation_height` on
+  the seat record, the window check applied inside base permission evaluation,
+  and a record required to cover exactly its window's in-scope seat set; it
+  binds the accepted v2 manifest and the accepted window grid rather than
+  restating either, and is not a consensus transition.
 - `specifications/founder-seat-schedule-v1.md`: integer USD denomination, the
   100,000-seat capacity, the block price schedule, the per-principal ownership
   bound, and the seat purchase transition; it is not a consensus transition.
@@ -202,6 +239,11 @@ immutable; compatible changes require a new version.
   issuance span, the ordered conditions of the window check, and the exact block
   equivalents of the founder-directed activity threshold and grace allowance; it
   defines a schedule and measures nothing.
+- `specifications/uptime-measurement-v1.md`: the 24-slot grid a window is
+  subdivided into, the two evidence sources, challenge selection from an
+  unpredictable beacon and its response deadline, the conjunctive slot credit
+  rule, the bounded Ecosystem AI dispute window that finalises by expiry, and
+  record completeness at the producing end; it measures and settles no value.
 - `specifications/native-economy-simulation-v1.md`: versioned integer-only
   accounting, authority, event, trace, and metric contract for the independent
   M2 research simulator; it is not a consensus transition.
