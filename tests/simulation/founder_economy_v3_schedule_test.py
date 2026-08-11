@@ -1,8 +1,13 @@
+#!/usr/bin/env python3
 """The enforced schedule: activation heights, windows, and the in-scope set."""
 
 from __future__ import annotations
 
+import sys
 import unittest
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from simulation.common.canonical import MAX_U64
 from simulation.cycle_boundary.grid import (
@@ -15,7 +20,7 @@ from simulation.founder_economy_v3 import contract as c
 from simulation.founder_economy_v3.domain import Seat, State
 from simulation.founder_economy_v3.schedule import check_window, in_scope_seats
 
-from .founder_economy_v3_common import (
+from tests.simulation.founder_economy_v3_common import (
     CYCLE_BLOCKS,
     activate,
     codes,

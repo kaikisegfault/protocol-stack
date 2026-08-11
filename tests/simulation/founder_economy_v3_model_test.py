@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Version-three accounting: reallocation, carry, referral, and containment.
 
 The rules exercised here are version two's and are unchanged. They are re-proved
@@ -7,7 +8,11 @@ the rules did.
 
 from __future__ import annotations
 
+import sys
 import unittest
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from simulation.common.canonical import MAX_U64
 from simulation.founder_economy_v2.domain import STATE_LABEL as V2_STATE_LABEL
@@ -30,7 +35,7 @@ from simulation.founder_economy_v3.engine import (
 from simulation.founder_economy_v3.handlers_issuance import exercise_permission
 from simulation.founder_economy_v3.uptime import RECORD_LABEL, reallocate
 
-from .founder_economy_v3_common import (
+from tests.simulation.founder_economy_v3_common import (
     FAILED_BOUNDARY,
     FULL_WINDOW,
     MET_BOUNDARY,
