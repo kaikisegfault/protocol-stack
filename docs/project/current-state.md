@@ -1310,21 +1310,45 @@ next slice is the C++20 kernel implementation, which adds source and tests to th
 part of the matrix that already dominates it, so the margin is consumed by the
 very work it has to protect.
 
-Measure before optimising. `ctest` runs the registered entries and the timings
-are not known per entry; get them from a hosted run or a single bounded local
-`ctest` invocation rather than guessing which entry is expensive. The plausible
-candidates in order:
+**The measurement was taken, so this slice starts from data.** The
+`gcc-sanitizers` job log of post-merge run 31495429227 gives per-test durations:
+105 tests, sum 707.5s, `Total Test time (real) = 707.57 sec`. Those two figures
+being equal is the finding — **`ctest` runs perfectly serially**, because neither
+`tools/verify.sh` line 83 nor the workflow passes `-j`, and the hosted runner is
+`ubuntu-24.04` with 4 vCPUs. The test phase is 707s of a 984s job, so it is about
+72% of the job and the C++ build is the remaining 28%.
 
-1. **`ctest` parallelism.** The entries are independent processes and the
-   workflow does not pass `-j`. If the runners have more than one core this is
-   the largest available win and it changes no test.
-2. **The three complete 731-cycle population runs.** `scenario-suite-vectors`,
-   `scenario-suite-v2-vectors`, and `scenario-suite-v3-vectors` each execute one,
-   and `scenario-v2` and `scenario-v3` execute more. They are separate processes,
-   so the in-process caches in `scenario_v3_common.py` do not help across them.
-3. **The 100,000-seat sale.** Every suite verifier runs scenario 2 in full, and
-   it is identical in all three versions — proved so by
-   `test_the_market_scenarios_record_identical_vectors`.
+The slowest entries, in seconds:
+
+| entry | s | |
+| --- | --- | --- |
+| `scenario-v2` | 107.9 | four population runs, no shared fixture |
+| `economic-envelope-study` | 91.5 | |
+| `scenario-v3` | 46.0 | one cached population run |
+| `admission-cost-study` | 43.1 | |
+| `scenario-suite-v3-vectors` | 40.4 | |
+| `scenario-suite-v2-vectors` | 40.4 | |
+| `kernel-differential` | 34.7 | |
+| `scenario-suite-vectors` | 31.9 | |
+
+Do them in this order:
+
+1. **Pass `-j` to `ctest`.** The entries are independent processes, so this is
+   the largest win by a wide margin and it changes no test, no assertion, and no
+   recorded value. At 4 vCPUs the phase is bounded below by
+   `max(longest test, sum / 4)` = `max(107.9, 177)` ≈ 3 minutes, against 11m48s
+   now. Verify no entry contends for a port, a fixed path, or a shared temp
+   directory before relying on it, and keep the serial path available.
+2. **Give `scenario_v2_test.py` the shared fixture.** It costs 107.9s against
+   `scenario-v3`'s 46.0s for strictly more work, because it builds the complete
+   731-cycle population run four times — three `setUpClass` bodies and one
+   `simulate` in `RestartEquivalenceTest` — while `scenario_v3_common.py` builds
+   it once and deep-copies. That is exactly the defect PR #123 fixed for the
+   uptime fixtures, in a module that predates the convention. It is also what
+   makes step 1 worth more, since the longest single test sets the parallel floor.
+3. **Only then look at the study entries.** `economic-envelope-study` and
+   `admission-cost-study` are 134.6s together and are M2 research studies nothing
+   now binds; measure what they rebuild before touching them.
 
 Do not delete or weaken a check to buy time. PR #123's precedent is the right
 one: it removed rebuilt work, moved no assertion, changed no recorded value, and
