@@ -251,6 +251,11 @@ immutable; compatible changes require a new version.
   drain to `escrow-payout-v2`, supplying a cycle uptime record instead of a
   supplied activity verdict and performance recipient; it defines no model or
   transition.
+- `specifications/economy-scenario-suite-v3.md`: the same four scenarios rebound
+  to `founder-economy-simulator-v3` and `escrow-payout-v3`, where the enforced
+  schedule forces the activation heights, a record covers exactly its window's
+  in-scope seat set, and one early window reaches the founder-directed
+  empty-winner rule at population scale; it defines no model or transition.
 - `specifications/cycle-boundary-v1.md`: the 28,800-block window grid a cycle is
   cut from, the mapping from a seat's activation height to its 731-window
   issuance span, the ordered conditions of the window check, and the exact block
@@ -334,15 +339,18 @@ version-one economy state can satisfy a version-two bind.
 
 The multi-year and adversarial scenarios over all four models are
 `../simulation/scenarios/` with vectors in
-`../test-vectors/economy-scenario-suite-v1.txt` and
-`../test-vectors/economy-scenario-suite-v2.txt`. They add no model, transition,
+`../test-vectors/economy-scenario-suite-v1.txt`,
+`../test-vectors/economy-scenario-suite-v2.txt`, and
+`../test-vectors/economy-scenario-suite-v3.txt`. They add no model, transition,
 or canonical label; every event parses under an accepted model's schema.
 `--version` selects the suite. Version two rebinds the population run to
 `founder-economy-simulator-v2` and the escrow drain to `escrow-payout-v2`, and
 supplies a cycle uptime record from which the model derives the activity verdict
-and the winner set. Scenarios 2 and 3 record identical values under both
-versions, because the Founder Seat sale and revenue routing models carry no
-supply or channel figure.
+and the winner set. Version three rebinds both to the enforced schedule, so each
+seat carries the activation height its windows are derived from and each record
+covers exactly its window's in-scope set. Scenarios 2 and 3 record identical
+values under all three versions, because the Founder Seat sale and revenue
+routing models carry no supply or channel figure.
 `../tools/scenario-suite-vectors/verify.py` runs all four scenarios and requires
 each recorded total to match both the live run and a closed-form derivation from
 Founder Constitution literals that imports nothing from `../simulation/`.
