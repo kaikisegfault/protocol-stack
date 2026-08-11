@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """The version-three research scenario, its vectors, and its determinism.
 
 The scenario run is deterministic and takes no input from a test, so it is
@@ -8,14 +9,17 @@ of them tautologies.
 
 from __future__ import annotations
 
+import sys
 import unittest
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from simulation.cycle_boundary.grid import window_for_cycle
 from simulation.founder_economy_v3 import contract as c
 from simulation.founder_economy_v3.engine import simulate
 
-from .founder_economy_v3_common import (
+from tests.simulation.founder_economy_v3_common import (
     manifest,
     scenario,
     scenario_events,

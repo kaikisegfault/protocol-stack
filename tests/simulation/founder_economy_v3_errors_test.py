@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """The version-three rejection set, its order, and the input-shape boundary.
 
 A modelled rejection produces a deterministic trace record; an input-shape error
@@ -7,12 +8,16 @@ both sides of that line.
 
 from __future__ import annotations
 
+import sys
 import unittest
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from simulation.common.canonical import MAX_U64
 from simulation.founder_economy_v3.validation import InputError, parse_events
 
-from .founder_economy_v3_common import (
+from tests.simulation.founder_economy_v3_common import (
     CYCLE_BLOCKS,
     FULL_WINDOW,
     activate,
