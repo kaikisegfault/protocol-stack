@@ -33,6 +33,7 @@ from types import ModuleType
 
 import expected
 import expected_v2
+import expected_v3
 from checker import Checker, read_vectors
 from economy_checks import check_economy
 from escrow_checks import check_escrow
@@ -41,7 +42,11 @@ from market_checks import check_routing, check_seats
 from simulation.scenarios.routing_population import empty_cycles
 from simulation.scenarios.suite import BINDINGS, ROOT, run_suite
 
-EXPECTATIONS: dict[str, ModuleType] = {"v1": expected, "v2": expected_v2}
+EXPECTATIONS: dict[str, ModuleType] = {
+    "v1": expected,
+    "v2": expected_v2,
+    "v3": expected_v3,
+}
 
 
 def check_denomination(check: Checker, x: ModuleType) -> None:

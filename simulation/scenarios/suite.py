@@ -5,11 +5,11 @@ economy scenario is executed once and its result is threaded into the escrow
 scenario rather than recomputed. That ordering is the join: the escrows are
 drained of exactly what the population run issued into them.
 
-Two suite versions are accepted. They differ in the economy contract scenarios
+Three suite versions are accepted. They differ in the economy contract scenarios
 one and four bind, and in the shape of the population generator that follows
 from it. Scenarios two and three are shared without a parameter, because the
 Founder Seat sale and revenue routing models carry no supply or channel figure
-and are identical under both economy contracts.
+and are identical under every economy contract.
 """
 
 from __future__ import annotations
@@ -26,6 +26,7 @@ from ..revenue_routing.engine import simulate as routing_simulate
 from . import (
     economy_population,
     economy_population_v2,
+    economy_population_v3,
     escrow_drain,
     routing_population,
     seat_concentration,
@@ -55,15 +56,26 @@ class SuiteBinding:
             from ..founder_economy.engine import simulate
 
             return simulate(manifest, events)
-        from ..founder_economy_v2.engine import simulate
+        if self.version == "v2":
+            from ..founder_economy_v2.engine import simulate
 
-        return simulate(manifest, events)
+            return simulate(manifest, events)
+        if self.version == "v3":
+            from ..founder_economy_v3.engine import simulate
+
+            return simulate(manifest, events)
+        raise AssertionError(f"no economy engine for suite version {self.version}")
 
     def load_manifest(self) -> Any:
         if self.version == "v1":
             from ..founder_economy.manifest import load_manifest_file
 
             return load_manifest_file(self.manifest_path)
+        # Versions two and three load the same accepted artifact through the
+        # same loader. Version three re-versioned no channel, cap, leg, or
+        # denomination, so a third loader for a byte-identical manifest would be
+        # a third implementation of one contract with nothing keeping the three
+        # equal.
         from ..founder_economy_v2.manifest import load_manifest_file
 
         return load_manifest_file(self.manifest_path)
@@ -83,7 +95,18 @@ V2 = SuiteBinding(
     escrow_binding=escrow_contract.V2,
 )
 
-BINDINGS: dict[str, SuiteBinding] = {V1.version: V1, V2.version: V2}
+V3 = SuiteBinding(
+    version="v3",
+    manifest_path=ROOT / "test-vectors" / "founder-economy-manifest-v2.json",
+    population=economy_population_v3,
+    escrow_binding=escrow_contract.V3,
+)
+
+BINDINGS: dict[str, SuiteBinding] = {
+    V1.version: V1,
+    V2.version: V2,
+    V3.version: V3,
+}
 
 # Retained so version one's accepted callers keep their existing import.
 MANIFEST_PATH = V1.manifest_path
@@ -149,6 +172,7 @@ __all__ = [
     "SuiteBinding",
     "V1",
     "V2",
+    "V3",
     "run_economy",
     "run_escrow",
     "run_routing",

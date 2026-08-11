@@ -11,6 +11,9 @@ from typing import Any
 
 from checker import Checker
 
+BASE_EVALUATION = "evaluate_base_permission"
+CARRY_BUCKET = "carry:performance"
+
 # (vector name, custody key, the channel whose whole issuance it holds)
 CUSTODY_SINGLETONS = (
     ("venture_escrow", "venture_escrow:global", "venture_escrow"),
@@ -153,6 +156,86 @@ def check_probes(check: Checker, x: ModuleType, result: dict[str, Any]) -> None:
             check.failures.append(f"economy.probe.{name}: changed state")
 
 
+def _carry_delta(record: dict[str, Any]) -> int:
+    """The signed movement of the performance carry in one accepted event."""
+    total = 0
+    for item in record["journal"]:
+        if item["bucket"] != CARRY_BUCKET:
+            continue
+        amount = int(item["amount_atomic"])
+        total += amount if item["direction"] == "increase" else -amount
+    return total
+
+
+def check_schedule(check: Checker, x: ModuleType, result: dict[str, Any]) -> None:
+    """Version three only: the enforced schedule and what it forces.
+
+    The heights are not a free parameter. Keeping the tick a shared window is
+    what scenario 1 exists to demonstrate, and the accepted grid then fixes the
+    activation height of every seat, which the recorded seat table reproduces.
+
+    The live count of unrewarded windows comes from the trace rather than from
+    the generator. Every base evaluation accounts exactly one Founder portion as
+    either a reserved leg or a carry movement, so a window whose whole portion
+    carried is one whose carry rose by the entire leg.
+    """
+    state = result["final_state"]
+    seats = state["seats"]
+    check.equal("economy.stagger", x.STAGGER)
+    check.equal("economy.cycle_blocks", x.CYCLE_BLOCKS)
+    check.agree(
+        "economy.last_activation_height",
+        state["last_activation_height"],
+        x.LAST_ACTIVATION_HEIGHT,
+    )
+    check.agree(
+        "economy.full_scope_window",
+        seats[f"{x.POPULATION_SEATS - 1:05d}"]["first_cycle_window"],
+        x.full_scope_window(),
+    )
+    check.agree(
+        "economy.probe_window",
+        seats[f"{x.PROBE_SEAT:05d}"]["first_cycle_window"],
+        x.PROBE_WINDOW,
+    )
+    check.agree(
+        "economy.bound_uptime_records",
+        result["metrics"]["bound_uptime_record_count"],
+        x.bound_window_count(),
+    )
+    unrewarded = sum(
+        1
+        for record in result["records"]
+        if record["accepted"]
+        and record["kind"] == BASE_EVALUATION
+        and _carry_delta(record) == x.FOUNDER_OPERATOR_LEG
+    )
+    check.agree("economy.unrewarded_windows", unrewarded, x.unrewarded_window_count())
+    check.agree(
+        "economy.performance_carry",
+        state["performance_carry_atomic"],
+        x.performance_carry(),
+    )
+    check.equal("economy.peer_evaluations", x.PEER_EVALUATIONS)
+
+
+def check_peer_events(check: Checker, x: ModuleType, result: dict[str, Any]) -> None:
+    """The accepted events that make the contradiction probe reachable at all.
+
+    Version three checks a window before it checks the binding, so a record can
+    only contradict one already bound inside a window the evaluating seat
+    genuinely holds. These three put a record there.
+    """
+    records = {record["event_id"]: record for record in result["records"]}
+    for name, event_id in x.PEER_EVENTS:
+        record = records[event_id]
+        check.equal(f"economy.peer.{name}", record["result"])
+        if not record["accepted"] or not record["journal"]:
+            check.failures.append(
+                f"economy.peer.{name}: was refused or wrote nothing"
+            )
+
+
 def check_chaining(check: Checker, x: ModuleType, result: dict[str, Any]) -> None:
     """Each record's digest must chain to the next and to the final state."""
     records = result["records"]
@@ -172,4 +255,7 @@ def check_economy(check: Checker, x: ModuleType, result: dict[str, Any]) -> None
     check_totals(check, x, result)
     check_custody(check, x, result)
     check_probes(check, x, result)
+    if x.VERSION == "v3":
+        check_schedule(check, x, result)
+        check_peer_events(check, x, result)
     check_chaining(check, x, result)
