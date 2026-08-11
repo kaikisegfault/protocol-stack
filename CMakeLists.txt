@@ -1048,6 +1048,16 @@ add_test(
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-scenario-suite-v2.txt"
 )
 add_test(
+  NAME scenario-suite-v3-vectors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tools/scenario-suite-vectors/verify.py"
+    --version
+    v3
+    --vectors
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-scenario-suite-v3.txt"
+)
+add_test(
   NAME scenario-v2
   COMMAND
     "${Python3_EXECUTABLE}"
