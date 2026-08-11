@@ -1064,6 +1064,18 @@ add_test(
     "${PROJECT_SOURCE_DIR}/tests/simulation/scenario_v2_test.py"
 )
 add_test(
+  NAME scenario-v3
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/scenario_v3_test.py"
+)
+add_test(
+  NAME scenario-v3-properties
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/scenario_v3_property_test.py"
+)
+add_test(
   NAME scenario-multiyear
   COMMAND
     "${Python3_EXECUTABLE}"
