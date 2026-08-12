@@ -763,6 +763,17 @@ add_test(
     "${Python3_EXECUTABLE}"
     "${PROJECT_SOURCE_DIR}/tests/tools/verify_metadata_test.py"
 )
+# The registration guard was reachable only through the focused metadata path,
+# which the workflow runs when the scope classifies `lightweight`. A change that
+# adds a test or a verifier classifies `full`, so the one check that catches an
+# unregistered entry was skipped by exactly the pull requests that can introduce
+# one. It is registered here so both paths run it.
+add_test(
+  NAME test-registration
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/tools/test_registration_test.py"
+)
 add_test(
   NAME founder-economy-vectors
   COMMAND
@@ -1276,6 +1287,24 @@ set_tests_properties(
   PROPERTIES
     TIMEOUT 600
 )
+# `ctest --parallel` runs the highest-cost entries first, and without a cost it
+# runs them in registration order. The longest entries are registered late, so
+# the run would finish with one long test and idle workers. These are the
+# seconds measured in the `gcc-sanitizers` job of run 31495429227, which is a
+# scheduling hint rather than a bound: a stale figure costs packing efficiency
+# and never correctness, and a fresh checkout has no CTestCostData.txt to use
+# instead.
+set_tests_properties(economic-envelope-study PROPERTIES COST 92)
+set_tests_properties(scenario-v2 PROPERTIES COST 50)
+set_tests_properties(scenario-v3 PROPERTIES COST 46)
+set_tests_properties(admission-cost-study PROPERTIES COST 43)
+set_tests_properties(scenario-suite-v3-vectors PROPERTIES COST 40)
+set_tests_properties(scenario-suite-v2-vectors PROPERTIES COST 40)
+set_tests_properties(kernel-differential PROPERTIES COST 35)
+set_tests_properties(scenario-suite-vectors PROPERTIES COST 32)
+set_tests_properties(economic-stress-study PROPERTIES COST 30)
+set_tests_properties(scenario-market PROPERTIES COST 29)
+set_tests_properties(scenario-multiyear PROPERTIES COST 25)
 if(PROTOCOL_STACK_ENABLE_FUZZING)
   add_test(
     NAME kernel-admission-fuzz-smoke

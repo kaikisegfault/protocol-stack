@@ -19,6 +19,11 @@ for command_name in python3 make tar; do
 done
 
 preset=${PROTOCOL_STACK_PRESET:-gcc-debug}
+# Every registered test is an independent process writing to its own path, so
+# the test phase is parallel work that was being run serially. Set
+# PROTOCOL_STACK_TEST_JOBS=1 to restore the serial path when reproducing an
+# ordering-sensitive failure.
+test_jobs=${PROTOCOL_STACK_TEST_JOBS:-$(nproc 2>/dev/null || echo 1)}
 toolchain_dir="$repo_root/.cache/toolchain-linux-x86_64"
 requirements="$repo_root/tools/toolchain/requirements-linux-x86_64.txt"
 go_bin=$("$repo_root/tools/bootstrap-go.sh")
@@ -80,7 +85,8 @@ export PATH
 
 cmake --preset "$preset" -S "$repo_root"
 cmake --build --preset "$preset"
-ctest --preset "$preset" --test-dir "$repo_root/out/build/$preset"
+ctest --preset "$preset" --test-dir "$repo_root/out/build/$preset" \
+  --parallel "$test_jobs"
 "$toolchain_dir/bin/python" \
   "$repo_root/tests/integration/cometbft_single_node_test.py" \
   "$repo_root/out/build/$preset/protocol-application" \
