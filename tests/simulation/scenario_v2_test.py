@@ -25,7 +25,7 @@ from simulation.founder_economy_v2.manifest import load_manifest_file
 from simulation.founder_economy_v2.validation import parse_events
 from simulation.scenarios import economy_population_v2 as population
 from simulation.scenarios import random_economy_v2 as generator
-from simulation.scenarios.suite import V2, run_economy, run_escrow
+from tests.simulation import scenario_v2_common as common
 
 ROOT = Path(__file__).resolve().parents[2]
 MANIFEST = ROOT / "test-vectors" / "founder-economy-manifest-v2.json"
@@ -77,10 +77,46 @@ class UptimeRecordTest(unittest.TestCase):
         self.assertIn(c.ACTIVITY_THRESHOLD_SECONDS, uptimes)
 
 
+class SharedFixtureTest(unittest.TestCase):
+    """The risk the cached fixture introduces, guarded rather than assumed.
+
+    `scenario_v2_common` executes the population run once and copies it, so a
+    test that mutates its result must not reach the next test's. Two callers
+    therefore get distinct objects that start from the same state.
+    """
+
+    def test_two_callers_get_independent_copies_of_one_run(self) -> None:
+        first, second = common.economy_result(), common.economy_result()
+        self.assertIsNot(first, second)
+        self.assertEqual(first["state_digest"], second["state_digest"])
+        first["final_state"]["typed_custody"].clear()
+        self.assertNotEqual(
+            first["final_state"]["typed_custody"],
+            second["final_state"]["typed_custody"],
+        )
+        self.assertEqual(
+            sum(int(value) for value in second["final_state"]["typed_custody"].values()),
+            int(second["metrics"]["issued_supply_atomic"]),
+        )
+
+    def test_the_escrow_fixture_is_copied_the_same_way(self) -> None:
+        first, second = common.escrow_result(), common.escrow_result()
+        self.assertIsNot(first, second)
+        self.assertEqual(
+            first["final_state"]["bound_state_digest"],
+            second["final_state"]["bound_state_digest"],
+        )
+        first["final_state"]["opening_custody"].clear()
+        self.assertNotEqual(
+            first["final_state"]["opening_custody"],
+            second["final_state"]["opening_custody"],
+        )
+
+
 class PopulationRunTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.result = run_economy(V2)
+        cls.result = common.economy_result()
         cls.metrics = cls.result["metrics"]
         cls.state = cls.result["final_state"]
 
@@ -189,7 +225,7 @@ class RestartEquivalenceTest(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.events = population.events()
         cls.manifest = load_manifest_file(MANIFEST)
-        cls.result = simulate(cls.manifest, parse_events(cls.events))
+        cls.result = common.economy_result()
 
     def test_a_replayed_prefix_reaches_the_recorded_digest(self) -> None:
         for length in PREFIXES:
@@ -212,8 +248,8 @@ class RestartEquivalenceTest(unittest.TestCase):
 class EscrowJoinTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.economy = run_economy(V2)
-        cls.escrow = run_escrow(cls.economy, V2)
+        cls.economy = common.economy_result()
+        cls.escrow = common.escrow_result()
 
     def test_the_drain_binds_the_version_two_population_run(self) -> None:
         self.assertEqual(
@@ -245,14 +281,19 @@ class EconomyPropertyTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.manifest = load_manifest_file(MANIFEST)
-
-    def _runs(self):
-        for seed in SEEDS:
-            events = generator.economy_events(seed, EVENTS_PER_SEED)
-            yield seed, simulate(self.manifest, parse_events(events))
+        cls.results = [
+            (
+                seed,
+                simulate(
+                    cls.manifest,
+                    parse_events(generator.economy_events(seed, EVENTS_PER_SEED)),
+                ),
+            )
+            for seed in SEEDS
+        ]
 
     def test_supply_is_always_fully_accounted(self) -> None:
-        for seed, result in self._runs():
+        for seed, result in self.results:
             with self.subTest(seed=seed):
                 metrics = result["metrics"]
                 self.assertEqual(
@@ -263,7 +304,7 @@ class EconomyPropertyTest(unittest.TestCase):
                 )
 
     def test_custody_always_equals_issued_supply(self) -> None:
-        for seed, result in self._runs():
+        for seed, result in self.results:
             with self.subTest(seed=seed):
                 self.assertEqual(
                     sum(
@@ -275,7 +316,7 @@ class EconomyPropertyTest(unittest.TestCase):
 
     def test_the_founder_carry_identity_always_holds(self) -> None:
         """Issued plus outstanding plus carried equals the evaluated portions."""
-        for seed, result in self._runs():
+        for seed, result in self.results:
             with self.subTest(seed=seed):
                 state = result["final_state"]
                 channel = state["channels"]["founder_operator"]
@@ -290,7 +331,7 @@ class EconomyPropertyTest(unittest.TestCase):
                 )
 
     def test_no_channel_ever_exceeds_its_cap(self) -> None:
-        for seed, result in self._runs():
+        for seed, result in self.results:
             with self.subTest(seed=seed):
                 for channel_id, channel in result["final_state"]["channels"].items():
                     total = int(channel["issued_atomic"]) + int(
@@ -299,7 +340,7 @@ class EconomyPropertyTest(unittest.TestCase):
                     self.assertLessEqual(total, c.CHANNEL_CAPS[channel_id])
 
     def test_the_referral_channel_is_never_reached_by_direct_issue(self) -> None:
-        for seed, result in self._runs():
+        for seed, result in self.results:
             with self.subTest(seed=seed):
                 for record in result["records"]:
                     if record["kind"] == "direct_issue" and record["accepted"]:
@@ -308,7 +349,7 @@ class EconomyPropertyTest(unittest.TestCase):
                         )
 
     def test_a_rejection_never_writes_or_journals(self) -> None:
-        for seed, result in self._runs():
+        for seed, result in self.results:
             with self.subTest(seed=seed):
                 for record in result["records"]:
                     if not record["accepted"]:
