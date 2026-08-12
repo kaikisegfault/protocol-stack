@@ -1488,6 +1488,38 @@ adding an entry point of a shape it does not yet recognise. A new entry that
 writes must be given its own path under the build directory, because the test
 phase now runs concurrently.
 
+**Reconnaissance done on 2026-08-12, so the slice does not start cold.**
+`ledger-transition-v1.md` already names most of what requirement 6 has to
+produce, and the boundary is narrower than it first looks.
+
+- **The denomination is not a conflict.** M1 records nine decimal places and
+  the economy contract eight, but M1 states that "the symbol and decimal
+  precision are display metadata; atomic values alone enter canonical state",
+  and both sides are unsigned `u64` atomic. Nothing in consensus has to change
+  for the denominations to differ. `founder-economy-manifest-v2.md` separately
+  fixes eight places as forced rather than chosen: nine would need
+  56,993,950,100,000,000,000 atomic units, which is a `u64` overflow.
+- **The supply limit is a genesis input, not a protocol constant.** M1's
+  1,000,000,000,000,000,000 is the "version-one devnet value" and the genesis
+  field table marks it `configured, nonzero`, so the founder maximum of
+  5,699,395,010,000,000,000 is a different configuration rather than a
+  violation.
+- **Issuance is the actual boundary.** M1 has no mint, burn, public
+  asset-creation, account-deletion, or balance-adjustment transaction, and says
+  outright that "any later issuance requires a new accepted transition version
+  and native authorization rule", and that a later issuance rule or transaction
+  kind "requires a new schema or transition version with explicit activation and
+  migration vectors". The whole economy is issuance, so requirement 6 resolves to
+  a transition version two that adds transaction kinds and an issuance rule while
+  leaving version-one transfer bytes, result numbers, receipt bytes, and roots
+  meaning exactly what they mean today.
+- **The result and admission code spaces are already occupied.** Admission uses
+  1-3 and transfer execution 0-8, and the receipt carries a one-byte result code,
+  so the new receipt codes must either extend that space or take a new receipt
+  version. The 47-byte receipt layout and the 200-byte transfer are fixed, and
+  M1 classifies an unknown transaction kind as `MALFORMED_TRANSACTION`, which is
+  the compatibility hinge a version two has to move deliberately.
+
 **The handoff's slice numbering is finer than `roadmap.md`'s.** The roadmap's
 M3.3 covers both the cycle boundary, delivered by this handoff's M3.4, and the
 consensus encoding, which M3.8a delivers; the roadmap's M3.5 is this handoff's
