@@ -30,6 +30,14 @@ single-node CometBFT compatibility integration and the four-validator
 transfer/stop/restart/continued-height integration. See `build-toolchain.md`
 for host prerequisites, other presets, cache behavior, and cleanup.
 
+CTest runs the registered entries concurrently, at `nproc` jobs by default.
+Every entry is an independent process given its own path under the build
+directory, which `tests/tools/test_registration_test.py` checks statically
+because a shared path would race intermittently rather than fail outright. Set
+`PROTOCOL_STACK_TEST_JOBS=1` to restore serial execution when reproducing an
+ordering-sensitive failure. The two CometBFT integrations run after CTest and
+remain serial: they bind real ports and supervise process groups.
+
 CI runs GCC and Clang debug builds plus AddressSanitizer and
 UndefinedBehaviorSanitizer builds. The current suite includes unit and boundary
 tests, deterministic properties, 10,000 seeded differential sequences, and
@@ -57,6 +65,13 @@ the full matrix. A change to the classifier, metadata verifier, or workflow
 itself therefore receives full verification. Branch protection requires the
 aggregate `Verification required` check, which fails unless the selected path
 and scope classifier both succeed.
+
+The two paths do not overlap, so a check that must run on every change needs an
+entry in both. `tests/tools` modules are executed by `unittest discover` on the
+lightweight path and by their registered CTest entries on the full path; a
+module registered in neither runs on documentation changes only. The
+registration guard was in exactly that state, which meant the check that
+catches an unregistered test was skipped by every pull request able to add one.
 
 The owner machine is resource-constrained. Dependency graph resolution,
 lock-file generation for expanded graphs, full verification, direct VCS module

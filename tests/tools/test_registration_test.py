@@ -21,6 +21,7 @@ import unittest
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 CMAKE_LISTS = REPOSITORY_ROOT / "CMakeLists.txt"
 SIMULATION_TESTS = REPOSITORY_ROOT / "tests" / "simulation"
+TOOLS_TESTS = REPOSITORY_ROOT / "tests" / "tools"
 TOOLS = REPOSITORY_ROOT / "tools"
 
 # A verifier a slice added but never registered would go unrun in the same way.
@@ -30,9 +31,19 @@ TOOLS = REPOSITORY_ROOT / "tools"
 VERIFIER_PATTERN = re.compile(r"^verify.*\.py$")
 ENTRY_POINT = 'if __name__ == "__main__":'
 
+# The fuzz entries are nested inside an `if()` block and close on an indented
+# `)`, so a pattern anchored to a closing paren in column zero silently swallows
+# all six into the preceding match instead of failing.
+ADD_TEST = re.compile(r"add_test\(\s*NAME\s+(\S+)\s+COMMAND\s+(.*?)\n\s*\)", re.DOTALL)
+BINARY_DIR_ARGUMENT = re.compile(r"\$\{CMAKE_CURRENT_BINARY_DIR\}/([^\"\s]+)")
+
 
 def cmake_text() -> str:
     return CMAKE_LISTS.read_text(encoding="utf-8")
+
+
+def registered_tests() -> list[tuple[str, str]]:
+    return ADD_TEST.findall(cmake_text())
 
 
 class SimulationTestRegistrationTest(unittest.TestCase):
@@ -67,6 +78,30 @@ class SimulationTestRegistrationTest(unittest.TestCase):
                 broken.append(f"{path.name}: package-relative import")
         self.assertEqual(broken, [])
 
+    def test_every_tools_test_is_registered(self) -> None:
+        """These guard the gate itself, so the gate must not be their only caller.
+
+        `tests/tools` is executed two ways, and they do not overlap: the focused
+        metadata path runs `unittest discover` when the scope classifies
+        `lightweight`, and `ctest` runs the registered entries when it
+        classifies `full`. A module registered in neither runs on documentation
+        changes only; a module registered here runs on both. This guard itself
+        was in the first state, so the check that catches an unregistered test
+        was skipped by every pull request able to add one.
+        """
+        text = cmake_text()
+        missing = sorted(
+            path.name
+            for path in TOOLS_TESTS.glob("*_test.py")
+            if f"tests/tools/{path.name}" not in text
+        )
+        self.assertEqual(
+            missing,
+            [],
+            "these tests/tools modules have no add_test in CMakeLists.txt, so a "
+            "full-scope pull request never runs them",
+        )
+
     def test_every_vector_verifier_is_registered(self) -> None:
         text = cmake_text()
         missing = []
@@ -99,6 +134,40 @@ class SimulationTestRegistrationTest(unittest.TestCase):
             [],
             "these vector files are referenced by no registered ctest entry",
         )
+
+
+class ParallelSafetyTest(unittest.TestCase):
+    """`ctest` now runs entries concurrently, so two entries may not share a path.
+
+    Every entry that writes runs in the one build directory, and each is given
+    its own name under it. Two entries handed the same name passed while the
+    run was serial and would race the moment it was not — the failure would be
+    intermittent and would appear in an unrelated slice. The registration is
+    where that collision is introduced, so it is checked statically rather than
+    hunted in a flaky log.
+    """
+
+    def test_the_registration_parse_reaches_every_entry(self) -> None:
+        """A pattern that matches nothing would pass the check below vacuously."""
+        self.assertEqual(len(registered_tests()), cmake_text().count("add_test("))
+
+    def test_no_two_entries_are_handed_the_same_build_directory_path(self) -> None:
+        owners: dict[str, list[str]] = {}
+        for name, body in registered_tests():
+            for path in BINARY_DIR_ARGUMENT.findall(body):
+                owners.setdefault(path, []).append(name)
+        shared = {path: names for path, names in owners.items() if len(names) > 1}
+        self.assertEqual(
+            shared,
+            {},
+            "these build-directory paths are used by more than one registered "
+            "test, so the entries would race under ctest --parallel",
+        )
+
+    def test_every_registered_entry_has_a_unique_name(self) -> None:
+        names = [name for name, _ in registered_tests()]
+        duplicated = sorted({name for name in names if names.count(name) > 1})
+        self.assertEqual(duplicated, [])
 
 
 if __name__ == "__main__":
