@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-08-11
+Last updated: 2026-08-12
 
 ## Phase
 
@@ -10,7 +10,8 @@ model to it, all on 2026-08-08. M3.4 defined the cycle boundary in chain heights
 and M3.5 defined the uptime measurement pipeline, both on 2026-08-09. M3.6a
 enforced both inside the economy model and M3.6b rebound the escrow payout
 model to it, both on 2026-08-10. M3.6c rebound the scenario suite on 2026-08-11
-and closed the dependent rebinding.
+and closed the dependent rebinding. M3.7a reclaimed the hosted matrix margin on
+2026-08-12 and changed no protocol behavior.
 Requirements 3, 4, and 7 of `first-goal.md` are satisfied; requirements 8 and 9
 moved from specified to enforced; requirement 12 is answered for the activation
 schedule and per-cycle uptime records; and requirement 14 is met against the v3
@@ -23,6 +24,89 @@ canonical state keys, transaction encodings, numeric receipt codes, the M1
 compatibility boundary, the C++20 kernel implementation, cross-language vectors,
 and four-node adversarial scenarios — have not started. Everything delivered so
 far is specification and independent Python evidence that activates nothing.
+
+### How M3.7a was delivered
+
+Issue #135 and PR #136 delivered the margin reclaim at merged commit `79d1c0f`,
+in two commits. It changed no vector, model, source, specification, or ADR: the
+whole diff is test scaffolding, build registration, `tools/verify.sh`, and
+`docs/engineering/verification.md`.
+
+**The test phase fell from 707.57s to 255.08s on the PR head and 286.64s
+post-merge.** `ctest` was running perfectly serially, which the previous slice's
+own measurement had already recorded without naming the cause: 105 tests, sum
+707.5s, `Total Test time (real) = 707.57 sec`. Two equal figures are a run with
+no concurrency in it.
+`tools/verify.sh` now passes `--parallel` at `nproc`, and
+`PROTOCOL_STACK_TEST_JOBS=1` restores the serial path for an ordering-sensitive
+failure. The two CometBFT integrations run after CTest and stay serial, because
+they bind real ports and supervise process groups.
+
+**The slowest job margin went from 3m36s to about 10m.** Every preset roughly
+halved. Taking the post-merge run as the conservative figure, `gcc-debug` went
+14m30s to 8m28s, `clang-debug` 15m20s to 8m44s, `gcc-sanitizers` 16m24s to
+9m17s, and `clang-sanitizers` 15m41s to 9m58s. The slowest is now
+`clang-sanitizers` rather than `gcc-sanitizers`, leaving 10m02s against the
+20-minute per-job timeout.
+
+**The scheduling is within 3-5% of its floor, which is what the `COST` entries
+buy.** Under 4-way contention the 106 entries sum to 992.0s on the PR head and
+1096.7s post-merge, so the floor is `max(longest entry, sum / 4)` — 248s against
+an actual 255.08s, and 274.2s against an actual 286.64s. Without a cost `ctest`
+starts entries in registration order and the slowest are registered last, which
+would have ended the run with one long test and three idle workers. The recorded
+figures are a scheduling hint rather than a bound: a stale one costs packing
+efficiency and never correctness, and a fresh checkout has no
+`CTestCostData.txt` to use instead.
+
+**The two runs differ by about 12%, which is runner variance rather than
+anything the change controls.** The same 106 entries summed to 992.0s and
+1096.7s on identical code, and `economic-envelope-study` alone moved from 143.8s
+to 157.4s. Read the margin as roughly ten minutes, not as a precise figure.
+
+**`scenario-v2` was rebuilding one population run three times.** It cost 107.9s
+against `scenario-v3`'s 46.0s for strictly more work, because three separate
+`setUpClass` bodies each built the complete 731-cycle run while
+`scenario_v3_common` builds it once and deep-copies; the seeded property runs
+were rebuilt six more times, once per test method. That is the defect PR #123
+fixed for the uptime fixtures, in a module that predates the convention. The two
+runs carrying a determinism claim still compute fresh: the prefix replays are
+simulated per prefix and compared against the shared run, and
+`test_the_same_seed_reproduces_the_same_digest` replays each seed against the
+cached result rather than comparing a cached run to itself. Locally the module
+fell from 70.3s to 32.0s and gained two tests guarding the risk the cache
+introduces.
+
+**The registration guard was registered in neither execution path, and that was
+found by asking whether the new check would actually run.** The workflow runs
+`unittest discover -s tests/tools` only when the scope classifies `lightweight`,
+and `tests/tools/test_registration_test.py` had no `add_test`. A change that
+adds a test or a verifier classifies `full`, so the one check that catches an
+unregistered entry was skipped by exactly the pull requests able to introduce
+one. The M3.6c handoff's claim that it "fires on every pull request including a
+documentation-only one" was true only of documentation-only ones.
+
+**That is the M3.6c defect one level up, and it is the same mistake a third
+time: evidence counted from the command that happened to run rather than the
+command the gate runs on the path that matters.** The guard is registered now,
+and a new test requires every `tests/tools` module to be registered so the next
+one cannot repeat it.
+
+**The block parser was under-reaching in the same direction.** Anchored to a
+closing paren in column zero, it silently swallowed all six nested fuzz entries
+into the preceding match rather than failing. A test now requires the parse to
+reach every `add_test(` in the file, because a pattern matching nothing would
+pass the uniqueness check vacuously.
+
+**The study entries were measured and correctly left alone.**
+`economic-envelope-study` and `admission-cost-study` each call `run_study()`
+three times — once in `setUpClass`, once in-process to prove reproducibility, and
+once through the CLI as a subprocess to prove byte-identity. One envelope run is
+16.0s against a 62.2s local entry and one admission run is 8.7s against 31.9s,
+so all three are accounted for and every one is load-bearing. Unlike
+`scenario_v2_test.py`, where three identical runs were rebuilt with nothing
+asserting they agreed, there is nothing to reclaim here without deleting a
+check.
 
 ### How M3.6c was delivered
 
@@ -726,11 +810,18 @@ slices.
   empty-winner rule with a complete population rather than in a unit test. The
   performance carry survives that window and still ends at zero. Scenarios 2 and
   3 record byte-identical values under all three versions.
-- Every simulation test, every executable vector verifier, and every recorded
-  vector file is reachable from a registered `ctest` entry, and every simulation
-  test runs the way `ctest` invokes it.
-  `tests/tools/test_registration_test.py` enforces all of that on every pull
-  request, including a documentation-only one.
+- Every simulation test, every executable vector verifier, every recorded vector
+  file, and every `tests/tools` module is reachable from a registered `ctest`
+  entry, and every simulation test runs the way `ctest` invokes it.
+  `tests/tools/test_registration_test.py` enforces all of that, and it is now
+  registered itself, so it runs on both verification paths rather than only the
+  lightweight one. Until 2026-08-12 it ran only when the scope classified
+  `lightweight`, which excluded every pull request able to add an unregistered
+  entry.
+- The hosted test phase runs concurrently at `nproc` jobs, and no two registered
+  entries are handed the same path under the build directory, which is checked
+  statically rather than left to an intermittent race.
+  `PROTOCOL_STACK_TEST_JOBS=1` restores serial execution.
 - The one-word `proceed`, `conclude`, and `status` workflows reconstruct,
   deliver, and report repository state. `proceed` runs an explicit
   founder-decision gate before starting a slice and reports its result whether or
@@ -783,6 +874,48 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #135 and PR #136 are the M3.7a delivery, merged by rebase at `79d1c0f`.
+  PR Actions run 31608054054 and post-merge run 31609094115 on `79d1c0f` both
+  passed the complete hosted matrix — scope classification `full`, GCC and Clang
+  debug, both sanitizers, and the aggregate required check. No run on that branch
+  was superseded.
+- **The margin measurement, which is the point of the slice.** Per-job durations
+  against the workflow's 20-minute per-job timeout. The baseline is post-merge
+  run 31495429227 on `c44c320`:
+
+  | preset | before | PR 31608054054 | post-merge 31609094115 |
+  | --- | --- | --- | --- |
+  | `gcc-debug` | 14m30s | 7m40s | 8m28s |
+  | `clang-debug` | 15m20s | 8m50s | 8m44s |
+  | `gcc-sanitizers` | 16m24s | 8m32s | 9m17s |
+  | `clang-sanitizers` | 15m41s | 9m23s | 9m58s |
+
+  The slowest job is now `clang-sanitizers` at 9m58s post-merge, so the margin is
+  about 10m rather than 3m36s.
+- The `gcc-sanitizers` job records `100% tests passed out of 106` with
+  `Total Test time (real) = 255.08 sec` on the PR head and `286.64 sec`
+  post-merge, against 105 tests and 707.57s before. The 106 entries sum to 992.0s
+  and 1096.7s under 4-way contention, so both wall times are within 3-5% of their
+  `max(longest entry, sum / 4)` floor of 248s and 274.2s. `scenario-v2` and
+  `scenario-v3` are now 76.0s and 72.3s, having been 107.9s and 46.0s.
+- **The two runs differ by about 12% on identical code**, so the margin is
+  roughly ten minutes rather than a precise figure. Treat a single hosted timing
+  as an estimate and re-measure after the next slice.
+- M3.7a local evidence: `scenario_v2_test.py` falls from 70.3s to 32.0s and
+  gains two tests, 31 to 33. The 81 Python entries invoked the way `ctest`
+  invokes them take 475.0s serially and 209.1s at `-j4` with zero failures, which
+  is what established that no entry contends for a port, a fixed path, or a
+  shared temp directory. Peak RSS of the heaviest entry is 139 MB, so four
+  concurrent jobs are not a memory constraint.
+- All three scenario-suite verifiers pass unchanged at 133 v1, 138 v2, and 158
+  v3, and every `test-vectors/` file is byte-for-byte unchanged, which the diff
+  shows directly. No vector, model, source, specification, or ADR changed.
+- The registration guard fails closed four ways, each confirmed by execution
+  against the unmutated run as a positive control: a duplicated build-directory
+  path, a duplicated entry name, an unparsable registration, and an unregistered
+  `tests/tools` module. The third is the informative one — it is what makes the
+  uniqueness check non-vacuous, and the parser it guards was in fact missing all
+  six fuzz entries when written.
 - Issue #131 and PR #132 are the M3.6c delivery, merged by rebase at `c44c320`.
   PR final-head Actions run 31493856438 on `0be7b05` and post-merge run
   31495429227 on `c44c320` both passed the complete hosted matrix — scope
@@ -1299,65 +1432,43 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice M3.7a: reclaim the hosted matrix margin before the C++ work
-starts. Create one bounded M3 issue.
+Milestone slice M3.8a: specify the canonical economy transaction and state
+surface. Create one bounded M3 issue and use the `change-protocol` skill, which
+this slice requires and M3.7a did not.
 
-**This is a measurement, not a precaution.** The slowest job, `gcc-sanitizers`,
-now takes 16m24s against the workflow's 20-minute per-job timeout, leaving about
-3m36s. 16m55s on the PR head is the exact figure that triggered issue #122 and
-PR #123, and the repository has already treated that number as a slice once. The
-next slice is the C++20 kernel implementation, which adds source and tests to the
-part of the matrix that already dominates it, so the margin is consumed by the
-very work it has to protect.
+This is `first-goal.md` requirement 5 — canonical state keys, transaction
+encodings, and numeric consensus receipt codes for seat activation, permission
+evaluation, permission exercise, referral issuance, and capped direct issuance,
+extending `protocol-primitives-v1` and `ledger-transition-v1` — together with
+requirement 6, the exact compatibility boundary against accepted M1 transaction
+bytes, state, and roots. The two belong in one slice because the boundary is a
+statement about the encoding and cannot be written before it.
 
-**The measurement was taken, so this slice starts from data.** The
-`gcc-sanitizers` job log of post-merge run 31495429227 gives per-test durations:
-105 tests, sum 707.5s, `Total Test time (real) = 707.57 sec`. Those two figures
-being equal is the finding — **`ctest` runs perfectly serially**, because neither
-`tools/verify.sh` line 83 nor the workflow passes `-j`, and the hosted runner is
-`ubuntu-24.04` with 4 vCPUs. The test phase is 707s of a 984s job, so it is about
-72% of the job and the C++ build is the remaining 28%.
+**Specify before implementing.** Requirement 10, the C++20 kernel
+implementation, is the slice after this one and must not be started inside it.
+Everything M3.1 through M3.6c produced is a Python model that activates nothing;
+this slice is where that becomes something independent nodes must reproduce
+byte-for-byte, so the encoding, the receipt codes, and the compatibility
+boundary are settled in a specification and an ADR first. Requirements 11 and 13
+— cross-language vectors and four-node adversarial scenarios — follow the
+implementation.
 
-The slowest entries, in seconds:
+**Expect the first genuinely blocking founder question of M3 during requirement
+10, not during this slice.** Encoding a capped direct issuance needs a field
+whose semantics can stay explicitly research-only, exactly as
+`founder-economy-manifest-v2` keeps `direct_channel_eligibility_result`. A C++
+consensus implementation cannot: it must decide what it actually verifies, and
+the eligibility and anti-abuse mechanics for the liquidity-mining,
+impermanent-loss, HUB-verified-user, and mystery-box channels are
+founder-reserved. Run the founder-decision gate at the start of both slices and
+do not let the placeholder cross into consensus silently.
 
-| entry | s | |
-| --- | --- | --- |
-| `scenario-v2` | 107.9 | four population runs, no shared fixture |
-| `economic-envelope-study` | 91.5 | |
-| `scenario-v3` | 46.0 | one cached population run |
-| `admission-cost-study` | 43.1 | |
-| `scenario-suite-v3-vectors` | 40.4 | |
-| `scenario-suite-v2-vectors` | 40.4 | |
-| `kernel-differential` | 34.7 | |
-| `scenario-suite-vectors` | 31.9 | |
-
-Do them in this order:
-
-1. **Pass `-j` to `ctest`.** The entries are independent processes, so this is
-   the largest win by a wide margin and it changes no test, no assertion, and no
-   recorded value. At 4 vCPUs the phase is bounded below by
-   `max(longest test, sum / 4)` = `max(107.9, 177)` ≈ 3 minutes, against 11m48s
-   now. Verify no entry contends for a port, a fixed path, or a shared temp
-   directory before relying on it, and keep the serial path available.
-2. **Give `scenario_v2_test.py` the shared fixture.** It costs 107.9s against
-   `scenario-v3`'s 46.0s for strictly more work, because it builds the complete
-   731-cycle population run four times — three `setUpClass` bodies and one
-   `simulate` in `RestartEquivalenceTest` — while `scenario_v3_common.py` builds
-   it once and deep-copies. That is exactly the defect PR #123 fixed for the
-   uptime fixtures, in a module that predates the convention. It is also what
-   makes step 1 worth more, since the longest single test sets the parallel floor.
-3. **Only then look at the study entries.** `economic-envelope-study` and
-   `admission-cost-study` are 134.6s together and are M2 research studies nothing
-   now binds; measure what they rebuild before touching them.
-
-Do not delete or weaken a check to buy time. PR #123's precedent is the right
-one: it removed rebuilt work, moved no assertion, changed no recorded value, and
-added a test guarding the risk the change introduced.
-
-After that, requirements 5, 6, and 10 — canonical state keys, transaction
-encodings, numeric receipt codes, the M1 compatibility boundary, and the C++20
-implementation — because they serialize what M3.6 settled. Requirements 11 and 13
-follow them.
+**The margin is no longer the constraint, and should be re-measured rather than
+assumed.** The slowest job is `clang-sanitizers` at 9m58s post-merge against a
+20-minute per-job timeout, and two runs on identical code differed by 12%. The C++20 kernel slice adds source and tests to the part of the
+matrix that dominates it — the builds, which are now the larger half of each job
+rather than the test phase — and a build is not parallelised by `ctest --parallel`.
+Re-measure after that slice rather than treating ten minutes as durable.
 
 Keep `founder-economy-manifest-v1`, `founder-economy-simulator-v1`,
 `escrow-payout-v1`, `economy-scenario-suite-v1`, and every v1 and v2 model,
@@ -1370,17 +1481,41 @@ without a new contract version, and `simulation/scenarios/` now holds three
 population generators that must stay independent for the same reason.
 
 **Every new test and verifier must be registered in `CMakeLists.txt` and must run
-as `python3 <path>`.** `tests/tools/test_registration_test.py` enforces both, but
-read it before adding an entry point of a shape it does not yet recognise.
+as `python3 <path>`.** `tests/tools/test_registration_test.py` enforces both, and
+since 2026-08-12 it also enforces that every `tests/tools` module is registered
+and that its own parse reaches every `add_test(` in the file. Read it before
+adding an entry point of a shape it does not yet recognise. A new entry that
+writes must be given its own path under the build directory, because the test
+phase now runs concurrently.
+
+**The handoff's slice numbering is finer than `roadmap.md`'s.** The roadmap's
+M3.3 covers both the cycle boundary, delivered by this handoff's M3.4, and the
+consensus encoding, which M3.8a delivers; the roadmap's M3.5 is this handoff's
+C++ implementation and devnet work. The roadmap is the coarse plan and this
+document is the operational record.
 
 ## Blockers
 
 None for the next action.
 
-Three founder-reserved decisions remain open, and none blocks M3.7a. All three
-become live during the C++ implementation that follows, so the next session
-should expect the first genuinely blocking founder question of M3 to arrive
-there rather than in the margin slice.
+Three founder-reserved decisions remain open, and none blocks M3.8a, because a
+specification can carry an explicitly research-only field where a C++ consensus
+implementation cannot. The first genuinely blocking founder question of M3 is
+expected at requirement 10, the kernel implementation, rather than at the
+encoding slice.
+
+M3.7a ran the founder-decision gate and passed it. Five decisions were
+enumerated — whether `ctest` runs entries concurrently and at what job count,
+how that count is derived and whether a serial path is kept, the scheduling
+order, which runs a shared fixture may cache, and which guards run on which
+verification path — and every one is autonomous engineering work under
+`founder-constitution.md` lines 669-672, which place testing and operational
+choices outside the reserved set alongside mechanism, encoding, storage,
+consensus scheduling, networking, and packaging. Nothing in the slice set or
+changed supply, allocation, beneficiaries, ownership, creator hierarchy,
+commercial routing, AI authority, bridge scope, content permanence, or what an
+end user must do, own, run, or receive; it changed no vector, model, source,
+specification, or ADR at all.
 
 Two were already recorded: eligibility and anti-abuse mechanics for the
 liquidity-mining, impermanent-loss, HUB-verified-user, and mystery-box

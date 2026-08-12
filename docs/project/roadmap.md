@@ -81,7 +81,7 @@ pool. Delivered by ADR 0024 with a specification, manifest, digest, 154
 vectors, a strict loader, and a verifier whose independence is a hand-restated
 Founder Constitution. Version one is retained unedited as the M2 evidence.
 
-### M3.2 Revised simulator
+### M3.2 Revised simulator — delivered
 
 Revise the independent Python model so the referral is an unconditional
 direct-mint accrual and so activity and performance reallocation are derived
@@ -90,13 +90,17 @@ rules rather than supplied research inputs. `evaluate_referral_permission`, its
 disappear; the unreferred performance pool becomes a beneficiary. Regenerate
 every dependent model, vector, and digest.
 
-### M3.3 Consensus encoding and cycle boundary
+### M3.3 Consensus encoding and cycle boundary — cycle boundary delivered
 
 Define the eligible cycle in chain heights or epochs, the canonical state keys,
 the transaction encodings, the numeric receipt codes, and the compatibility
 boundary against accepted M1 bytes.
 
-### M3.4 Uptime derivation
+`cycle-boundary-v1` delivers the first half and `founder-economy-simulator-v3`
+enforces it. The canonical state keys, transaction encodings, receipt codes, and
+M1 compatibility boundary are the next slice and have not started.
+
+### M3.4 Uptime derivation — delivered
 
 Derive validator duties from on-chain participation, prove resource provision
 by challenge-response, and bound the AI dispute window so its expiry finalises
