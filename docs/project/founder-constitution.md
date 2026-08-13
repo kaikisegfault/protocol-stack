@@ -376,13 +376,24 @@ destinations, the channel is consumed precisely:
 The referral benefit is 10% of the 342-unit operator leg. It was 17.1 units,
 or 5%, until 2026-08-07.
 
+**A referrer must be HUB verified.** Human Uniqueness Biometric verification is
+the entry requirement for referring anyone, decided on 2026-08-14. Holding a
+Founder Seat is neither required nor relevant. The requirement serves the
+referrer as well as the system: HUB-verified participants earn from their own
+direct-mint channel, and a verified referrer cannot be a mistyped address that
+strands 731 cycles of benefit where nobody can reach it.
+
+The pool is paid to the **single best-performing** Founder Seat of the month.
+Where several seats stand at exactly the same top figure — whatever that figure
+is — they share it equally. The rule is one winner unless there is an exact tie
+for first, which is the same shape as the daily failed-cycle reallocation.
+
 These details require a specification and are engineering work rather than
 founder decisions:
 
-- whether a referrer must itself hold a Founder Seat;
 - the exact definition of a month in cycles, given that 731 cycles is not a
   whole number of 30-cycle months;
-- the pool's tie and remainder rules;
+- the pool's remainder rule;
 - when a referral benefit begins for a seat that is purchased but never
   activated, since a seat's 731 cycles start at its first activation and an
   unactivated seat has no cycles to count; and
@@ -463,6 +474,27 @@ registered manager may initiate an addition, but the new authority becomes
 usable only after deep biometric verification matches the permanent Founder
 identity. Loss of an address is handled by adding a new verified manager, not
 by rewriting ownership history.
+
+### HUB verification is one ecosystem-wide layer
+
+Human Uniqueness Biometric verification — **HUB** — is a foundational service of
+the whole ecosystem, decided on 2026-08-14. It is not a Founder Seat feature.
+
+Any participant who registers may be HUB verified: Founder Seat holders,
+project and product creators, ordinary users, and developers. It is one single
+source of truth that the company may switch on at any point in the system where
+it judges verification reasonable, and off where it does not.
+
+Each verification produces a signature unique to that person, derived from their
+personal secret, usable across ecosystem and blockchain operations. The
+cryptographic construction is engineering work; what is founder-directed is the
+shape — one identity layer, one source of truth, switchable per integration
+point, serving every participant class.
+
+HUB-verified users earn from the `hub_verified_user_incentives` direct-mint
+channel. Verification is therefore both an identity primitive and a participant
+benefit, and it is the mandatory entry requirement for referring a Founder Seat
+buyer.
 
 Biometric capture and evaluation use an ecosystem-owned camera-verification
 system and the company-hosted Ecosystem AI. Raw images, video, and private
@@ -653,7 +685,8 @@ The owner has intentionally deferred these value-bearing details until their
 milestone supplies enough evidence and context:
 
 - eligibility and anti-abuse mechanics for the liquidity-mining,
-  impermanent-loss, HUB-verified-user, and mystery-box direct-mint channels;
+  impermanent-loss, and mystery-box direct-mint channels, and the *rate* of the
+  HUB-verified-user channel, whose eligibility was decided on 2026-08-14;
 - exact legacy inactivity bounds and contested-successor behavior;
 - stablecoin allowlist governance and any later bridge-asset change;
 - complete AI funding, moderation, biometric, and succession frameworks; and
@@ -662,9 +695,19 @@ milestone supplies enough evidence and context:
 Resolved on 2026-08-07, and no longer open: the activity definition and its
 grace allowance, performance ranking and tie handling, referral treatment for
 an inactive seat, and referral-channel eligibility. Their remaining detail —
-challenge construction, dispute window length, the definition of a month in
-cycles, and whether a referrer must hold a seat — is specification work, not a
-founder decision.
+challenge construction, dispute window length, and the definition of a month in
+cycles — is specification work, not a founder decision.
+
+Resolved on 2026-08-13 and 2026-08-14, and recorded in
+[ADR 0033](../decisions/0033-founder-decisions-minting-hub-and-referral-entry.md):
+seat purchase and activation as biometric-gated transactions, daily
+chain-written mint permissions, a mint that takes everything with no quantity
+choice, minted value landing on the seat's own spendable address, optional
+biometric verification on minting, a bounded accumulation of unminted
+permissions whose excess reallocates to the day's best performers, the
+single-best-plus-exact-ties rule for the unreferred pool, and HUB verification
+as the referrer requirement. `hub_verified_user_incentives` eligibility is
+decided — being HUB verified — while its rate remains open.
 
 Claude should ask focused questions at those boundaries. All other mechanism,
 encoding, storage, consensus scheduling, networking, testing, packaging, and

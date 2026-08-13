@@ -206,6 +206,19 @@ three authorization predicates are founder-reserved and none is filled, so kind
 6 is specified and refused. It accepts an encoding and a compatibility boundary,
 not an implementation.
 
+ADR 0033 records the founder decisions of 2026-08-13 and 2026-08-14 on minting,
+HUB verification, and referral entry. It records that minted value lands on the
+seat's own spendable address with no separate withdrawal, that any recorded
+manager address may act for a seat, that biometric verification on minting is an
+option the founder switches on rather than a protocol requirement, that
+accumulated unminted permissions are capped with the excess reallocating to the
+day's best performers, that the unreferred pool pays the single best performer
+with exact ties sharing equally, and that a referrer must be HUB verified. It
+also records HUB — Human Uniqueness Biometric verification — as one ecosystem-wide
+identity layer serving every participant class rather than a Founder Seat
+feature, with its own direct-mint incentive. It supersedes `economy-transition-v2`
+in four places and requires a version three; it edits no accepted artifact.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
