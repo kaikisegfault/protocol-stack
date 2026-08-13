@@ -90,15 +90,22 @@ rules rather than supplied research inputs. `evaluate_referral_permission`, its
 disappear; the unreferred performance pool becomes a beneficiary. Regenerate
 every dependent model, vector, and digest.
 
-### M3.3 Consensus encoding and cycle boundary — cycle boundary delivered
+### M3.3 Consensus encoding and cycle boundary — delivered
 
 Define the eligible cycle in chain heights or epochs, the canonical state keys,
 the transaction encodings, the numeric receipt codes, and the compatibility
 boundary against accepted M1 bytes.
 
 `cycle-boundary-v1` delivers the first half and `founder-economy-simulator-v3`
-enforces it. The canonical state keys, transaction encodings, receipt codes, and
-M1 compatibility boundary are the next slice and have not started.
+enforces it. `economy-transition-v2` delivers the second: a shared transaction
+envelope whose kind-1 instance reproduces the accepted M1 transfer
+byte-for-byte, five new kinds, the economy state key space, version-two genesis
+and chain identity, the state-root extension, a 56-byte receipt, and a flat
+result-code space whose first nine are version one's frozen meanings.
+
+It is a contract, not an implementation, and it names three authorization
+predicates it deliberately does not define. Two of them are founder-reserved and
+block M3.5.
 
 ### M3.4 Uptime derivation — delivered
 
@@ -106,11 +113,18 @@ Derive validator duties from on-chain participation, prove resource provision
 by challenge-response, and bound the AI dispute window so its expiry finalises
 a cycle without a signature.
 
-### M3.5 C++ implementation and devnet
+### M3.5 C++ implementation and devnet — partly blocked
 
 Implement the accepted contract in the deterministic ledger kernel with
 cross-language vectors, then operate adversarial four-node scenarios through
 restart and recovery.
+
+The pure-codec half — the envelope and its six bodies, the receipt, the state
+keys, the trees, the roots, and genesis — is deterministic byte work against
+`test-vectors/economy-transition-v2.txt` and needs no authorization predicate,
+so it is unblocked. The transitions are blocked on the two founder-reserved
+predicates `economy-transition-v2` names: which sender may activate a seat, and
+which may act for a recorded one.
 
 Exit: every requirement in [`first-goal.md`](first-goal.md) passes and the
 devnet enforces the fixed cap and accepted Founder, referral, commercial, fee,
