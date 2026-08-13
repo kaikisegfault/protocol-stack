@@ -629,10 +629,16 @@ An exercise of a failed cycle carries the winner list and the transition
 recomputes `winner_root` over it, refusing any list that does not reproduce the
 recorded root and count with `INVALID_WINNER_SET`.
 
-The entry is deleted when `unevaluated_count` reaches zero. Its retention is
-therefore bounded by the founder-directed schedule rather than by a policy: a
-window is retained only while some seat may still exercise a cycle that maps to
-it.
+The entry is deleted when `unevaluated_count` reaches zero: a window is retained
+only while some seat may still exercise a cycle that maps to it.
+
+**That is a condition on behavior, not a bound, and the difference is worth
+stating.** The constitution makes exercise optional — "a seat that never
+exercises never triggers the reallocation, and the units are never created" — so
+one seat that never exercises retains its windows indefinitely. No transition
+can prune them, because pruning one would decide the seat's entitlement by
+expiry, and there is no founder-directed expiry. The consequence is carried in
+[Resource limits](#resource-limits-and-storage-bounds) rather than assumed away.
 
 ### Why the winner set is committed at finalisation and carried by the exercise
 
@@ -825,15 +831,22 @@ per-seat-balance part of requirement 12, and the typed-custody figure answers
 the recipient-balance part; the per-cycle uptime-record part was answered by
 `uptime-measurement-v1`.
 
-**One bound is not a constant and is recorded rather than smoothed over.** The
-number of retained window results is the number of windows that lie inside some
+**One bound is not a constant, and it is the weakest result here.** The number
+of retained window results is the number of windows that lie inside some
 activated seat's 731-window span and still hold an unexercised cycle. If every
-seat activates in one window that is 731 entries and about 9.2 MB; if
-activations span `W` windows it is `W + 731` entries, and the constitution
-places no bound on how long the sale may take. The growth is one 12,553-byte
-entry per window, which is about 4.6 MB per year at the pinned three-second
-commit interval, and it is bounded in practice by the same schedule rather than
-by a rule. Requirement 15's independent review should see this figure.
+seat activates in one window and every seat exercises, that is 731 entries and
+about 9.2 MB. Two things widen it, and neither has a founder-directed limit:
+activations spanning `W` windows make it `W + 731`, and a single seat that never
+exercises retains its windows indefinitely. Growth is one 12,553-byte entry per
+window, about 4.6 MB per year at the pinned three-second commit interval.
+
+Two mitigations exist and both are refused here. Expiring an unexercised
+permission would bound it exactly and would decide a seat's entitlement by
+inaction, which the constitution does not do. Pruning the bitmap while keeping
+the winner root would cost the verdict a late evaluation needs. **This is the
+one place in the specification where the encoding is bounded by expected
+behavior rather than by a rule, and requirement 15's independent review should
+see it as such.**
 
 The exercise transaction is the dominant transient cost at 400,170 bytes for a
 fully tied window, as

@@ -1022,10 +1022,16 @@ behavior.
   12: 1,800,000 bytes of seats, 180 bytes of channels, 584,800,000 bytes of
   pending permissions, 511,700,000 bytes of referral accruals, 4,200,000 bytes
   of typed custody, and 12,553 bytes per retained window result. The last is the
-  one bound that is not a constant: 9,176,243 bytes if every seat activates in
-  one window, growing about 4,581,845 bytes per year at the pinned three-second
-  commit interval, because the constitution places no bound on how long seat
-  activations may span. Requirement 15's independent review should see it.
+  one bound that is not a constant and is the weakest result in the slice:
+  9,176,243 bytes if every seat activates in one window and every seat exercises,
+  growing about 4,581,845 bytes per year at the pinned three-second commit
+  interval. Two things widen it and neither has a founder-directed limit —
+  activations spanning more windows, and a single seat that never exercises,
+  since the constitution makes exercise optional. Both mitigations are refused:
+  expiring an unexercised permission would decide a seat's entitlement by
+  inaction, and pruning the bitmap would cost the verdict a late evaluation
+  needs. It belongs in requirement 15's independent review as a limit rather
+  than as a figure.
 - The verifier records 217 vectors and fails closed three ways, each confirmed
   by execution against the unmutated run as a positive control: a tampered
   value, a derived key the file omits, and a recorded key no derivation reaches.
