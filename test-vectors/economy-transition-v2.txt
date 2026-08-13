@@ -211,6 +211,15 @@ state.economy_root_genesis=8e74e951f893d24480a0461b13e7a22250a416ca20949a6192da9
 state.economy_entry_count_populated=18
 state.economy_root_populated=ccfa4d3db9db3858d6bb2490b6921859d77de42c65dc13b3ffa9164fcb3d7962
 state.economy_root_differs_from_genesis=true
+
+# The version-one root restatement, required to reproduce the accepted
+# `protocol-primitives-v1` vectors before the non-collision below is believed.
+# A merely plausible restatement would make "the roots differ" trivially true
+# and would prove nothing.
+state.version_one_empty_tree_matches_accepted=true
+state.version_one_accounts_tree_matches_accepted=true
+state.version_one_root_matches_accepted=true
+state.version_one_transaction_tree_matches_accepted=true
 state.root_empty_economy=73320cf5fb117157d75219e5f914cf2a4fed427de17ebe022e57f4870cd51824
 state.version_one_root_same_accounts=3e4f52db11e093811acd3c1d4743e77888370ff4b1c9708e6b9d00acaf0b147b
 state.roots_differ_on_identical_accounts=true

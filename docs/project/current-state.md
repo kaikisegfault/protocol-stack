@@ -39,8 +39,8 @@ not previously been classified as reserved.
 
 Issue #139 and PR #140 delivered `economy-transition-v2` and ADR 0032, in two
 commits. It added the specification, the ADR, the codec and commitment model in
-`simulation/economy_transition/`, 213 normative vectors, a verifier in
-`tools/economy-transition-vectors/`, and 74 tests. It satisfies requirements 5
+`simulation/economy_transition/`, 217 normative vectors, a verifier in
+`tools/economy-transition-vectors/`, and 77 tests. It satisfies requirements 5
 and 6 of `first-goal.md`, and completes requirement 12 as a consequence of
 fixing the state keys.
 
@@ -1003,6 +1003,12 @@ behavior.
   (`df2372fa965e33a7e6b871ac07acc2e2a0cb29c32939808cc6d9e1893d6d0997`)
   byte-for-byte, and the header and trailer are proved to be slices of the
   accepted bytes rather than a re-encoding of them.
+- The version-one state root the non-collision claim is measured against is the
+  real one, not a lookalike. Self-review found that comparing a version-two root
+  against a merely plausible restatement would make "the roots differ" trivially
+  true and prove nothing, so the restatement is first required to reproduce the
+  accepted `state.empty_tree_root`, `state.accounts_tree_root`, `state.root`,
+  `tx.empty_root`, and `tx.root` exactly. All five reproduce.
 - Signed transaction lengths are 200, 169, 166, 170, 166, and 265 bytes for
   kinds 1 through 6, where kind 4 is measured with an empty winner list. A fully
   tied exercise at the 100,000-seat capacity is 400,170 bytes, inside the
@@ -1020,10 +1026,10 @@ behavior.
   one window, growing about 4,581,845 bytes per year at the pinned three-second
   commit interval, because the constitution places no bound on how long seat
   activations may span. Requirement 15's independent review should see it.
-- The verifier records 213 vectors and fails closed three ways, each confirmed
+- The verifier records 217 vectors and fails closed three ways, each confirmed
   by execution against the unmutated run as a positive control: a tampered
   value, a derived key the file omits, and a recorded key no derivation reaches.
-- The four new test modules run 74 tests. The economy model's twenty-four
+- The four new test modules run 77 tests. The economy model's twenty-four
   declared result codes partition exactly 12 carried, 2 guards, and 10
   unrepresentable, checked against `simulation/founder_economy_v3`'s own
   declared set rather than a copy of it.
