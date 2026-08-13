@@ -103,9 +103,12 @@ byte-for-byte, five new kinds, the economy state key space, version-two genesis
 and chain identity, the state-root extension, a 56-byte receipt, and a flat
 result-code space whose first nine are version one's frozen meanings.
 
-It is a contract, not an implementation, and it names three authorization
-predicates it deliberately does not define. Two of them are founder-reserved and
-block M3.5.
+It is a contract, not an implementation. The two authorization predicates it
+first left undefined were settled by the founder on 2026-08-13 and are encoded:
+a seat is purchased and activated under an off-chain biometric verifier
+signature, the chain assigns mint permissions daily by itself, and a mint takes
+everything. Only direct-channel eligibility remains reserved, and it refuses one
+transaction kind rather than blocking the milestone.
 
 ### M3.4 Uptime derivation — delivered
 
@@ -113,18 +116,17 @@ Derive validator duties from on-chain participation, prove resource provision
 by challenge-response, and bound the AI dispute window so its expiry finalises
 a cycle without a signature.
 
-### M3.5 C++ implementation and devnet — partly blocked
+### M3.5 C++ implementation and devnet
 
 Implement the accepted contract in the deterministic ledger kernel with
 cross-language vectors, then operate adversarial four-node scenarios through
 restart and recovery.
 
-The pure-codec half — the envelope and its six bodies, the receipt, the state
-keys, the trees, the roots, and genesis — is deterministic byte work against
-`test-vectors/economy-transition-v2.txt` and needs no authorization predicate,
-so it is unblocked. The transitions are blocked on the two founder-reserved
-predicates `economy-transition-v2` names: which sender may activate a seat, and
-which may act for a recorded one.
+Take it in two pieces. The pure codec — the envelope and its six bodies, the
+receipt, the state keys, the trees, the roots, and genesis — is deterministic
+byte work against `test-vectors/economy-transition-v2.txt`. The transitions
+follow: purchase, activation, the block-boundary cycle assignment, and the two
+mints.
 
 Exit: every requirement in [`first-goal.md`](first-goal.md) passes and the
 devnet enforces the fixed cap and accepted Founder, referral, commercial, fee,
