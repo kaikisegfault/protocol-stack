@@ -1685,16 +1685,12 @@ per-seat manager set, a per-seat biometric-on-mint flag, and an unminted-cycle
 count. The envelope factoring, the kind-1 byte identity, the compatibility
 boundary, the receipt, the trees, and the roots are unaffected and carry over.
 
-**Three questions were asked on 2026-08-14 and are open.** They are listed under
-[Blockers](#blockers) and each shapes version three: what exactly stops when a
-seat reaches the accumulation cap and how much of the permission moves, who may
-switch biometric-on-mint back off, and whether the cap applies to referral
-earnings. Version three should not be drafted around a guess at any of them —
-that is the mistake M3.8a's first draft made and had to be rewritten for.
-
-**What proceeds regardless.** The parts of version three the answers do not
-touch — the manager set, the HUB registry, and the referrer condition — are
-settled and can be specified now.
+**Nothing is left to guess.** The three questions the founder decisions raised
+were answered the same day and are recorded under [Blockers](#blockers): a capped
+cycle moves its whole permission exactly as a failed cycle does, disabling
+biometric-on-mint requires a biometric approval while enabling it does not, and
+the cap applies to referral earnings with the forfeited value routing to the
+unreferred performance pool. Version three can be specified in full.
 
 **`economy-transition-v2` stays in place, passing, and unedited.** Its 238
 vectors and their digests are the accepted record of what the hosted matrix
@@ -1742,26 +1738,26 @@ is this handoff's C++ implementation and devnet work.
 
 ## Blockers
 
-None prevents work. Three questions were asked on 2026-08-14 and are open; each
-shapes `economy-transition-v3` and none blocks the parts of it they do not
-touch.
+None. Every question raised on 2026-08-13 and 2026-08-14 was answered the same
+day, and `economy-transition-v3` can be specified in full.
 
-1. **What exactly stops when a seat reaches the accumulation cap.** The owner
-   directed that a seat at the cap receives no further permissions even while its
-   node meets the requirement, and that the excess goes to that cycle's best
-   performers. Two things are unsettled: whether the whole permission moves — the
-   escrows and System Creator legs included, as with a failed cycle — or only the
-   Founder portion; and whether a capped seat also stops collecting reallocation
-   shares it wins from *other* seats, which it earns by performing well rather
-   than by failing to mint.
-2. **Who may switch biometric-on-mint back off.** Enabling it is plainly the
-   founder's choice. If a stolen wallet key can disable it, the protection is
-   defeated by exactly the attack it exists to prevent, so the disabling
-   authority is the load-bearing half.
-3. **Whether the accumulation cap applies to referral earnings.** The stated
-   rationale is that Founder Seats should stay active. A referrer runs no node,
-   so the rationale does not obviously reach them, and capping their earnings
-   would forfeit value for inactivity that was never asked of them.
+The three the founder decisions themselves raised are settled and recorded in
+ADR 0033:
+
+1. **A capped cycle moves its whole permission**, escrow and System Creator legs
+   included, exactly as a failed cycle does. One rule rather than two, and the
+   escrows never lose value because an operator was slow to collect.
+2. **Disabling biometric-on-mint requires a biometric approval**, while enabling
+   it requires only the address signature. The asymmetry is the protection: a
+   stolen key can neither mint against a protected seat nor remove the protection
+   first.
+3. **The cap applies to referral earnings too.** The forfeited value stays inside
+   the `founder_referral` channel and routes to the unreferred performance pool,
+   which is already that channel's second destination and already pays the
+   month's best performer. This was chosen against the recommendation offered;
+   the consequence is that a referrer forfeits value for inactivity that was
+   never asked of them, and what it buys is one collect-or-lose rule across the
+   whole economy with no account holding value indefinitely.
 
 One founder-reserved decision is narrowed rather than closed:
 **`direct_issue_authority`**. The `hub_verified_user_incentives` channel's
