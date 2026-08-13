@@ -55,38 +55,44 @@ TX_ID_LABEL = "protocol-stack:v1:tx-id"
 CHAIN_ID_LABEL = "protocol-stack:v2:chain-id"
 STATE_ROOT_LABEL = "protocol-stack:v2:state-root"
 ECONOMY_TREE_PREFIX = "protocol-stack:v2:economy"
-WINNER_TREE_PREFIX = "protocol-stack:v2:winner"
 
 STATE_ROOT_SCHEMA_VERSION = 2
 
 TRANSFER = 1
-ACTIVATE_SEAT = 2
-EVALUATE_BASE_PERMISSION = 3
-EXERCISE_PERMISSION = 4
-ACCRUE_REFERRAL = 5
+PURCHASE_SEAT = 2
+ACTIVATE_SEAT = 3
+MINT_NODE = 4
+MINT_REFERRAL = 5
 DIRECT_ISSUE = 6
 
 TRANSACTION_KINDS: dict[int, str] = {
     TRANSFER: "native_transfer",
+    PURCHASE_SEAT: "purchase_seat",
     ACTIVATE_SEAT: "activate_seat",
-    EVALUATE_BASE_PERMISSION: "evaluate_base_permission",
-    EXERCISE_PERMISSION: "exercise_permission",
-    ACCRUE_REFERRAL: "accrue_referral",
+    MINT_NODE: "mint_node",
+    MINT_REFERRAL: "mint_referral",
     DIRECT_ISSUE: "direct_issue",
 }
 
-# Fixed body widths. Kind 4 is the only variable-length kind: its width is
-# FIXED_BODY_BYTES[4] plus four bytes per carried winner.
-FIXED_BODY_BYTES: dict[int, int] = {
+# Every kind is fixed-length, and no two share a length. Version two has no
+# variable-length body at all, because nothing a transaction carries scales with
+# the seat population: the winner set lives in state rather than in an exercise.
+BODY_BYTES: dict[int, int] = {
     TRANSFER: 40,
-    ACTIVATE_SEAT: 9,
-    EVALUATE_BASE_PERMISSION: 6,
-    EXERCISE_PERMISSION: 10,
-    ACCRUE_REFERRAL: 6,
+    PURCHASE_SEAT: 165,
+    ACTIVATE_SEAT: 68,
+    MINT_NODE: 4,
+    MINT_REFERRAL: 0,
     DIRECT_ISSUE: 105,
 }
 
-VARIABLE_LENGTH_KINDS = frozenset({EXERCISE_PERMISSION})
+# The biometric verification signature the ecosystem verifier produces off
+# chain. It gates entry — purchase and activation — and never payment, so an
+# unavailable verifier stops new seats and stops no income.
+BIOMETRIC_SIGNATURE_BYTES = 64
+ENROLLMENT_LABEL = "protocol-stack:v2:seat-enrollment"
+ACTIVATION_LABEL = "protocol-stack:v2:seat-activation"
+BIOMETRIC_GATED_KINDS = frozenset({PURCHASE_SEAT, ACTIVATE_SEAT})
 
 # The direct-mint channels kind 6 may name, as accepted manifest array indexes.
 # `founder_referral` at index 7 is excluded: it is consumed exactly by kind 5,
@@ -119,18 +125,17 @@ RESULT_CODES: dict[int, str] = {
     11: "INVALID_REFERRER",
     12: "REPLAY",
     13: "SEAT_NOT_ACTIVATED",
-    14: "WINDOW_NOT_FINAL",
-    15: "PERMISSION_NOT_FOUND",
-    16: "INVALID_WINNER_SET",
-    17: "INVALID_CHANNEL",
-    18: "MISSING_RESEARCH_INPUT",
-    19: "INVALID_RESEARCH_INPUT",
-    20: "NOT_ELIGIBLE",
-    21: "CHANNEL_CAP",
+    14: "SEAT_NOT_PURCHASED",
+    15: "NOTHING_TO_MINT",
+    16: "INVALID_CHANNEL",
+    17: "MISSING_RESEARCH_INPUT",
+    18: "INVALID_RESEARCH_INPUT",
+    19: "NOT_ELIGIBLE",
+    20: "CHANNEL_CAP",
 }
 
 INHERITED_RESULT_CODES: tuple[int, ...] = tuple(range(0, 9))
-ADDED_RESULT_CODES: tuple[int, ...] = tuple(range(9, 22))
+ADDED_RESULT_CODES: tuple[int, ...] = tuple(range(9, 21))
 
 CODE_NUMBER: dict[str, int] = {name: number for number, name in RESULT_CODES.items()}
 
@@ -145,7 +150,6 @@ CARRIED_MODEL_CODES: dict[str, str] = {
     "INVALID_REFERRER": "INVALID_REFERRER",
     "REPLAY": "REPLAY",
     "SEAT_NOT_ACTIVATED": "SEAT_NOT_ACTIVATED",
-    "PERMISSION_NOT_FOUND": "PERMISSION_NOT_FOUND",
     "INVALID_CHANNEL": "INVALID_CHANNEL",
     "ZERO_AMOUNT": "ZERO_AMOUNT",
     "MISSING_RESEARCH_INPUT": "MISSING_RESEARCH_INPUT",
@@ -164,81 +168,87 @@ GUARD_MODEL_CODES: tuple[str, ...] = ("ARITHMETIC_OVERFLOW", "INVARIANT")
 # the uptime record and the cycle window are read from state rather than
 # supplied, and two because the activation height is the executing block height.
 UNREPRESENTABLE_MODEL_CODES: dict[str, str] = {
-    "MISSING_UPTIME_RECORD": "the record is state, not an input",
-    "INVALID_UPTIME_RECORD": "the record is state, not an input",
-    "INCONSISTENT_UPTIME_RECORD": "one finalised record per window, by construction",
-    "SEAT_NOT_IN_SCOPE": "the record's seat set is derived, not supplied",
-    "INCOMPLETE_UPTIME_RECORD": "the record's seat set is derived, not supplied",
-    "WINDOW_BEFORE_ISSUANCE": "the window is derived from the seat's schedule",
-    "WINDOW_AFTER_ISSUANCE": "the window is derived from the seat's schedule",
-    "WINDOW_NOT_FOR_CYCLE": "the window is derived from the seat's schedule",
+    "MISSING_UPTIME_RECORD": "no transaction supplies a record; the chain writes it",
+    "INVALID_UPTIME_RECORD": "no transaction supplies a record; the chain writes it",
+    "INCONSISTENT_UPTIME_RECORD": "one assignment per cycle, by construction",
+    "SEAT_NOT_IN_SCOPE": "the in-scope set is derived, not supplied",
+    "INCOMPLETE_UPTIME_RECORD": "the in-scope set is derived, not supplied",
+    "WINDOW_BEFORE_ISSUANCE": "no transaction names a window",
+    "WINDOW_AFTER_ISSUANCE": "no transaction names a window",
+    "WINDOW_NOT_FOR_CYCLE": "no transaction names a window",
     "HEIGHT_RANGE": "the activation height is the executing block height",
     "HEIGHT_NOT_MONOTONIC": "block heights increase by construction",
+    "PERMISSION_NOT_FOUND": "a mint takes everything, so there is no per-cycle key",
 }
 
 # Economy state entry kinds, and the fixed widths their keys and values take.
 SEAT_ENTRY = 1
 CHANNEL_ENTRY = 2
-PENDING_PERMISSION_ENTRY = 3
-REFERRAL_ACCRUAL_ENTRY = 4
+CYCLE_ASSIGNMENT_ENTRY = 3
+REFERRAL_BALANCE_ENTRY = 4
 DIRECT_DECISION_ENTRY = 5
 TYPED_CUSTODY_ENTRY = 6
-PERFORMANCE_CARRY_ENTRY = 7
-WINDOW_RESULT_ENTRY = 8
+CARRY_ENTRY = 7
+VERIFIER_KEY_ENTRY = 8
 
 ENTRY_KINDS: dict[int, str] = {
     SEAT_ENTRY: "seat",
     CHANNEL_ENTRY: "channel",
-    PENDING_PERMISSION_ENTRY: "pending_permission",
-    REFERRAL_ACCRUAL_ENTRY: "referral_accrual",
+    CYCLE_ASSIGNMENT_ENTRY: "cycle_assignment",
+    REFERRAL_BALANCE_ENTRY: "referral_balance",
     DIRECT_DECISION_ENTRY: "direct_decision",
     TYPED_CUSTODY_ENTRY: "typed_custody",
-    PERFORMANCE_CARRY_ENTRY: "performance_carry",
-    WINDOW_RESULT_ENTRY: "window_result",
+    CARRY_ENTRY: "carry",
+    VERIFIER_KEY_ENTRY: "verifier_key",
 }
 
 ENTRY_KEY_BYTES: dict[int, int] = {
     SEAT_ENTRY: 5,
     CHANNEL_ENTRY: 2,
-    PENDING_PERMISSION_ENTRY: 7,
-    REFERRAL_ACCRUAL_ENTRY: 7,
+    CYCLE_ASSIGNMENT_ENTRY: 9,
+    REFERRAL_BALANCE_ENTRY: 33,
     DIRECT_DECISION_ENTRY: 33,
     TYPED_CUSTODY_ENTRY: 34,
-    PERFORMANCE_CARRY_ENTRY: 1,
-    WINDOW_RESULT_ENTRY: 9,
+    CARRY_ENTRY: 2,
+    VERIFIER_KEY_ENTRY: 1,
 }
 
-# The window-result value is the only variable-width value: it carries one bit
-# per in-scope seat. The fixed part is the winner root, the winner count, the
-# unevaluated count, and the bitmap's own length prefix.
+# The cycle assignment is the only variable-width value: it carries two bits per
+# in-scope seat. Its fixed part is the per-winner share, the winner and in-scope
+# counts, and the two bitmaps' own length prefixes.
 ENTRY_VALUE_BYTES: dict[int, int | None] = {
-    SEAT_ENTRY: 13,
+    SEAT_ENTRY: 114,
     CHANNEL_ENTRY: 16,
-    PENDING_PERMISSION_ENTRY: 1,
-    REFERRAL_ACCRUAL_ENTRY: 0,
+    CYCLE_ASSIGNMENT_ENTRY: None,
+    REFERRAL_BALANCE_ENTRY: 16,
     DIRECT_DECISION_ENTRY: 0,
     TYPED_CUSTODY_ENTRY: 8,
-    PERFORMANCE_CARRY_ENTRY: 8,
-    WINDOW_RESULT_ENTRY: None,
+    CARRY_ENTRY: 8,
+    VERIFIER_KEY_ENTRY: 32,
 }
 
-WINDOW_RESULT_FIXED_VALUE_BYTES = 44
+CYCLE_ASSIGNMENT_FIXED_VALUE_BYTES = 24
 
-# A pending permission's verdict byte, which answers both the verdict question
-# and the replay question, so the model's separate evaluated-key set disappears.
-VERDICT_FAILED = 0
-VERDICT_MET = 1
-VERDICT_EXERCISED = 2
-
-VERDICTS: dict[int, str] = {
-    VERDICT_FAILED: "failed",
-    VERDICT_MET: "met",
-    VERDICT_EXERCISED: "exercised",
-}
-
-# Version-two genesis. The prefix through `account count` is 78 bytes, which is
-# version one's 46 plus the 32-byte manifest digest, so the object bound admits
-# one fewer account entry.
-GENESIS_PREFIX_BYTES = 78
+# Version-two genesis. The prefix through `account count` is 110 bytes, which is
+# version one's 46 plus the 32-byte manifest digest and the 32-byte ecosystem
+# verifier key, so the object bound admits one fewer account entry than version
+# one despite the extra 64 bytes.
+GENESIS_PREFIX_BYTES = 110
 ACCOUNT_ENTRY_BYTES = 48
 MAX_GENESIS_ACCOUNTS = (MAX_OBJECT_BYTES - GENESIS_PREFIX_BYTES) // ACCOUNT_ENTRY_BYTES
+
+# The five Founder Node distribution legs of one base permission, in the
+# accepted manifest's channel order. A failed cycle moves the whole permission
+# to that cycle's winners, so every leg is divided by the winner count and every
+# leg can leave a remainder — not only the operator leg the model carries.
+BASE_PERMISSION_LEGS: tuple[tuple[int, int], ...] = (
+    (0, 34_200_000_000),
+    (1, 17_100_000_000),
+    (2, 3_420_000_000),
+    (3, 1_710_000_000),
+    (4, 1_000_000_000),
+)
+BASE_PERMISSION_TOTAL = sum(amount for _, amount in BASE_PERMISSION_LEGS)
+FOUNDER_OPERATOR_CHANNEL = 0
+REFERRAL_CHANNEL = 7
+REFERRAL_LEG_ATOMIC = 3_420_000_000

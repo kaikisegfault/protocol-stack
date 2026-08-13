@@ -13,7 +13,9 @@
 # `protocol-primitives-v1` writes it, while the model builds it as a shared
 # 80-byte header, a kind-specific body, and a shared 16-byte trailer. The whole
 # compatibility argument is that those two constructions coincide, so it is
-# derived from two different shapes rather than restated once.
+# derived from two different shapes rather than restated once. `expected.py`
+# likewise derives each base-permission leg from the constitution's per-cycle
+# display table rather than copying the manifest's atomic figures.
 #
 # The compatibility section is checked against a third source: the recorded
 # bytes of `test-vectors/protocol-primitives-v1.txt`. The claim that a
@@ -22,53 +24,58 @@
 
 # The envelope. The header is the accepted transfer's first 80 bytes and the
 # trailer its last 16, so kind 1's body is what remains and the accepted
-# version-one transaction is the kind-1 instance of this envelope.
+# version-one transaction is the kind-1 instance of this envelope. Every kind is
+# fixed-length and the largest transaction in version two is 325 bytes, because
+# nothing a transaction carries scales with the seat population.
 envelope.header_bytes=80
 envelope.trailer_bytes=16
 envelope.signature_bytes=64
 envelope.schema_version=1
 envelope.kind_count=6
+envelope.kind_name.1=native_transfer
 envelope.body_bytes.native_transfer=40
 envelope.signed_bytes.native_transfer=200
-envelope.body_bytes.activate_seat=9
-envelope.signed_bytes.activate_seat=169
-envelope.body_bytes.evaluate_base_permission=6
-envelope.signed_bytes.evaluate_base_permission=166
-envelope.body_bytes.exercise_permission=10
-envelope.signed_bytes.exercise_permission=170
-envelope.body_bytes.accrue_referral=6
-envelope.signed_bytes.accrue_referral=166
+envelope.kind_name.2=purchase_seat
+envelope.body_bytes.purchase_seat=165
+envelope.signed_bytes.purchase_seat=325
+envelope.kind_name.3=activate_seat
+envelope.body_bytes.activate_seat=68
+envelope.signed_bytes.activate_seat=228
+envelope.kind_name.4=mint_node
+envelope.body_bytes.mint_node=4
+envelope.signed_bytes.mint_node=164
+envelope.kind_name.5=mint_referral
+envelope.body_bytes.mint_referral=0
+envelope.signed_bytes.mint_referral=160
+envelope.kind_name.6=direct_issue
 envelope.body_bytes.direct_issue=105
 envelope.signed_bytes.direct_issue=265
-envelope.encoded_signed_bytes.accrue_referral=166
-envelope.roundtrip.accrue_referral=true
-envelope.roundtrip_signature.accrue_referral=true
-envelope.encoded_signed_bytes.activate_first_seat=169
-envelope.roundtrip.activate_first_seat=true
-envelope.roundtrip_signature.activate_first_seat=true
-envelope.encoded_signed_bytes.activate_last_seat=169
-envelope.roundtrip.activate_last_seat=true
-envelope.roundtrip_signature.activate_last_seat=true
+envelope.every_kind_is_fixed_length=true
+envelope.no_two_kinds_share_a_length=true
+envelope.largest_signed_bytes=325
+envelope.encoded_signed_bytes.activate_seat=228
+envelope.roundtrip.activate_seat=true
+envelope.roundtrip_signature.activate_seat=true
 envelope.encoded_signed_bytes.direct_issue=265
 envelope.roundtrip.direct_issue=true
 envelope.roundtrip_signature.direct_issue=true
-envelope.encoded_signed_bytes.evaluate_first_cycle=166
-envelope.roundtrip.evaluate_first_cycle=true
-envelope.roundtrip_signature.evaluate_first_cycle=true
-envelope.encoded_signed_bytes.evaluate_last_cycle=166
-envelope.roundtrip.evaluate_last_cycle=true
-envelope.roundtrip_signature.evaluate_last_cycle=true
-envelope.encoded_signed_bytes.exercise_failed_cycle=178
-envelope.roundtrip.exercise_failed_cycle=true
-envelope.roundtrip_signature.exercise_failed_cycle=true
-envelope.encoded_signed_bytes.exercise_met_cycle=170
-envelope.roundtrip.exercise_met_cycle=true
-envelope.roundtrip_signature.exercise_met_cycle=true
+envelope.encoded_signed_bytes.mint_node=164
+envelope.roundtrip.mint_node=true
+envelope.roundtrip_signature.mint_node=true
+envelope.encoded_signed_bytes.mint_referral=160
+envelope.roundtrip.mint_referral=true
+envelope.roundtrip_signature.mint_referral=true
+envelope.encoded_signed_bytes.purchase_referred_seat=325
+envelope.roundtrip.purchase_referred_seat=true
+envelope.roundtrip_signature.purchase_referred_seat=true
+envelope.encoded_signed_bytes.purchase_unreferred_last_seat=325
+envelope.roundtrip.purchase_unreferred_last_seat=true
+envelope.roundtrip_signature.purchase_unreferred_last_seat=true
 envelope.encoded_signed_bytes.transfer=200
 envelope.roundtrip.transfer=true
 envelope.roundtrip_signature.transfer=true
-envelope.exercise_signed_bytes_at_capacity=400170
-envelope.exercise_fits_object_bound=true
+envelope.largest_fits_object_bound=true
+envelope.no_body_scales_with_the_population=true
 
 # The kind-1 identity, and the two version-one labels this version deliberately
 # does not re-version: the kind byte and the chain ID are both inside every
@@ -88,7 +95,8 @@ compatibility.signing_message_prefix=1970726f746f636f6c2d737461636b3a76313a74782
 # A bounded numeric field outside its range is deliberately *not* here: it is an
 # execution result, because admission produces no receipt and no
 # transaction-root entry, so a range violation classified here would leave no
-# canonical trace.
+# canonical trace. Nor is the biometric signature, which verifies against
+# ledger state that admission is defined not to read.
 admission.code.1=MALFORMED_TRANSACTION
 admission.code.2=WRONG_CHAIN
 admission.code.3=INVALID_SIGNATURE
@@ -100,18 +108,16 @@ admission.reject.trailing_byte=MALFORMED_TRANSACTION
 admission.reject.truncated=MALFORMED_TRANSACTION
 admission.reject.non_minimal_absent_referrer=MALFORMED_TRANSACTION
 admission.reject.non_canonical_bool=MALFORMED_TRANSACTION
-admission.reject.winner_list_not_increasing=MALFORMED_TRANSACTION
-admission.reject.winner_count_above_capacity=MALFORMED_TRANSACTION
 admission.reject.unknown_kind=MALFORMED_TRANSACTION
 admission.reject.kind_zero=MALFORMED_TRANSACTION
-admission.cross_kind_body_decodes=true
-admission.cross_kind_changes_signing_message=true
-codes.count=22
+admission.reject.relabelled_kind=MALFORMED_TRANSACTION
+admission.the_kind_byte_is_inside_the_signing_message=true
 
 # The flat result-code space. Codes 0 through 8 are version one's, frozen with
 # their exact meanings, and are checked against `ledger-transition-v1`'s own
 # table rather than against the model's copy of it. They are envelope conditions
 # rather than transfer conditions, which is why they apply to all six kinds.
+codes.count=21
 codes.0=SUCCESS
 codes.1=ZERO_AMOUNT
 codes.2=FEE_LIMIT_TOO_LOW
@@ -126,42 +132,43 @@ codes.10=CYCLE_RANGE
 codes.11=INVALID_REFERRER
 codes.12=REPLAY
 codes.13=SEAT_NOT_ACTIVATED
-codes.14=WINDOW_NOT_FINAL
-codes.15=PERMISSION_NOT_FOUND
-codes.16=INVALID_WINNER_SET
-codes.17=INVALID_CHANNEL
-codes.18=MISSING_RESEARCH_INPUT
-codes.19=INVALID_RESEARCH_INPUT
-codes.20=NOT_ELIGIBLE
-codes.21=CHANNEL_CAP
+codes.14=SEAT_NOT_PURCHASED
+codes.15=NOTHING_TO_MINT
+codes.16=INVALID_CHANNEL
+codes.17=MISSING_RESEARCH_INPUT
+codes.18=INVALID_RESEARCH_INPUT
+codes.19=NOT_ELIGIBLE
+codes.20=CHANNEL_CAP
 codes.inherited_count=9
-codes.added_count=13
+codes.added_count=12
+codes.new_beyond_the_model=NOTHING_TO_MINT,SEAT_NOT_PURCHASED,UNAUTHORIZED
 codes.version_one_meanings_preserved=true
 codes.numbering_is_contiguous=true
 
 # The mapping from `founder-economy-simulator-v3`'s twenty-four model codes onto
-# this surface, required to be a total three-way partition. Ten codes are
+# this surface, required to be a total three-way partition. Eleven codes are
 # unrepresentable because their input does not exist in a transaction, and the
 # reason is recorded per code: a later encoding that reintroduces a supplied
-# uptime record must move a code out of this table rather than widen an input
-# silently.
+# uptime record, a submitted window, or a partial mint would have to move a code
+# out of this table rather than widen an input silently.
 codes.model.declared=24
-codes.model.carried=12
+codes.model.carried=11
 codes.model.guard=2
-codes.model.unrepresentable=10
+codes.model.unrepresentable=11
 codes.model.partition_is_total=true
 codes.model.carried_targets_exist=true
 codes.model.guards_have_no_receipt_code=true
 codes.model.unrepresentable.HEIGHT_NOT_MONOTONIC=block heights increase by construction
 codes.model.unrepresentable.HEIGHT_RANGE=the activation height is the executing block height
-codes.model.unrepresentable.INCOMPLETE_UPTIME_RECORD=the record's seat set is derived, not supplied
-codes.model.unrepresentable.INCONSISTENT_UPTIME_RECORD=one finalised record per window, by construction
-codes.model.unrepresentable.INVALID_UPTIME_RECORD=the record is state, not an input
-codes.model.unrepresentable.MISSING_UPTIME_RECORD=the record is state, not an input
-codes.model.unrepresentable.SEAT_NOT_IN_SCOPE=the record's seat set is derived, not supplied
-codes.model.unrepresentable.WINDOW_AFTER_ISSUANCE=the window is derived from the seat's schedule
-codes.model.unrepresentable.WINDOW_BEFORE_ISSUANCE=the window is derived from the seat's schedule
-codes.model.unrepresentable.WINDOW_NOT_FOR_CYCLE=the window is derived from the seat's schedule
+codes.model.unrepresentable.INCOMPLETE_UPTIME_RECORD=the in-scope set is derived, not supplied
+codes.model.unrepresentable.INCONSISTENT_UPTIME_RECORD=one assignment per cycle, by construction
+codes.model.unrepresentable.INVALID_UPTIME_RECORD=no transaction supplies a record; the chain writes it
+codes.model.unrepresentable.MISSING_UPTIME_RECORD=no transaction supplies a record; the chain writes it
+codes.model.unrepresentable.PERMISSION_NOT_FOUND=a mint takes everything, so there is no per-cycle key
+codes.model.unrepresentable.SEAT_NOT_IN_SCOPE=the in-scope set is derived, not supplied
+codes.model.unrepresentable.WINDOW_AFTER_ISSUANCE=no transaction names a window
+codes.model.unrepresentable.WINDOW_BEFORE_ISSUANCE=no transaction names a window
+codes.model.unrepresentable.WINDOW_NOT_FOR_CYCLE=no transaction names a window
 
 # The 56-byte version-two receipt, and the combinations no conforming execution
 # can produce.
@@ -175,28 +182,32 @@ receipt.reject.unknown_result_code=INVALID_RECEIPT
 receipt.reject.failed_with_fee=INVALID_RECEIPT
 receipt.reject.failed_with_issuance=INVALID_RECEIPT
 receipt.reject.non_issuing_kind_issues=INVALID_RECEIPT
+receipt.reject.purchase_issues=INVALID_RECEIPT
 
 # The economy state key space. A key is a one-byte entry kind followed by
 # fixed-width big-endian fields, so unsigned lexicographic order is total and no
-# key is a prefix of another with a different meaning.
+# key is a prefix of another with a different meaning. No entry is keyed by
+# seat-cycle: a mint takes everything, so one high-water mark per seat replaces
+# what would otherwise be 73,100,000 entries.
 state.entry_kind_count=8
 state.key_bytes.seat=5
-state.value_bytes.seat=13
+state.value_bytes.seat=114
 state.key_bytes.channel=2
 state.value_bytes.channel=16
-state.key_bytes.pending_permission=7
-state.value_bytes.pending_permission=1
-state.key_bytes.referral_accrual=7
-state.value_bytes.referral_accrual=0
+state.key_bytes.cycle_assignment=9
+state.value_bytes.cycle_assignment=variable
+state.key_bytes.referral_balance=33
+state.value_bytes.referral_balance=16
 state.key_bytes.direct_decision=33
 state.value_bytes.direct_decision=0
 state.key_bytes.typed_custody=34
 state.value_bytes.typed_custody=8
-state.key_bytes.performance_carry=1
-state.value_bytes.performance_carry=8
-state.key_bytes.window_result=9
-state.value_bytes.window_result=variable
-state.window_result_fixed_value_bytes=44
+state.key_bytes.carry=2
+state.value_bytes.carry=8
+state.key_bytes.verifier_key=1
+state.value_bytes.verifier_key=32
+state.cycle_assignment_fixed_value_bytes=24
+state.no_entry_is_keyed_by_seat_cycle=false
 state.no_key_is_a_prefix_of_another=true
 state.keys_are_unique=true
 
@@ -206,14 +217,14 @@ state.keys_are_unique=true
 # collision would be a version-one root reinterpreted, which
 # `protocol-primitives-v1` forbids.
 state.economy_root_empty=d0d7e9d84b9faf008b3aa3090ed8d4bbbbffb0c79be952811dc069d5defa5fbb
-state.economy_entry_count_genesis=11
-state.economy_root_genesis=8e74e951f893d24480a0461b13e7a22250a416ca20949a6192da92a991da11bf
-state.economy_entry_count_populated=18
-state.economy_root_populated=ccfa4d3db9db3858d6bb2490b6921859d77de42c65dc13b3ffa9164fcb3d7962
+state.economy_entry_count_genesis=21
+state.economy_root_genesis=f3db5b9e7f1fd7a71ab27e38a49826a94e952ae953588a760a2d804e796d60a9
+state.economy_entry_count_populated=27
+state.economy_root_populated=f3ad13869782a21711f53991067d62970c368185c49ac6a02b26cef5a17644d8
 state.economy_root_differs_from_genesis=true
 
 # The version-one root restatement, required to reproduce the accepted
-# `protocol-primitives-v1` vectors before the non-collision below is believed.
+# `protocol-primitives-v1` vectors before the non-collision above is believed.
 # A merely plausible restatement would make "the roots differ" trivially true
 # and would prove nothing.
 state.version_one_empty_tree_matches_accepted=true
@@ -225,29 +236,35 @@ state.version_one_root_same_accounts=3e4f52db11e093811acd3c1d4743e77888370ff4b1c
 state.roots_differ_on_identical_accounts=true
 state.root_schema_version=2
 state.root_label=protocol-stack:v2:state-root
-state.root_populated_economy=1b97a8a1d5dd7bba9cb3c7c02890d5f00df47e3cbb72f3791ac020d6dc63abd9
+state.root_populated_economy=4239e35a52eef4bab60a73822ddd1844c2648691e418b789f83b05bee7511c0f
 state.root_tracks_the_economy=true
 
 # Version-two genesis. Three of version one's requirements relax, each forced by
 # the constitution's rule that native units enter circulation only through
-# issuance channels, and the fixture exercises all three at once. The 32-byte
-# manifest digest is what costs the object bound one account entry.
-genesis.prefix_bytes=78
+# issuance channels, and the fixture exercises all three at once. The manifest
+# digest and the ecosystem verifier key are both genesis fields, so a chain with
+# a different channel table or a different verifier is a different chain.
+genesis.prefix_bytes=110
+genesis.version_one_prefix_bytes=46
 genesis.max_accounts=21843
-genesis.max_accounts_bytes=1048542
-genesis.one_more_account_bytes=1048590
+genesis.max_accounts_bytes=1048574
+genesis.one_more_account_bytes=1048622
 genesis.max_accounts_fits_object_bound=true
 genesis.one_more_account_exceeds_object_bound=true
 genesis.version_one_max_accounts=21844
-genesis.bytes=78
-genesis.bytes_hex=5053474e0002000000024f1851909daf140000000000000000000000000000000000000000000000000084cca09865b6c62bf09d3f6bc3821a2527c7a4835652cffdc0ebefa34b314ce500000000
-genesis.chain_id=ba5279b7aa8ea3fd16b246929b2300b9f38612f919e8f58a5550ae74efbf6921
+genesis.accepting_margin_bytes=2
+genesis.bytes=110
+genesis.bytes_hex=5053474e0002000000024f1851909daf140000000000000000000000000000000000000000000000000084cca09865b6c62bf09d3f6bc3821a2527c7a4835652cffdc0ebefa34b314ce5555555555555555555555555555555555555555555555555555555555555555500000000
+genesis.chain_id=6a453df157474dd3a4246519a52ae1c0debd9630b3712c9c4aeb2143d481e267
 genesis.chain_id_label=protocol-stack:v2:chain-id
 genesis.schema_version=2
 genesis.manifest_digest=84cca09865b6c62bf09d3f6bc3821a2527c7a4835652cffdc0ebefa34b314ce5
 genesis.zero_total_supply_accepted=true
 genesis.zero_accounts_accepted=true
 genesis.zero_fee_accepted=true
+genesis.verifier_key_is_a_field=5555555555555555555555555555555555555555555555555555555555555555
+genesis.verifier_key_changes_chain_identity=true
+genesis.manifest_digest_changes_chain_identity=true
 genesis.reject.zero_supply_limit=INVALID_GENESIS
 genesis.reject.supply_above_limit=INVALID_GENESIS
 genesis.reject.unconserved_supply=INVALID_GENESIS
@@ -256,42 +273,56 @@ genesis.reject.nonzero_nonce=INVALID_GENESIS
 genesis.reject.unordered_accounts=INVALID_GENESIS
 genesis.reject.account_count_above_bound=INVALID_GENESIS
 
-# The performance reallocation commitment. The winner set is derived from the
-# window fixture rather than restated beside it, so the positive control cannot
-# drift from the commitment the mutations are measured against.
-winners.derived=0,4
-winners.count=2
-winners.excludes_the_failed_seat=true
-winners.excludes_below_maximum_uptime=true
-winners.root=de426439d6c01cf6aad19fb3ac96867bfbc762ea4df92f119c1450dd5b75cf2e
-winners.empty_root=7752ea1087c68b2c1329edf776abb7f65566a808b0ac028924b4ec88172c5b0b
-winners.share_atomic=17100000000
-winners.remainder_atomic=0
-winners.share_atomic_over_seven=4885714285
-winners.remainder_atomic_over_seven=5
-winners.empty_set_share=0
-winners.empty_set_carry=34200000000
-winners.agrees_with_the_accepted_economy_model=true
-winners.met_flags_are_the_accepted_threshold=true
-winners.commitment_accepts_the_derived_set=true
-winners.reject.reordered=true
-winners.reject.short_by_one=true
-winners.reject.long_by_one=true
+# The cycle assignment the chain writes at a block boundary. The winner set is
+# derived from the cycle fixture rather than restated beside it, and is required
+# to agree with the accepted economy model. Every leg of a failed seat's
+# permission is divided among the winners, not only the operator leg, because
+# the whole permission moves and the escrows are paid at the winner's mint.
+cycle.winners=0,4
+cycle.winner_count=2
+cycle.excludes_the_failed_seat=true
+cycle.excludes_below_maximum_uptime=true
+cycle.agrees_with_the_accepted_economy_model=true
+cycle.met_flags_are_the_accepted_threshold=true
+cycle.share_atomic.0=17100000000
+cycle.carry_atomic.0=0
+cycle.share_atomic.1=8550000000
+cycle.carry_atomic.1=0
+cycle.share_atomic.2=1710000000
+cycle.carry_atomic.2=0
+cycle.share_atomic.3=855000000
+cycle.carry_atomic.3=0
+cycle.share_atomic.4=500000000
+cycle.carry_atomic.4=0
+cycle.base_permission_total_atomic=57430000000
+cycle.split_conserves_every_leg=true
+cycle.share_atomic_over_seven.0=4885714285
+cycle.carry_atomic_over_seven.0=5
+cycle.split_over_seven_conserves=true
+cycle.empty_set_shares_are_zero=true
+cycle.empty_set_carries_the_whole_permission=true
+cycle.met_bitmap=d0
+cycle.winner_bitmap=c0
+cycle.bitmaps_differ=true
+cycle.a_seat_may_meet_without_winning=true
+cycle.every_winner_also_met=true
+cycle.assignment_key=03000000000000000c
+cycle.assignment_value_bytes=26
+cycle.assignment_entry_bytes=35
 
 # Storage bounds at the founder-directed capacity. These answer the per-seat
-# balance and recipient-balance parts of requirement 12. The window-result
-# figure is the one bound that is not a constant: it is per retained window, and
-# how many windows are retained depends on how long seat activations span.
-winners.reject.substituted=true
-winners.reject.empty=true
+# balance and recipient-balance parts of requirement 12. The cycle-assignment
+# figure is the one bound that is not a constant: it is per cycle and the
+# records are never deleted, because a seat may mint at any time.
 storage.seat_cycle_population=73100000
+storage.carries_bytes_at_capacity=100
 storage.channels_bytes_at_capacity=180
-storage.pending_permissions_bytes_at_capacity=584800000
-storage.performance_carry_bytes_at_capacity=9
-storage.referral_accruals_bytes_at_capacity=511700000
-storage.seats_bytes_at_capacity=1800000
+storage.referral_balance_per_referrer_bytes_at_capacity=49
+storage.seats_bytes_at_capacity=11900000
 storage.typed_custody_bytes_at_capacity=4200000
-storage.window_result_bytes_at_capacity=12553
-storage.window_results_bytes_concentrated_activation=9176243
-storage.windows_per_year=365
-storage.window_results_bytes_per_year=4581845
+storage.verifier_key_bytes_at_capacity=33
+storage.cycle_assignment_bytes_at_capacity=25033
+storage.cycles_per_year=365
+storage.cycle_assignment_bytes_per_year=9137045
+storage.seat_cycle_entries_the_take_everything_rule_removes=73100000
+storage.high_water_mark_bytes_at_capacity=800000

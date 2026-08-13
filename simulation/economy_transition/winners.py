@@ -1,45 +1,62 @@
-"""The performance reallocation commitment.
+"""The per-cycle winner set and the equal split of a failed seat's permission.
 
-A failed cycle's Founder portion goes to the highest uptime in the same window,
-so the winner set is a property of the window and every seat failing in that
-window reallocates to the same set. The set is committed once, at the window's
-finalisation, and carried by each exercise that spends against it.
-
-The commitment is an ordered Merkle root rather than a flat hash so that a later
-version can add a per-winner claim path with a logarithmic membership proof
-without changing the committed value.
+A failed cycle's whole base permission moves to that cycle's best performers,
+so the winner set is a property of the cycle and every seat failing in it
+reallocates to the same set. The set is recorded once, as a bitmap inside the
+cycle's assignment record, rather than committed and carried by a transaction:
+under a mint that takes everything, a founder with many saved failed cycles
+would otherwise carry one winner list per cycle in a single transaction.
 """
 
 from __future__ import annotations
 
 from . import contract as c
-from .envelope import u32
-from .merkle import root
 
 
 class InvalidWinnerSet(ValueError):
-    """A winner list that does not reproduce the recorded commitment."""
+    """A winner set that no assignment could have produced."""
 
 
-def derive_winner_set(uptime_by_seat: dict[int, int], met_by_seat: dict[int, bool]) -> tuple[int, ...]:
-    """The seats that met the cycle and hold the maximum uptime among them.
+def derive_winner_set(
+    uptime_by_seat: dict[int, int], met_by_seat: dict[int, bool]
+) -> tuple[int, ...]:
+    """The seats at the highest uptime among those that met the cycle.
 
-    This is `founder-economy-simulator-v3`'s winner rule, applied to a window's
-    finalised record. A failed seat never rewards another failed seat, so the
-    candidate set is restricted before the maximum is taken; taking the maximum
-    first and filtering afterwards would return an empty set whenever the best
-    uptime in a window belonged to a seat that failed it.
+    The candidate set is restricted before the maximum is taken. Taking the
+    maximum first and filtering afterwards would return an empty set whenever
+    the best uptime in a cycle belonged to a seat that failed it, and a failed
+    seat never rewards another failed seat.
     """
-    candidates = {seat: uptime for seat, uptime in uptime_by_seat.items() if met_by_seat.get(seat, False)}
+    candidates = {
+        seat: uptime
+        for seat, uptime in uptime_by_seat.items()
+        if met_by_seat.get(seat, False)
+    }
     if not candidates:
         return ()
     best = max(candidates.values())
     return tuple(sorted(seat for seat, uptime in candidates.items() if uptime == best))
 
 
-def winner_root(winners: tuple[int, ...]) -> bytes:
-    require_canonical(winners)
-    return root([u32(seat) for seat in winners], c.WINNER_TREE_PREFIX)
+def split_permission(winner_count: int) -> tuple[dict[int, int], dict[int, int]]:
+    """Divide every leg of one base permission among the winners.
+
+    Returns the per-winner share and the carried remainder, both keyed by
+    channel. Every leg is divided rather than only the operator leg, because the
+    whole permission moves to the winners and the escrows and System Creator are
+    paid at the winner's mint.
+    """
+    shares: dict[int, int] = {}
+    carries: dict[int, int] = {}
+    for channel, amount in c.BASE_PERMISSION_LEGS:
+        if winner_count == 0:
+            shares[channel] = 0
+            carries[channel] = amount
+            continue
+        share = amount // winner_count
+        shares[channel] = share
+        carries[channel] = amount - share * winner_count
+    return shares, carries
 
 
 def require_canonical(winners: tuple[int, ...]) -> None:
@@ -50,33 +67,3 @@ def require_canonical(winners: tuple[int, ...]) -> None:
             raise InvalidWinnerSet(f"winner seat {seat} outside the seat range")
         if index and seat <= winners[index - 1]:
             raise InvalidWinnerSet("winner list is not strictly increasing")
-
-
-def matches_commitment(
-    supplied: tuple[int, ...], recorded_root: bytes, recorded_count: int
-) -> bool:
-    """Both the count and the root must reproduce.
-
-    Checking the root alone would be sufficient in a collision-free model and is
-    deliberately not relied on: the count is recorded state, comparing it is one
-    integer comparison, and a mismatch is then reported before any tree is built
-    over an attacker-chosen list.
-    """
-    if len(supplied) != recorded_count:
-        return False
-    try:
-        return winner_root(supplied) == recorded_root
-    except InvalidWinnerSet:
-        return False
-
-
-def equal_split(portion_atomic: int, winner_count: int) -> tuple[int, int]:
-    """The per-winner share and the integer remainder carried forward.
-
-    An empty winner set carries the whole portion, which is the founder-directed
-    rule for a window in which no node met the cycle.
-    """
-    if winner_count == 0:
-        return 0, portion_atomic
-    share = portion_atomic // winner_count
-    return share, portion_atomic - share * winner_count

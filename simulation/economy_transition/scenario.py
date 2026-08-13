@@ -6,7 +6,8 @@ specification's recorded unsigned bytes, signed bytes, and transaction ID. A
 mistyped input fails that comparison rather than passing quietly.
 
 The economy fixtures sit on boundaries rather than round numbers: seat 0 and seat
-99,999, cycle 0 and cycle 730, an empty and a populated winner set. An off-by-one
+99,999, a purchased seat that is never activated, a cycle whose winner set
+excludes both a failed seat and a seat that met below the maximum. An off-by-one
 in a bounded field is invisible in the middle of a range.
 """
 
@@ -29,12 +30,24 @@ TRANSFER_SIGNATURE = bytes.fromhex(
     "b922b9bba415e4fdc7d120227548a7c0ec87fc66315d01b8f64165944ee82b06"
 )
 
-FEE_LIMIT = 1_000
-VALID_UNTIL_HEIGHT = 42
+# A stand-in for the ecosystem verifier's signature over an enrollment or
+# activation message. The model never verifies it, because verification is
+# Ed25519 and this model implements no cryptographic primitive; the vectors fix
+# the message construction the verifier signs, which is the part that is
+# consensus-visible.
+BIOMETRIC_SIGNATURE = bytes.fromhex("44" * 64)
+VERIFIER_KEY = bytes.fromhex("55" * 32)
+
+BIOMETRIC_IDENTITY_HASH = bytes.fromhex("66" * 32)
+PURCHASER_ACCOUNT_ID = bytes.fromhex("77" * 32)
+REFERRER_ACCOUNT_ID = bytes.fromhex("88" * 32)
 
 DECISION_ID = bytes.fromhex("11" * 32)
 BENEFICIARY_ACCOUNT_ID = bytes.fromhex("22" * 32)
 AUTHORIZATION = bytes.fromhex("33" * 32)
+
+FEE_LIMIT = 1_000
+VALID_UNTIL_HEIGHT = 42
 
 
 def _envelope(kind: int, nonce: int, body: dict) -> Transaction:
@@ -62,40 +75,40 @@ def transactions() -> dict[str, Transaction]:
     """One transaction per kind, plus the boundary instances that matter."""
     return {
         "transfer": accepted_transfer(),
-        "activate_first_seat": _envelope(
-            c.ACTIVATE_SEAT,
+        "purchase_referred_seat": _envelope(
+            c.PURCHASE_SEAT,
             2,
-            {"seat_id": 0, "has_referrer": False, "referrer_seat_id": 0},
+            {
+                "seat_id": 0,
+                "biometric_identity_hash": BIOMETRIC_IDENTITY_HASH,
+                "purchaser_account_id": PURCHASER_ACCOUNT_ID,
+                "has_referrer": True,
+                "referrer_account_id": REFERRER_ACCOUNT_ID,
+                "biometric_signature": BIOMETRIC_SIGNATURE,
+            },
         ),
-        "activate_last_seat": _envelope(
-            c.ACTIVATE_SEAT,
+        "purchase_unreferred_last_seat": _envelope(
+            c.PURCHASE_SEAT,
             3,
-            {"seat_id": c.MAX_SEAT_ID, "has_referrer": True, "referrer_seat_id": 0},
+            {
+                "seat_id": c.MAX_SEAT_ID,
+                "biometric_identity_hash": BIOMETRIC_IDENTITY_HASH,
+                "purchaser_account_id": PURCHASER_ACCOUNT_ID,
+                "has_referrer": False,
+                "referrer_account_id": bytes(32),
+                "biometric_signature": BIOMETRIC_SIGNATURE,
+            },
         ),
-        "evaluate_first_cycle": _envelope(
-            c.EVALUATE_BASE_PERMISSION, 4, {"seat_id": 7, "cycle_index": 0}
+        "activate_seat": _envelope(
+            c.ACTIVATE_SEAT,
+            4,
+            {"seat_id": 0, "biometric_signature": BIOMETRIC_SIGNATURE},
         ),
-        "evaluate_last_cycle": _envelope(
-            c.EVALUATE_BASE_PERMISSION,
-            5,
-            {"seat_id": 7, "cycle_index": c.MAX_CYCLE_INDEX},
-        ),
-        "exercise_met_cycle": _envelope(
-            c.EXERCISE_PERMISSION,
-            6,
-            {"seat_id": 7, "cycle_index": 0, "winners": ()},
-        ),
-        "exercise_failed_cycle": _envelope(
-            c.EXERCISE_PERMISSION,
-            7,
-            {"seat_id": 7, "cycle_index": 1, "winners": window_winners()},
-        ),
-        "accrue_referral": _envelope(
-            c.ACCRUE_REFERRAL, 8, {"seat_id": c.MAX_SEAT_ID, "cycle_index": 0}
-        ),
+        "mint_node": _envelope(c.MINT_NODE, 5, {"seat_id": 0}),
+        "mint_referral": _envelope(c.MINT_REFERRAL, 6, {}),
         "direct_issue": _envelope(
             c.DIRECT_ISSUE,
-            9,
+            7,
             {
                 "channel_id": 5,
                 "decision_id": DECISION_ID,
@@ -107,26 +120,45 @@ def transactions() -> dict[str, Transaction]:
     }
 
 
-# One window's finalised measurement over four in-scope seats. Seat 7 failed,
+# One cycle's finalised measurement over four in-scope seats. Seat 7 failed,
 # seats 0 and 4 met at the maximum, and seat 99,999 met below it, so the winner
 # set must exclude both the failed seat and the lower-uptime one. Two winners
 # tie at the maximum, which the constitution expects to be the ordinary case at
 # a perfect cycle rather than an adversarial one.
-WINDOW = 12
-WINDOW_UPTIME: dict[int, int] = {0: 86_400, 4: 86_400, 7: 32_400, c.MAX_SEAT_ID: 64_800}
-WINDOW_MET: dict[int, bool] = {0: True, 4: True, 7: False, c.MAX_SEAT_ID: True}
+CYCLE_WINDOW = 12
+IN_SCOPE_SEATS: tuple[int, ...] = (0, 4, 7, c.MAX_SEAT_ID)
+CYCLE_UPTIME: dict[int, int] = {0: 86_400, 4: 86_400, 7: 32_400, c.MAX_SEAT_ID: 64_800}
+CYCLE_MET: dict[int, bool] = {0: True, 4: True, 7: False, c.MAX_SEAT_ID: True}
 
 
-def window_winners() -> tuple[int, ...]:
-    """Derived from the window fixture rather than restated beside it.
+def cycle_winners() -> tuple[int, ...]:
+    """Derived from the cycle fixture rather than restated beside it.
 
     A restated set would agree with the derivation until one of them was edited,
-    and the exercise fixture is the positive control the mutation cases are
-    measured against, so it must not be able to drift from the commitment.
+    and the fixture is the positive control every mutation is measured against.
     """
     from .winners import derive_winner_set
 
-    return derive_winner_set(WINDOW_UPTIME, WINDOW_MET)
+    return derive_winner_set(CYCLE_UPTIME, CYCLE_MET)
+
+
+def cycle_assignment_entry() -> tuple[bytes, bytes]:
+    """The one record the chain writes when this cycle is finalised."""
+    from .state import bitmap, cycle_assignment_key, cycle_assignment_value
+    from .winners import split_permission
+
+    winners = cycle_winners()
+    shares, _ = split_permission(len(winners))
+    return (
+        cycle_assignment_key(CYCLE_WINDOW),
+        cycle_assignment_value(
+            shares[c.FOUNDER_OPERATOR_CHANNEL],
+            len(winners),
+            len(IN_SCOPE_SEATS),
+            bitmap([CYCLE_MET[seat] for seat in IN_SCOPE_SEATS]),
+            bitmap([seat in winners for seat in IN_SCOPE_SEATS]),
+        ),
+    )
 
 
 def genesis() -> Genesis:
@@ -143,6 +175,7 @@ def genesis() -> Genesis:
         fixed_transfer_fee=0,
         initial_fee_pool=0,
         manifest_digest=bytes.fromhex(c.MANIFEST_DIGEST_HEX),
+        verifier_key=VERIFIER_KEY,
         accounts=[],
     )
 
@@ -152,33 +185,34 @@ def populated_economy() -> dict[bytes, bytes]:
     from .genesis import initial_economy_entries
     from .state import (
         direct_decision_key,
-        met_bitmap,
-        pending_permission_key,
-        pending_permission_value,
-        referral_accrual_key,
+        referral_balance_key,
+        referral_balance_value,
         seat_key,
         seat_value,
         typed_custody_key,
         typed_custody_value,
-        window_result_key,
-        window_result_value,
     )
-    from .winners import derive_winner_set, winner_root
 
-    entries = initial_economy_entries()
-    entries[seat_key(0)] = seat_value(0, None)
-    entries[seat_key(7)] = seat_value(7 * c.CYCLE_BLOCKS, 0)
-    entries[pending_permission_key(7, 1)] = pending_permission_value(c.VERDICT_FAILED)
-    entries[referral_accrual_key(c.MAX_SEAT_ID, 0)] = b""
+    entries = initial_economy_entries(VERIFIER_KEY)
+    # An activated seat that has minted through cycle 11, and a purchased seat
+    # that has never been activated — the state nothing expires.
+    entries[seat_key(0)] = seat_value(
+        BIOMETRIC_IDENTITY_HASH,
+        PURCHASER_ACCOUNT_ID,
+        REFERRER_ACCOUNT_ID,
+        activation_height=7 * c.CYCLE_BLOCKS,
+        minted_through_window=11,
+    )
+    entries[seat_key(c.MAX_SEAT_ID)] = seat_value(
+        BIOMETRIC_IDENTITY_HASH, PURCHASER_ACCOUNT_ID, None
+    )
+    entries[referral_balance_key(REFERRER_ACCOUNT_ID)] = referral_balance_value(
+        c.REFERRAL_LEG_ATOMIC * 3, c.REFERRAL_LEG_ATOMIC
+    )
     entries[direct_decision_key(DECISION_ID)] = b""
     entries[typed_custody_key(1, BENEFICIARY_ACCOUNT_ID)] = typed_custody_value(
         34_200_000_000
     )
-    winners = derive_winner_set(WINDOW_UPTIME, WINDOW_MET)
-    entries[window_result_key(WINDOW)] = window_result_value(
-        winner_root(winners),
-        len(winners),
-        3,
-        met_bitmap([WINDOW_MET[seat] for seat in sorted(WINDOW_MET)]),
-    )
+    key, value = cycle_assignment_entry()
+    entries[key] = value
     return entries

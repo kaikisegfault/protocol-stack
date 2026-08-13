@@ -51,7 +51,7 @@ class VersionOneIdentityTest(unittest.TestCase):
         self.assertEqual(derived[: c.HEADER_BYTES], accepted[: c.HEADER_BYTES])
         self.assertEqual(derived[-c.TRAILER_BYTES :], accepted[-c.TRAILER_BYTES :])
         body = accepted[c.HEADER_BYTES : len(accepted) - c.TRAILER_BYTES]
-        self.assertEqual(len(body), c.FIXED_BODY_BYTES[c.TRANSFER])
+        self.assertEqual(len(body), c.BODY_BYTES[c.TRANSFER])
 
     def test_the_schema_version_and_labels_are_not_re_versioned(self) -> None:
         self.assertEqual(c.ENVELOPE_SCHEMA_VERSION, 1)
@@ -71,27 +71,33 @@ class EncodingTest(unittest.TestCase):
     def test_every_kind_has_the_length_its_table_requires(self) -> None:
         for name, transaction in scenario.transactions().items():
             with self.subTest(name):
-                winners = len(transaction.body.get("winners", ()))
                 raw = envelope.signed_bytes(transaction, scenario.TRANSFER_SIGNATURE)
                 self.assertEqual(
-                    len(raw), envelope.expected_signed_length(transaction.kind, winners)
+                    len(raw), envelope.expected_signed_length(transaction.kind)
                 )
 
-    def test_the_exercise_is_the_only_variable_length_kind(self) -> None:
+    def test_no_kind_is_variable_length(self) -> None:
+        """Nothing a transaction carries scales with the seat population."""
         for kind in c.TRANSACTION_KINDS:
-            fixed = envelope.expected_signed_length(kind)
-            widened = envelope.expected_signed_length(kind, 1)
-            if kind in c.VARIABLE_LENGTH_KINDS:
-                self.assertEqual(widened - fixed, 4)
-            else:
-                self.assertEqual(widened, fixed)
+            with self.subTest(kind):
+                self.assertEqual(
+                    envelope.expected_signed_length(kind),
+                    c.HEADER_BYTES
+                    + c.BODY_BYTES[kind]
+                    + c.TRAILER_BYTES
+                    + c.SIGNATURE_BYTES,
+                )
 
-    def test_a_fully_tied_exercise_fits_the_canonical_object_bound(self) -> None:
-        at_capacity = envelope.expected_signed_length(
-            c.EXERCISE_PERMISSION, c.FOUNDER_SEAT_CAPACITY
+    def test_no_two_kinds_share_a_body_length(self) -> None:
+        lengths = list(c.BODY_BYTES.values())
+        self.assertEqual(len(set(lengths)), len(lengths))
+
+    def test_the_largest_transaction_is_far_below_the_object_bound(self) -> None:
+        largest = max(
+            envelope.expected_signed_length(kind) for kind in c.TRANSACTION_KINDS
         )
-        self.assertEqual(at_capacity, 400_170)
-        self.assertLessEqual(at_capacity, c.MAX_OBJECT_BYTES)
+        self.assertEqual(largest, 325)
+        self.assertLess(largest, c.MAX_OBJECT_BYTES)
 
 
 class AdmissionTest(unittest.TestCase):
@@ -125,54 +131,41 @@ class AdmissionTest(unittest.TestCase):
         self.refuses(bytes(self.accepted) + b"\x00")
         self.refuses(bytes(self.accepted[:-1]))
 
-    def test_an_absent_referrer_must_encode_as_zero(self) -> None:
-        """A second encoding of one fact is the non-minimal representation."""
-        raw = bytearray(
+    def purchase(self) -> bytearray:
+        return bytearray(
             envelope.signed_bytes(
-                scenario.transactions()["activate_first_seat"],
+                scenario.transactions()["purchase_unreferred_last_seat"],
                 scenario.TRANSFER_SIGNATURE,
             )
         )
+
+    def test_an_absent_referrer_must_encode_as_thirty_two_zero_octets(self) -> None:
+        """A second encoding of one fact is the non-minimal representation."""
+        raw = self.purchase()
         envelope.decode_signed(bytes(raw))
-        raw[85:89] = (1).to_bytes(4, "big")
+        raw[80 + 69] = 1
         self.refuses(bytes(raw))
 
     def test_a_non_canonical_bool_is_malformed(self) -> None:
-        raw = bytearray(
-            envelope.signed_bytes(
-                scenario.transactions()["activate_first_seat"],
-                scenario.TRANSFER_SIGNATURE,
-            )
-        )
-        raw[84] = 2
+        raw = self.purchase()
+        raw[80 + 68] = 2
         self.refuses(bytes(raw))
 
-    def test_a_winner_list_must_be_strictly_increasing_and_bounded(self) -> None:
+    def test_a_relabelled_body_fails_on_length(self) -> None:
+        """No two kinds share a length, so re-labelling is caught before signing."""
         raw = bytearray(
             envelope.signed_bytes(
-                scenario.transactions()["exercise_failed_cycle"],
-                scenario.TRANSFER_SIGNATURE,
+                scenario.transactions()["mint_node"], scenario.TRANSFER_SIGNATURE
             )
         )
-        envelope.decode_signed(bytes(raw))
-        unordered = bytearray(raw)
-        unordered[90:94], unordered[94:98] = unordered[94:98], unordered[90:94]
-        self.refuses(bytes(unordered))
-
-        duplicated = bytearray(raw)
-        duplicated[94:98] = duplicated[90:94]
-        self.refuses(bytes(duplicated))
-
-        over = bytearray(raw)
-        over[86:90] = (c.FOUNDER_SEAT_CAPACITY + 1).to_bytes(4, "big")
-        self.refuses(bytes(over))
+        raw[6] = c.MINT_REFERRAL
+        self.refuses(bytes(raw))
 
     def test_a_bounded_value_outside_its_range_still_decodes(self) -> None:
         """It is an execution result, so it keeps its receipt and root entry."""
         raw = bytearray(
             envelope.signed_bytes(
-                scenario.transactions()["activate_first_seat"],
-                scenario.TRANSFER_SIGNATURE,
+                scenario.transactions()["mint_node"], scenario.TRANSFER_SIGNATURE
             )
         )
         raw[80:84] = c.FOUNDER_SEAT_CAPACITY.to_bytes(4, "big")
@@ -180,28 +173,41 @@ class AdmissionTest(unittest.TestCase):
         self.assertEqual(decoded.body["seat_id"], c.FOUNDER_SEAT_CAPACITY)
         self.assertGreater(decoded.body["seat_id"], c.MAX_SEAT_ID)
 
+    def test_the_biometric_signature_is_carried_but_not_verified_here(self) -> None:
+        """It verifies against ledger state, which admission is defined not to read."""
+        raw = self.purchase()
+        raw[80 + 101] ^= 0xFF
+        decoded, _ = envelope.decode_signed(bytes(raw))
+        self.assertNotEqual(
+            decoded.body["biometric_signature"], scenario.BIOMETRIC_SIGNATURE
+        )
+
 
 class CrossKindSeparationTest(unittest.TestCase):
-    """Two kinds share a body width, so the signed kind byte must separate them."""
+    """The kind byte is inside every preimage, so a signature cannot cross kinds."""
 
-    def test_a_shared_width_body_reinterprets_but_changes_the_preimage(self) -> None:
-        evaluation = scenario.transactions()["evaluate_first_cycle"]
-        accrual = scenario.transactions()["accrue_referral"]
-        self.assertEqual(
-            c.FIXED_BODY_BYTES[evaluation.kind], c.FIXED_BODY_BYTES[accrual.kind]
-        )
+    def test_flipping_the_kind_byte_changes_the_signing_message(self) -> None:
+        """The byte a re-labelling attack would change is inside the preimage."""
+        for name, transaction in scenario.transactions().items():
+            with self.subTest(name):
+                unsigned = bytearray(envelope.unsigned_bytes(transaction))
+                original = envelope.signing_message(bytes(unsigned))
+                for other in c.TRANSACTION_KINDS:
+                    if other == transaction.kind:
+                        continue
+                    unsigned[6] = other
+                    self.assertNotEqual(
+                        original, envelope.signing_message(bytes(unsigned))
+                    )
+                unsigned[6] = transaction.kind
+                self.assertEqual(original, envelope.signing_message(bytes(unsigned)))
 
-        raw = bytearray(envelope.signed_bytes(evaluation, scenario.TRANSFER_SIGNATURE))
-        raw[6] = c.ACCRUE_REFERRAL
-        reinterpreted, _ = envelope.decode_signed(bytes(raw))
-        self.assertEqual(reinterpreted.kind, c.ACCRUE_REFERRAL)
-
-        # The bytes decode; what fails is the signature, because the kind byte
-        # is inside the preimage that was signed.
-        self.assertNotEqual(
-            envelope.signing_message(envelope.unsigned_bytes(evaluation)),
-            envelope.signing_message(envelope.unsigned_bytes(reinterpreted)),
-        )
+    def test_every_kinds_encoding_is_distinct(self) -> None:
+        encodings = {
+            name: envelope.signed_bytes(tx, scenario.TRANSFER_SIGNATURE)
+            for name, tx in scenario.transactions().items()
+        }
+        self.assertEqual(len(set(encodings.values())), len(encodings))
 
     def test_the_chain_id_and_kind_are_both_inside_the_signing_message(self) -> None:
         transfer = scenario.accepted_transfer()

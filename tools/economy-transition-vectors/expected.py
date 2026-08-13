@@ -78,15 +78,31 @@ HEADER_BYTES = sum(width for name, _, width in TRANSFER_FIELDS if name in
 TRAILER_BYTES = sum(width for name, _, width in TRANSFER_FIELDS if name in
                     {"fee_limit", "valid_until_height"})
 
-# Each kind's body, as a hand-written table of field widths.
+# Each kind's body, as a hand-written table of field widths. Every kind is
+# fixed-length in version two, so there is no variable term.
 BODY_FIELD_WIDTHS: dict[int, tuple[int, ...]] = {
     1: (32, 8),
-    2: (4, 1, 4),
-    3: (4, 2),
-    4: (4, 2, 4),
-    5: (4, 2),
+    2: (4, 32, 32, 1, 32, 64),
+    3: (4, 64),
+    4: (4,),
+    5: (),
     6: (1, 32, 32, 8, 32),
 }
+
+KIND_NAMES: dict[int, str] = {
+    1: "native_transfer",
+    2: "purchase_seat",
+    3: "activate_seat",
+    4: "mint_node",
+    5: "mint_referral",
+    6: "direct_issue",
+}
+
+# The two messages the off-chain ecosystem verifier signs. Both bind the chain,
+# the seat, and an expiry, so a signature cannot be replayed onto another seat,
+# purchaser, chain, or attempt.
+ENROLLMENT_LABEL = "protocol-stack:v2:seat-enrollment"
+ACTIVATION_LABEL = "protocol-stack:v2:seat-activation"
 
 RESULT_CODES: dict[int, str] = {
     0: "SUCCESS",
@@ -103,14 +119,13 @@ RESULT_CODES: dict[int, str] = {
     11: "INVALID_REFERRER",
     12: "REPLAY",
     13: "SEAT_NOT_ACTIVATED",
-    14: "WINDOW_NOT_FINAL",
-    15: "PERMISSION_NOT_FOUND",
-    16: "INVALID_WINNER_SET",
-    17: "INVALID_CHANNEL",
-    18: "MISSING_RESEARCH_INPUT",
-    19: "INVALID_RESEARCH_INPUT",
-    20: "NOT_ELIGIBLE",
-    21: "CHANNEL_CAP",
+    14: "SEAT_NOT_PURCHASED",
+    15: "NOTHING_TO_MINT",
+    16: "INVALID_CHANNEL",
+    17: "MISSING_RESEARCH_INPUT",
+    18: "INVALID_RESEARCH_INPUT",
+    19: "NOT_ELIGIBLE",
+    20: "CHANNEL_CAP",
 }
 
 # `ledger-transition-v1`'s admission and transfer-execution codes, restated so
@@ -140,24 +155,38 @@ MODEL_RESULT_CODES: tuple[str, ...] = (
     "WINDOW_NOT_FOR_CYCLE", "SEAT_NOT_IN_SCOPE", "INCOMPLETE_UPTIME_RECORD",
 )
 
-# Version-two genesis, as a hand-written field table.
-GENESIS_FIELD_WIDTHS: tuple[int, ...] = (4, 2, 4, 8, 8, 8, 8, 32, 4)
+# Version-two genesis, as a hand-written field table: version one's fields plus
+# the accepted manifest digest and the ecosystem verifier key.
+GENESIS_FIELD_WIDTHS: tuple[int, ...] = (4, 2, 4, 8, 8, 8, 8, 32, 32, 4)
+VERSION_ONE_GENESIS_PREFIX_BYTES = 46
 ACCOUNT_ENTRY_BYTES = 48
 RECEIPT_FIELD_WIDTHS: tuple[int, ...] = (4, 2, 32, 1, 1, 8, 8)
 
 # Economy state entry widths, restated as (key, value) pairs. A `None` value
 # width is the one variable-width value, the window result.
 ENTRY_WIDTHS: dict[int, tuple[int, int | None]] = {
-    1: (5, 13),
+    1: (5, 114),
     2: (2, 16),
-    3: (7, 1),
-    4: (7, 0),
+    3: (9, None),
+    4: (33, 16),
     5: (33, 0),
     6: (34, 8),
-    7: (1, 8),
-    8: (9, None),
+    7: (2, 8),
+    8: (1, 32),
 }
-WINDOW_RESULT_FIXED_VALUE_BYTES = 44
+CYCLE_ASSIGNMENT_FIXED_VALUE_BYTES = 24
+
+# The five Founder Node distribution legs of one base permission, restated by
+# hand from the Founder Constitution's per-cycle table in display units times
+# the accepted eight-decimal denomination.
+BASE_PERMISSION_DISPLAY: tuple[tuple[int, str], ...] = (
+    (0, "342.0"),
+    (1, "171.0"),
+    (2, "34.2"),
+    (3, "17.1"),
+    (4, "10.0"),
+)
+ATOMIC_PER_DISPLAY = 100_000_000
 
 
 def domain(label: str) -> bytes:
@@ -224,9 +253,8 @@ def fixed_body_bytes(kind: int) -> int:
     return sum(BODY_FIELD_WIDTHS[kind])
 
 
-def signed_length(kind: int, winner_count: int = 0) -> int:
-    variable = 4 * winner_count if kind == 4 else 0
-    return HEADER_BYTES + fixed_body_bytes(kind) + variable + TRAILER_BYTES + SIGNATURE_BYTES
+def signed_length(kind: int) -> int:
+    return HEADER_BYTES + fixed_body_bytes(kind) + TRAILER_BYTES + SIGNATURE_BYTES
 
 
 def genesis_prefix_bytes() -> int:
@@ -244,12 +272,36 @@ def receipt_bytes() -> int:
 def entry_bytes(kind: int, in_scope_seats: int = 0) -> int:
     key_width, value_width = ENTRY_WIDTHS[kind]
     if value_width is None:
-        value_width = WINDOW_RESULT_FIXED_VALUE_BYTES + (in_scope_seats + 7) // 8
+        # Two bitmaps over the same in-scope seat set.
+        value_width = CYCLE_ASSIGNMENT_FIXED_VALUE_BYTES + 2 * ((in_scope_seats + 7) // 8)
     return key_width + value_width
 
 
-def equal_split(portion: int, winner_count: int) -> tuple[int, int]:
-    if winner_count == 0:
-        return 0, portion
-    share = portion // winner_count
-    return share, portion - share * winner_count
+def base_permission_legs() -> dict[int, int]:
+    """Derive each leg in atomic units from the constitution's display table."""
+    legs = {}
+    for channel, display in BASE_PERMISSION_DISPLAY:
+        whole, _, fraction = display.partition(".")
+        tenths = int(whole) * 10 + int(fraction)
+        legs[channel] = tenths * ATOMIC_PER_DISPLAY // 10
+    return legs
+
+
+def split_permission(winner_count: int) -> tuple[dict[int, int], dict[int, int]]:
+    shares, carries = {}, {}
+    for channel, amount in base_permission_legs().items():
+        if winner_count == 0:
+            shares[channel], carries[channel] = 0, amount
+            continue
+        share = amount // winner_count
+        shares[channel] = share
+        carries[channel] = amount - share * winner_count
+    return shares, carries
+
+
+def bitmap(flags: list[bool]) -> bytes:
+    packed = bytearray((len(flags) + 7) // 8)
+    for index, flag in enumerate(flags):
+        if flag:
+            packed[index // 8] |= 0x80 >> (index % 8)
+    return bytes(packed)
