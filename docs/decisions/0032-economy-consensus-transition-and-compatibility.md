@@ -240,12 +240,21 @@ Ten of the economy model's result codes become unreachable, which is a narrowing
 of the input surface rather than a loss of checking. The model keeps them and
 stays correct about the contract it states; nothing accepted is edited.
 
-One storage bound is not a constant. The number of retained window results is the
-number of windows inside some activated seat's span that still hold an
-unexercised cycle: 731 entries and about 9.2 MB if every seat activates in one
-window, and `W + 731` if activations span `W` windows, which the constitution
-does not bound. Growth is about 4.6 MB per year at the pinned commit interval.
-Requirement 15's independent review should see this figure.
+One storage bound is not a constant, and it is the weakest result in the slice.
+The number of retained window results is the number of windows inside some
+activated seat's span that still hold an unexercised cycle: 731 entries and about
+9.2 MB if every seat activates in one window and every seat exercises. Two things
+widen it and neither has a founder-directed limit — activations spanning `W`
+windows make it `W + 731`, and a single seat that never exercises retains its
+windows indefinitely, because the constitution makes exercise optional. Growth is
+about 4.6 MB per year at the pinned commit interval.
+
+Both available mitigations are refused. Expiring an unexercised permission would
+bound it exactly and would decide a seat's entitlement by inaction, which the
+constitution does not do; pruning the bitmap while keeping the winner root would
+cost the verdict a late evaluation needs. **This is the one place where the
+encoding is bounded by expected behavior rather than by a rule**, and it belongs
+in requirement 15's independent review as such rather than as a figure.
 
 The exercise transaction reaches 400,170 bytes for a fully tied window. It fits
 the canonical object bound, and whether it fits a block under adversarial load is
