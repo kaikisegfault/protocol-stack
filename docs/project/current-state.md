@@ -38,7 +38,8 @@ decided and encoded.
 
 ### How M3.8a was delivered
 
-Issue #139 and PR #140 delivered `economy-transition-v2` and ADR 0032. It added
+Issue #139 and PR #140 delivered `economy-transition-v2` and ADR 0032, merged by
+rebase across commits `f8d6374` through `5f66c49`. It added
 the specification, the ADR, the codec model in `simulation/economy_transition/`,
 238 normative vectors, a verifier in `tools/economy-transition-vectors/`, and 91
 tests. It satisfies requirements 5 and 6 of `first-goal.md`, and completes
@@ -1009,7 +1010,19 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
-- Issue #139 and PR #140 are the M3.8a delivery.
+- Issue #139 and PR #140 are the M3.8a delivery, merged by rebase. The slice is
+  commits `f8d6374` through `5f66c49` on `main`. PR Actions run 31744378969 on
+  the final head `6ced9f7` passed the complete hosted matrix — scope
+  classification `full`, GCC and Clang debug, both sanitizers, and the aggregate
+  required check. Three earlier runs on that branch were cancelled as
+  superseded, not failed.
+- **The margin is unchanged at about ten minutes.** Per-job durations against the
+  20-minute per-job timeout: `clang-debug` 6m27s, `gcc-debug` 7m53s,
+  `clang-sanitizers` 8m37s, `gcc-sanitizers` 9m16s. The slowest is now
+  `gcc-sanitizers` rather than `clang-sanitizers`, and 9m16s against M3.7a's
+  9m58s is inside the roughly 12% run-to-run variance that slice measured on
+  identical code. The slice added four Python test modules and one verifier and
+  moved the figure very little.
 - The kind-1 identity is exact. The version-two encoder reproduces
   `test-vectors/protocol-primitives-v1.txt`'s recorded `unsigned_tx`,
   `signed_tx`, and `tx_id`
