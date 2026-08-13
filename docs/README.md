@@ -176,6 +176,36 @@ and that the cap agreement is now derived across every registered binding
 without rewriting the accepted version-two vectors. It accepts a compatibility
 boundary, not a consensus transition.
 
+ADR 0031 rebinds the economy scenario suite to economy version three. It records
+that the activation heights are forced rather than chosen, because holding the
+tick a shared window lets `cycle-boundary-v1` determine the rest; that one early
+window reaches the founder-directed empty-winner rule with a complete population
+rather than in a unit test, and that the path was kept rather than designed
+away; that the totals cannot reveal it, so it is caught only by deriving the
+unrewarded windows from two independent sides; that a peer seat is required
+because the window check now precedes the binding check; and that scenarios 2
+and 3 are re-proved version-independent rather than inherited. It accepts a
+research scenario contract, not a consensus transition.
+
+ADR 0032 settles the economy consensus transition surface and the M1
+compatibility boundary. It records that the version-one transfer is factored
+into a shared header, a kind-specific body, and a shared trailer rather than
+replaced, so the kind-1 instance reproduces the accepted bytes exactly and the
+version-one result numbers keep their meanings across all six kinds; that
+reading the uptime record and the cycle window from state rather than from the
+transaction makes ten of the economy model's result codes unrepresentable, and
+that the removal is recorded as a total three-way partition so no check is lost
+silently; that the performance winner set is committed at window finalisation
+and carried by the exercise, because resolving it at evaluation is a
+population-scale write and computing it lazily would break
+`uptime-measurement-v1`'s retention bound; that a Founder Economy chain is a new
+chain rather than a migration of the M1 devnet; that three genesis relaxations
+are forced by the constitution's no-genesis-allocation rule, including a zero
+fee, whose bootstrap consequence is recorded rather than closed; and that all
+three authorization predicates are founder-reserved and none is filled, so kind
+6 is specified and refused. It accepts an encoding and a compatibility boundary,
+not an implementation.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
@@ -266,6 +296,14 @@ immutable; compatible changes require a new version.
   unpredictable beacon and its response deadline, the conjunctive slot credit
   rule, the bounded Ecosystem AI dispute window that finalises by expiry, and
   record completeness at the producing end; it measures and settles no value.
+- `specifications/economy-transition-v2.md`: the canonical economy consensus
+  surface — the shared transaction envelope and its five new kinds, the economy
+  state key space, version-two genesis, chain identity, and state root, the
+  56-byte receipt, the flat numeric result-code space, the reallocation
+  commitment, and the exact compatibility boundary against accepted M1
+  transaction bytes, state, and roots. It is a contract for an implementation
+  that does not yet exist, and three named authorization predicates are
+  deliberately left undefined.
 - `specifications/native-economy-simulation-v1.md`: versioned integer-only
   accounting, authority, event, trace, and metric contract for the independent
   M2 research simulator; it is not a consensus transition.
