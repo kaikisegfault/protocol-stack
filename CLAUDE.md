@@ -177,6 +177,32 @@ the `proceed-project` skill and report its result even when nothing is
 reserved, so a silent session is evidence that the check ran rather than that
 it was skipped.
 
+## Ask about surface logic whenever there is doubt
+
+On 2026-08-13 the owner extended the standing invitation beyond the reserved
+set: **at any moment Claude doubts that a surface-level rule, operation order,
+or end-to-end user-to-system flow is right, ask, rather than inventing a
+placeholder and proceeding.** This is not limited to founder-reserved values.
+
+The reason is evidence rather than deference. In M3.8a the owner's answers did
+not merely unblock the slice, they produced a materially better design: "a mint
+takes everything with no quantity choice" removed 73,100,000 would-be state
+entries, because a mint that can take a chosen amount must record which cycles
+it took, and "the escrows are paid at the winner's mint" removed a failed
+seat's ability to withhold other parties' value indefinitely. Neither was
+reachable by inference from the accepted documents.
+
+Prefer asking early over building on a guess. A wrong guess about operation
+order is cheap to correct in a specification and expensive once vectors,
+models, and an implementation depend on it — M3.8a's first draft had to be
+rewritten before merge for exactly this reason.
+
+This does not weaken the founder-decision gate, relax any evidence gate, or
+license pausing for ordinary technical approval. Mechanism, encoding, storage,
+scheduling, and naming remain autonomous. What it adds is that a genuine doubt
+about *what the system should do*, as a participant experiences it, is a
+question worth asking rather than a gap worth filling with a default.
+
 Continue through bounded slices until execution limits or a genuine external
 blocker prevent useful work. Do not stop to ask for ordinary approval. When one
 path is blocked, complete other safe work first. Record a remaining blocker
