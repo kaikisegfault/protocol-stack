@@ -34,25 +34,26 @@ Version two defines:
 
 - the canonical signed transaction envelope shared by every kind, and the five
   new transaction kinds;
+- the biometric verification signature that gates seat purchase and activation;
+- the automatic per-cycle assignment the chain performs at a block boundary, and
+  the accumulate-then-mint settlement it feeds;
 - the canonical economy state key space and its value encodings;
 - version-two genesis, chain identity, and the state-root construction;
 - the version-two receipt and the complete numeric result-code space;
 - the ordered rejection conditions of each new kind, and the total mapping from
-  `founder-economy-simulator-v3`'s model codes onto them;
-- the reallocation commitment, which is the bounded settlement mechanism
-  `founder-economy-manifest-v2` names as remaining M3 work; and
+  `founder-economy-simulator-v3`'s model codes onto them; and
 - the exact compatibility boundary against M1 transaction bytes, state, and
   roots.
 
 It does not define the C++20 kernel implementation, which is requirement 10; the
 cross-language vectors that implementation must reproduce, which are requirement
-11; the four-node adversarial scenarios, which are requirement 13; the
+11; the four-node adversarial scenarios, which are requirement 13; the external
+payment that must precede a seat purchase, which is bridge work; the
 distribution of transaction fees and commercial revenue to active seats, which
 `revenue-routing-v1` models and no kind here performs; the withdrawal of typed
 custody into a spendable account; the deterministic active-set protocol; or the
-challenge content. Three authorization predicates are named and deliberately
-left undefined; they are listed in
-[Authorization](#authorization) and in
+challenge content. One authorization predicate is named and deliberately left
+undefined; it is described in [Authorization](#authorization) and in
 [What this specification does not establish](#what-this-specification-does-not-establish).
 
 ## Bindings
@@ -149,102 +150,109 @@ as another, and a signature for one chain cannot be presented on another.
 Versioning the label would add no separation that the preimage does not already
 carry, and would destroy the byte-identity of the kind-1 instance for nothing.
 
-Two kinds share a body length — kinds 3, 4 with an empty winner list, and 5 are
-all six-byte bodies plus the list header where present. They are distinguished
-by the signed kind byte alone, which is sufficient and is checked by a vector
-that presents each body under each of the other kinds' identifiers and requires
-the signature to fail.
+The kind byte is what separates two kinds, not their length. Version two happens
+to give every kind a distinct body length, so no two encodings collide by
+accident, but a decoder must dispatch on the kind byte because a later version
+may add a kind whose length coincides. A vector presents each body under another
+kind's identifier and requires the signing message to change, which is what
+makes a signature unusable across kinds.
 
 ## Transaction kinds
 
 | Kind | Name | Body size | Unsigned | Signed |
 | ---: | --- | ---: | ---: | ---: |
 | 1 | `native_transfer` | 40 | 136 | 200 |
-| 2 | `activate_seat` | 9 | 105 | 169 |
-| 3 | `evaluate_base_permission` | 6 | 102 | 166 |
-| 4 | `exercise_permission` | 10 + 4W | 106 + 4W | 170 + 4W |
-| 5 | `accrue_referral` | 6 | 102 | 166 |
+| 2 | `purchase_seat` | 165 | 261 | 325 |
+| 3 | `activate_seat` | 68 | 164 | 228 |
+| 4 | `mint_node` | 4 | 100 | 164 |
+| 5 | `mint_referral` | 0 | 96 | 160 |
 | 6 | `direct_issue` | 105 | 201 | 265 |
 
-`W` is the winner count carried by an exercise and is zero for every met cycle.
-Kind 4 is the only variable-length kind.
+**Every kind is fixed-length and no two share a length.** Version two has no
+variable-length body at all, which is a consequence of the settlement design in
+[Cycle assignment](#cycle-assignment-and-settlement): nothing a transaction
+carries scales with the seat population, so the largest transaction in the
+protocol is 325 bytes. The distinct lengths are a derived property rather than a
+design goal, and a decoder must still dispatch on the kind byte rather than on
+the length, because a future kind may coincide.
 
-### Kind 2 — `activate_seat`
+### Kind 2 — `purchase_seat`
 
 | Offset | Size | Field | Range |
 | ---: | ---: | --- | --- |
 | 80 | 4 | seat ID `u32` | `0` through `99,999` |
-| 84 | 1 | has referrer `bool` | `0x00` or `0x01` |
-| 85 | 4 | referrer seat ID `u32` | `0` through `99,999`, or exactly `0` when absent |
+| 84 | 32 | biometric identity hash | 32 octets |
+| 116 | 32 | purchaser account ID | 32 octets |
+| 148 | 1 | has referrer `bool` | `0x00` or `0x01` |
+| 149 | 32 | referrer account ID | 32 octets, or 32 zero octets when absent |
+| 181 | 64 | biometric verification signature | Ed25519 over the enrollment message |
 
-A `has_referrer` of `0x00` requires a referrer field of exactly zero. Any other
-value is a second encoding of "no referrer", which
+A `has_referrer` of `0x00` requires 32 zero octets in the referrer field. Any
+other value is a second encoding of "no referrer", which
 `protocol-primitives-v1` forbids as a non-minimal representation, and is
 `MALFORMED_TRANSACTION`.
 
-**There is no `activation_height` field, and its absence is the point.** The
-model takes an activation height as an input and must therefore enforce
-`HEIGHT_RANGE` and `HEIGHT_NOT_MONOTONIC` at the writer. On a chain the
-activation height *is* the executing block height, which `ledger-transition-v1`
-already fixes as the sole successor of the previous height and invalidates the
-block on overflow. Both conditions are consequently satisfied by construction
-and unrepresentable as transaction results. This is exactly what
-`founder-economy-simulator-v3` predicted: "a real activation executes inside the
-block that includes it, so an activation height cannot decrease across the
-sequence a chain records."
+**The seat record and the biometric binding are written in one transition.** The
+purchase cannot be separated from the identity registration: there is no
+transaction that records a seat without a biometric hash, and none that attaches
+one afterwards, so a seat with no biometric identity is unrepresentable rather
+than merely disallowed.
 
-### Kind 3 — `evaluate_base_permission`
+**The referrer is an account, not a seat.** The Founder Constitution leaves open
+"whether a referrer must itself hold a Founder Seat"; the founder decision of
+2026-08-13 settles it — a referrer is a user participating in the incentive
+programme, and holding a seat is neither required nor relevant. The referral
+channel is therefore keyed by an account identifier throughout, and a seat
+identifier never appears on the referral path.
 
-| Offset | Size | Field | Range |
-| ---: | ---: | --- | --- |
-| 80 | 4 | seat ID `u32` | `0` through `99,999` |
-| 84 | 2 | cycle index `u16` | `0` through `730` |
+**What is deliberately absent is the payment.** No field here proves that BTC,
+ETH, or an approved stablecoin was received, because that proof is a bridge
+commitment and the bridge is a later milestone. The transition records what the
+chain owns — the seat, the identity hash, the purchaser, and the referrer — and
+the external settlement that must precede it is named in
+[What this specification does not establish](#what-this-specification-does-not-establish).
 
-**There is no uptime record and no cycle window field.** The window is
-`window_for_cycle(seat.activation_height, cycle_index)`, derived from state, and
-the record for that window is state the uptime pipeline finalised. A submitter
-therefore selects a cycle and nothing else.
-
-That removes eight of the model's rejection conditions as inputs that do not
-exist, and it removes them for one reason: a supplied record is an opinion, and
-the model's `MISSING_UPTIME_RECORD`, `INVALID_UPTIME_RECORD`,
-`INCONSISTENT_UPTIME_RECORD`, `SEAT_NOT_IN_SCOPE`, and
-`INCOMPLETE_UPTIME_RECORD` conditions exist to bound what a supplied opinion may
-claim. The model's whole `bound_uptime_records` map exists so that a window's
-uptime is one fact for a run rather than a per-event opinion; a chain reads one
-finalised record per window and has one fact by construction. The three window
-codes go the same way, because the window is derived rather than presented.
-
-One condition replaces them. A cycle may be evaluated only when its window is
-final under `uptime-measurement-v1` — at or after the first height of window
-`w + 2` — which is `WINDOW_NOT_FINAL`. This is a condition the model cannot have,
-because the model has no current height.
-
-### Kind 4 — `exercise_permission`
+### Kind 3 — `activate_seat`
 
 | Offset | Size | Field | Range |
 | ---: | ---: | --- | --- |
 | 80 | 4 | seat ID `u32` | `0` through `99,999` |
-| 84 | 2 | cycle index `u16` | `0` through `730` |
-| 86 | 4 | winner count `u32` | `0`, or the recorded count |
-| 90 | 4W | winner seat IDs `u32` | strictly increasing, each `0` through `99,999` |
+| 84 | 64 | biometric verification signature | Ed25519 over the activation message |
 
-The list is empty for a met cycle and is the complete winner set for a failed
-one. It is checked against the commitment recorded at the window's finalisation;
-see [The reallocation commitment](#the-reallocation-commitment).
+Activation is **one-time and permanent**. It carries no referrer, because the
+referrer was recorded at purchase, and no activation height, because the height
+is the executing block's. It starts the seat's 731 cycles and is the only
+transition that does.
 
-### Kind 5 — `accrue_referral`
+**A seat may stay purchased and un-activated indefinitely.** Nothing expires a
+purchased seat and nothing activates one on the founder's behalf, so the seat
+record carries an activation height only once activation has happened.
+
+### Kind 4 — `mint_node`
 
 | Offset | Size | Field | Range |
 | ---: | ---: | --- | --- |
-| 80 | 4 | referred seat ID `u32` | `0` through `99,999` |
-| 84 | 2 | cycle index `u16` | `0` through `730` |
+| 80 | 4 | seat ID `u32` | `0` through `99,999` |
 
-The accrual is unconditional and direct-mint. It reads the referred seat's
-recorded referrer and credits the referrer when one exists and the unreferred
-performance pool when one does not, which is the founder-directed rule that
-consumes the channel exactly. It does not read a record, a window, or a verdict,
-so it has no boundary condition and no finality condition.
+**One button, everything, no quantity.** The transaction names a seat and
+nothing else. It mints every permission the seat has accumulated and not yet
+minted — its own met cycles and every reallocation share it won — and there is
+no field by which a founder could mint part of it. That is founder-directed and
+is the reason the body is four bytes: a quantity field would be a way to express
+a choice the rule does not offer.
+
+### Kind 5 — `mint_referral`
+
+The body is empty. The transaction mints every referral permission accumulated
+to the **sender's own account**, so it names no seat and no beneficiary: the
+signer is the beneficiary, and there is nothing else to say.
+
+**Referral is a separate pool with a separate button, and that is
+founder-directed.** A Founder Seat and a referrer are different roles even when
+one person holds both; the referral accrues through a direct-mint channel on the
+referred seat's schedule and does not depend on any node's activity. Folding it
+into `mint_node` would tie a user's referral earnings to a seat they may not
+hold.
 
 ### Kind 6 — `direct_issue`
 
@@ -258,11 +266,10 @@ so it has no boundary condition and no finality condition.
 
 The channel ID is the accepted manifest's array index, so the wire value is read
 from the accepted contract rather than numbered again here. Index `7`,
-`founder_referral`, is **not** admissible: it is consumed exactly by kind 5, and
-admitting it here would mint referral units outside the per-seat-cycle
-accounting, which is the containment `founder-economy-simulator-v3` already
-applies. Indices `0` through `4` are base-permission channels and are not
-direct-mint. Any other value is `INVALID_CHANNEL`.
+`founder_referral`, is **not** admissible: it is consumed exactly by the daily
+referral assignment and kind 5, and admitting it here would mint referral units
+outside that accounting. Indices `0` through `4` are Founder Node distribution
+channels and are not direct-mint. Any other value is `INVALID_CHANNEL`.
 
 **The `authorization` field is a commitment to an eligibility decision whose
 verification predicate is not defined by this specification, and kind 6 is
@@ -278,6 +285,19 @@ must decide what it actually verifies. Refusing the kind is the conservative
 default and is reversible by an accepted predicate; inventing one would set what
 a participant must do in order to be paid.
 
+### There is no transaction that records a day
+
+Version two has no transaction by which anyone reports, claims, or evaluates a
+cycle. **The chain writes each cycle's outcome itself**, at a block boundary,
+for every activated seat at once. See
+[Cycle assignment](#cycle-assignment-and-settlement).
+
+That is founder-directed and it removes an entire authorization question rather
+than answering one: a transition nobody submits has no sender to authorize, no
+fee to pay, and no liveness dependency on an operator remembering to press
+something. An earlier draft of this specification had a submitted
+`evaluate_base_permission` transaction, and it was wrong.
+
 ## Admission
 
 Admission operates on raw transaction bytes before ledger state is read, and its
@@ -288,11 +308,11 @@ version-one steps are unchanged in order and in meaning:
 3. derive the sender account ID from the encoded public key;
 4. strictly verify the Ed25519 signature over the signing message.
 
-Step 1 classifies a wrong magic, schema version, transaction kind,
+Step 1 classifies a wrong magic, schema version, transaction kind, or
 signature-scheme identifier, a length that is not the exact length its kind
-requires, a non-minimal absent-referrer encoding, a winner list that is not
-strictly increasing, or a winner count above `FOUNDER_SEAT_CAPACITY` as
-`MALFORMED_TRANSACTION`. The admission codes are version one's, unchanged:
+requires, a `has_referrer` byte that is not `0x00` or `0x01`, or a non-minimal
+absent-referrer encoding as `MALFORMED_TRANSACTION`. The admission codes are
+version one's, unchanged:
 
 | Code | Name |
 | ---: | --- |
@@ -300,14 +320,23 @@ strictly increasing, or a winner count above `FOUNDER_SEAT_CAPACITY` as
 | 2 | `WRONG_CHAIN` |
 | 3 | `INVALID_SIGNATURE` |
 
+Because every kind is fixed-length, step 1 needs no length arithmetic beyond a
+table lookup on the kind byte, and there is no count field anywhere in version
+two that a decoder must bound before allocating.
+
 **A bounded numeric field outside its range is not an admission failure.** A
 seat ID of `100,000` decodes to a well-formed `u32` and is refused at execution
 with `CYCLE_RANGE`. Admission is defined to perform no state read and to produce
 no receipt, so classifying a range violation there would remove its receipt and
 its place in the ordered transaction root, and a submitter's invalid seat ID
 would leave no canonical trace. Shape belongs to admission and value belongs to
-execution; the winner list is checked for shape at admission because strict
-increase and its count bound are properties of the bytes alone.
+execution.
+
+**The biometric verification signature is not checked at admission.** It
+verifies against the ecosystem verifier key, which is ledger state, and
+admission is defined to read none. It is therefore an execution condition
+returning `UNAUTHORIZED`, and it produces a receipt — which is what a founder
+whose enrollment signature expired needs in order to see why.
 
 Admission failures perform no state read or write, produce no application
 receipt, and do not enter the application transaction root, exactly as in
@@ -320,27 +349,76 @@ fixed fee. The Founder Constitution decides that fees apply here: "Every
 protocol transaction fee is charged separately ... whether the transaction is a
 purchase, transfer, issuance exercise, or another accepted state transition."
 
-Three predicates decide *which* sender each kind accepts, and this specification
-names all three and defines none of them:
+The founder decision of 2026-08-13 settles two of the three predicates this
+surface needs. The third is unchanged and still reserved.
 
-| Predicate | Kinds | What is already decided | What is reserved |
-| --- | --- | --- | --- |
-| `activation_authority` | 2 | a sensitive Founder action requires an accepted signature **and** a fresh action-bound biometric approval | which key, and what proves purchase and enrollment |
-| `seat_authority` | 3, 4, 5 | the same clause governs a Founder action against a recorded seat | which recorded manager addresses satisfy it |
-| `direct_issue_authority` | 6 | nothing | the whole eligibility and anti-abuse rule for four channels |
+| Kind | Signer | Second factor |
+| ---: | --- | --- |
+| 1 | any account | none |
+| 2 | any account | biometric verification signature, required |
+| 3 | the seat's recorded purchaser account | biometric verification signature, required |
+| 4 | the seat's recorded purchaser account | none |
+| 5 | the account being paid | none |
+| 6 | refused | the predicate is reserved |
 
-A sender the applicable predicate refuses is `UNAUTHORIZED`. Encoding the
-sender, reserving the code, and refusing kind 6 outright is what this
-specification supplies. **Which senders a predicate accepts sets what an end
-user must do and own in order to participate and be paid, so it is
-founder-reserved and is not decided here.** It is the nearest blocking
-dependency of requirement 10 and is recorded as such rather than filled with a
-research fixture.
+A sender the applicable rule refuses is `UNAUTHORIZED`.
 
-`founder-economy-simulator-v3` already records the same boundary from the other
-side: "Nothing here proves that a seat paid for a position, enrolled, passed
+### The biometric verification signature
+
+Kinds 2 and 3 carry a 64-byte Ed25519 signature by the **ecosystem verifier
+key**, a genesis-configured public key, over a domain-separated message binding
+the exact action:
+
+```text
+enrollment_message =
+  D("protocol-stack:v2:seat-enrollment") ||
+  chain_id || u32(seat_id) || biometric_identity_hash ||
+  purchaser_account_id || u64(valid_until_height)
+
+activation_message =
+  D("protocol-stack:v2:seat-activation") ||
+  chain_id || u32(seat_id) || purchaser_account_id || u64(valid_until_height)
+```
+
+The verification is performed by the chain against the recorded verifier key
+using the same strict Ed25519 rules `protocol-primitives-v1` fixes for
+transaction signatures. **No biometric image, template, or private linkage datum
+enters consensus** — the chain sees a hash and a signature over it, which is
+what the constitution requires when it says raw images and private linkage data
+"do not become ordinary public blockchain data".
+
+Each message binds the chain, the seat, the purchaser, and an expiry, so a
+verifier signature is **action-bound**: it cannot be replayed onto another seat,
+another purchaser, another chain, or a later attempt after expiry. That is the
+"fresh, action-bound biometric approval" the constitution requires, expressed as
+bytes.
+
+`valid_until_height` in each message is the transaction's own trailer value, so
+the verifier signature and the transaction expire together and neither outlives
+the other.
+
+**This makes the ecosystem verifier a gate on entry and never on payment.** It
+signs purchases and activations; it signs no mint. If the verifier is
+unavailable, no new seat can be bought or activated and **every existing seat
+continues to earn and to mint unaffected**. That is the containment direction
+the constitution insists on when it refuses to make an off-chain signature a
+precondition for income, and it is why kinds 4 and 5 carry no second factor: a
+stolen wallet key can mint, but it can only mint to the seat's own recorded
+account, so it redirects nothing.
+
+### What is still reserved
+
+`direct_issue_authority` is unchanged and remains founder-reserved: the
+eligibility and anti-abuse mechanics for the four undecided direct-mint
+channels. Kind 6 is therefore specified and refused rather than given an
+invented predicate.
+
+`founder-economy-simulator-v3` records the boundary this specification now
+crosses: "Nothing here proves that a seat paid for a position, enrolled, passed
 biometric verification, or is a distinct human, and nothing here decides which
-transition supplies the height."
+transition supplies the height." Kinds 2 and 3 supply the height and the
+enrollment binding. What remains outside is the *payment* — the external
+settlement that must precede a purchase — which is bridge work.
 
 ## Canonical economy state
 
@@ -354,34 +432,101 @@ of another with a different meaning.
 
 | Kind | Entry | Key | Key bytes | Value | Value bytes |
 | ---: | --- | --- | ---: | --- | ---: |
-| 1 | seat | `u8(1) \|\| seat_id:u32` | 5 | `activation_height:u64 \|\| has_referrer:u8 \|\| referrer_seat_id:u32` | 13 |
+| 1 | seat | `u8(1) \|\| seat_id:u32` | 5 | see below | 106 |
 | 2 | channel | `u8(2) \|\| channel_id:u8` | 2 | `issued_atomic:u64 \|\| outstanding_atomic:u64` | 16 |
-| 3 | pending permission | `u8(3) \|\| seat_id:u32 \|\| cycle_index:u16` | 7 | `met_cycle:u8` | 1 |
-| 4 | referral accrual | `u8(4) \|\| seat_id:u32 \|\| cycle_index:u16` | 7 | *(empty)* | 0 |
+| 3 | cycle assignment | `u8(3) \|\| cycle_window:u64` | 9 | see below | 24 + 2⌈n/8⌉ |
+| 4 | referral balance | `u8(4) \|\| account_id:bytes<32>` | 33 | `accrued_atomic:u64 \|\| minted_atomic:u64` | 16 |
 | 5 | direct decision | `u8(5) \|\| decision_id:bytes<32>` | 33 | *(empty)* | 0 |
 | 6 | typed custody | `u8(6) \|\| beneficiary_kind:u8 \|\| beneficiary_id:bytes<32>` | 34 | `amount_atomic:u64` | 8 |
-| 7 | performance carry | `u8(7)` | 1 | `carry_atomic:u64` | 8 |
-| 8 | window result | `u8(8) \|\| cycle_window:u64` | 9 | `winner_root:bytes<32> \|\| winner_count:u32 \|\| unevaluated_count:u32 \|\| met_bitmap:bytes` | 44 + ⌈n/8⌉ |
+| 7 | carry | `u8(7) \|\| channel_id:u8` | 2 | `carry_atomic:u64` | 8 |
+| 8 | verifier key | `u8(8)` | 1 | `ed25519_public_key:bytes<32>` | 32 |
 
 An entry kind outside `1` through `8` cannot occur, because no transition writes
 one and the state is not an untrusted input.
 
-**A pending permission holds one byte.** The model stores the resolved legs,
-including one leg per performance winner, which is what makes its abstract
-resource ceiling 73,100,000 entries of unbounded width. Here the legs of a met
-cycle are the manifest's five fixed legs and need no storage, and the legs of a
-failed cycle are the manifest's four unchanged legs plus an equal split over the
-window's winner set, which is recorded once per window rather than once per
-failed seat. The verdict is the only thing that must survive from evaluation to
-exercise.
+### The seat record
 
-**An evaluated permission key is not a separate entry.** The model keeps
-`evaluated_permission_keys` as a set alongside `pending_permissions` because a
-permission is removed when exercised and replay must still be refused. Here the
-verdict entry is retained after exercise with `met_cycle` replaced by an
-exercised marker, so one entry answers both questions and the set disappears.
-The `met_cycle` byte is `0x00` for a failed unexercised cycle, `0x01` for a met
-unexercised cycle, and `0x02` once exercised.
+```text
+biometric_identity_hash : bytes<32>
+purchaser_account_id    : bytes<32>
+has_referrer            : u8
+referrer_account_id     : bytes<32>
+is_activated            : u8
+activation_height       : u64
+minted_through_window   : u64
+```
+
+106 bytes. Three of its fields are the shape of the founder decision of
+2026-08-13 and were absent from the first draft of this specification.
+
+**Identity is present from the first byte of the seat's existence.** The hash and
+the purchaser are written by the same transition that creates the record, so a
+seat with no biometric binding is unrepresentable rather than disallowed.
+
+**Activation is a flag, not an inferred sentinel.** `is_activated` is `0x00` or
+`0x01`; `activation_height` must be zero while it is `0x00`. A purchased seat
+that has never been activated is an ordinary, permanent state — nothing expires
+it — so "not yet activated" needs its own representation rather than borrowing
+height zero, which is a real height.
+
+**`minted_through_window` is the whole of the mint bookkeeping.** Because a mint
+takes everything and cannot take part of it, one high-water mark answers what a
+seat has already collected. There is no per-cycle permission record, no
+per-cycle replay key, and no set of exercised keys: the mark is the replay
+protection, and a second mint at the same height simply finds nothing to take.
+
+That is a direct consequence of the founder rule. A mint that could take a chosen
+quantity would need to record which cycles were taken, and the natural encoding
+of that is one entry per seat-cycle — 73,100,000 entries at capacity. The rule
+that there is no quantity choice is what collapses it to eight bytes per seat.
+
+**The referrer is an account and the seat table is not on the referral path.**
+`referrer_account_id` is a 32-byte account, because a referrer is a user
+participating in the incentive programme rather than a seat holder.
+
+### The cycle assignment record
+
+```text
+share_per_winner_atomic : u64
+winner_count            : u32
+in_scope_count          : u32
+met_bitmap              : one bit per in-scope seat, ascending seat order
+winner_bitmap           : one bit per in-scope seat, ascending seat order
+```
+
+One record per cycle, written once, by the chain. At the 100,000-seat capacity
+each bitmap is 12,500 bytes and the record is 25,024 bytes.
+
+**This one record replaces every per-seat write the assignment would otherwise
+need.** A cycle in which one seat fails owes a share to every seat that tied at
+the best uptime, which on an ordinary day is nearly the whole population.
+Crediting them individually is 100,000 state writes for one failed seat, and a
+founder who has saved up many failed cycles would settle millions of them in a
+single mint. Recording who won, and how much each won, lets a seat compute its
+own entitlement when it mints.
+
+**A seat reads its own bits, so a mint is bounded by the seat's own history.**
+`mint_node` walks the windows after `minted_through_window`, and for each one
+reads two bits: whether this seat met that cycle, and whether it won a share of
+someone else's. Both are `O(1)` lookups into a record the chain already holds.
+
+The bitmaps cover the **in-scope** set, which has no upper bound: a seat past its
+own 731 cycles still runs a node, is still measured, and may still win. The met
+bit and the winner bit are therefore defined for every in-scope seat, while only
+seats whose span contains the window have a base permission of their own to
+collect.
+
+### What is no longer state
+
+**There is no pending-permission entry.** The first draft stored one verdict byte
+per seat-cycle, up to 73,100,000 entries. The verdict now lives as one bit inside
+its cycle's record, so the same fact costs one bit instead of eight bytes and is
+stored once per cycle rather than once per seat-cycle.
+
+**There is no winner commitment and no winner list in any transaction.** The
+first draft committed to the winner set and required an exercise to carry it,
+reaching 400,170 bytes for a fully tied cycle. The winner bitmap makes the set
+readable from state, so the largest transaction in version two is 325 bytes.
 
 **`last_activation_height` is not state.** The model needs it to enforce
 monotonicity; a chain's heights are monotone by construction.
@@ -441,6 +586,7 @@ version-one root reinterpreted as a version-two root.
 | fixed transfer fee | `u64` | configured |
 | initial fee pool | `u64` | configured |
 | economy manifest digest | `bytes<32>` | the accepted manifest digest |
+| ecosystem verifier key | `bytes<32>` | canonical Ed25519 public key |
 | account count | `u32` | `0` through `21,843` |
 | accounts | repeated 48-byte state entries | exactly `account count` entries |
 
@@ -448,9 +594,18 @@ version-one root reinterpreted as a version-two root.
 chain_id = H(D("protocol-stack:v2:chain-id") || canonical_genesis_v2_bytes)
 ```
 
-Genesis writes the ten channel entries with both amounts zero and the
-performance-carry entry with zero, and nothing else. It never writes a seat, a
-permission, a custody entry, or a window result.
+Genesis writes the ten channel entries with both amounts zero, the ten carry
+entries with zero, and the ecosystem verifier key. It writes nothing else: never
+a seat, a referral balance, a custody entry, or a cycle assignment.
+
+**The verifier key is genesis state, not a configured constant.** It is what
+kinds 2 and 3 check their biometric signatures against, so a chain that does not
+carry one can admit no seat at all. Placing it in genesis puts it inside the
+chain ID, which means a chain with a different verifier key is a different chain
+rather than the same chain trusting a different verifier. No transition in
+version two rotates it; rotation needs an authorization rule that does not exist
+yet and is named in
+[What this specification does not establish](#what-this-specification-does-not-establish).
 
 **Three of version one's genesis requirements are relaxed, and each is forced by
 founder direction rather than chosen.** The Founder Constitution states that
@@ -470,18 +625,20 @@ milestone. A zero fee makes a devnet runnable and states the dependency; it does
 not decide the production fee policy, which sets what a user must pay and is not
 settled here.
 
-The genesis prefix through `account count` is 78 bytes, so the 1,048,576-byte
-canonical object bound admits at most 21,843 entries:
+The genesis prefix through `account count` is 110 bytes — version one's 46 plus
+the manifest digest and the verifier key — so the 1,048,576-byte canonical object
+bound admits at most 21,843 entries:
 
 ```text
-78 + 48 * 21,843 = 1,048,542   accepted
-78 + 48 * 21,844 = 1,048,590   rejected
+110 + 48 * 21,843 = 1,048,574   accepted
+110 + 48 * 21,844 = 1,048,622   rejected
 ```
 
 A decoder must reject a declared count above 21,843 before allocating account
-storage. Version one's bound is 21,844 against a 46-byte prefix; the difference
-is exactly the 32-byte manifest digest, and both figures are derived rather than
-recorded.
+storage. Version one's bound is 21,844 against its 46-byte prefix, so version two
+loses exactly one entry despite adding 64 bytes: the accepting case clears the
+bound by two bytes. Every figure here is derived rather than recorded, which is
+what makes the two-byte margin a checked fact rather than a lucky one.
 
 ## Execution
 
@@ -512,66 +669,118 @@ Every non-success result performs no state write and charges no fee. It still
 produces a receipt and enters the ordered transaction root, exactly as in
 version one.
 
-### Kind 2 — activate seat
+### Kind 2 — purchase seat
 
 Rejection conditions, in this order:
 
-1. a sender `activation_authority` refuses is `UNAUTHORIZED`;
-2. a `seat_id` outside `0..99,999` is `CYCLE_RANGE`;
-3. a `referrer_seat_id` outside `0..99,999`, or equal to `seat_id`, is
+1. a `seat_id` outside `0..99,999` is `CYCLE_RANGE`;
+2. an already-purchased `seat_id` is `REPLAY`;
+3. a `referrer_account_id` equal to the `purchaser_account_id` is
    `INVALID_REFERRER`;
-4. an already-activated `seat_id` is `REPLAY`;
-5. a `referrer_seat_id` that is not itself activated is `SEAT_NOT_ACTIVATED`.
+4. a biometric verification signature that does not verify against the recorded
+   verifier key over the enrollment message is `UNAUTHORIZED`.
 
-Conditions 2 through 5 are `founder-economy-simulator-v3`'s conditions 1, 3, 4,
-and 5 in its order. Its conditions 2 and 6 are unrepresentable. Authorization
-precedes every value check so that a refused sender learns nothing about which
-seats exist.
+On success the transition writes the seat record with `is_activated` false,
+`activation_height` zero, and `minted_through_window` zero. It issues nothing,
+reserves nothing, and credits nothing.
 
-On success the transition writes one seat entry whose `activation_height` is the
-executing block height, issues nothing, reserves nothing, and credits nothing.
+**The signature is checked last among these, and that is deliberate.** The three
+conditions before it are properties of the transaction and the seat table, so a
+defect in the request is reported as a defect in the request. Checking the
+verifier signature first would report every malformed purchase as an
+authorization failure and would make the two indistinguishable to a submitter
+fixing a bug.
 
-### Kind 3 — evaluate base permission
+**Self-referral is refused, and it is the only referral condition here.** Nothing
+requires a referrer to exist, to hold a seat, or to have been referred
+themselves. The constitution's open question — whether a referrer must itself
+hold a Founder Seat — was settled in the negative on 2026-08-13, so there is no
+condition to encode.
+
+### Kind 3 — activate seat
 
 Rejection conditions, in this order:
 
-1. a sender `seat_authority` refuses is `UNAUTHORIZED`;
-2. a `seat_id` or `cycle_index` outside range is `CYCLE_RANGE`;
+1. a `seat_id` outside `0..99,999` is `CYCLE_RANGE`;
+2. an unpurchased `seat_id` is `SEAT_NOT_PURCHASED`;
+3. a sender other than the seat's recorded `purchaser_account_id` is
+   `UNAUTHORIZED`;
+4. an already-activated seat is `REPLAY`;
+5. a biometric verification signature that does not verify against the recorded
+   verifier key over the activation message is `UNAUTHORIZED`.
+
+On success the transition sets `is_activated` and writes `activation_height` as
+the executing block height. It issues nothing.
+
+**Activation is permanent and has no inverse.** No transition clears
+`is_activated`, moves `activation_height`, or re-activates a seat, so the 731
+cycles a seat receives are fixed by one irreversible event. `REPLAY` is what
+makes that true rather than a convention.
+
+**`HEIGHT_RANGE` and `HEIGHT_NOT_MONOTONIC` are unrepresentable.** The model
+takes an activation height as an input and must bound it and enforce that it
+never decreases. Here the height is the executing block's, which
+`ledger-transition-v1` already fixes as the sole successor of the previous height
+and invalidates the block on overflow.
+
+### Kind 4 — mint node
+
+Rejection conditions, in this order:
+
+1. a `seat_id` outside `0..99,999` is `CYCLE_RANGE`;
+2. an unpurchased `seat_id` is `SEAT_NOT_PURCHASED`;
 3. an unactivated seat is `SEAT_NOT_ACTIVATED`;
-4. an already-evaluated key is `REPLAY`;
-5. a derived window that is not yet final is `WINDOW_NOT_FINAL`;
+4. a sender other than the seat's recorded `purchaser_account_id` is
+   `UNAUTHORIZED`;
+5. nothing accumulated since `minted_through_window` is `NOTHING_TO_MINT`;
 6. a leg that does not fit its channel is `CHANNEL_CAP`.
 
-On success the transition reads the window's finalised met bit for the seat,
-writes the pending-permission entry, and increases each affected channel's
-`outstanding_atomic`. It creates no units: outstanding capacity is a liability,
-not issued supply.
+On success the transition walks every assigned cycle after
+`minted_through_window` up to the last assigned one, and for each:
 
-### Kind 4 — exercise permission
+- if the window lies in the seat's own 731-cycle span and the seat's met bit is
+  set, it settles that cycle's full base permission — the four escrow and
+  System Creator legs to their own beneficiaries and 34,200,000,000 atomic units
+  to the seat's custody;
+- if the seat's winner bit is set, it settles its equal share of every failed
+  seat's permission for that cycle, with each of the five legs divided by the
+  winner count, so the escrows and the System Creator receive their portions at
+  this mint rather than at a mint the failed seat may never make.
 
-Rejection conditions, in this order:
-
-1. a sender `seat_authority` refuses is `UNAUTHORIZED`;
-2. a `seat_id` or `cycle_index` outside range is `CYCLE_RANGE`;
-3. no pending permission, or one already exercised, is `PERMISSION_NOT_FOUND`;
-4. a winner list that is not exactly the committed set is `INVALID_WINNER_SET`;
-5. a leg that does not fit its channel is `CHANNEL_CAP`.
-
-On success the transition moves each leg from `outstanding_atomic` to
-`issued_atomic`, credits typed custody, updates the performance carry, marks the
-permission exercised, decrements the window's `unevaluated_count`, and increases
-`total_supply` by the permission total. It is atomic: every beneficiary is
+It then sets `minted_through_window` to the last assigned window, credits typed
+custody, moves each leg from `outstanding_atomic` to `issued_atomic`, and
+increases `total_supply` by the total minted. It is atomic: every beneficiary is
 credited or none is.
 
-### Kind 5 — accrue referral
+**A failed seat's own cycle contributes nothing to its own mint.** The whole
+permission moved to that cycle's winners when the cycle was assigned, which is
+what makes the escrows independent of whether the failed founder ever mints. The
+constitution's rule that a failed cycle's Founder portion "cannot be recovered
+later" by the original seat is preserved exactly, and its statement that
+reallocation settles "when the failed seat next exercises a permission" is
+superseded by the founder decision of 2026-08-13, which settles at the winner's
+mint instead. The reason the owner gave for the change is the reason to record:
+a failed seat that never mints must not be able to withhold the escrows' and the
+winners' value indefinitely.
+
+**`NOTHING_TO_MINT` is a result, not a no-op.** A mint that found nothing writes
+no state and charges no fee, so a repeated mint is refused rather than silently
+accepted, and the receipt says which it was.
+
+### Kind 5 — mint referral
 
 Rejection conditions, in this order:
 
-1. a sender `seat_authority` refuses is `UNAUTHORIZED`;
-2. a `seat_id` or `cycle_index` outside range is `CYCLE_RANGE`;
-3. an unactivated referred seat is `SEAT_NOT_ACTIVATED`;
-4. an already-accrued key is `REPLAY`;
-5. a leg that does not fit the channel is `CHANNEL_CAP`.
+1. no referral balance for the sender, or an accrued total equal to the minted
+   total, is `NOTHING_TO_MINT`;
+2. a leg that does not fit the channel is `CHANNEL_CAP`.
+
+On success the transition mints the whole outstanding difference to the sender's
+custody, sets `minted_atomic` equal to `accrued_atomic`, and increases
+`total_supply`.
+
+**There is no seat and no authorization check.** The signer is the beneficiary,
+so there is nobody else the transition could pay and nothing to authorize.
 
 ### Kind 6 — direct issue
 
@@ -593,90 +802,67 @@ sender first. The vectors record that unreachability as a derived property, so a
 later implementation that activates the kind without the founder decision fails
 a check rather than passing silently.
 
-## The reallocation commitment
+## Cycle assignment and settlement
 
-A failed cycle's 342-unit Founder portion goes to the highest cumulative uptime
-in that same window, shared equally among exact ties, restricted to seats that
-met the cycle, with the integer remainder carried forward. The winner set is
-therefore a property of the **window** and not of the failed seat: every seat
-that fails in window `w` reallocates to the same set.
+**No transaction records a cycle.** At the first height of window `w + 2`, when
+`uptime-measurement-v1` finalises window `w`, ordered block execution writes
+window `w`'s cycle-assignment record and nothing else does.
 
-At the first height of window `w + 2`, when `uptime-measurement-v1` finalises
-`w`, ordered block execution writes the window-result entry for `w`:
+The transition, in order:
 
-- `met_bitmap`, one bit per in-scope seat in ascending seat order;
-- `winner_root`, the ordered Merkle root over the sorted winner seat IDs using
-  the accepted tree shape and the labels
-  `protocol-stack:v2:winner-empty`, `-leaf`, and `-node`;
-- `winner_count`; and
-- `unevaluated_count`, the number of seats whose 731-window span contains `w`
-  and which have not yet exercised their cycle for `w`.
+1. derive the in-scope seat set for `w` from the seat table;
+2. set each seat's met bit from the finalised measurement;
+3. derive the winner set — the seats at the highest uptime among those that met
+   the cycle — and set their bits;
+4. compute the per-winner share of one failed seat's permission by dividing each
+   of the five legs by the winner count, adding each leg's remainder to that
+   channel's carry;
+5. add one base permission's `outstanding_atomic` per in-scope seat whose span
+   contains `w`, so the channel liability is recorded when the permission is
+   assigned rather than when it is minted.
 
-**The bitmap and the counter are over two different seat sets, and the
-difference is load-bearing.** The bitmap covers every **in-scope** seat, which
-has no upper bound: a seat past its own issuance span is still measured and may
-still be a reallocation winner, so the winner set must be derived over all of
-them. The counter covers only seats whose **span contains** `w`, because only
-those have a cycle for `w` to exercise. Initialising the counter from the
-in-scope set would leave it permanently above zero and the entry would never be
-prunable.
+**Assignment is one automatic event per cycle, in cycle order, and it is
+founder-directed.** The chain evaluates the cycle and assigns the permissions
+itself; nothing is claimed, requested, or reported. That removes an entire
+authorization question rather than answering one, and it means a founder who
+never touches the dashboard still accrues everything they are owed.
 
-Both sets are fixed at finalisation rather than moving afterwards. A seat is in
-scope for `w` when it was activated strictly before `w`'s first height, and `w`
-is finalised two windows later, so every such seat is already recorded.
+### The two-cycle lag is forced, not chosen
 
-An exercise of a failed cycle carries the winner list and the transition
-recomputes `winner_root` over it, refusing any list that does not reproduce the
-recorded root and count with `INVALID_WINNER_SET`.
+The assignment for cycle `w` cannot execute at the end of `w`. A cycle's uptime
+is not final until its Ecosystem AI dispute window has expired, which
+`uptime-measurement-v1` fixes at the whole of window `w + 1`, so the earliest
+height at which `w`'s outcome is known is the first height of `w + 2`.
 
-The entry is deleted when `unevaluated_count` reaches zero: a window is retained
-only while some seat may still exercise a cycle that maps to it.
+Assigning earlier would mean assigning against a result a dispute could still
+change, and the only ways to avoid the lag are to remove the dispute window,
+which the constitution requires, or to assign provisionally and revise, which
+would make a mint's value depend on when it happened. The lag is therefore a
+consequence of a founder-directed rule rather than a design choice, and it costs
+a seat at most two cycles of delay on value that is never lost.
 
-**That is a condition on behavior, not a bound, and the difference is worth
-stating.** The constitution makes exercise optional — "a seat that never
-exercises never triggers the reallocation, and the units are never created" — so
-one seat that never exercises retains its windows indefinitely. No transition
-can prune them, because pruning one would decide the seat's entitlement by
-expiry, and there is no founder-directed expiry. The consequence is carried in
-[Resource limits](#resource-limits-and-storage-bounds) rather than assumed away.
+### Nothing is left unassigned
 
-### Why the winner set is committed at finalisation and carried by the exercise
+Every in-scope seat whose span contains the cycle produces exactly one base
+permission, so the total assigned per cycle is the number of such seats times
+57,430,000,000 atomic units, and the Founder Node distribution channels are
+consumed exactly when all 100,000 seats complete all 731 cycles:
 
-Three placements were considered and two fail on bounds that the accepted
-artifacts already fix.
+```text
+57,430,000,000 * 100,000 * 731 = 4,198,133,000,000,000,000
+```
 
-**Resolving the legs at evaluation, as the model does, is a population-scale
-write.** The model stores one leg per winner inside the pending permission,
-which at a fully tied window is 100,000 legs for a single evaluation.
-`founder-economy-manifest-v2` states that an implementation "may not iterate
-over all 100,000 seats inside an unrelated transition", and writing 100,000
-state entries for one transaction is worse than iterating over them.
+which is the accepted manifest's Founder Node subtotal. **A failed cycle removes
+nothing from the total** — it moves the whole permission to that cycle's winners
+— and the integer remainder of each equal split is carried forward per channel
+rather than dropped, so no atomic unit is unassigned at any point.
 
-**Computing the winner set lazily, at the first failed evaluation in a window,
-does not survive the retention bound.** `uptime-measurement-v1` retains two
-windows of bitmaps, and a seat may exercise a cycle arbitrarily later, so the
-evidence the computation needs would already be gone. Committing at finalisation
-is what allows that specification's `RETAINED_WINDOWS = 2` storage bound to hold
-unchanged; a lazy design would have silently required unbounded retention in a
-neighbouring specification.
+If no seat met the cycle, the winner set is empty and the whole permission is
+carried forward, which is the founder-directed rule for that case.
 
-**Carrying the set in the exercise costs transaction size and no state.** At
-full capacity and a fully tied window the list is 400,000 bytes and the signed
-transaction is 400,170 bytes, inside the 1,048,576-byte canonical object bound
-with room to spare. That is the dominant resource cost of this encoding and it
-is stated rather than discovered later: the constitution expects ties at a
-perfect cycle to be "the ordinary case", so the large list is the common case
-and not an adversarial one.
-
-A compact complement encoding — naming the seats that did *not* win — would be
-much smaller in exactly that common case and is deliberately not offered,
-because two encodings of one set is the non-minimal representation
-`protocol-primitives-v1` forbids. The commitment is an ordered Merkle root
-rather than a flat hash so that a later version can add a per-winner claim path
-with a logarithmic membership proof **without changing the committed value**.
-Whether a winner is credited by the failed seat's exercise or claims its own
-share is a change to what a participant must do in order to be paid, so it is
-not made here.
+**An unminted permission is not an unassigned one.** A seat that never mints
+leaves its value recorded and unspent forever, which the constitution intends:
+until a permission is minted its units do not exist and are not circulating.
 
 ## Receipt
 
@@ -730,19 +916,26 @@ produced it.
 | 11 | `INVALID_REFERRER` | economy model |
 | 12 | `REPLAY` | economy model |
 | 13 | `SEAT_NOT_ACTIVATED` | economy model |
-| 14 | `WINDOW_NOT_FINAL` | new |
-| 15 | `PERMISSION_NOT_FOUND` | economy model |
-| 16 | `INVALID_WINNER_SET` | new |
-| 17 | `INVALID_CHANNEL` | economy model |
-| 18 | `MISSING_RESEARCH_INPUT` | economy model |
-| 19 | `INVALID_RESEARCH_INPUT` | economy model |
-| 20 | `NOT_ELIGIBLE` | economy model |
-| 21 | `CHANNEL_CAP` | economy model |
+| 14 | `SEAT_NOT_PURCHASED` | new |
+| 15 | `NOTHING_TO_MINT` | new |
+| 16 | `INVALID_CHANNEL` | economy model |
+| 17 | `MISSING_RESEARCH_INPUT` | economy model |
+| 18 | `INVALID_RESEARCH_INPUT` | economy model |
+| 19 | `NOT_ELIGIBLE` | economy model |
+| 20 | `CHANNEL_CAP` | economy model |
 
 Codes `0` through `8` keep their exact version-one meanings, so a version-one
 reader that understands a code reads the same fact from a version-two receipt.
 This is the third consequence of the shared envelope and is the reason the space
 extends contiguously from `9` rather than starting a second range.
+
+The three new codes are each a condition the research model cannot have.
+`UNAUTHORIZED` is a sender the transition refuses, which a model with no signer
+never sees. `SEAT_NOT_PURCHASED` distinguishes a seat that does not exist from
+one that exists and has not been activated, a distinction the model has no
+purchase transition to make. `NOTHING_TO_MINT` is what a take-everything mint
+returns when everything is already taken, replacing the per-cycle key lookup the
+model performs.
 
 ### The model mapping is total
 
@@ -752,9 +945,9 @@ partition it.
 
 | Disposition | Count | Codes |
 | --- | ---: | --- |
-| carried | 12 | `OK`, `CYCLE_RANGE`, `INVALID_REFERRER`, `REPLAY`, `SEAT_NOT_ACTIVATED`, `PERMISSION_NOT_FOUND`, `INVALID_CHANNEL`, `ZERO_AMOUNT`, `MISSING_RESEARCH_INPUT`, `INVALID_RESEARCH_INPUT`, `NOT_ELIGIBLE`, `CHANNEL_CAP` |
+| carried | 11 | `OK`, `CYCLE_RANGE`, `INVALID_REFERRER`, `REPLAY`, `SEAT_NOT_ACTIVATED`, `INVALID_CHANNEL`, `ZERO_AMOUNT`, `MISSING_RESEARCH_INPUT`, `INVALID_RESEARCH_INPUT`, `NOT_ELIGIBLE`, `CHANNEL_CAP` |
 | guard | 2 | `ARITHMETIC_OVERFLOW`, `INVARIANT` |
-| unrepresentable | 10 | `MISSING_UPTIME_RECORD`, `INVALID_UPTIME_RECORD`, `INCONSISTENT_UPTIME_RECORD`, `HEIGHT_RANGE`, `HEIGHT_NOT_MONOTONIC`, `WINDOW_BEFORE_ISSUANCE`, `WINDOW_AFTER_ISSUANCE`, `WINDOW_NOT_FOR_CYCLE`, `SEAT_NOT_IN_SCOPE`, `INCOMPLETE_UPTIME_RECORD` |
+| unrepresentable | 11 | `MISSING_UPTIME_RECORD`, `INVALID_UPTIME_RECORD`, `INCONSISTENT_UPTIME_RECORD`, `PERMISSION_NOT_FOUND`, `HEIGHT_RANGE`, `HEIGHT_NOT_MONOTONIC`, `WINDOW_BEFORE_ISSUANCE`, `WINDOW_AFTER_ISSUANCE`, `WINDOW_NOT_FOR_CYCLE`, `SEAT_NOT_IN_SCOPE`, `INCOMPLETE_UPTIME_RECORD` |
 
 **The two guards do not become receipt codes.** `ledger-transition-v1` already
 decides their treatment: a checked-arithmetic violation "is an internal
@@ -762,13 +955,25 @@ invariant failure that invalidates the proposed block, not a transaction
 result". The model's two guard codes map onto that rule exactly, so version two
 adds nothing and refuses to give a defect a receipt.
 
-**The ten unrepresentable codes are the measure of what the encoding removed.**
-Each is unreachable because its input does not exist in a transaction: eight
-because the uptime record and the cycle window are read from state rather than
-supplied, and two because the activation height is the block height. Recording
-them as a set with a stated reason each is what keeps the removal auditable — a
-later encoding that reintroduces a supplied record would have to move a code out
-of this table rather than quietly widen an input.
+**The eleven unrepresentable codes are the measure of what the encoding
+removed.** Each is unreachable because its input does not exist in a
+transaction:
+
+- five because the uptime record is state the chain writes rather than an input
+  anyone supplies — `MISSING_UPTIME_RECORD`, `INVALID_UPTIME_RECORD`,
+  `INCONSISTENT_UPTIME_RECORD`, `SEAT_NOT_IN_SCOPE`, and
+  `INCOMPLETE_UPTIME_RECORD`;
+- three because the cycle window is derived from the seat's own schedule rather
+  than presented — the three `WINDOW_` codes;
+- two because the activation height is the executing block height —
+  `HEIGHT_RANGE` and `HEIGHT_NOT_MONOTONIC`;
+- and one because a mint takes everything, so there is no per-cycle key to miss
+  — `PERMISSION_NOT_FOUND`.
+
+Recording them as a set with a reason each is what keeps the removal auditable.
+A later encoding that reintroduces a supplied record, a submitted window, or a
+partial mint would have to move a code out of this table rather than quietly
+widen an input.
 
 ## Invariants
 
@@ -799,12 +1004,26 @@ total_supply + checked_sum(channel.outstanding_atomic) <= supply_limit
 checked_sum(typed_custody) = checked_sum(channel.issued_atomic)
 ```
 
-and the version-three carry identity is unchanged:
+and the carry identity holds per channel, restated for an assignment that is
+per cycle rather than per evaluated key:
 
 ```text
-issued(founder_operator) + outstanding(founder_operator) + performance_carry
-  = count(evaluated_permission_keys) * 34,200,000,000
+for each Founder Node channel c, with leg(c) its per-cycle amount:
+  issued(c) + outstanding(c) + carry(c)
+    = assigned_cycle_permissions * leg(c)
 ```
+
+where `assigned_cycle_permissions` is the number of base permissions the chain
+has assigned across every cycle so far — one per in-scope seat whose span
+contains that cycle. The model states the same identity over
+`count(evaluated_permission_keys)`, which is the same quantity counted at the
+event that produced it rather than at the cycle that assigned it.
+
+It is an equality rather than a bound, because a bound would admit a defect that
+lost carried value. Extending it from the one Founder-operator channel the model
+tracks to all five is forced by the settlement rule: a failed cycle's whole
+permission moves to the winners, so every leg is divided by the winner count and
+every leg can leave a remainder, not only the operator leg.
 
 There is no burn, no negative issuance, and no transition that decreases
 `total_supply`, so the fixed maximum is a bound that only ever tightens.
@@ -814,44 +1033,58 @@ There is no burn, no negative issuance, and no transition that decreases
 Version one's limits are unchanged: at most 65,535 raw inputs and 65,535
 admitted transactions per block, and a 1,048,576-byte canonical object bound.
 
+**The largest transaction in version two is 325 bytes.** Nothing a transaction
+carries scales with the seat population, so no transaction-size bound is close
+to binding and a block's economy content is bounded by its transaction count
+alone.
+
 | Entry | Bound at 100,000 seats | Derivation |
 | --- | ---: | --- |
-| seats | 1,800,000 bytes | `100,000 * (5 + 13)` |
+| seats | 11,100,000 bytes | `100,000 * (5 + 106)` |
 | channels | 180 bytes | `10 * (2 + 16)` |
-| pending permissions | 584,800,000 bytes | `73,100,000 * (7 + 1)` |
-| referral accruals | 511,700,000 bytes | `73,100,000 * (7 + 0)` |
+| referral balances | 49 bytes per referrer | `33 + 16` |
 | typed custody | 4,200,000 bytes | `100,000 * (34 + 8)` per beneficiary kind |
-| performance carry | 9 bytes | one entry |
-| window result | 12,553 bytes per retained window | `9 + 44 + 12,500` |
+| carries | 180 bytes | `10 * (2 + 8)` |
+| verifier key | 33 bytes | one entry |
+| cycle assignment | 25,033 bytes per cycle | `9 + 24 + 2 * 12,500` |
 
-The pending-permission and referral figures are the founder-directed 73,100,000
-seat-cycle population at its absolute ceiling, reached only if every seat
-completes every cycle and no permission is ever exercised. They answer the
-per-seat-balance part of requirement 12, and the typed-custody figure answers
-the recipient-balance part; the per-cycle uptime-record part was answered by
+The seat and custody figures answer the per-seat-balance and recipient-balance
+parts of requirement 12; the per-cycle uptime-record part was answered by
 `uptime-measurement-v1`.
 
-**One bound is not a constant, and it is the weakest result here.** The number
-of retained window results is the number of windows that lie inside some
-activated seat's 731-window span and still hold an unexercised cycle. If every
-seat activates in one window and every seat exercises, that is 731 entries and
-about 9.2 MB. Two things widen it, and neither has a founder-directed limit:
-activations spanning `W` windows make it `W + 731`, and a single seat that never
-exercises retains its windows indefinitely. Growth is one 12,553-byte entry per
-window, about 4.6 MB per year at the pinned three-second commit interval.
+**The per-seat-cycle population has left the state entirely.** The first draft of
+this specification stored one entry per seat-cycle — 73,100,000 entries and
+about 585 MB of pending permissions plus 512 MB of referral accruals. The founder
+rule that a mint takes everything with no quantity choice collapses both to a
+single high-water mark per seat and a single accrued-versus-minted pair per
+referrer. **That is the largest single consequence of the founder decision on
+this encoding**, and it was not available to a design in which a founder could
+mint a chosen amount.
 
-Two mitigations exist and both are refused here. Expiring an unexercised
-permission would bound it exactly and would decide a seat's entitlement by
-inaction, which the constitution does not do. Pruning the bitmap while keeping
-the winner root would cost the verdict a late evaluation needs. **This is the
-one place in the specification where the encoding is bounded by expected
-behavior rather than by a rule, and requirement 15's independent review should
-see it as such.**
+**One bound is not a constant, and it is the weakest result here.** Cycle
+assignment records accumulate at one per cycle and are never deleted, because a
+seat may mint at any time and must be able to walk every cycle it has not yet
+collected. At full capacity that is 25,033 bytes per cycle, about 9.1 MB per year
+at the pinned three-second commit interval, and 6.7 GB over a century.
 
-The exercise transaction is the dominant transient cost at 400,170 bytes for a
-fully tied window, as
-[Why the winner set is committed at finalisation](#why-the-winner-set-is-committed-at-finalisation-and-carried-by-the-exercise)
-derives.
+Three mitigations exist and each is refused, so the growth is stated rather than
+solved:
+
+- expiring an uncollected cycle would bound it exactly and would decide a seat's
+  entitlement by inaction, which the constitution does not do;
+- pruning a cycle once every in-scope seat has minted past it would work, but a
+  seat that never mints holds every record after its own last mint forever, so
+  the worst case is unchanged;
+- compressing a cycle whose met and winner bitmaps are both all-ones — the
+  ordinary perfect day — would shrink the common case by a large factor and is a
+  genuine optimization, but it introduces a second encoding of one record, which
+  is the non-minimal representation `protocol-primitives-v1` forbids.
+
+**This is the one place in the specification where the encoding is bounded by
+expected behavior rather than by a rule**, and requirement 15's independent
+review should see it as such. The third option is the one worth revisiting, and
+doing it properly means giving the record a single canonical encoding with a
+run-length form rather than two alternative forms.
 
 ## Determinism
 
@@ -937,13 +1170,28 @@ verified now, while the reserved decisions stay reserved.
 
 ## What this specification does not establish
 
-- **Which senders may act.** All three authorization predicates are named and
-  undefined. Until `activation_authority` and `seat_authority` are decided, no
-  seat can be activated and no permission can be evaluated, exercised, or
-  accrued on a conforming chain, so the economy is encodable and not yet
-  operable. This is the nearest blocking dependency of requirement 10.
-- **Direct-channel eligibility.** Kind 6 is specified and refused. The founder
-  decision is unchanged and still reserved.
+- **Direct-channel eligibility.** One authorization predicate remains named and
+  undefined, and kind 6 is refused because of it. The founder decision is
+  unchanged and still reserved. Every other predicate was settled on 2026-08-13,
+  so purchase, activation, and both mints are fully specified.
+- **The payment.** Nothing here proves that BTC, ETH, or an approved stablecoin
+  was received for a seat. `purchase_seat` records the seat, the identity hash,
+  the purchaser, and the referrer; the external settlement that must precede it
+  is a bridge commitment and the bridge is a later milestone. Until then a
+  conforming chain records purchases that its own rules cannot show were paid
+  for.
+- **Verifier key rotation.** The ecosystem verifier key is written at genesis
+  and no transition changes it, so a compromised or retired verifier key can only
+  be replaced by a new chain. Rotation needs an authorization rule — who may
+  rotate, under what approval, and what happens to signatures already issued —
+  and that rule decides who controls admission to the economy, so it is not
+  invented here. Until it exists, the key is effectively permanent.
+- **That the biometric hash means anything.** The chain verifies a signature by
+  a configured key over a hash. Whether that key belongs to a sound verifier,
+  whether the hash was derived from a live human, whether one human holds at
+  most 1,000 seats, and whether the enrollment is unlinkable are all outside
+  consensus by design, and the constitution's own threat-model and independent
+  review requirements for biometric capture are untouched by anything here.
 - **That any of this executes.** No C++ implementation exists. This document is
   a contract, and requirement 10 is where it becomes behavior; requirement 11 is
   where a C++ and a Python implementation are required to agree on fixed bytes.
@@ -958,25 +1206,31 @@ verified now, while the reserved decisions stay reserved.
 - **Distribution.** No kind here distributes transaction fees or commercial
   revenue to active seats, and no kind moves typed custody into a spendable
   account. `revenue-routing-v1` models the former and nothing models the latter.
-- **The unreferred pool's payout.** Accrual is encoded; the month definition and
-  the distribution remain unspecified.
-- **Seat provenance.** A seat purchased in the Founder Seat sale model is still
-  not proved to be an activated seat, and the per-principal bound is still not a
-  per-human bound.
+- **The unreferred pool's payout.** A seat purchased without a referrer
+  contributes its per-cycle referral allocation to the unreferred performance
+  pool. The accrual is encoded; the month definition and the pool's distribution
+  remain unspecified, so that value accumulates against a payout rule that does
+  not exist yet.
+- **Seat concentration.** The per-principal 1,000-seat bound the constitution
+  fixes is not enforced by any transition here, because enforcing it requires
+  knowing that two biometric hashes belong to one human, which is exactly what
+  the chain cannot see.
 
 ## Required vectors and evidence
 
 `test-vectors/economy-transition-v2.txt` is normative. It fixes:
 
 - the envelope decomposition, every kind's body layout, and every unsigned and
-  signed length, including the winner-list bound at zero and at 100,000;
+  signed length, including that no two kinds share one;
 - **the kind-1 identity**, by requiring the version-two encoder to reproduce the
   accepted `protocol-primitives-v1` unsigned bytes, signed bytes, and
   transaction ID exactly;
-- the cross-kind signature separation, by presenting each body under another
-  kind's identifier and requiring rejection;
+- the cross-kind separation, by presenting each body under another kind's
+  identifier and requiring the signing message to change;
 - every admission and execution rejection, each produced by a live run over a
   minimally mutated input with a positive control on the unmutated one;
+- the two biometric message constructions, and that a verifier signature bound
+  to one seat, purchaser, chain, or expiry is refused on any other;
 - the complete result-code table, and the three-way partition of the economy
   model's twenty-four codes with each disposition's reason;
 - every state key and value encoding, the empty, single, and multi-entry economy
@@ -988,10 +1242,24 @@ verified now, while the reserved decisions stay reserved.
   merely plausible restatement would make the non-collision trivially true;
 - version-two genesis bytes, the chain ID, and the 21,843-entry bound at its
   accepting and rejecting values;
-- the receipt layout, its invalid combinations, and its round trip; and
-- the winner commitment, its recomputation from a supplied list, and its refusal
-  of a list that is complete but reordered, short by one, long by one, or
-  correct for a different window.
+- the receipt layout, its invalid combinations, and its round trip;
+- the cycle assignment: the met and winner bitmaps over a population that
+  exercises a failed seat, a tie at the maximum, a seat that met below the
+  maximum, and a seat outside its own span but still in scope; the per-winner
+  share and every leg's carried remainder; and the empty-winner case in which
+  the whole permission carries forward; and
+- the mint walk: that a seat collects exactly its own met cycles and its own
+  winner shares, that `minted_through_window` advances to the last assigned
+  cycle, that an immediate second mint returns `NOTHING_TO_MINT`, and that the
+  five legs of an acquired permission reach the escrows and the System Creator
+  at the winner's mint rather than the failed seat's.
+
+The conservation vectors are the load-bearing ones. Across a complete assignment
+and mint sequence, every channel's `issued + outstanding + carry` must equal the
+number of assigned permissions times that channel's per-cycle leg, exactly, and
+the sum of typed custody must equal issued supply. A settlement defect that
+moved value between beneficiaries would satisfy a per-transaction check and fail
+this one.
 
 The verifier independently derives rather than restates every recorded value.
 Its independence is `tools/economy-transition-vectors/expected.py`, which imports
@@ -1005,6 +1273,6 @@ tampered with.
 Acceptance requires full GitHub-hosted verification on the exact commit. Passing
 these checks establishes an exact, auditable encoding and compatibility
 boundary. It does not establish that the transitions execute, that the economy
-is safe, that the authorization predicates are fillable, or that the resource
-bounds are adequate under adversarial load; those are requirements 10, 13, and
-15.
+is safe, that a purchase was paid for, that a biometric hash means anything, or
+that the resource bounds are adequate under adversarial load; those are
+requirements 10, 13, and 15 and the bridge and identity milestones.
