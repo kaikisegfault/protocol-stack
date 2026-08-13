@@ -18,14 +18,16 @@ class KeySpaceTest(unittest.TestCase):
         keys = {
             c.SEAT_ENTRY: state.seat_key(7),
             c.CHANNEL_ENTRY: state.channel_key(0),
-            c.PENDING_PERMISSION_ENTRY: state.pending_permission_key(7, 1),
-            c.REFERRAL_ACCRUAL_ENTRY: state.referral_accrual_key(7, 1),
+            c.CYCLE_ASSIGNMENT_ENTRY: state.cycle_assignment_key(scenario.CYCLE_WINDOW),
+            c.REFERRAL_BALANCE_ENTRY: state.referral_balance_key(
+                scenario.REFERRER_ACCOUNT_ID
+            ),
             c.DIRECT_DECISION_ENTRY: state.direct_decision_key(scenario.DECISION_ID),
             c.TYPED_CUSTODY_ENTRY: state.typed_custody_key(
                 1, scenario.BENEFICIARY_ACCOUNT_ID
             ),
-            c.PERFORMANCE_CARRY_ENTRY: state.performance_carry_key(),
-            c.WINDOW_RESULT_ENTRY: state.window_result_key(scenario.WINDOW),
+            c.CARRY_ENTRY: state.carry_key(0),
+            c.VERIFIER_KEY_ENTRY: state.verifier_key_key(),
         }
         self.assertEqual(sorted(keys), sorted(c.ENTRY_KINDS))
         for kind, key in keys.items():
@@ -40,14 +42,31 @@ class KeySpaceTest(unittest.TestCase):
             for later in keys[index + 1 :]:
                 self.assertFalse(later.startswith(earlier), (earlier, later))
 
-    def test_two_seats_and_two_cycles_never_collide(self) -> None:
+    def test_keys_of_different_kinds_never_collide(self) -> None:
         self.assertNotEqual(state.seat_key(0), state.seat_key(1))
+        self.assertNotEqual(state.channel_key(0), state.carry_key(0))
         self.assertNotEqual(
-            state.pending_permission_key(0, 1), state.pending_permission_key(1, 0)
+            state.cycle_assignment_key(0), state.cycle_assignment_key(1)
         )
         self.assertNotEqual(
-            state.pending_permission_key(7, 1), state.referral_accrual_key(7, 1)
+            state.direct_decision_key(scenario.DECISION_ID),
+            state.referral_balance_key(scenario.DECISION_ID),
         )
+
+    def test_no_entry_is_keyed_by_seat_cycle(self) -> None:
+        """A mint takes everything, so the seat-cycle population is not state.
+
+        The superseded draft stored one verdict byte per seat-cycle, which is
+        73,100,000 entries at capacity. One high-water mark per seat replaces it.
+        """
+        seat_cycle_width = 1 + 4 + 2
+        for kind, width in c.ENTRY_KEY_BYTES.items():
+            with self.subTest(c.ENTRY_KINDS[kind]):
+                self.assertNotEqual(
+                    (kind, width),
+                    (kind, seat_cycle_width),
+                    "an entry keyed by (seat, cycle) has returned",
+                )
 
     def test_a_value_of_the_wrong_width_is_refused(self) -> None:
         with self.assertRaises(state.InvalidStateEntry):
@@ -55,23 +74,60 @@ class KeySpaceTest(unittest.TestCase):
         with self.assertRaises(state.InvalidStateEntry):
             state.economy_root({b"\x63\x00": b""})
 
-    def test_the_verdict_byte_answers_both_questions(self) -> None:
-        """One entry replaces the model's permission record and its replay set."""
-        for verdict in (c.VERDICT_FAILED, c.VERDICT_MET, c.VERDICT_EXERCISED):
-            self.assertEqual(len(state.pending_permission_value(verdict)), 1)
+    def test_the_seat_record_carries_identity_from_its_first_byte(self) -> None:
+        """A seat with no biometric binding is unrepresentable, not disallowed."""
+        value = state.seat_value(
+            scenario.BIOMETRIC_IDENTITY_HASH, scenario.PURCHASER_ACCOUNT_ID, None
+        )
+        self.assertEqual(len(value), c.ENTRY_VALUE_BYTES[c.SEAT_ENTRY])
+        self.assertEqual(value[0:32], scenario.BIOMETRIC_IDENTITY_HASH)
+        self.assertEqual(value[32:64], scenario.PURCHASER_ACCOUNT_ID)
+
+    def test_activation_is_a_flag_rather_than_an_inferred_sentinel(self) -> None:
+        """Height zero is a real height, so "not activated" needs its own bit."""
+        purchased = state.seat_value(
+            scenario.BIOMETRIC_IDENTITY_HASH, scenario.PURCHASER_ACCOUNT_ID, None
+        )
+        at_genesis_height = state.seat_value(
+            scenario.BIOMETRIC_IDENTITY_HASH,
+            scenario.PURCHASER_ACCOUNT_ID,
+            None,
+            activation_height=0,
+        )
+        self.assertNotEqual(purchased, at_genesis_height)
+        self.assertEqual(purchased[97], 0)
+        self.assertEqual(at_genesis_height[97], 1)
+
+    def test_a_referrer_cannot_have_minted_more_than_it_accrued(self) -> None:
+        state.referral_balance_value(10, 10)
         with self.assertRaises(state.InvalidStateEntry):
-            state.pending_permission_value(3)
+            state.referral_balance_value(10, 11)
 
 
 class BitmapTest(unittest.TestCase):
     def test_bits_are_packed_most_significant_first_in_seat_order(self) -> None:
-        self.assertEqual(state.met_bitmap([True, True, False, True]), b"\xd0")
-        self.assertEqual(state.met_bitmap([]), b"")
-        self.assertEqual(state.met_bitmap([False] * 8), b"\x00")
-        self.assertEqual(state.met_bitmap([True] * 9), b"\xff\x80")
+        self.assertEqual(state.bitmap([True, True, False, True]), b"\xd0")
+        self.assertEqual(state.bitmap([]), b"")
+        self.assertEqual(state.bitmap([False] * 8), b"\x00")
+        self.assertEqual(state.bitmap([True] * 9), b"\xff\x80")
 
     def test_the_bitmap_is_one_bit_per_in_scope_seat(self) -> None:
-        self.assertEqual(len(state.met_bitmap([True] * c.FOUNDER_SEAT_CAPACITY)), 12_500)
+        self.assertEqual(len(state.bitmap([True] * c.FOUNDER_SEAT_CAPACITY)), 12_500)
+
+    def test_reading_a_bit_inverts_writing_it(self) -> None:
+        flags = [True, False, True, True, False, False, False, True, True]
+        packed = state.bitmap(flags)
+        for index, flag in enumerate(flags):
+            with self.subTest(index):
+                self.assertEqual(state.bit_is_set(packed, index), flag)
+
+    def test_a_bit_outside_the_bitmap_is_refused(self) -> None:
+        with self.assertRaises(state.InvalidStateEntry):
+            state.bit_is_set(state.bitmap([True]), 8)
+
+    def test_the_two_bitmaps_must_cover_the_same_seat_set(self) -> None:
+        with self.assertRaises(state.InvalidStateEntry):
+            state.cycle_assignment_value(1, 1, 9, state.bitmap([True]), b"")
 
 
 class EconomyTreeTest(unittest.TestCase):
@@ -79,7 +135,7 @@ class EconomyTreeTest(unittest.TestCase):
         self.assertEqual(len(state.economy_root({})), 32)
 
     def test_the_root_tracks_every_entry(self) -> None:
-        at_genesis = genesis.initial_economy_entries()
+        at_genesis = genesis.initial_economy_entries(scenario.VERIFIER_KEY)
         populated = scenario.populated_economy()
         self.assertNotEqual(state.economy_root({}), state.economy_root(at_genesis))
         self.assertNotEqual(
@@ -96,7 +152,7 @@ class EconomyTreeTest(unittest.TestCase):
     def test_changing_one_value_changes_the_root(self) -> None:
         populated = dict(scenario.populated_economy())
         expected = state.economy_root(populated)
-        populated[state.performance_carry_key()] = state.performance_carry_value(1)
+        populated[state.carry_key(0)] = state.carry_value(1)
         self.assertNotEqual(state.economy_root(populated), expected)
 
     def test_the_leaf_preimage_length_prefixes_both_halves(self) -> None:
@@ -200,8 +256,8 @@ class StateRootTest(unittest.TestCase):
 
 
 class GenesisTest(unittest.TestCase):
-    def test_the_prefix_is_version_ones_plus_the_manifest_digest(self) -> None:
-        self.assertEqual(c.GENESIS_PREFIX_BYTES, 46 + 32)
+    def test_the_prefix_is_version_ones_plus_two_thirty_two_byte_fields(self) -> None:
+        self.assertEqual(c.GENESIS_PREFIX_BYTES, 46 + 32 + 32)
         self.assertEqual(len(genesis.encode(scenario.genesis())), c.GENESIS_PREFIX_BYTES)
 
     def test_the_object_bound_admits_one_fewer_account_than_version_one(self) -> None:
@@ -210,6 +266,9 @@ class GenesisTest(unittest.TestCase):
         accepted = c.GENESIS_PREFIX_BYTES + 48 * c.MAX_GENESIS_ACCOUNTS
         self.assertLessEqual(accepted, c.MAX_OBJECT_BYTES)
         self.assertGreater(accepted + 48, c.MAX_OBJECT_BYTES)
+        # Version two adds 64 bytes and loses exactly one entry, clearing the
+        # bound by two.
+        self.assertEqual(c.MAX_OBJECT_BYTES - accepted, 2)
 
     def test_the_three_relaxations_the_constitution_forces_are_accepted(self) -> None:
         founder = scenario.genesis()
@@ -220,15 +279,7 @@ class GenesisTest(unittest.TestCase):
 
     def test_the_manifest_digest_is_inside_chain_identity(self) -> None:
         founder = scenario.genesis()
-        drifted = genesis.Genesis(
-            network_id=founder.network_id,
-            supply_limit=founder.supply_limit,
-            total_supply=founder.total_supply,
-            fixed_transfer_fee=founder.fixed_transfer_fee,
-            initial_fee_pool=founder.initial_fee_pool,
-            manifest_digest=bytes(32),
-            accounts=[],
-        )
+        drifted = self.variant(founder, manifest_digest=bytes(32))
         self.assertNotEqual(genesis.chain_id(founder), genesis.chain_id(drifted))
 
     def test_an_unconserved_or_out_of_range_genesis_is_refused(self) -> None:
@@ -239,27 +290,41 @@ class GenesisTest(unittest.TestCase):
             {"supply_limit": 10, "total_supply": 11},
         ):
             with self.subTest(changes):
-                fields = dict(
-                    network_id=founder.network_id,
-                    supply_limit=founder.supply_limit,
-                    total_supply=founder.total_supply,
-                    fixed_transfer_fee=founder.fixed_transfer_fee,
-                    initial_fee_pool=founder.initial_fee_pool,
-                    manifest_digest=founder.manifest_digest,
-                    accounts=[],
-                )
-                fields.update(changes)
                 with self.assertRaises(genesis.InvalidGenesis):
-                    genesis.encode(genesis.Genesis(**fields))
+                    genesis.encode(self.variant(founder, **changes))
 
-    def test_genesis_writes_the_channel_table_and_nothing_else(self) -> None:
-        entries = genesis.initial_economy_entries()
-        self.assertEqual(len(entries), 11)
+    def test_genesis_writes_the_fixed_tables_and_nothing_else(self) -> None:
+        entries = genesis.initial_economy_entries(scenario.VERIFIER_KEY)
+        self.assertEqual(len(entries), 21)
         kinds = {key[0] for key in entries}
-        self.assertEqual(kinds, {c.CHANNEL_ENTRY, c.PERFORMANCE_CARRY_ENTRY})
+        self.assertEqual(
+            kinds, {c.CHANNEL_ENTRY, c.CARRY_ENTRY, c.VERIFIER_KEY_ENTRY}
+        )
         for key, value in entries.items():
             if key[0] == c.CHANNEL_ENTRY:
                 self.assertEqual(value, state.channel_value(0, 0))
+            if key[0] == c.CARRY_ENTRY:
+                self.assertEqual(value, state.carry_value(0))
+
+    def test_the_verifier_key_is_inside_chain_identity(self) -> None:
+        """A chain trusting a different verifier is a different chain."""
+        founder = scenario.genesis()
+        drifted = self.variant(founder, verifier_key=bytes(32))
+        self.assertNotEqual(genesis.chain_id(founder), genesis.chain_id(drifted))
+
+    def variant(self, founder: genesis.Genesis, **changes: object) -> genesis.Genesis:
+        fields = dict(
+            network_id=founder.network_id,
+            supply_limit=founder.supply_limit,
+            total_supply=founder.total_supply,
+            fixed_transfer_fee=founder.fixed_transfer_fee,
+            initial_fee_pool=founder.initial_fee_pool,
+            manifest_digest=founder.manifest_digest,
+            verifier_key=founder.verifier_key,
+            accounts=list(founder.accounts),
+        )
+        fields.update(changes)
+        return genesis.Genesis(**fields)
 
 
 if __name__ == "__main__":

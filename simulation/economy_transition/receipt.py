@@ -85,10 +85,8 @@ def require_consistent(receipt: Receipt) -> None:
         raise InvalidReceipt(f"kind {receipt.kind} issues nothing")
 
 
-# Issuance happens at exercise, at referral accrual, and at direct issue. A
-# transfer moves units that already exist, an activation writes a schedule, and
-# an evaluation reserves capacity without creating a unit: until a permission is
-# exercised its units do not exist and are not circulating.
-NON_ISSUING_KINDS = frozenset(
-    {c.TRANSFER, c.ACTIVATE_SEAT, c.EVALUATE_BASE_PERMISSION}
-)
+# Issuance happens at the two mints and at direct issue. A transfer moves units
+# that already exist, a purchase writes a seat record, and an activation starts a
+# schedule: until a permission is minted its units do not exist and are not
+# circulating, which is why the daily assignment issues nothing either.
+NON_ISSUING_KINDS = frozenset({c.TRANSFER, c.PURCHASE_SEAT, c.ACTIVATE_SEAT})

@@ -34,6 +34,7 @@ class Genesis:
     fixed_transfer_fee: int
     initial_fee_pool: int
     manifest_digest: bytes
+    verifier_key: bytes
     accounts: list[tuple[bytes, int, int]] = field(default_factory=list)
 
 
@@ -48,10 +49,11 @@ def encode(genesis: Genesis) -> bytes:
         + u64(genesis.fixed_transfer_fee)
         + u64(genesis.initial_fee_pool)
         + genesis.manifest_digest
+        + genesis.verifier_key
         + u32(len(genesis.accounts))
     )
     if len(raw) != c.GENESIS_PREFIX_BYTES:
-        raise InvalidGenesis("genesis prefix is not 78 octets")
+        raise InvalidGenesis("genesis prefix is not 110 octets")
     for account_id, balance, nonce in genesis.accounts:
         raw += account_id + u64(balance) + u64(nonce)
     if len(raw) > c.MAX_OBJECT_BYTES:
@@ -62,6 +64,8 @@ def encode(genesis: Genesis) -> bytes:
 def require_valid(genesis: Genesis) -> None:
     if type(genesis.manifest_digest) is not bytes or len(genesis.manifest_digest) != 32:
         raise MalformedTransaction("manifest digest is not 32 octets")
+    if type(genesis.verifier_key) is not bytes or len(genesis.verifier_key) != 32:
+        raise MalformedTransaction("ecosystem verifier key is not 32 octets")
     if genesis.supply_limit == 0:
         raise InvalidGenesis("supply limit must be nonzero")
     if genesis.total_supply > genesis.supply_limit:
@@ -92,16 +96,24 @@ def chain_id(genesis: Genesis) -> bytes:
     return digest(c.CHAIN_ID_LABEL, encode(genesis))
 
 
-def initial_economy_entries() -> dict[bytes, bytes]:
-    """The ten channel entries at zero and the performance carry at zero.
+def initial_economy_entries(verifier_key: bytes) -> dict[bytes, bytes]:
+    """The ten channel entries, the ten carries, and the verifier key.
 
-    Genesis writes nothing else: no seat, no permission, no custody entry, and
-    no window result. Writing the fixed table explicitly is what keeps an absent
-    entry unambiguous, rather than making absence an implicit zero default.
+    Genesis writes nothing else: never a seat, a referral balance, a custody
+    entry, or a cycle assignment. Writing the fixed tables explicitly is what
+    keeps an absent entry unambiguous, rather than making absence an implicit
+    zero default.
     """
-    from .state import channel_key, channel_value, performance_carry_key
-    from .state import performance_carry_value
+    from .state import (
+        carry_key,
+        carry_value,
+        channel_key,
+        channel_value,
+        verifier_key_key,
+        verifier_key_value,
+    )
 
     entries = {channel_key(index): channel_value(0, 0) for index in range(10)}
-    entries[performance_carry_key()] = performance_carry_value(0)
+    entries.update({carry_key(index): carry_value(0) for index in range(10)})
+    entries[verifier_key_key()] = verifier_key_value(verifier_key)
     return entries

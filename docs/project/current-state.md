@@ -24,112 +24,123 @@ C++20 kernel implementation, cross-language vectors, and four-node adversarial
 scenarios — have not started. Everything delivered so far is specification and
 independent Python evidence that activates nothing.
 
-**Requirement 10 is blocked on a founder decision, and this is new.** M3.8a's
-founder-decision gate found that all three authorization predicates the
-consensus encoding names are founder-reserved: which sender may activate a seat,
-which may act for a recorded seat, and which may issue on the four undecided
-direct-mint channels. Until the first two are decided, the economy is
-**encodable and not operable** — no seat can be activated and no permission can
-be evaluated, exercised, or accrued on a conforming chain. The M3.7a handoff
-predicted the first blocking question would arrive at requirement 10 and named
-direct-channel eligibility; seat authorization blocks it more broadly and had
-not previously been classified as reserved.
+**The two blocking founder questions M3.8a raised were answered the same day.**
+Its gate found that all three authorization predicates the consensus encoding
+names were founder-reserved. The owner settled seat purchase, activation, daily
+permission assignment, minting, and referral on 2026-08-13, and the answers
+changed the transaction set rather than only filling in predicates, so the
+specification was rebuilt before being merged. Only direct-channel eligibility
+remains reserved, and kind 6 is specified and refused because of it.
+
+**Requirement 10 is therefore unblocked.** The economy is fully specified for
+consensus: what a founder must do to buy a seat, activate it, and be paid is
+decided and encoded.
 
 ### How M3.8a was delivered
 
-Issue #139 and PR #140 delivered `economy-transition-v2` and ADR 0032, in two
-commits. It added the specification, the ADR, the codec and commitment model in
-`simulation/economy_transition/`, 217 normative vectors, a verifier in
-`tools/economy-transition-vectors/`, and 77 tests. It satisfies requirements 5
-and 6 of `first-goal.md`, and completes requirement 12 as a consequence of
-fixing the state keys.
+Issue #139 and PR #140 delivered `economy-transition-v2` and ADR 0032. It added
+the specification, the ADR, the codec model in `simulation/economy_transition/`,
+238 normative vectors, a verifier in `tools/economy-transition-vectors/`, and 91
+tests. It satisfies requirements 5 and 6 of `first-goal.md`, and completes
+requirement 12 as a consequence of fixing the state keys.
 
-**The version-one transfer factors, and that is the whole compatibility
-argument.** Every version-two transaction is a shared 80-byte header, a
-kind-specific body, a shared 16-byte trailer, and a signature. The header is
-exactly the accepted transfer's first 80 bytes and the trailer exactly its last
-16, so kind 1's 40-byte body is what remains and the accepted 136-byte unsigned
-and 200-byte signed transfer are reproduced byte-for-byte, transaction ID
-included.
+**The slice was specified twice, and the second version is the delivery.** The
+first draft named three authorization predicates and defined none, and it
+therefore had to guess at the shape of the transitions those predicates govern.
+The owner settled them on 2026-08-13 and the answers changed the transaction set
+rather than only filling in blanks. The draft was rebuilt in place rather than
+merged, because merging would have accepted a contract as immutable while
+already knowing three of its records were wrong.
 
-This was discovered rather than designed: every field a new kind needs in common
-— the chain it binds, who signed it, its replay key, what it will pay, and when
-it expires — is already in the version-one transfer, in one place, in an order
-that splits cleanly around the transfer-specific middle. Three consequences
-follow. The schema version stays `1`, because the 80 bytes it versions do not
-change. Both signing labels stay unversioned, because the kind byte and the
-chain ID are already inside every signature preimage. And version one's result
-codes 0 through 8 apply to all six kinds with their exact meanings, because they
-are envelope conditions rather than transfer conditions.
+**What the founder decided.** A seat is purchased in one atomic transaction that
+registers its biometric hash and the purchaser's address, gated by an off-chain
+verifier signature. Activation is separate, one-time, permanent, and triggered
+by the purchaser. While a node is up the chain writes mint permissions daily by
+itself. Minting takes everything — one button, no quantity — and is the only way
+native units reach a founder. Referral is a separate pool on a separate button,
+accruing daily regardless of any node's activity and paid to a user account
+rather than to a seat. Minting needs only the wallet signature.
 
-**The claim is checked against a third source rather than against itself.** The
+**The version-one transfer factors, and that survived the rewrite unchanged.**
+Every version-two transaction is a shared 80-byte header, a kind-specific body,
+a shared 16-byte trailer, and a signature. The header is exactly the accepted
+transfer's first 80 bytes and the trailer exactly its last 16, so kind 1's
+40-byte body is what remains and the accepted 136-byte unsigned and 200-byte
+signed transfer are reproduced byte-for-byte, transaction ID included. The
+schema version stays `1`, both signing labels stay unversioned because the kind
+byte and chain ID are already inside every preimage, and version one's result
+codes 0 through 8 apply to all six kinds because they are envelope conditions
+rather than transfer conditions.
+
+That claim is checked against a third source rather than against itself. The
 verifier's `expected.py` builds the transfer as one flat 136-byte field table,
 exactly as `protocol-primitives-v1` writes it, while the model builds it from
-the three parts. Both must then equal the bytes `test-vectors/protocol-primitives-v1.txt`
-already records. Two derivations from two different shapes agreeing with the
-accepted file is evidence; one derivation agreeing with itself would not be.
+the three parts; both must then equal the bytes
+`test-vectors/protocol-primitives-v1.txt` already records.
 
-**Ten of the economy model's twenty-four result codes become unrepresentable,
-and the removal is recorded as a total partition.** The evaluation transaction
-names a seat and a cycle index and nothing else: the window is derived from the
-seat's recorded activation height and the record is state the uptime pipeline
-finalised. Eight codes go because a supplied record and a supplied window no
-longer exist as inputs, and two because the activation height is the executing
-block height. Twelve codes are carried, two are guards that
-`ledger-transition-v1` already routes to block invalidation rather than a
-receipt, and the vectors require the three sets to partition the model's own
-declared set. A later encoding that reintroduces a supplied record must move a
-code out of that table rather than quietly widen an input.
+**No transaction records a cycle.** The chain writes each cycle's outcome itself
+at a block boundary, so the draft's submitted evaluation transaction is gone and
+five model rejection conditions go with it: a record nobody supplies cannot be
+missing, invalid, incomplete, inconsistent, or out of scope. The two-cycle
+settlement lag this needs is forced by the AI dispute window rather than chosen,
+and is recorded as forced.
 
-**The performance winner set is committed at window finalisation and carried by
-the exercise.** The set is a property of the window, so every seat failing in
-that window reallocates to the same set. Two alternatives fail on bounds the
-accepted artifacts already fix: resolving the legs at evaluation, as the model
-does, writes up to 100,000 state entries for one transaction, which
-`founder-economy-manifest-v2` forbids; and computing the set lazily at the first
-failed evaluation would need bitmaps `uptime-measurement-v1` has already pruned,
-so it would silently require unbounded retention in a neighbouring
-specification. **A pending permission is consequently one byte, and the model's
-separate evaluated-key set disappears**, because one verdict entry answers both
-the verdict and the replay question.
+**A mint takes everything, and that is what bounds the state.** One
+`minted_through_window` high-water mark per seat replaces what the draft stored
+as one verdict entry per seat-cycle — 73,100,000 entries and about 585 MB, plus
+512 MB of referral accrual keys. The mark is both the bookkeeping and the replay
+protection. A design in which a founder could mint a chosen amount could not
+have this property, so the founder rule is also the reason the state is bounded.
+
+**The winner commitment is replaced by a winner bitmap.** The draft committed to
+the winner set and required an exercise to carry it, reaching 400,170 bytes for
+one fully tied cycle — which under a take-everything mint would have been that
+many times the number of saved failed cycles. Each cycle's record now holds a met
+bitmap, a winner bitmap, the per-winner share, and the counts, so the set is
+readable from state and **the largest transaction in version two is 325 bytes**.
+No kind is variable-length and no two kinds share a length.
+
+**Every leg of a failed cycle's permission is divided, not only the operator
+leg.** The whole permission moves to that cycle's winners, so the escrows and the
+System Creator are paid at the winner's mint rather than at a mint the failed
+seat may never make. Each of the five legs is divided by the winner count and
+each can leave a remainder, so the carry is per channel.
+
+**Eleven of the economy model's twenty-four result codes become unrepresentable,
+in four groups with a reason each**: five because the uptime record is state the
+chain writes, three because no transaction names a window, two because the
+activation height is the executing block height, and one because a
+take-everything mint has no per-cycle key to miss. Eleven are carried and two are
+guards `ledger-transition-v1` already routes to block invalidation. The vectors
+require the three sets to partition the model's own declared set.
 
 **A Founder Economy chain is a new chain, not a migration.** Version-two genesis
-takes schema version 2, binds the accepted manifest digest as a field, and uses
-a distinct chain-ID label, and the state root takes a distinct label and version
-field. A version-one and a version-two root over an identical account set and an
-empty economy are required to differ, because a collision would be a
-version-one root reinterpreted, which `protocol-primitives-v1` forbids. The
-nine-versus-eight decimal difference needs no migration at all: decimals are
-display metadata and both sides are `u64` atomic on two different chains.
+takes schema version 2, binds both the accepted manifest digest and the ecosystem
+verifier key as fields, and uses a distinct chain-ID label; the state root takes a
+distinct label and version field. A version-one and a version-two root over an
+identical account set and an empty economy are required to differ.
 
-**Three genesis requirements relax, each forced rather than chosen, and the
-third exposed a real gap.** The constitution's rule that native units enter
-circulation only through issuance channels means a conforming chain must open
-with zero total supply and zero accounts, which version one forbids. The fixed
-fee then has to permit zero as the consequence: **with a zero allocation and a
-nonzero fee, no account can pay for the first transaction, so the chain can
-never reach a state in which any fee is payable.** Every path out is external —
-seat purchases are made through the restricted bridge — so a zero fee makes a
-devnet runnable and states the dependency rather than deciding the production
-fee policy.
+**The verifier key gates entry and never payment.** Kinds 2 and 3 carry an
+Ed25519 signature by that key over a message binding the chain, the seat, the
+purchaser, and an expiry, so an approval cannot be replayed onto another seat or
+attempt. Kinds 4 and 5 carry no second factor, so an unavailable verifier stops
+new seats and stops no income — the containment direction the constitution
+insists on. A stolen wallet key can mint, and only to the seat's own recorded
+account.
+
+**Three genesis requirements relax, each forced, and the third exposed a gap.**
+The constitution's no-genesis-allocation rule means a conforming chain opens with
+zero supply and zero accounts, which version one forbids. The fixed fee then has
+to permit zero as the consequence: with a zero allocation and a nonzero fee, no
+account can pay for the first transaction, so the chain can never reach a state
+in which any fee is payable.
 
 **Kind 6 is specified and refused.** A conforming chain rejects every direct
-issue with `UNAUTHORIZED` until the eligibility predicate is accepted. A
-research model may carry an unverified input, which is why
-`founder-economy-manifest-v2` keeps `direct_channel_eligibility_result`; a
-consensus transition may not, because it must decide what it actually verifies.
-The vectors record the unreachability of the kind's five inner conditions, so an
-implementation that activates it without the founder decision fails a check
-rather than passing silently.
+issue with `UNAUTHORIZED` until the eligibility predicate is accepted, and the
+vectors record the unreachability of its five inner conditions.
 
-**The winner rule is checked against the accepted economy model rather than
-restated.** Both implementations must produce the same winner set from the same
-window, and the fixture's met flags must equal the accepted activity threshold.
-The commitment refuses a list that is reordered, short by one, long by one,
-substituted, empty, or correct for another window.
-
-**One documentation gap was found and repaired.** ADR 0031 had never been
-indexed in `docs/README.md`; M3.6c added the ADR and not its entry.
+**One documentation gap was found and repaired.** ADR 0031 had never been indexed
+in `docs/README.md`; M3.6c added the ADR and not its entry.
 
 ### How M3.7a was delivered
 
@@ -930,20 +941,22 @@ slices.
   `PROTOCOL_STACK_TEST_JOBS=1` restores serial execution.
 - `economy-transition-v2` is the accepted consensus surface the economy must be
   implemented against. It fixes a shared transaction envelope whose kind-1
-  instance reproduces the accepted M1 transfer byte-for-byte, five new
-  transaction kinds, the economy state key space, version-two genesis and chain
-  identity, the state-root extension, a 56-byte receipt, a flat 22-code result
-  space whose first nine are version one's frozen meanings, and the reallocation
-  commitment. It is a contract for an implementation that does not exist: no C++
-  executes it, and three named authorization predicates are deliberately
-  undefined, so the economy is encodable and not operable.
+  instance reproduces the accepted M1 transfer byte-for-byte; five new kinds —
+  purchase, activate, mint node, mint referral, and direct issue; the biometric
+  verifier signature that gates entry and never payment; the per-cycle assignment
+  the chain writes at a block boundary; the economy state key space; version-two
+  genesis and chain identity; the state-root extension; a 56-byte receipt; and a
+  flat 21-code result space whose first nine are version one's frozen meanings.
+  It is a contract for an implementation that does not exist: no C++ executes it.
+  Kind 6 is specified and refused, because direct-channel eligibility is the one
+  authorization predicate still founder-reserved.
 - The codec model in `simulation/economy_transition/` encodes and decodes every
   kind, derives every state key, computes the economy tree and both state roots,
-  encodes the receipt, and builds the winner commitment. It implements no
-  cryptographic primitive: a signature is carried as recorded bytes and never
-  computed. Its verifier derives the version-one transfer twice from two
-  different shapes and checks both against the accepted
-  `protocol-primitives-v1` vectors.
+  encodes the receipt, derives a cycle's winner set, and splits every leg of a
+  failed cycle's permission. It implements no cryptographic primitive: a
+  signature is carried as recorded bytes and never computed. Its verifier derives
+  the version-one transfer twice from two different shapes and checks both
+  against the accepted `protocol-primitives-v1` vectors.
 - The one-word `proceed`, `conclude`, and `status` workflows reconstruct,
   deliver, and report repository state. `proceed` runs an explicit
   founder-decision gate before starting a slice and reports its result whether or
@@ -1009,36 +1022,38 @@ behavior.
   true and prove nothing, so the restatement is first required to reproduce the
   accepted `state.empty_tree_root`, `state.accounts_tree_root`, `state.root`,
   `tx.empty_root`, and `tx.root` exactly. All five reproduce.
-- Signed transaction lengths are 200, 169, 166, 170, 166, and 265 bytes for
-  kinds 1 through 6, where kind 4 is measured with an empty winner list. A fully
-  tied exercise at the 100,000-seat capacity is 400,170 bytes, inside the
-  1,048,576-byte canonical object bound. That is the dominant transient cost of
-  the encoding and the constitution expects it to be the ordinary case, not an
-  adversarial one.
-- Version-two genesis is 78 bytes of prefix — version one's 46 plus the 32-byte
-  manifest digest — so the object bound admits 21,843 account entries against
-  version one's 21,844. Both boundary figures are derived and recorded.
+- Signed transaction lengths are 200, 325, 228, 164, 160, and 265 bytes for kinds
+  1 through 6. Every kind is fixed-length, no two share a length, and **the
+  largest transaction in version two is 325 bytes**, because nothing a
+  transaction carries scales with the seat population.
+- Version-two genesis is 110 bytes of prefix — version one's 46 plus the manifest
+  digest and the ecosystem verifier key — so the object bound admits 21,843
+  account entries against version one's 21,844. Version two adds 64 bytes and
+  loses exactly one entry, clearing the bound by two bytes. Every figure is
+  derived.
 - Storage bounds at the founder-directed capacity, which complete requirement
-  12: 1,800,000 bytes of seats, 180 bytes of channels, 584,800,000 bytes of
-  pending permissions, 511,700,000 bytes of referral accruals, 4,200,000 bytes
-  of typed custody, and 12,553 bytes per retained window result. The last is the
-  one bound that is not a constant and is the weakest result in the slice:
-  9,176,243 bytes if every seat activates in one window and every seat exercises,
-  growing about 4,581,845 bytes per year at the pinned three-second commit
-  interval. Two things widen it and neither has a founder-directed limit —
-  activations spanning more windows, and a single seat that never exercises,
-  since the constitution makes exercise optional. Both mitigations are refused:
-  expiring an unexercised permission would decide a seat's entitlement by
-  inaction, and pruning the bitmap would cost the verdict a late evaluation
-  needs. It belongs in requirement 15's independent review as a limit rather
-  than as a figure.
-- The verifier records 217 vectors and fails closed three ways, each confirmed
+  12: 11,900,000 bytes of seats, 180 bytes of channels, 100 bytes of carries, 49
+  bytes per referrer, 4,200,000 bytes of typed custody, and 25,033 bytes per
+  cycle assignment. **The per-seat-cycle population is absent from the state
+  entirely** — the take-everything mint rule collapses 73,100,000 would-be
+  entries into 800,000 bytes of high-water marks.
+- The cycle-assignment growth is the one bound that is not a constant and is the
+  weakest result in the slice: 25,033 bytes per cycle at capacity, about
+  9,137,045 bytes per year at the pinned three-second commit interval, never
+  deleted because a seat may mint at any time. Three mitigations are named and
+  refused: expiring an uncollected cycle would decide a seat's entitlement by
+  inaction, pruning past every seat's mint does not help because one seat that
+  never mints holds everything after its own last mint, and a run-length form of
+  the ordinary all-ones day must be the record's single canonical encoding rather
+  than a second one. It belongs in requirement 15's independent review as a limit
+  rather than as a figure.
+- The verifier records 238 vectors and fails closed three ways, each confirmed
   by execution against the unmutated run as a positive control: a tampered
   value, a derived key the file omits, and a recorded key no derivation reaches.
-- The four new test modules run 77 tests. The economy model's twenty-four
-  declared result codes partition exactly 12 carried, 2 guards, and 10
-  unrepresentable, checked against `simulation/founder_economy_v3`'s own
-  declared set rather than a copy of it.
+- The four test modules run 91 tests. The economy model's twenty-four declared
+  result codes partition exactly 11 carried, 2 guards, and 11 unrepresentable,
+  checked against `simulation/founder_economy_v3`'s own declared set rather than
+  a copy of it.
 - No accepted artifact changed. `simulation/founder_economy*/`,
   `simulation/cycle_boundary/`, `simulation/uptime_measurement/`,
   `simulation/escrow_payout/`, and `simulation/scenarios/` are untouched, and
@@ -1626,29 +1641,19 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-**Ask the owner the two blocking authorization questions before starting
-requirement 10.** They are batched in the founder-decision questionnaire this
-slice raised and are recorded under [Blockers](#blockers). Requirement 10 cannot
-begin without them: a C++ transition must decide which sender it accepts, and
-inventing that would set what an end user must do and own in order to
-participate and be paid.
+Milestone slice **M3.9a: implement the version-two codec in the C++20 kernel** —
+`first-goal.md` requirement 10's first half — followed by M3.9b, the
+cross-language vectors of requirement 11. Use the `change-protocol` skill for
+both.
 
-Once they are answered, the next slice is **M3.9a: implement the version-two
-envelope, state keys, and receipt in the C++20 kernel** — `first-goal.md`
-requirement 10 — followed by M3.9b, the cross-language vectors of requirement
-11. Use the `change-protocol` skill for both.
-
-Take requirement 10 in two bounded pieces rather than one. The first is the
-**pure codec**: the transaction envelope and its six bodies, the receipt, the
-state key and value encodings, the economy tree, the version-two state root, and
-version-two genesis and chain identity. All of it is deterministic byte work
-with no ledger state, it is exactly what `test-vectors/economy-transition-v2.txt`
-already fixes, and it needs no authorization predicate, so **it is unblocked
-today**. The second piece is the transitions, which is where the predicates
-become load-bearing.
-
-If the owner has not answered when the codec is complete, that is the correct
-place to stop and wait rather than to invent a predicate.
+Take requirement 10 in two bounded pieces. The first is the **pure codec**: the
+transaction envelope and its six bodies, the receipt, the state key and value
+encodings, the economy tree, the version-two state root, and version-two genesis
+and chain identity. All of it is deterministic byte work with no ledger state,
+and `test-vectors/economy-transition-v2.txt` already fixes every value it must
+produce. The second piece is the transitions — purchase, activation, the block
+boundary assignment, and the two mints — which need the seat table and the cycle
+records.
 
 **The C++ side must reproduce the recorded vectors, not re-derive its own.**
 `tools/protocol-vectors/` already carries a paired `verify.cpp` and `verify.py`
@@ -1660,11 +1665,10 @@ C++ encoder does not emit the accepted M1 transfer bytes, the compatibility
 boundary is broken at its narrowest point.
 
 **Re-measure the hosted matrix margin after the kernel slice.** The slowest job
-was `clang-sanitizers` at 9m58s post-merge against a 20-minute per-job timeout,
+was `clang-sanitizers` at 9m50s post-merge against a 20-minute per-job timeout,
 and two runs on identical code differed by 12%. The kernel slice adds source and
 tests to the builds, which are the larger half of each job and are not
-parallelised by `ctest --parallel`. M3.8a added four Python test modules and one
-verifier and should have moved it very little.
+parallelised by `ctest --parallel`.
 
 Keep `founder-economy-manifest-v1`, `founder-economy-simulator-v1`,
 `escrow-payout-v1`, `economy-scenario-suite-v1`, and every v1 and v2 model,
@@ -1678,6 +1682,16 @@ population generators that must stay independent for the same reason.
 `simulation/economy_transition/` is the codec the C++ implementation must agree
 with; it is a second implementation of one contract, so neither side may be
 edited to match the other without changing the specification.
+
+**The accepted economy models are research evidence about a superseded
+settlement shape, and that is now explicit.** `founder-economy-simulator-v3`
+exercises a submitted evaluation, a per-cycle exercise, and a supplied uptime
+record; `economy-transition-v2` has none of those. Both are correct about the
+contract each states, and the mapping between them is recorded as a total
+three-way partition rather than left to be inferred. Do not rebind the accepted
+models to the consensus shape: the C++ implementation agrees with
+`simulation/economy_transition/`, and requirement 13's scenarios are where the
+two meet.
 
 **Every new test and verifier must be registered in `CMakeLists.txt` and must run
 as `python3 <path>`.** `tests/tools/test_registration_test.py` enforces both, and
@@ -1695,37 +1709,36 @@ is the operational record.
 
 ## Blockers
 
-**Two founder-reserved authorization questions block requirement 10.** They are
-the first genuinely blocking founder questions of M3, they arrived exactly where
-the M3.7a handoff predicted — at the kernel implementation rather than at the
-encoding slice — and one of the two is broader than that handoff expected.
+None for the next action.
 
-1. **`activation_authority`: which sender may activate a seat.** The
-   constitution decides that a sensitive Founder action requires an accepted
-   signature *and* a fresh action-bound biometric approval, and
-   `founder-economy-simulator-v3` records that what authorizes an activation —
-   the payment, enrollment, and biometric preconditions — is M4. Neither says
-   which key signs the transaction.
-2. **`seat_authority`: which sender may evaluate, exercise, or accrue for a
-   recorded seat.** The same clause governs, and the manager model it points at
-   is unmodelled.
+**The two authorization questions M3.8a raised were answered on 2026-08-13.** A
+seat is purchased in one atomic transaction registering its biometric hash and
+purchaser address, gated by an off-chain verifier signature; activation is a
+separate one-time permanent event the purchaser triggers, also verifier-gated;
+the chain writes mint permissions daily by itself; a mint takes everything and
+needs only the wallet signature; and referral is a separate pool paid to a user
+account. `economy-transition-v2` encodes all of it.
 
-A third, `direct_issue_authority`, was already recorded and is unchanged: the
-eligibility and anti-abuse mechanics for the four undecided direct-mint
-channels. `economy-transition-v2` handles it by refusing kind 6 outright, which
-is conservative and reversible, so it blocks that kind rather than the slice.
+One founder-reserved decision remains and it blocks one transaction kind rather
+than a slice: **`direct_issue_authority`**, the eligibility and anti-abuse
+mechanics for the `liquidity_mining`, `impermanent_loss_protection`,
+`hub_verified_user_incentives`, and `initial_mystery_box_incentives` channels.
+Kind 6 is specified and refused until it is settled, which is conservative and
+reversible. It is not blocking: those four channels are not on the seat economy
+path requirement 10 implements.
 
-**Why these are reserved rather than engineering.** Which senders a predicate
-accepts sets what an end user must do and own in order to participate and be
-paid, which is the clause added to `CLAUDE.md` on 2026-08-09. A research model
-may carry an unverified input, which is why `founder-economy-manifest-v2` keeps
-`direct_channel_eligibility_result`; a consensus transition may not, because it
-must decide what it actually verifies.
+Two further decisions are recorded rather than blocking. **The concrete resource
+commitment** — what a Founder Node must prove it holds — becomes the nearest
+dependency at the Founder Node and resource-network milestone. **Verifier key
+rotation** is new and was found while encoding genesis: the ecosystem verifier
+key is written at genesis and no transition changes it, so a compromised or
+retired key can only be replaced by a new chain. Rotation decides who controls
+admission to the economy, so it is not invented; until it exists, the key is
+effectively permanent.
 
-**What proceeds regardless.** The pure-codec half of requirement 10 — the
-envelope, the six bodies, the receipt, the state keys, the trees, the roots, and
-genesis — is deterministic byte work against vectors that already exist and
-needs no predicate. It is unblocked today.
+**The bootstrap gap is a bridge dependency, not a founder question.** A chain
+with no genesis allocation and a nonzero fee cannot execute its first
+transaction, and every path to a first payable balance is external.
 
 M3.8a ran the founder-decision gate and **it did not pass silently — it is what
 found the two blocking questions above.** Eighteen decisions were enumerated

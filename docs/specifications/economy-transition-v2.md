@@ -432,7 +432,7 @@ of another with a different meaning.
 
 | Kind | Entry | Key | Key bytes | Value | Value bytes |
 | ---: | --- | --- | ---: | --- | ---: |
-| 1 | seat | `u8(1) \|\| seat_id:u32` | 5 | see below | 106 |
+| 1 | seat | `u8(1) \|\| seat_id:u32` | 5 | see below | 114 |
 | 2 | channel | `u8(2) \|\| channel_id:u8` | 2 | `issued_atomic:u64 \|\| outstanding_atomic:u64` | 16 |
 | 3 | cycle assignment | `u8(3) \|\| cycle_window:u64` | 9 | see below | 24 + 2⌈n/8⌉ |
 | 4 | referral balance | `u8(4) \|\| account_id:bytes<32>` | 33 | `accrued_atomic:u64 \|\| minted_atomic:u64` | 16 |
@@ -456,7 +456,7 @@ activation_height       : u64
 minted_through_window   : u64
 ```
 
-106 bytes. Three of its fields are the shape of the founder decision of
+114 bytes. Four of its fields are the shape of the founder decision of
 2026-08-13 and were absent from the first draft of this specification.
 
 **Identity is present from the first byte of the seat's existence.** The hash and
@@ -1040,7 +1040,7 @@ alone.
 
 | Entry | Bound at 100,000 seats | Derivation |
 | --- | ---: | --- |
-| seats | 11,100,000 bytes | `100,000 * (5 + 106)` |
+| seats | 11,900,000 bytes | `100,000 * (5 + 114)` |
 | channels | 180 bytes | `10 * (2 + 16)` |
 | referral balances | 49 bytes per referrer | `33 + 16` |
 | typed custody | 4,200,000 bytes | `100,000 * (34 + 8)` per beneficiary kind |

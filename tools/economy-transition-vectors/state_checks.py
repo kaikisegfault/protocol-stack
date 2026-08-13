@@ -23,9 +23,16 @@ def check_state_keys(check: Checker) -> None:
             "variable" if model_value is None else model_value,
         )
     check.agree(
-        "state.window_result_fixed_value_bytes",
-        e.WINDOW_RESULT_FIXED_VALUE_BYTES,
-        c.WINDOW_RESULT_FIXED_VALUE_BYTES,
+        "state.cycle_assignment_fixed_value_bytes",
+        e.CYCLE_ASSIGNMENT_FIXED_VALUE_BYTES,
+        c.CYCLE_ASSIGNMENT_FIXED_VALUE_BYTES,
+    )
+    # The per-seat-cycle population is absent from the state entirely: a mint
+    # takes everything, so one high-water mark per seat replaces what would
+    # otherwise be 73,100,000 entries.
+    check.equal(
+        "state.no_entry_is_keyed_by_seat_cycle",
+        all(width < 7 or kind in (4, 5, 6) for kind, (width, _) in e.ENTRY_WIDTHS.items()),
     )
     # No key is a prefix of another with a different meaning, which is what
     # makes unsigned lexicographic order total over a mixed-width key space.
@@ -50,7 +57,7 @@ def check_trees(check: Checker) -> None:
         empty.hex(),
     )
 
-    at_genesis = genesis.initial_economy_entries()
+    at_genesis = genesis.initial_economy_entries(scenario.VERIFIER_KEY)
     check.equal("state.economy_entry_count_genesis", len(at_genesis))
     check.agree(
         "state.economy_root_genesis",
@@ -161,6 +168,11 @@ def check_state_root(check: Checker) -> None:
 
 def check_genesis(check: Checker) -> None:
     check.agree("genesis.prefix_bytes", e.genesis_prefix_bytes(), c.GENESIS_PREFIX_BYTES)
+    check.agree(
+        "genesis.version_one_prefix_bytes",
+        e.VERSION_ONE_GENESIS_PREFIX_BYTES,
+        c.GENESIS_PREFIX_BYTES - 64,
+    )
     check.agree("genesis.max_accounts", e.max_genesis_accounts(), c.MAX_GENESIS_ACCOUNTS)
     accepted_bytes = c.GENESIS_PREFIX_BYTES + c.ACCOUNT_ENTRY_BYTES * c.MAX_GENESIS_ACCOUNTS
     check.equal("genesis.max_accounts_bytes", accepted_bytes)
@@ -172,9 +184,11 @@ def check_genesis(check: Checker) -> None:
         "genesis.one_more_account_exceeds_object_bound",
         accepted_bytes + c.ACCOUNT_ENTRY_BYTES > e.MAX_OBJECT_BYTES,
     )
-    # Version one's 46-byte prefix admits one more entry; the difference is
-    # exactly the 32-byte manifest digest this version binds into chain identity.
+    # Version one's 46-byte prefix admits one more entry. Version two adds 64
+    # bytes — the manifest digest and the verifier key — and loses exactly one
+    # entry, so the accepting case clears the bound by two bytes.
     check.equal("genesis.version_one_max_accounts", (e.MAX_OBJECT_BYTES - 46) // 48)
+    check.equal("genesis.accepting_margin_bytes", e.MAX_OBJECT_BYTES - accepted_bytes)
 
     founder = scenario.genesis()
     encoded = genesis.encode(founder)
@@ -189,24 +203,42 @@ def check_genesis(check: Checker) -> None:
     check.equal("genesis.zero_total_supply_accepted", founder.total_supply == 0)
     check.equal("genesis.zero_accounts_accepted", len(founder.accounts) == 0)
     check.equal("genesis.zero_fee_accepted", founder.fixed_transfer_fee == 0)
+    check.equal("genesis.verifier_key_is_a_field", founder.verifier_key.hex())
+    # The verifier key sits inside the chain ID, so a chain trusting a different
+    # verifier is a different chain rather than the same one.
+    drifted = _variant(founder, verifier_key=bytes(32))
+    check.equal(
+        "genesis.verifier_key_changes_chain_identity",
+        genesis.chain_id(drifted) != genesis.chain_id(founder),
+    )
+    check.equal(
+        "genesis.manifest_digest_changes_chain_identity",
+        genesis.chain_id(_variant(founder, manifest_digest=bytes(32)))
+        != genesis.chain_id(founder),
+    )
 
     for name, candidate in _invalid_genesis(founder).items():
         check.equal(f"genesis.reject.{name}", _genesis_refusal(candidate))
 
 
+def _variant(founder: genesis.Genesis, **changes: object) -> genesis.Genesis:
+    fields = dict(
+        network_id=founder.network_id,
+        supply_limit=founder.supply_limit,
+        total_supply=founder.total_supply,
+        fixed_transfer_fee=founder.fixed_transfer_fee,
+        initial_fee_pool=founder.initial_fee_pool,
+        manifest_digest=founder.manifest_digest,
+        verifier_key=founder.verifier_key,
+        accounts=list(founder.accounts),
+    )
+    fields.update(changes)
+    return genesis.Genesis(**fields)  # type: ignore[arg-type]
+
+
 def _invalid_genesis(founder: genesis.Genesis) -> dict[str, genesis.Genesis]:
     def variant(**changes: object) -> genesis.Genesis:
-        fields = dict(
-            network_id=founder.network_id,
-            supply_limit=founder.supply_limit,
-            total_supply=founder.total_supply,
-            fixed_transfer_fee=founder.fixed_transfer_fee,
-            initial_fee_pool=founder.initial_fee_pool,
-            manifest_digest=founder.manifest_digest,
-            accounts=list(founder.accounts),
-        )
-        fields.update(changes)
-        return genesis.Genesis(**fields)  # type: ignore[arg-type]
+        return _variant(founder, **changes)
 
     account = (bytes(32), 1_000, 0)
     return {
@@ -239,104 +271,156 @@ def _genesis_refusal(candidate: genesis.Genesis) -> str:
 
 
 def check_winners(check: Checker) -> None:
-    derived = scenario.window_winners()
-    check.equal("winners.derived", ",".join(str(seat) for seat in derived))
-    check.equal("winners.count", len(derived))
-    check.equal("winners.excludes_the_failed_seat", 7 not in derived)
-    check.equal("winners.excludes_below_maximum_uptime", c.MAX_SEAT_ID not in derived)
-
-    root = winners.winner_root(derived)
-    check.agree(
-        "winners.root",
-        e.merkle([e.be(seat, 4) for seat in derived], c.WINNER_TREE_PREFIX).hex(),
-        root.hex(),
-    )
-    check.equal("winners.empty_root", winners.winner_root(()).hex())
-
-    share, remainder = winners.equal_split(e.FOUNDER_OPERATOR_LEG_ATOMIC, len(derived))
-    expected_split = e.equal_split(e.FOUNDER_OPERATOR_LEG_ATOMIC, len(derived))
-    check.agree("winners.share_atomic", expected_split[0], share)
-    check.agree("winners.remainder_atomic", expected_split[1], remainder)
-
-    # A count that does not divide the portion, so the carried remainder is
-    # exercised rather than only the exact-split case.
-    odd_share, odd_remainder = winners.equal_split(e.FOUNDER_OPERATOR_LEG_ATOMIC, 7)
-    check.agree("winners.share_atomic_over_seven", e.equal_split(e.FOUNDER_OPERATOR_LEG_ATOMIC, 7)[0], odd_share)
-    check.agree("winners.remainder_atomic_over_seven", e.equal_split(e.FOUNDER_OPERATOR_LEG_ATOMIC, 7)[1], odd_remainder)
-
-    # An empty winner set carries the whole portion forward, which is the
-    # founder-directed rule for a window no node met.
-    empty_share, empty_remainder = winners.equal_split(e.FOUNDER_OPERATOR_LEG_ATOMIC, 0)
-    check.equal("winners.empty_set_share", empty_share)
-    check.equal("winners.empty_set_carry", empty_remainder)
+    """The cycle assignment: the winner rule, the split, and the two bitmaps."""
+    derived = scenario.cycle_winners()
+    check.equal("cycle.winners", ",".join(str(seat) for seat in derived))
+    check.equal("cycle.winner_count", len(derived))
+    check.equal("cycle.excludes_the_failed_seat", 7 not in derived)
+    check.equal("cycle.excludes_below_maximum_uptime", c.MAX_SEAT_ID not in derived)
 
     # The encoding must not hold a second opinion about who wins. The accepted
     # economy model reaches the set from a supplied record and this one from a
-    # window's measurements, so a set both produce has been derived twice.
+    # cycle's measurements, so a set both produce has been derived twice.
     from simulation.founder_economy_v3 import uptime as economy_uptime
 
     record = {
         "entries": [
-            {"seat_id": seat, "uptime_seconds": scenario.WINDOW_UPTIME[seat]}
-            for seat in sorted(scenario.WINDOW_UPTIME)
+            {"seat_id": seat, "uptime_seconds": scenario.CYCLE_UPTIME[seat]}
+            for seat in sorted(scenario.CYCLE_UPTIME)
         ]
     }
     check.equal(
-        "winners.agrees_with_the_accepted_economy_model",
+        "cycle.agrees_with_the_accepted_economy_model",
         economy_uptime.winner_seats(record) == derived,
     )
     check.equal(
-        "winners.met_flags_are_the_accepted_threshold",
+        "cycle.met_flags_are_the_accepted_threshold",
         all(
-            scenario.WINDOW_MET[seat] == economy_uptime.met_cycle(seconds)
-            for seat, seconds in scenario.WINDOW_UPTIME.items()
+            scenario.CYCLE_MET[seat] == economy_uptime.met_cycle(seconds)
+            for seat, seconds in scenario.CYCLE_UPTIME.items()
         ),
     )
 
-    check.equal(
-        "winners.commitment_accepts_the_derived_set",
-        winners.matches_commitment(derived, root, len(derived)),
+    # Every leg is divided, not only the operator leg: a failed cycle's whole
+    # permission moves to the winners, so the escrows and the System Creator are
+    # paid at the winner's mint and each of their legs can leave a remainder.
+    shares, carries = winners.split_permission(len(derived))
+    expected_shares, expected_carries = e.split_permission(len(derived))
+    for channel in sorted(shares):
+        check.agree(f"cycle.share_atomic.{channel}", expected_shares[channel], shares[channel])
+        check.agree(f"cycle.carry_atomic.{channel}", expected_carries[channel], carries[channel])
+    check.agree(
+        "cycle.base_permission_total_atomic",
+        sum(e.base_permission_legs().values()),
+        c.BASE_PERMISSION_TOTAL,
     )
-    for name, candidate in _winner_mutations(derived).items():
-        check.equal(
-            f"winners.reject.{name}",
-            not winners.matches_commitment(candidate, root, len(derived)),
-        )
+    check.equal(
+        "cycle.split_conserves_every_leg",
+        all(
+            shares[channel] * len(derived) + carries[channel] == amount
+            for channel, amount in c.BASE_PERMISSION_LEGS
+        ),
+    )
+
+    # A count that does not divide the legs, so a carried remainder is exercised
+    # rather than only the exact-split case.
+    odd_shares, odd_carries = winners.split_permission(7)
+    check.agree(
+        "cycle.share_atomic_over_seven.0", e.split_permission(7)[0][0], odd_shares[0]
+    )
+    check.agree(
+        "cycle.carry_atomic_over_seven.0", e.split_permission(7)[1][0], odd_carries[0]
+    )
+    check.equal(
+        "cycle.split_over_seven_conserves",
+        all(
+            odd_shares[channel] * 7 + odd_carries[channel] == amount
+            for channel, amount in c.BASE_PERMISSION_LEGS
+        ),
+    )
+
+    # An empty winner set carries the whole permission forward, which is the
+    # founder-directed rule for a cycle no node met.
+    empty_shares, empty_carries = winners.split_permission(0)
+    check.equal("cycle.empty_set_shares_are_zero", all(v == 0 for v in empty_shares.values()))
+    check.equal(
+        "cycle.empty_set_carries_the_whole_permission",
+        sum(empty_carries.values()) == c.BASE_PERMISSION_TOTAL,
+    )
+
+    _check_bitmaps(check, derived)
 
 
-def _winner_mutations(derived: tuple[int, ...]) -> dict[str, tuple[int, ...]]:
-    return {
-        "reordered": tuple(reversed(derived)),
-        "short_by_one": derived[:-1],
-        "long_by_one": tuple(sorted(derived + (c.MAX_SEAT_ID,))),
-        "substituted": tuple(sorted(derived[:-1] + (derived[-1] + 1,))),
-        "empty": (),
-    }
+def _check_bitmaps(check: Checker, derived: tuple[int, ...]) -> None:
+    """Two bitmaps over one in-scope order: met and won are separate facts."""
+    met_flags = [scenario.CYCLE_MET[seat] for seat in scenario.IN_SCOPE_SEATS]
+    winner_flags = [seat in derived for seat in scenario.IN_SCOPE_SEATS]
+    met = state.bitmap(met_flags)
+    won = state.bitmap(winner_flags)
+    check.agree("cycle.met_bitmap", e.bitmap(met_flags).hex(), met.hex())
+    check.agree("cycle.winner_bitmap", e.bitmap(winner_flags).hex(), won.hex())
+    check.equal("cycle.bitmaps_differ", met != won)
+    check.equal(
+        "cycle.a_seat_may_meet_without_winning",
+        any(
+            state.bit_is_set(met, index) and not state.bit_is_set(won, index)
+            for index in range(len(scenario.IN_SCOPE_SEATS))
+        ),
+    )
+    check.equal(
+        "cycle.every_winner_also_met",
+        all(
+            state.bit_is_set(met, index)
+            for index in range(len(scenario.IN_SCOPE_SEATS))
+            if state.bit_is_set(won, index)
+        ),
+    )
+    key, value = scenario.cycle_assignment_entry()
+    check.equal("cycle.assignment_key", key.hex())
+    check.equal("cycle.assignment_value_bytes", len(value))
+    check.agree(
+        "cycle.assignment_entry_bytes",
+        e.entry_bytes(c.CYCLE_ASSIGNMENT_ENTRY, len(scenario.IN_SCOPE_SEATS)),
+        len(key) + len(value),
+    )
 
 
 def check_storage_bounds(check: Checker) -> None:
     """Requirement 12's per-seat-balance and recipient-balance parts."""
     population = c.FOUNDER_SEAT_CAPACITY * c.ISSUANCE_CYCLES_PER_SEAT
-    check.agree("storage.seat_cycle_population", e.FOUNDER_SEAT_CAPACITY * e.ISSUANCE_CYCLES_PER_SEAT, population)
+    check.agree(
+        "storage.seat_cycle_population",
+        e.FOUNDER_SEAT_CAPACITY * e.ISSUANCE_CYCLES_PER_SEAT,
+        population,
+    )
 
     bounds = {
         "seats": c.FOUNDER_SEAT_CAPACITY * e.entry_bytes(c.SEAT_ENTRY),
         "channels": 10 * e.entry_bytes(c.CHANNEL_ENTRY),
-        "pending_permissions": population * e.entry_bytes(c.PENDING_PERMISSION_ENTRY),
-        "referral_accruals": population * e.entry_bytes(c.REFERRAL_ACCRUAL_ENTRY),
+        "referral_balance_per_referrer": e.entry_bytes(c.REFERRAL_BALANCE_ENTRY),
         "typed_custody": c.FOUNDER_SEAT_CAPACITY * e.entry_bytes(c.TYPED_CUSTODY_ENTRY),
-        "performance_carry": e.entry_bytes(c.PERFORMANCE_CARRY_ENTRY),
+        "carries": 10 * e.entry_bytes(c.CARRY_ENTRY),
+        "verifier_key": e.entry_bytes(c.VERIFIER_KEY_ENTRY),
     }
     for name, value in sorted(bounds.items()):
         check.equal(f"storage.{name}_bytes_at_capacity", value)
 
-    per_window = e.entry_bytes(c.WINDOW_RESULT_ENTRY, c.FOUNDER_SEAT_CAPACITY)
-    check.equal("storage.window_result_bytes_at_capacity", per_window)
-    check.equal(
-        "storage.window_results_bytes_concentrated_activation",
-        per_window * c.ISSUANCE_CYCLES_PER_SEAT,
+    per_cycle = e.entry_bytes(c.CYCLE_ASSIGNMENT_ENTRY, c.FOUNDER_SEAT_CAPACITY)
+    check.equal("storage.cycle_assignment_bytes_at_capacity", per_cycle)
+    cycles_per_year = (365 * 24 * 3_600) // (c.CYCLE_BLOCKS * 3)
+    check.agree(
+        "storage.cycles_per_year",
+        (365 * 24 * 3_600) // (e.CYCLE_BLOCKS * 3),
+        cycles_per_year,
     )
-    # One window per 28,800 blocks at the pinned three-second commit interval.
-    windows_per_year = (365 * 24 * 3_600) // (c.CYCLE_BLOCKS * 3)
-    check.agree("storage.windows_per_year", (365 * 24 * 3_600) // (e.CYCLE_BLOCKS * 3), windows_per_year)
-    check.equal("storage.window_results_bytes_per_year", per_window * windows_per_year)
+    check.equal("storage.cycle_assignment_bytes_per_year", per_cycle * cycles_per_year)
+
+    # What the founder rule removed. A mint that could take a chosen amount
+    # would need one entry per seat-cycle to record which cycles were taken;
+    # a mint that takes everything needs one high-water mark per seat.
+    check.equal(
+        "storage.seat_cycle_entries_the_take_everything_rule_removes", population
+    )
+    check.equal(
+        "storage.high_water_mark_bytes_at_capacity", c.FOUNDER_SEAT_CAPACITY * 8
+    )

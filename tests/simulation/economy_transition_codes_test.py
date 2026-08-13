@@ -63,9 +63,9 @@ class ModelMappingTest(unittest.TestCase):
 
     def test_the_partition_sizes_are_the_recorded_ones(self) -> None:
         self.assertEqual(len(self.declared), 24)
-        self.assertEqual(len(self.carried), 12)
+        self.assertEqual(len(self.carried), 11)
         self.assertEqual(len(self.guards), 2)
-        self.assertEqual(len(self.unrepresentable), 10)
+        self.assertEqual(len(self.unrepresentable), 11)
 
     def test_every_carried_code_has_a_numbered_target(self) -> None:
         for source, target in c.CARRIED_MODEL_CODES.items():
@@ -86,22 +86,42 @@ class ModelMappingTest(unittest.TestCase):
                 self.assertTrue(reason.strip())
                 self.assertNotIn(name, c.CODE_NUMBER)
 
-    def test_the_removed_codes_are_the_supplied_record_and_height_conditions(self) -> None:
-        """Ten codes, and each one's input is gone for a stated structural reason."""
+    def test_each_removed_code_is_removed_for_a_stated_structural_reason(self) -> None:
+        """Eleven codes, in four groups, each with its input gone for one reason."""
         record_conditions = {
             "MISSING_UPTIME_RECORD",
             "INVALID_UPTIME_RECORD",
             "INCONSISTENT_UPTIME_RECORD",
             "SEAT_NOT_IN_SCOPE",
             "INCOMPLETE_UPTIME_RECORD",
+        }
+        window_conditions = {
             "WINDOW_BEFORE_ISSUANCE",
             "WINDOW_AFTER_ISSUANCE",
             "WINDOW_NOT_FOR_CYCLE",
         }
         height_conditions = {"HEIGHT_RANGE", "HEIGHT_NOT_MONOTONIC"}
-        self.assertEqual(self.unrepresentable, record_conditions | height_conditions)
-        self.assertEqual(len(record_conditions), 8)
-        self.assertEqual(len(height_conditions), 2)
+        mint_conditions = {"PERMISSION_NOT_FOUND"}
+        self.assertEqual(
+            self.unrepresentable,
+            record_conditions | window_conditions | height_conditions | mint_conditions,
+        )
+        self.assertEqual(
+            [len(record_conditions), len(window_conditions), len(height_conditions), len(mint_conditions)],
+            [5, 3, 2, 1],
+        )
+
+    def test_the_new_codes_are_conditions_the_model_cannot_have(self) -> None:
+        """A model with no signer, no purchase, and no take-everything mint."""
+        new = {
+            name
+            for number, name in c.RESULT_CODES.items()
+            if number >= 9 and name not in c.CARRIED_MODEL_CODES.values()
+        }
+        self.assertEqual(new, {"UNAUTHORIZED", "SEAT_NOT_PURCHASED", "NOTHING_TO_MINT"})
+        for name in new:
+            with self.subTest(name):
+                self.assertNotIn(name, model.RESULT_CODES)
 
     def test_every_code_the_model_added_in_version_three_is_accounted_for(self) -> None:
         for name in model.ADDED_RESULT_CODES:
@@ -115,7 +135,7 @@ class ReceiptTest(unittest.TestCase):
     def setUp(self) -> None:
         self.accepted = receipt.Receipt(
             transaction_id=bytes.fromhex("ab" * 32),
-            kind=c.EXERCISE_PERMISSION,
+            kind=c.MINT_NODE,
             result_code=c.CODE_NUMBER["SUCCESS"],
             fee_charged=1_000,
             issued_atomic=57_430_000_000,
@@ -140,7 +160,7 @@ class ReceiptTest(unittest.TestCase):
                     receipt.encode(
                         receipt.Receipt(
                             self.accepted.transaction_id,
-                            c.EXERCISE_PERMISSION,
+                            c.MINT_NODE,
                             failed,
                             fee,
                             issued,
@@ -157,11 +177,10 @@ class ReceiptTest(unittest.TestCase):
                         )
                     )
 
-    def test_the_issuing_kinds_are_exercise_accrual_and_direct_issue(self) -> None:
+    def test_the_issuing_kinds_are_the_two_mints_and_direct_issue(self) -> None:
+        """Until a permission is minted its units do not exist."""
         issuing = set(c.TRANSACTION_KINDS) - receipt.NON_ISSUING_KINDS
-        self.assertEqual(
-            issuing, {c.EXERCISE_PERMISSION, c.ACCRUE_REFERRAL, c.DIRECT_ISSUE}
-        )
+        self.assertEqual(issuing, {c.MINT_NODE, c.MINT_REFERRAL, c.DIRECT_ISSUE})
 
     def test_an_unknown_kind_or_code_is_refused(self) -> None:
         with self.assertRaises(receipt.InvalidReceipt):

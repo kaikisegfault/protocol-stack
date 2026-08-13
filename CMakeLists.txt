@@ -959,10 +959,10 @@ add_test(
     "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_codes_test.py"
 )
 add_test(
-  NAME economy-transition-winners
+  NAME economy-transition-cycle
   COMMAND
     "${Python3_EXECUTABLE}"
-    "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_winners_test.py"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_cycle_test.py"
 )
 add_test(
   NAME founder-seat-vectors

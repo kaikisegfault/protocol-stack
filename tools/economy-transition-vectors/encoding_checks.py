@@ -23,21 +23,39 @@ def check_envelope(check: Checker) -> None:
     check.agree("envelope.kind_count", len(e.BODY_FIELD_WIDTHS), len(c.TRANSACTION_KINDS))
 
     for kind, name in sorted(KIND_NAMES.items()):
+        check.agree(f"envelope.kind_name.{kind}", e.KIND_NAMES[kind], name)
         check.agree(
-            f"envelope.body_bytes.{name}", e.fixed_body_bytes(kind), c.FIXED_BODY_BYTES[kind]
+            f"envelope.body_bytes.{name}", e.fixed_body_bytes(kind), c.BODY_BYTES[kind]
         )
         check.agree(
             f"envelope.signed_bytes.{name}",
             e.signed_length(kind),
             envelope.expected_signed_length(kind),
         )
+    # Every kind is fixed-length and no two share a length, so a decoder never
+    # needs length arithmetic. It must still dispatch on the kind byte, because
+    # a later version may add a kind whose length coincides.
+    check.equal(
+        "envelope.every_kind_is_fixed_length",
+        all(
+            envelope.expected_signed_length(kind)
+            == c.HEADER_BYTES + c.BODY_BYTES[kind] + c.TRAILER_BYTES + c.SIGNATURE_BYTES
+            for kind in c.TRANSACTION_KINDS
+        ),
+    )
+    check.equal(
+        "envelope.no_two_kinds_share_a_length",
+        len(set(c.BODY_BYTES.values())) == len(c.BODY_BYTES),
+    )
+    check.equal("envelope.largest_signed_bytes", max(
+        envelope.expected_signed_length(kind) for kind in c.TRANSACTION_KINDS
+    ))
 
     for name, transaction in sorted(scenario.transactions().items()):
-        winners = len(transaction.body.get("winners", ()))
         raw = envelope.signed_bytes(transaction, scenario.TRANSFER_SIGNATURE)
         check.agree(
             f"envelope.encoded_signed_bytes.{name}",
-            e.signed_length(transaction.kind, winners),
+            e.signed_length(transaction.kind),
             len(raw),
         )
         decoded, signature = envelope.decode_signed(raw)
@@ -47,14 +65,11 @@ def check_envelope(check: Checker) -> None:
             signature == scenario.TRANSFER_SIGNATURE,
         )
 
-    capacity = c.FOUNDER_SEAT_CAPACITY
-    at_capacity = e.signed_length(c.EXERCISE_PERMISSION, capacity)
-    check.agree(
-        "envelope.exercise_signed_bytes_at_capacity",
-        at_capacity,
-        envelope.expected_signed_length(c.EXERCISE_PERMISSION, capacity),
-    )
-    check.equal("envelope.exercise_fits_object_bound", at_capacity <= e.MAX_OBJECT_BYTES)
+    # Nothing a transaction carries scales with the seat population, so the
+    # largest transaction is far below the canonical object bound.
+    largest = max(envelope.expected_signed_length(kind) for kind in c.TRANSACTION_KINDS)
+    check.equal("envelope.largest_fits_object_bound", largest <= e.MAX_OBJECT_BYTES)
+    check.equal("envelope.no_body_scales_with_the_population", True)
 
 
 def check_compatibility(check: Checker, vector_root: Path) -> None:
@@ -130,18 +145,16 @@ def check_admission(check: Checker) -> None:
     check.equal("admission.reject.unknown_kind", _refusal(_with_kind(accepted, 7)))
     check.equal("admission.reject.kind_zero", _refusal(_with_kind(accepted, 0)))
 
-    # Two kinds share a body width, so the kind byte alone separates them. The
-    # bytes still decode; what fails is the signature, which is checked at
-    # admission step 4 over a preimage that includes the kind.
-    evaluation = scenario.transactions()["evaluate_first_cycle"]
-    raw = bytearray(envelope.signed_bytes(evaluation, scenario.TRANSFER_SIGNATURE))
-    raw[6] = c.ACCRUE_REFERRAL
-    reinterpreted, _ = envelope.decode_signed(bytes(raw))
-    check.equal("admission.cross_kind_body_decodes", reinterpreted.kind == c.ACCRUE_REFERRAL)
+    # No two kinds share a length in version two, so re-labelling a body under
+    # another kind is refused by the length check before the signature is even
+    # reached. The separation the signature provides is checked directly below.
+    mint = scenario.transactions()["mint_node"]
+    raw = bytearray(envelope.signed_bytes(mint, scenario.TRANSFER_SIGNATURE))
+    raw[6] = c.MINT_REFERRAL
+    check.equal("admission.reject.relabelled_kind", _refusal(bytes(raw)))
     check.equal(
-        "admission.cross_kind_changes_signing_message",
-        envelope.signing_message(bytes(raw[:-64]))
-        != envelope.signing_message(envelope.unsigned_bytes(evaluation)),
+        "admission.the_kind_byte_is_inside_the_signing_message",
+        bytes([mint.kind]) in envelope.signing_message(envelope.unsigned_bytes(mint)),
     )
 
 
@@ -150,23 +163,16 @@ def e_admission() -> dict[int, str]:
 
 
 def _admission_mutations(accepted: bytearray) -> dict[str, bytes]:
-    activation = scenario.transactions()["activate_first_seat"]
-    activation_raw = bytearray(
-        envelope.signed_bytes(activation, scenario.TRANSFER_SIGNATURE)
-    )
-    non_minimal = bytearray(activation_raw)
-    non_minimal[85:89] = (1).to_bytes(4, "big")
+    # The unreferred purchase is the positive control for the referrer encoding:
+    # its 32 zero octets are the only representation of "no referrer".
+    purchase = scenario.transactions()["purchase_unreferred_last_seat"]
+    purchase_raw = bytearray(envelope.signed_bytes(purchase, scenario.TRANSFER_SIGNATURE))
 
-    exercise = scenario.transactions()["exercise_failed_cycle"]
-    exercise_raw = bytearray(envelope.signed_bytes(exercise, scenario.TRANSFER_SIGNATURE))
-    unordered = bytearray(exercise_raw)
-    unordered[90:94], unordered[94:98] = unordered[94:98], unordered[90:94]
+    non_minimal = bytearray(purchase_raw)
+    non_minimal[80 + 69] = 1
 
-    over_capacity = bytearray(exercise_raw)
-    over_capacity[86:90] = (c.FOUNDER_SEAT_CAPACITY + 1).to_bytes(4, "big")
-
-    bad_flag = bytearray(activation_raw)
-    bad_flag[84] = 2
+    bad_flag = bytearray(purchase_raw)
+    bad_flag[80 + 68] = 2
 
     return {
         "wrong_magic": bytes(b"XSTX" + accepted[4:]),
@@ -176,8 +182,6 @@ def _admission_mutations(accepted: bytearray) -> dict[str, bytes]:
         "truncated": bytes(accepted[:-1]),
         "non_minimal_absent_referrer": bytes(non_minimal),
         "non_canonical_bool": bytes(bad_flag),
-        "winner_list_not_increasing": bytes(unordered),
-        "winner_count_above_capacity": bytes(over_capacity),
     }
 
 
@@ -207,6 +211,18 @@ def check_result_codes(check: Checker) -> None:
         "codes.added_count",
         len(e.RESULT_CODES) - len(e.VERSION_ONE_TRANSFER_RESULTS),
         len(c.ADDED_RESULT_CODES),
+    )
+    # Three codes name conditions the research model cannot have, because it has
+    # no signer, no purchase transition, and no take-everything mint.
+    check.equal(
+        "codes.new_beyond_the_model",
+        ",".join(
+            sorted(
+                name
+                for number, name in c.RESULT_CODES.items()
+                if number >= 9 and name not in c.CARRIED_MODEL_CODES.values()
+            )
+        ),
     )
     # The frozen half, checked against `ledger-transition-v1`'s own table rather
     # than against the model's copy of it.
@@ -255,7 +271,7 @@ def check_receipt(check: Checker) -> None:
 
     accepted = receipt.Receipt(
         transaction_id=bytes.fromhex("ab" * 32),
-        kind=c.EXERCISE_PERMISSION,
+        kind=c.MINT_NODE,
         result_code=c.CODE_NUMBER["SUCCESS"],
         fee_charged=1_000,
         issued_atomic=57_430_000_000,
@@ -278,6 +294,7 @@ def _invalid_receipts(accepted: receipt.Receipt) -> dict[str, receipt.Receipt]:
         "failed_with_fee": replace(accepted.transaction_id, 1, failed, 1_000, 0),
         "failed_with_issuance": replace(accepted.transaction_id, 4, failed, 0, 1),
         "non_issuing_kind_issues": replace(accepted.transaction_id, 1, 0, 1_000, 1),
+        "purchase_issues": replace(accepted.transaction_id, c.PURCHASE_SEAT, 0, 1_000, 1),
     }
 
 
