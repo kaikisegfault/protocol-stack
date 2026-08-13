@@ -1014,7 +1014,8 @@ behavior.
   commits `f8d6374` through `5f66c49` on `main`. PR Actions run 31744378969 on
   the final head `6ced9f7` passed the complete hosted matrix — scope
   classification `full`, GCC and Clang debug, both sanitizers, and the aggregate
-  required check. Three earlier runs on that branch were cancelled as
+  required check. Post-merge run 31745207592 on `5f66c49` passed the same
+  complete matrix. Three earlier runs on that branch were cancelled as
   superseded, not failed.
 - **The margin is unchanged at about ten minutes.** Per-job durations against the
   20-minute per-job timeout: `clang-debug` 6m27s, `gcc-debug` 7m53s,
