@@ -46,6 +46,13 @@ constitution's containment argument is preserved either way, because a founder
 who has not switched it on is never blocked by verifier availability, and one
 who has has chosen that trade deliberately.
 
+**The switch is asymmetric, and that asymmetry is the whole protection.**
+Turning it on requires only the address signature. Turning it **off** requires a
+biometric approval. A stolen wallet key can therefore neither mint against a
+protected seat nor remove the protection first, which is exactly the attack the
+option exists to defeat; a symmetric switch would have protected against
+nothing.
+
 ### Accumulated mint permissions are capped, and the excess is reallocated
 
 A seat may accumulate at most a bounded number of unminted cycles — the owner
@@ -53,6 +60,23 @@ named roughly thirty days, and the exact figure is delegated as engineering.
 Once a seat is at the cap, **further permissions are not added to it even while
 its node continues to meet the requirement**; they go to that cycle's best
 performers instead, by the same path a failed cycle takes.
+
+**The whole permission moves, not only the Founder portion.** The escrows and
+the System Creator receive their legs from the winner's mint, exactly as they do
+for a failed cycle. That is one rule rather than two: a capped cycle and a failed
+cycle are handled identically, the escrows never lose value because an operator
+was slow to press a button, and the only party that loses anything is the seat
+that did not collect.
+
+The same rule applies to **referral earnings**. A referrer who does not collect
+within the window forfeits the excess, and the forfeited value stays inside the
+`founder_referral` channel and routes to the **unreferred performance pool**,
+which the constitution already defines as that channel's second destination and
+already pays to the month's best performer. Routing it there rather than into
+the daily node pool is a mechanism choice with one defensible answer: every
+issued unit stays attributed to exactly one channel forever, which the accepted
+manifest requires, and the pool is a destination that already exists rather than
+a new path.
 
 The rule is founder-directed and its purpose is stated: Founder Seats should be
 active, and pressing the button once a month is a reasonable expectation of an
@@ -171,13 +195,19 @@ the trees, and the roots are unaffected.
 **Requirement 10 is unblocked and its scope moved.** The C++ implementation must
 target version three rather than version two, so the encoding slice comes first.
 
-**Three consequences are recorded rather than resolved**, and they are the open
-questions this decision could not settle for itself: exactly what stops when a
-seat reaches the accumulation cap and whether the whole permission or only the
-Founder portion moves; who may switch biometric-on-mint back **off**, given that
-a stolen key able to disable it defeats the protection it exists to provide; and
-whether the cap applies to referral earnings, whose holder runs no node and to
-whom the activity rationale does not obviously apply.
+**The three questions this decision raised were answered the same day** and are
+recorded above rather than left open: the whole permission moves on a capped
+cycle, disabling biometric-on-mint requires a biometric approval, and the cap
+applies to referral earnings as well.
+
+The third was answered against the recommendation offered. The case for
+exempting referrers was that the cap exists to keep Founder Nodes running and a
+referrer runs no node. The owner chose one uniform rule instead, and the
+consequence is recorded plainly rather than argued: a referrer who does not
+collect within the window forfeits value for inactivity that was never asked of
+them. What the choice buys is a single collect-or-lose rule across the whole
+economy, no abandoned account holding value indefinitely, and one bounded
+accumulation shape for every participant rather than two.
 
 **Two constitutional entries move.** Referral-channel eligibility for referrers
 is decided, and `hub_verified_user_incentives` eligibility is decided while its
