@@ -105,6 +105,70 @@ class EconomyTreeTest(unittest.TestCase):
         self.assertEqual(leaf, b"\x00\x00\x00\x02\x01\x02\x00\x00\x00\x01\x03")
 
 
+class VersionOneRestatementTest(unittest.TestCase):
+    """The version-one root restatement must be the accepted one, not a lookalike.
+
+    The non-collision test below compares a version-two root against this
+    module's version-one construction. If that construction were merely
+    plausible rather than correct, "the roots differ" would be trivially true
+    and would prove nothing.
+    """
+
+    def setUp(self) -> None:
+        path = (
+            Path(__file__).resolve().parents[2]
+            / "test-vectors"
+            / "protocol-primitives-v1.txt"
+        )
+        self.accepted = {}
+        for line in path.read_text(encoding="ascii").splitlines():
+            name, separator, value = line.partition("=")
+            if separator:
+                self.accepted[name] = value
+        self.accounts = [
+            (
+                bytes.fromhex(entry[0:64]),
+                int(entry[64:80], 16),
+                int(entry[80:96], 16),
+            )
+            for entry in (self.accepted[f"state.account{i}"] for i in range(3))
+        ]
+
+    def test_the_accounts_tree_reproduces_the_accepted_roots(self) -> None:
+        self.assertEqual(
+            state.accounts_root([]).hex(), self.accepted["state.empty_tree_root"]
+        )
+        self.assertEqual(
+            state.accounts_root(self.accounts).hex(),
+            self.accepted["state.accounts_tree_root"],
+        )
+
+    def test_the_version_one_state_root_reproduces_the_accepted_root(self) -> None:
+        self.assertEqual(
+            state.version_one_state_root(
+                chain_id=bytes.fromhex(self.accepted["chain_id"]),
+                height=int(self.accepted["state.height"]),
+                supply_limit=int(self.accepted["state.supply_limit"]),
+                total_supply=int(self.accepted["state.total_supply"]),
+                fee_pool_balance=int(self.accepted["state.fee_pool_balance"]),
+                accounts=self.accounts,
+            ),
+            self.accepted["state.root"],
+        )
+
+    def test_the_merkle_shape_reproduces_the_accepted_transaction_root(self) -> None:
+        """The same construction under other labels, checked independently."""
+        from simulation.economy_transition.merkle import root as merkle_root
+
+        items = [bytes.fromhex(self.accepted[f"tx.item{i}"]) for i in range(3)]
+        self.assertEqual(
+            merkle_root(items, "protocol-stack:v1:tx").hex(), self.accepted["tx.root"]
+        )
+        self.assertEqual(
+            merkle_root([], "protocol-stack:v1:tx").hex(), self.accepted["tx.empty_root"]
+        )
+
+
 class StateRootTest(unittest.TestCase):
     def setUp(self) -> None:
         self.accounts = [(bytes([index]) * 32, 1_000 * (index + 1), 0) for index in range(3)]

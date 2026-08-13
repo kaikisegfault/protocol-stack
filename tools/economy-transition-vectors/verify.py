@@ -41,6 +41,7 @@ from state_checks import (
     check_state_root,
     check_storage_bounds,
     check_trees,
+    check_version_one_restatement,
     check_winners,
 )
 
@@ -64,6 +65,7 @@ def main() -> int:
     check_receipt(check)
     check_state_keys(check)
     check_trees(check)
+    check_version_one_restatement(check, REPOSITORY_ROOT / "test-vectors")
     check_state_root(check)
     check_genesis(check)
     check_winners(check)

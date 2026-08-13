@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import expected as e
-from checker import Checker
+from checker import Checker, read_vectors
 
 from simulation.economy_transition import contract as c
 from simulation.economy_transition import genesis, scenario, state, winners
@@ -73,6 +75,57 @@ def _independent_root(entries: dict[bytes, bytes]) -> str:
         for key, value in sorted(entries.items())
     ]
     return e.merkle(leaves, c.ECONOMY_TREE_PREFIX).hex()
+
+
+def check_version_one_restatement(check: Checker, vector_root: Path) -> None:
+    """The version-one root restatement must be the accepted one, not a lookalike.
+
+    The non-collision claim below compares a version-two root against this
+    module's version-one construction. If that construction were merely
+    plausible rather than correct, "the roots differ" would be trivially true
+    and would prove nothing, so it is first required to reproduce the accepted
+    `protocol-primitives-v1` vectors exactly.
+    """
+    accepted = read_vectors(vector_root / "protocol-primitives-v1.txt")
+    entries = [accepted[f"state.account{index}"] for index in range(3)]
+    accounts = [
+        (
+            bytes.fromhex(entry[0:64]),
+            int(entry[64:80], 16),
+            int(entry[80:96], 16),
+        )
+        for entry in entries
+    ]
+
+    check.equal(
+        "state.version_one_empty_tree_matches_accepted",
+        state.accounts_root([]).hex() == accepted["state.empty_tree_root"],
+    )
+    check.equal(
+        "state.version_one_accounts_tree_matches_accepted",
+        state.accounts_root(accounts).hex() == accepted["state.accounts_tree_root"],
+    )
+    derived = state.version_one_state_root(
+        chain_id=bytes.fromhex(accepted["chain_id"]),
+        height=int(accepted["state.height"]),
+        supply_limit=int(accepted["state.supply_limit"]),
+        total_supply=int(accepted["state.total_supply"]),
+        fee_pool_balance=int(accepted["state.fee_pool_balance"]),
+        accounts=accounts,
+    )
+    check.equal(
+        "state.version_one_root_matches_accepted", derived == accepted["state.root"]
+    )
+    # The same tree shape under the transaction labels, so the Merkle
+    # construction itself is checked against the accepted file rather than only
+    # its accounts instance.
+    items = [bytes.fromhex(accepted[f"tx.item{index}"]) for index in range(3)]
+    from simulation.economy_transition.merkle import root as merkle_root
+
+    check.equal(
+        "state.version_one_transaction_tree_matches_accepted",
+        merkle_root(items, "protocol-stack:v1:tx").hex() == accepted["tx.root"],
+    )
 
 
 def check_state_root(check: Checker) -> None:

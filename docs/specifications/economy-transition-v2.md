@@ -609,8 +609,21 @@ At the first height of window `w + 2`, when `uptime-measurement-v1` finalises
   the accepted tree shape and the labels
   `protocol-stack:v2:winner-empty`, `-leaf`, and `-node`;
 - `winner_count`; and
-- `unevaluated_count`, the number of in-scope seats whose cycle for `w` has not
-  yet been exercised.
+- `unevaluated_count`, the number of seats whose 731-window span contains `w`
+  and which have not yet exercised their cycle for `w`.
+
+**The bitmap and the counter are over two different seat sets, and the
+difference is load-bearing.** The bitmap covers every **in-scope** seat, which
+has no upper bound: a seat past its own issuance span is still measured and may
+still be a reallocation winner, so the winner set must be derived over all of
+them. The counter covers only seats whose **span contains** `w`, because only
+those have a cycle for `w` to exercise. Initialising the counter from the
+in-scope set would leave it permanently above zero and the entry would never be
+prunable.
+
+Both sets are fixed at finalisation rather than moving afterwards. A seat is in
+scope for `w` when it was activated strictly before `w`'s first height, and `w`
+is finalised two windows later, so every such seat is already recorded.
 
 An exercise of a failed cycle carries the winner list and the transition
 recomputes `winner_root` over it, refusing any list that does not reproduce the
@@ -956,7 +969,10 @@ verified now, while the reserved decisions stay reserved.
 - every state key and value encoding, the empty, single, and multi-entry economy
   roots, and the version-two state root over an empty economy;
 - **the non-collision of a version-one and a version-two root** over an
-  identical account set and an empty economy;
+  identical account set and an empty economy, preceded by the requirement that
+  the version-one construction the comparison uses reproduces the accepted
+  `protocol-primitives-v1` account, state, and transaction roots exactly — a
+  merely plausible restatement would make the non-collision trivially true;
 - version-two genesis bytes, the chain ID, and the 21,843-entry bound at its
   accepting and rejecting values;
 - the receipt layout, its invalid combinations, and its round trip; and
