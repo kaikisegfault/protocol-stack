@@ -933,6 +933,38 @@ add_test(
     "${PROJECT_SOURCE_DIR}/tests/simulation/uptime_measurement_economy_test.py"
 )
 add_test(
+  NAME economy-transition-vectors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tools/economy-transition-vectors/verify.py"
+    --vectors
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v2.txt"
+)
+add_test(
+  NAME economy-transition-envelope
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_envelope_test.py"
+)
+add_test(
+  NAME economy-transition-state
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_state_test.py"
+)
+add_test(
+  NAME economy-transition-codes
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_codes_test.py"
+)
+add_test(
+  NAME economy-transition-winners
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_winners_test.py"
+)
+add_test(
   NAME founder-seat-vectors
   COMMAND
     "${Python3_EXECUTABLE}"
