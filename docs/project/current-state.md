@@ -1346,24 +1346,33 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
-- Issue #144 and PR #145 are the M3.8b delivery, merged by rebase. The slice is
-  commits `b04575d` through `688efd0` on `main`. PR Actions run 31823949771 on
-  the final head `a98ac85` passed the complete hosted matrix — scope
+- Issue #150 and PR #151 are the M3.9a delivery, merged by rebase. The slice is
+  commits `f457ca2` through `ab1e036` on `main`. PR Actions run 31849896862 on
+  the final head `2c8d0fa` passed the complete hosted matrix — scope
   classification `full`, GCC and Clang debug, both sanitizers, and the aggregate
-  required check. Post-merge run 31825463939 on `688efd0` passed the same
-  complete matrix. Three earlier runs on that branch were cancelled as
-  superseded, not failed.
-- **The margin is about ten and a half minutes.** Per-job durations on the
-  post-merge run against the 20-minute per-job timeout: `gcc-debug` 8m29s,
-  `clang-debug` 8m46s, `gcc-sanitizers` 8m47s, `clang-sanitizers` 9m15s. The
-  slowest is `clang-sanitizers` again, and the whole spread sits inside the
-  roughly 12% run-to-run variance M3.7a measured on identical code. The slice
-  added four Python test modules and one verifier and moved the figure very
-  little, which is expected: the builds are the larger half of each job and a
-  Python module adds nothing to them.
+  required check.
+- **The margin is about eleven minutes, and the first C++ of the milestone moved
+  it very little.** Per-job durations on that run against the 20-minute per-job
+  timeout: `gcc-debug` 5m39s, `clang-debug` 8m13s, `gcc-sanitizers` 9m06s,
+  `clang-sanitizers` 9m08s. The slice added six translation units and one test
+  executable, and the slowest job is within the roughly 12% run-to-run variance
+  M3.7a measured on identical code. That is the figure to watch as M3.9b adds
+  the transitions, because build time is the larger half of each job and
+  `ctest --parallel` does not touch it.
+- Issue #148 and PR #149 were the M3.8c delivery, merged by rebase across
+  commits `225c7b0` through `7d6a69f`. PR run 31846053158 on head `3b8b944` and
+  post-merge run 31846841502 on `7d6a69f` both passed the complete matrix.
+- Issue #144 and PR #145 were the M3.8b delivery, merged by rebase across
+  commits `b04575d` through `688efd0`. PR run 31823949771 on head `a98ac85` and
+  post-merge run 31825463939 on `688efd0` both passed the complete matrix.
 - Issue #139 and PR #140 were the M3.8a delivery, merged by rebase across
   commits `f8d6374` through `5f66c49`. PR run 31744378969 on head `6ced9f7` and
   post-merge run 31745207592 on `5f66c49` both passed the complete matrix.
+- **The C++ codec reproduces the recorded vectors on every hosted preset.** The
+  `economy-transition-v4-cpp` entry runs under GCC and Clang, debug and
+  sanitized, and compares against `test-vectors/economy-transition-v4.txt` and —
+  for the kind-1 identity and the accounts tree — against
+  `test-vectors/protocol-primitives-v1.txt`.
 - The kind-1 identity is exact. The version-two encoder reproduces
   `test-vectors/protocol-primitives-v1.txt`'s recorded `unsigned_tx`,
   `signed_tx`, and `tx_id`
