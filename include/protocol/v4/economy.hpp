@@ -231,12 +231,16 @@ Bytes carry_value(std::uint64_t carry_atomic);
 Bytes verifier_key_value(std::span<const std::uint8_t> public_key);
 Bytes hub_identity_value(const HubIdentityRecord& identity);
 Bytes hub_address_value(std::span<const std::uint8_t> hub_identity_hash);
-Bytes cycle_assignment_value(const CycleAssignment& assignment);
+std::optional<Bytes> cycle_assignment_value(const CycleAssignment& assignment);
 std::optional<CycleAssignment> decode_cycle_assignment_value(
     std::span<const std::uint8_t> raw);
 
 std::size_t bitmap_bytes(std::uint32_t bitmap_bits);
-Bytes bitmap(std::span<const std::uint32_t> seat_ids, std::uint32_t bitmap_bits);
+// `nullopt` when a seat identifier lies outside the bit count, which no
+// conforming assignment can produce: the count is the highest in-scope seat
+// identifier plus one.
+std::optional<Bytes> bitmap(std::span<const std::uint32_t> seat_ids,
+                            std::uint32_t bitmap_bits);
 bool bit_is_set(std::span<const std::uint8_t> packed, std::uint32_t seat_id);
 
 struct EconomyEntry {
@@ -251,8 +255,11 @@ struct AccountEntry {
 };
 
 // Sorted by unsigned lexicographic key; a leaf preimage uses the accepted
-// length-prefixed `bytes` primitive for both halves.
-Hash economy_root(std::vector<EconomyEntry> entries);
+// length-prefixed `bytes` primitive for both halves. `nullopt` when an entry is
+// one no transition could have written — an unknown kind, a key or value of the
+// wrong width, or a duplicated key, all of which the specification forbids and
+// none of which a hash can signal.
+std::optional<Hash> economy_root(std::vector<EconomyEntry> entries);
 Hash accounts_root(std::span<const AccountEntry> accounts);
 
 struct StateSummary {
@@ -263,8 +270,9 @@ struct StateSummary {
   std::uint64_t fee_pool_balance = 0;
 };
 
-Hash state_root(const StateSummary& summary, std::span<const AccountEntry> accounts,
-                std::vector<EconomyEntry> economy);
+std::optional<Hash> state_root(const StateSummary& summary,
+                               std::span<const AccountEntry> accounts,
+                               std::vector<EconomyEntry> economy);
 
 struct Genesis {
   std::uint32_t network_id = 0;
