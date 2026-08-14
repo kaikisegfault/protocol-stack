@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-08-14
+Last updated: 2026-08-15
 
 ## Phase
 
@@ -12,8 +12,9 @@ enforced both inside the economy model and M3.6b rebound the escrow payout
 model to it, both on 2026-08-10. M3.6c rebound the scenario suite on 2026-08-11
 and closed the dependent rebinding. M3.7a reclaimed the hosted matrix margin on
 2026-08-12 and changed no protocol behavior. M3.8a defined the consensus
-transaction and state surface on 2026-08-13, and M3.8b revised it to
-`economy-transition-v3` on 2026-08-14.
+transaction and state surface on 2026-08-13, M3.8b revised it to
+`economy-transition-v3` on 2026-08-14, and M3.8c settled it as
+`economy-transition-v4` on 2026-08-15.
 Requirements 3, 4, 5, 6, 7, and 12 of `first-goal.md` are satisfied;
 requirements 8 and 9 moved from specified to enforced; and requirement 14 is met
 against the v3 contract at the standard the M2 suite set.
@@ -60,9 +61,75 @@ same precedent M3.8a set: the encoding revision comes before the implementation,
 because a kernel written against a contract already known to be superseded is
 work that has to be done twice.
 
-**Version four is blocked on two founder questions**, both recorded under
-[Blockers](#blockers): whether buying a Founder Seat requires HUB verification
-first, and whether a HUB identity's set of addresses lives in consensus state.
+**Both questions were answered on 2026-08-14 and M3.8c delivered version four.**
+Buying a seat requires HUB verification first and the seat is tied to that
+identity; a HUB identity's address set lives in consensus state. Requirement 10
+is now unblocked against a settled target, and nothing further is expected to
+move it.
+
+### How M3.8c was delivered
+
+Issue #148 and PR #149 delivered `economy-transition-v4` and ADR 0036. It added
+the specification, the ADR, a sibling model in
+`simulation/economy_transition_v4/`, 441 normative vectors, a verifier in
+`tools/economy-transition-v4-vectors/`, and 87 tests across four modules.
+
+**HUB verification became the root of identity, and the architecture follows
+from one decision.** A registration records the person's own public key, so
+every later proof of that person — purchase, activation, a protected mint,
+removing protection, adding a seat address, adding or removing an ordinary
+address — is a signature by that key. **The ecosystem verifier signs exactly one
+thing: a registration.** That is the one judgement no chain can make, and once
+made nothing else needs the verifier.
+
+**That restores a containment property version three had to concede.** Version
+two could say the verifier gated entry and never payment; version three could
+not, because a seat with protection switched on made verifier availability a
+precondition for its own income. Version four restores it and widens it: an
+unavailable verifier stops new people joining and stops no participant already
+inside from doing anything at all.
+
+**The constitution's per-human seat bound reached the chain for the first time.**
+Version three records that the 1,000-seat limit "is not enforced by any
+transition here, because enforcing it requires knowing that two biometric hashes
+belong to one human, which is exactly what the chain cannot see." With one
+identity per person in state it can, and `SEAT_LIMIT` is that rule enforced. The
+vectors exercise it at 999, 1,000, and 1,001.
+
+**Self-referral became checkable.** Version three compares two account
+identifiers, so a buyer could refer themselves from a second address. Version
+four compares two HUB identities, and one person has exactly one. The fixture
+holds both addresses of one person and records that version three would have
+accepted the referral.
+
+**Referral earnings moved from an address to a person**, which is forced rather
+than chosen: the whole point of the recovery direction is that losing an address
+loses nothing, and a balance keyed by an address would be the one place it still
+did over a 731-cycle benefit.
+
+**Three kinds accept any sender, deliberately.** Adding a seat address, adding
+an ordinary address, and removing one are exactly the transactions a person must
+be able to make holding none of their own addresses, so the signature is the
+authority and the sender only pays the fee.
+
+**The settlement was imported rather than copied, and that is checked against
+version three's own recorded file.** The accumulation cap, the cycle-assignment
+record, and the bounded mint walk are unchanged, so a copy would be a second
+implementation of one accepted contract with nothing keeping the two equal. The
+vectors require the record version four writes for the same population to equal
+`test-vectors/economy-transition-v3.txt` byte-for-byte, and the referral
+accrual's re-keying from an account to an identity needed no new code, because
+version three's referrer key is opaque bytes — which is itself evidence the
+settlement did not move.
+
+**The largest transaction shrank.** Purchase no longer carries a 64-byte
+enrollment signature, because HUB registration already did that work, so the
+protocol's largest transaction fell from 325 bytes to 293.
+
+**Each of the three predecessor root constructions is required to reproduce its
+own accepted vectors** before the four-way non-collision rests on it, because a
+lookalike would make "the roots differ" trivially true. All four roots differ
+over an identical account set and an empty economy.
 
 ### How M3.8b was delivered
 
@@ -1110,6 +1177,24 @@ slices.
   kind-1 byte identity, the shared envelope, the admission order, the genesis
   field table, the receipt layout, and result codes 0 through 20 are unchanged.
   Kind 6 is still specified and refused.
+- `economy-transition-v4` is the accepted consensus surface the C++ kernel must
+  be implemented against. HUB verification is the root of identity: a
+  registration records the person's own public key and the ecosystem verifier
+  signs registrations and nothing else; a person holds a set of up to 16
+  addresses and manages it themselves; a seat is owned by a person rather than
+  an address, so losing every address does not lose the seat; HUB signing is
+  what adds a seat address, and seat addresses stay permanent and add-only;
+  referral earnings are keyed by identity; self-referral is compared between
+  people; and the constitution's 1,000-seat-per-human bound is enforced. The
+  kind-1 byte identity, the shared envelope, the admission order, the genesis
+  field table, the receipt layout, result codes 0 through 23, and the whole
+  settlement carry over. Kind 6 is still specified and refused.
+- The model in `simulation/economy_transition_v4/` encodes and decodes all
+  twelve kinds, builds all eight HUB messages, derives every state key, computes
+  the economy tree and all four versions' state roots, encodes the receipt, and
+  runs the HUB registry with its two counts. It imports version three's
+  settlement rather than copying it, and the vectors require the record it
+  writes to equal version three's recorded bytes exactly.
 - The codec-and-settlement model in `simulation/economy_transition_v3/` encodes
   and decodes all ten kinds, builds all six verifier messages, derives every
   state key, computes the economy tree and all three versions' state roots,
@@ -1166,6 +1251,9 @@ slices.
   sign back in, and a verified person may add and remove their own addresses
   through it. Founder Seat addresses are the stated exception: add-only, never
   removed.
+- Buying a Founder Seat requires HUB verification first, and the seat is tied to
+  that identity. One human may hold at most 1,000 seats, which the chain now
+  enforces because it can finally tell that two addresses are one person.
 - Uptime reaches consensus without trusting self-reports: validator duties are
   derived on-chain, resource provision is proved by challenge-response, and the
   Ecosystem AI holds a bounded dispute window rather than a signature that
@@ -1861,32 +1949,60 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.8c: `economy-transition-v4`**, the one authorization change
-ADR 0035 records — HUB signing is what adds a Founder Seat address. Use the
-`change-protocol` skill. **It cannot be started until the two questions under
-[Blockers](#blockers) are answered**, because both decide what a participant
-must do to buy a seat or to keep control of one.
+Milestone slice **M3.9a: the version-four codec in the C++20 kernel**, the first
+half of `first-goal.md` requirement 10 and the whole of requirement 11 for the
+bytes it covers. Use the `change-protocol` skill. Nothing blocks it.
 
-The C++ kernel follows version four, not version three. That ordering is the
-precedent M3.8a set and the reason is the same: an implementation written
-against a contract already known to be superseded is work done twice.
+Take the codec before the transitions, as `roadmap.md` says. The envelope and
+its twelve bodies, the eight HUB messages, the 56-byte receipt, the state keys
+and values, the economy tree, the version-four state root, and genesis are
+deterministic byte work with a fixed target:
+`test-vectors/economy-transition-v4.txt`. The transitions — purchase,
+activation, manager addition, the protection switch, the three HUB
+transactions, the block-boundary cycle assignment, and the three mints — follow
+in M3.9b, and they need block execution and a state store that the codec does
+not.
 
-When the kernel slice does start, it is **M3.9a: the version-four codec**, the
-first half of `first-goal.md` requirement 10 and the whole of requirement 11 for
-the bytes it covers. Take the codec before the transitions, as `roadmap.md`
-says. The envelope and its bodies, the verifier messages, the 56-byte receipt,
-the state keys and values, the economy tree, the state root, and genesis are
-deterministic byte work against a recorded vector file. The transitions —
-purchase, activation, manager addition, the protection switch, HUB verification,
-the block-boundary cycle assignment, and the three mints — follow in M3.9b, and
-they need block execution and a state store that the codec does not.
+**Reproduce the recorded vectors; do not re-derive a second set.**
+`tools/protocol-vectors/` already carries a paired `verify.cpp` and `verify.py`
+for the version-one primitives, and `tools/ledger-vectors/` the same for the
+transition; a version-four pair belongs beside them, registered as
+`economy-transition-v4-cpp`. The C++ side needs no new cryptography: the kernel
+already exposes `protocol::v1::hash(domain_label, payload)` and strict Ed25519
+verification, and `src/v1/encoding.hpp` already has the bounded big-endian
+readers. **Start with the kind-1 identity vectors.** If the C++ encoder does not
+emit the accepted M1 transfer bytes, the compatibility boundary is broken at its
+narrowest point and nothing after it is worth checking.
 
-**Most of version three survives version four untouched**, so nothing in the
-guidance below is wasted. The four changes ADR 0035 forces are confined to kind
-9's authorization and to whatever the two open questions settle about kind 2 and
-the HUB registry; the envelope, the kind-1 identity, the receipt, the trees, the
-roots, genesis, the cap, the assignment record, and the mint walk are unaffected
-as far as the direction reaches.
+**Four parts of the byte surface are the ones a C++ implementation is most
+likely to get wrong, and each has a vector waiting.** The two bitmaps are
+indexed by seat ID with the most significant bit first, so packing
+least-significant-first passes every length check and fails
+`cycle.assignment_value_hex`. The cycle assignment value carries no bitmap
+length prefixes — both widths follow from `bitmap_bits` — so a decoder expecting
+a prefixed form misreads every record. Two pairs of kinds share a body length,
+so a decoder dispatching on length rather than on the kind byte executes a
+protected mint as an activation and an address removal as an addition;
+`admission.relabelled_seat_kind_is_read_as` and
+`admission.relabelled_address_kind_is_read_as` catch both. And the HUB identity
+record packs a 32-byte key, a `u64`, and two `u32` counts into 48 bytes with no
+padding, which a struct-copying implementation will get wrong on the first try.
+
+**Keep every accepted artifact in place and passing.**
+`simulation/founder_economy/`, `simulation/founder_economy_v2/`,
+`simulation/founder_economy_v3/`, `simulation/cycle_boundary/`,
+`simulation/uptime_measurement/`, `simulation/economy_transition/`,
+`simulation/economy_transition_v3/`, and `simulation/economy_transition_v4/`
+stay untouched. `simulation/escrow_payout/` is shared by three bindings and
+should gain no fourth without a new contract version, and
+`simulation/scenarios/` holds three population generators that must stay
+independent for the same reason.
+
+**Re-measure the hosted matrix margin after the kernel slice.** The slowest job
+was `clang-sanitizers` at about 9m15s against a 20-minute per-job timeout before
+this slice, and two runs on identical code have differed by 12%. The kernel
+slice adds source and tests to the builds, which are the larger half of each job
+and are not parallelised by `ctest --parallel`.
 
 **Reproduce the recorded vectors; do not re-derive a second set.**
 `tools/protocol-vectors/` already carries a paired `verify.cpp` and `verify.py`
@@ -1939,36 +2055,47 @@ is this handoff's M3.9a and M3.9b C++ implementation and devnet work.
 
 ## Blockers
 
-**Two founder questions block `economy-transition-v4`, and version four blocks
-the C++ kernel.** Both follow from the HUB recovery direction of 2026-08-14 that
-ADR 0035 records, and both decide what a participant must do, so neither is
-invented:
+None. The two questions that blocked `economy-transition-v4` were answered on
+2026-08-14 and version four is accepted, so requirement 10's target is settled
+and the C++ codec slice needs no founder input: it reproduces an accepted byte
+surface and settles no value, beneficiary, or participation rule.
 
-1. **Must a Founder Seat buyer be HUB verified before they buy**, so the seat is
-   tied to a HUB identity the chain can check a later address addition against?
-   If yes, HUB becomes the single identity record for a seat and "add an address
-   with HUB signing" is one lookup; the cost is that a buyer must complete
-   verification before purchase. If no, the chain carries two identity records
-   for one person and needs a recorded link between them.
-2. **Does a HUB identity's set of addresses live in consensus state?** On a chain
-   an account *is* an address, so "a verified person may add and remove their own
-   addresses through HUB" is either a rule the chain enforces over a recorded set
-   or an off-chain wallet convention the chain never sees. Founder Seat addresses
-   are already decided — permanent and add-only — so this question is about every
-   other ecosystem account.
+**Six answers arrived on 2026-08-14 and all six are now encoded.** A mint credits
+the address that signed it; sixteen manager addresses per seat; a cycle a seat
+cannot collect because it is full **is** a cycle it failed, so the day's
+generation goes to the best performers and the full seat is not one of them;
+buying a seat requires HUB verification first, with the seat tied to that
+identity; a HUB identity's address set lives in consensus state, HUB-signed on
+both add and remove; and the accumulation limit stays measured as time since the
+last collection.
 
-Everything else is unblocked, and there is no safe slice to run ahead of these:
-the kernel is the next work and it must target version four.
+**One founder-reserved decision remains and it blocks nothing.**
+`direct_issue_authority` — the eligibility and anti-abuse mechanics for the
+`liquidity_mining`, `impermanent_loss_protection`,
+`hub_verified_user_incentives`, and `initial_mystery_box_incentives` channels,
+and the rate of the one whose eligibility ADR 0033 settled. Kind 6 is specified
+and refused rather than given an invented predicate, which costs one transaction
+kind rather than a milestone.
 
-**Three answers arrived on 2026-08-14 and confirmed version three unchanged.** A
-mint credits the address that signed it; sixteen manager addresses per seat; and
-a capped seat is excluded from the winner set — the last restated by the owner as
-one rule rather than two, that a cycle a seat cannot collect because it is full
-**is** a cycle it failed, so the day's generation goes to the best performers and
-the full seat is not one of them. Version three's behaviour was already exactly
-that; the specification and ADR 0034 now carry the shorter statement.
+**Four claims in version four need independent review before value depends on
+them**, and ADR 0036 records each with its reasoning. The sharpest is that adding
+a seat address now needs one factor where version three needed two: version three
+requires a key the founder already holds *and* a fresh approval, and version four
+requires only the HUB signature so that a founder holding no keys is not locked
+out — so a coerced or spoofed HUB signature can add an address to a seat, and
+seat addresses are permanent. The others are that one identity layer is asked to
+carry both uniqueness, which wants a binding that cannot move, and recovery,
+which requires one that can; that **no transition rotates a HUB public key**, so
+a person who loses the secret behind it loses every proof version four depends
+on and the chain offers no remedy; and that the verifier's narrower reach cuts
+both ways, since it can no longer help anyone either.
 
-`direct_issue_authority` remains reserved and kind 6 remains refused.
+**One residual gap is worth naming for the identity milestone.** Every guarantee
+version four adds — one person one identity, the per-human seat bound,
+self-referral refusal — rests on the ecosystem verifier's attestation that a
+registration is a distinct live human, and is exactly as strong as it. The chain
+verifies signatures by a key it was told to trust; it establishes nothing about
+the capture behind it.
 
 The three questions the founder decisions of 2026-08-14 themselves raised are
 settled and recorded in ADR 0033, and all three are now encoded in
@@ -2013,6 +2140,25 @@ nowhere.** ADR 0033 widens M4 from a founder-seat biometric verifier to an
 ecosystem identity service serving every participant class, with a direct-mint
 incentive attached. The constitution's existing threat-model, unlinkability,
 retention, and independent-review requirements apply to the widened scope.
+
+M3.8c ran the founder-decision gate and passed it. Every decision the slice had
+to settle was already decided or delegated: that a changed authorization is a
+new version by ADR 0024, ADR 0026, and version three's own versioning section;
+HUB-first purchase, the on-chain address set, and the cap's measurement by the
+owner's answers of 2026-08-14; HUB signing for seat addresses and their
+permanence by ADR 0035; the construction of a person's HUB signature by the
+constitution's own statement that "the cryptographic construction is engineering
+work"; the per-human seat bound by the constitution, which fixes 1,000 and which
+version four is the first contract able to enforce; and the version labels, kind
+identifiers, body layouts, entry kinds, message shapes, result codes, and the
+16-address bound as mechanism, encoding, and storage under
+`founder-constitution.md` lines 712-715. Two deductions were recorded rather
+than invented: that removal unlinks without moving value, which is the smaller
+claim, and that removing an address from an identity does not remove it from a
+seat, which follows from seat addresses being permanent. `direct_issue_authority`
+stayed reserved and kind 6 stayed refused. Nothing in the slice set or changed
+supply, allocation, beneficiaries, ownership, creator hierarchy, commercial
+routing, AI authority, bridge scope, or content permanence.
 
 M3.8b ran the founder-decision gate and passed it. Twenty-five decisions were
 enumerated before any was judged. Twenty are delegated: that a changed transition
