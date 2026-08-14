@@ -2023,16 +2023,32 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.9b: the version-four transitions in the C++20 kernel**, the
-second half of `first-goal.md` requirement 10. Use the `change-protocol` skill.
-Nothing blocks it.
+Milestone slice **M3.9b: the version-four execution model and its recorded
+transition trace**, in Python. Use the `change-protocol` skill. Nothing blocks
+it. The C++ transitions are **M3.9c** and come after, against the file this
+slice records.
 
-The codec is done and registered; what follows is the twelve transitions in the
-order the specification gives them, each with its ordered rejection conditions
-and its receipt: HUB registration, address add and remove, purchase, activation,
-the two node mints, the referral mint, the protection switch, manager addition,
-direct issue (refused), and the block-boundary cycle assignment the chain writes
-itself.
+**That order is the repository's own, and the reason to keep it is requirement
+11.** Every economy contract so far has gone specification, then an independent
+Python model, then recorded vectors, then C++ against them — which is exactly
+how M3.8c and M3.9a just went. Writing the C++ transitions first would leave
+them checked against nothing but the specification prose they were written from,
+which is single-implementation evidence and is what requirement 11 exists to
+refuse.
+
+The twelve transitions in the order the specification gives them, each with its
+ordered rejection conditions and its receipt: HUB registration, address add and
+remove, purchase, activation, the two node mints, the referral mint, the
+protection switch, manager addition, direct issue (refused), and the
+block-boundary cycle assignment the chain writes itself.
+
+**The recorded file is new evidence rather than a required one.**
+`economy-transition-v4.txt` fixes the codec's bytes and the settlement
+arithmetic, and the accepted specification's evidence section asks for no
+transition trace. A trace file is therefore an addition — the specification
+fixes a minimum, not a maximum — and it should record, for one ordered event
+sequence: each transaction's result code, its receipt bytes, the economy root
+after it, and the channel and carry totals at the end.
 
 **Three of them are the ones to get right first**, because they carry the
 founder-directed rules the whole milestone exists for: the cycle assignment,
