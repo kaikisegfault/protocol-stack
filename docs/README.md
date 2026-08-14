@@ -219,6 +219,24 @@ identity layer serving every participant class rather than a Founder Seat
 feature, with its own direct-mint incentive. It supersedes `economy-transition-v2`
 in four places and requires a version three; it edits no accepted artifact.
 
+ADR 0034 settles the version-three encoding of that direction. It records that a
+manager set is a family of presence-only entries and that the mint therefore
+credits the signing manager's own account, because crediting the recorded
+purchaser would leave the constitution's own remedy for a lost address able to
+recover nothing; that the optional biometric on minting is a second transaction
+kind rather than an optional field, which makes kinds 3 and 7 share a body length
+and turns version two's dispatch-on-kind rule into the thing that saves it; that
+the accumulation cap is measured in windows since the last collection rather than
+in accrued cycles, because only the window form bounds the mint walk and that
+bound is the cost ADR 0033 says the cap exists to close; that a capped seat is
+excluded from the winner set, derived from the founder rule's own wording rather
+than chosen; and that HUB verification enters consensus as one registry entry and
+one transaction, with one-human-one-account deliberately unenforced because
+enforcing it would decide what happens to a verified human who loses their key.
+It also records four defects in version two that deriving version three exposed,
+one of which is repaired in place because it is a figure contradicting its own
+derivation rather than a rule.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
@@ -317,6 +335,15 @@ immutable; compatible changes require a new version.
   transaction bytes, state, and roots. It is a contract for an implementation
   that does not yet exist, and three named authorization predicates are
   deliberately left undefined.
+- `specifications/economy-transition-v3.md`: the same surface revised by the
+  founder direction of 2026-08-14 — a per-seat manager set that may act for the
+  seat and receives what it mints, an optional per-seat biometric on minting
+  whose switch is asymmetric, a thirty-window accumulation cap whose excess
+  reallocates to the cycle's best performers, and a HUB-verified referrer. It
+  adds four transaction kinds, three state entry kinds, and three result codes,
+  keeps the kind-1 byte identity and every version-two result number, and is the
+  contract requirement 10's C++ kernel implements. One authorization predicate
+  remains deliberately undefined.
 - `specifications/native-economy-simulation-v1.md`: versioned integer-only
   accounting, authority, event, trace, and metric contract for the independent
   M2 research simulator; it is not a consensus transition.
