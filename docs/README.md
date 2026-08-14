@@ -233,9 +233,11 @@ excluded from the winner set, derived from the founder rule's own wording rather
 than chosen; and that HUB verification enters consensus as one registry entry and
 one transaction, with one-human-one-account deliberately unenforced because
 enforcing it would decide what happens to a verified human who loses their key.
-It also records four defects in version two that deriving version three exposed,
-one of which is repaired in place because it is a figure contradicting its own
-derivation rather than a rule.
+It also records five defects in version two that deriving version three exposed
+— three that version three fixes by construction, one storage figure repaired in
+place because it contradicts its own derivation rather than a rule, and one
+recorded vector that states the opposite of what its own name asserts and is
+left alone because a vector file is accepted evidence rather than prose.
 
 ## Engineering
 
