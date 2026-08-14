@@ -25,21 +25,46 @@ std::size_t merkle_split(std::size_t count) {
   return split;
 }
 
-Hash merkle(std::span<const Bytes> leaves, std::string_view prefix) {
-  const std::string empty_label = std::string(prefix) + "-empty";
-  if (leaves.empty()) return protocol::v1::hash(empty_label);
-  const std::string leaf_label = std::string(prefix) + "-leaf";
-  if (leaves.size() == 1) {
-    return protocol::v1::hash(leaf_label, leaves.front());
-  }
+struct TreeLabels {
+  std::string empty;
+  std::string leaf;
+  std::string node;
+};
+
+TreeLabels tree_labels(std::string_view prefix) {
+  return {std::string(prefix) + "-empty", std::string(prefix) + "-leaf",
+          std::string(prefix) + "-node"};
+}
+
+// The labels are built once and passed down rather than rebuilt at every node,
+// which matters at the seat capacity: a 100,000-leaf tree would otherwise
+// allocate three strings per interior node.
+Hash merkle(std::span<const Bytes> leaves, const TreeLabels& labels) {
+  if (leaves.empty()) return protocol::v1::hash(labels.empty);
+  if (leaves.size() == 1) return protocol::v1::hash(labels.leaf, leaves.front());
   const auto split = merkle_split(leaves.size());
-  const auto left = merkle(leaves.first(split), prefix);
-  const auto right = merkle(leaves.subspan(split), prefix);
+  const auto left = merkle(leaves.first(split), labels);
+  const auto right = merkle(leaves.subspan(split), labels);
   Bytes children;
   children.reserve(left.size() + right.size());
   i::append(children, std::span<const std::uint8_t>(left.data(), left.size()));
   i::append(children, std::span<const std::uint8_t>(right.data(), right.size()));
-  return protocol::v1::hash(std::string(prefix) + "-node", children);
+  return protocol::v1::hash(labels.node, children);
+}
+
+// An entry no transition could have written: an unknown kind, a key or value of
+// the wrong width, or a cycle assignment whose length disagrees with its own
+// recorded bit count. The specification forbids all three, and a hash cannot
+// signal any of them, which is why the root is fallible.
+bool entry_shape_is_valid(const EconomyEntry& entry) {
+  if (entry.key.empty()) return false;
+  const auto kind = entry.key.front();
+  if (!is_entry_kind(kind)) return false;
+  const auto key_width = entry_key_bytes(kind);
+  if (!key_width || entry.key.size() != *key_width) return false;
+  const auto value_width = entry_value_bytes(kind);
+  if (!value_width) return decode_cycle_assignment_value(entry.value).has_value();
+  return entry.value.size() == *value_width;
 }
 
 Bytes with_prefix(Entry entry, std::span<const std::uint8_t> tail) {
@@ -188,10 +213,11 @@ std::size_t bitmap_bytes(std::uint32_t bitmap_bits) {
   return (static_cast<std::size_t>(bitmap_bits) + 7) / 8;
 }
 
-Bytes bitmap(std::span<const std::uint32_t> seat_ids, std::uint32_t bitmap_bits) {
+std::optional<Bytes> bitmap(std::span<const std::uint32_t> seat_ids,
+                            std::uint32_t bitmap_bits) {
   Bytes packed(bitmap_bytes(bitmap_bits), 0);
   for (const auto seat_id : seat_ids) {
-    if (seat_id >= bitmap_bits) return {};
+    if (seat_id >= bitmap_bits) return std::nullopt;
     packed[seat_id / 8] |= static_cast<std::uint8_t>(0x80U >> (seat_id % 8));
   }
   return packed;
@@ -203,11 +229,11 @@ bool bit_is_set(std::span<const std::uint8_t> packed, std::uint32_t seat_id) {
   return (packed[index] & static_cast<std::uint8_t>(0x80U >> (seat_id % 8))) != 0;
 }
 
-Bytes cycle_assignment_value(const CycleAssignment& assignment) {
+std::optional<Bytes> cycle_assignment_value(const CycleAssignment& assignment) {
   const auto width = bitmap_bytes(assignment.bitmap_bits);
   if (assignment.accrued_bitmap.size() != width ||
       assignment.winner_bitmap.size() != width) {
-    return {};
+    return std::nullopt;
   }
   Bytes value;
   value.reserve(24 + 2 * width);
@@ -246,21 +272,24 @@ std::optional<CycleAssignment> decode_cycle_assignment_value(
   return assignment;
 }
 
-Hash economy_root(std::vector<EconomyEntry> entries) {
+std::optional<Hash> economy_root(std::vector<EconomyEntry> entries) {
   std::sort(entries.begin(), entries.end(),
             [](const EconomyEntry& left, const EconomyEntry& right) {
               return left.key < right.key;
             });
   std::vector<Bytes> leaves;
   leaves.reserve(entries.size());
-  for (const auto& entry : entries) {
+  for (std::size_t index = 0; index < entries.size(); ++index) {
+    const auto& entry = entries[index];
+    if (!entry_shape_is_valid(entry)) return std::nullopt;
+    if (index > 0 && entries[index - 1].key == entry.key) return std::nullopt;
     Bytes leaf;
     leaf.reserve(8 + entry.key.size() + entry.value.size());
     i::append_length_prefixed(leaf, entry.key);
     i::append_length_prefixed(leaf, entry.value);
     leaves.push_back(std::move(leaf));
   }
-  return merkle(leaves, kEconomyTreePrefix);
+  return merkle(leaves, tree_labels(kEconomyTreePrefix));
 }
 
 Hash accounts_root(std::span<const AccountEntry> accounts) {
@@ -274,13 +303,15 @@ Hash accounts_root(std::span<const AccountEntry> accounts) {
     i::append_u64(leaf, account.nonce);
     leaves.push_back(std::move(leaf));
   }
-  return merkle(leaves, kAccountsTreePrefix);
+  return merkle(leaves, tree_labels(kAccountsTreePrefix));
 }
 
-Hash state_root(const StateSummary& summary, std::span<const AccountEntry> accounts,
-                std::vector<EconomyEntry> economy) {
+std::optional<Hash> state_root(const StateSummary& summary,
+                               std::span<const AccountEntry> accounts,
+                               std::vector<EconomyEntry> economy) {
   const auto economy_count = economy.size();
   const auto economy_hash = economy_root(std::move(economy));
+  if (!economy_hash) return std::nullopt;
   const auto accounts_hash = accounts_root(accounts);
 
   Bytes payload;
@@ -295,7 +326,7 @@ Hash state_root(const StateSummary& summary, std::span<const AccountEntry> accou
                                                    accounts_hash.size()));
   i::append_u64(payload, static_cast<std::uint64_t>(economy_count));
   i::append(payload,
-            std::span<const std::uint8_t>(economy_hash.data(), economy_hash.size()));
+            std::span<const std::uint8_t>(economy_hash->data(), economy_hash->size()));
   return protocol::v1::hash(kStateRootLabel, payload);
 }
 

@@ -323,15 +323,29 @@ void verify_cycle_assignment(const pv::Values& values) {
   assignment.winner_count = 3;
   assignment.in_scope_count = 6;
   assignment.bitmap_bits = kBits;
-  assignment.accrued_bitmap = v4::bitmap(accrued_seats, kBits);
-  assignment.winner_bitmap = v4::bitmap(winner_seats, kBits);
+  const auto accrued_bits = v4::bitmap(accrued_seats, kBits);
+  const auto winner_bits = v4::bitmap(winner_seats, kBits);
+  pv::require(accrued_bits.has_value() && winner_bits.has_value(), "bitmaps pack");
+  assignment.accrued_bitmap = *accrued_bits;
+  assignment.winner_bitmap = *winner_bits;
 
-  const auto encoded = v4::cycle_assignment_value(assignment);
+  const std::uint32_t beyond[] = {kBits};
+  pv::require(!v4::bitmap(beyond, kBits).has_value(),
+              "a seat outside the bit count cannot be packed");
+
+  const auto value = v4::cycle_assignment_value(assignment);
+  pv::require(value.has_value(), "the record encodes");
+  const auto encoded = *value;
   pv::require(hex(encoded) == values.at("cycle.assignment_value_hex"),
               "cycle assignment record bytes");
   pv::require(v4::cycle_assignment_key(200).size() + encoded.size() ==
                   expect_size(values, "cycle.assignment_entry_bytes"),
               "cycle assignment entry width");
+
+  auto mismatched = assignment;
+  mismatched.winner_bitmap.pop_back();
+  pv::require(!v4::cycle_assignment_value(mismatched).has_value(),
+              "a bitmap of the wrong width is refused");
 
   const auto decoded = v4::decode_cycle_assignment_value(encoded);
   pv::require(decoded.has_value(), "the record decodes");
@@ -360,16 +374,31 @@ void verify_cycle_assignment(const pv::Values& values) {
   outage.in_scope_count = 6;
   outage.reallocated_count = 5;
   outage.bitmap_bits = kBits;
-  outage.accrued_bitmap = v4::bitmap({}, kBits);
-  outage.winner_bitmap = v4::bitmap({}, kBits);
-  pv::require(hex(v4::cycle_assignment_value(outage)) ==
-                  values.at("outage.assignment_value_hex"),
+  outage.accrued_bitmap = *v4::bitmap({}, kBits);
+  outage.winner_bitmap = *v4::bitmap({}, kBits);
+  const auto outage_value = v4::cycle_assignment_value(outage);
+  pv::require(outage_value.has_value(), "the empty-winner record encodes");
+  pv::require(hex(*outage_value) == values.at("outage.assignment_value_hex"),
               "the empty-winner record bytes");
 }
 
 void verify_roots(const pv::Values& values, const pv::Values& primitives) {
-  pv::require(hex(v4::economy_root({})) == values.at("state.economy_root_empty"),
+  const auto empty = v4::economy_root({});
+  pv::require(empty.has_value(), "the empty economy root derives");
+  pv::require(hex(*empty) == values.at("state.economy_root_empty"),
               "the empty economy root");
+
+  // An entry no transition could have written is refused rather than hashed,
+  // because a root cannot signal one and the specification forbids all three
+  // shapes: an unknown kind, a wrong width, and a duplicated key.
+  pv::require(!v4::economy_root({{{0x0D}, {}}}).has_value(), "an unknown entry kind");
+  pv::require(!v4::economy_root({{v4::carry_key(0), {}}}).has_value(),
+              "a value of the wrong width");
+  pv::require(!v4::economy_root({{{0x07}, v4::carry_value(0)}}).has_value(),
+              "a key of the wrong width");
+  const v4::EconomyEntry carry{v4::carry_key(0), v4::carry_value(0)};
+  pv::require(v4::economy_root({carry}).has_value(), "a well-formed entry hashes");
+  pv::require(!v4::economy_root({carry, carry}).has_value(), "a duplicated key");
 
   // The accounts tree is version one's, entry for entry, and is required to
   // reproduce the accepted file rather than merely to look plausible.
@@ -399,9 +428,12 @@ void verify_roots(const pv::Values& values, const pv::Values& primitives) {
   summary.height = 7;
   summary.supply_limit = 5'699'395'010'000'000'000ULL;
   summary.total_supply = 6'000;
-  pv::require(hex(v4::state_root(summary, fixture, {})) ==
-                  values.at("state.root_empty_economy"),
+  const auto root = v4::state_root(summary, fixture, {});
+  pv::require(root.has_value(), "the state root derives");
+  pv::require(hex(*root) == values.at("state.root_empty_economy"),
               "the version-four state root over an empty economy");
+  pv::require(!v4::state_root(summary, fixture, {carry, carry}).has_value(),
+              "a state root over a duplicated economy key is refused");
 }
 
 void verify_genesis(const pv::Values& values) {
