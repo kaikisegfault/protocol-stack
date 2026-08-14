@@ -2027,12 +2027,11 @@ Milestone slice **M3.9b: the version-four transitions in the C++20 kernel**, the
 second half of `first-goal.md` requirement 10. Use the `change-protocol` skill.
 Nothing blocks it.
 
-The codec is done and registered; what follows needs block execution and a state
-store, which is why it is a separate slice. Twelve transitions in the order the
-specification gives them, each with its ordered rejection conditions and its
-receipt: HUB registration, address add and remove, purchase, activation, the two
-node mints, the referral mint, the protection switch, manager addition, direct
-issue (refused), and the block-boundary cycle assignment the chain writes
+The codec is done and registered; what follows is the twelve transitions in the
+order the specification gives them, each with its ordered rejection conditions
+and its receipt: HUB registration, address add and remove, purchase, activation,
+the two node mints, the referral mint, the protection switch, manager addition,
+direct issue (refused), and the block-boundary cycle assignment the chain writes
 itself.
 
 **Three of them are the ones to get right first**, because they carry the
@@ -2042,12 +2041,17 @@ because a capped cycle is a failed cycle and the winner set excludes both;
 exact rather than conservative; and `purchase_seat`, because it is where the
 per-human seat bound and the HUB requirement are enforced.
 
-**The economy state needs a store before any of it runs.** Version four's state
-is version one's plus one ordered map from canonical byte keys to canonical byte
-values, and `src/storage/` already holds a SQLite ledger for the version-one
-half. Extending it is the first task of the slice, not an afterthought: every
-transition below reads and writes that map, and the state root is computed over
-it.
+**Take the transitions as pure functions first, and persistence after.** The
+version-one kernel already shows the shape: `execute_transfer` takes a
+`State&` and a block height and touches no storage, while `src/storage/`
+persists that `State` separately. Version four's economy state is version one's
+plus one ordered map from canonical byte keys to canonical byte values, so the
+same split holds — an in-memory economy state and twelve transitions over it is
+a complete, testable slice with no SQLite in it, and extending the store is the
+slice after.
+
+That ordering is a correction: this handoff first recorded the store as the
+prerequisite, which the version-one kernel's own structure disproves.
 
 **Reuse the codec rather than re-encoding.** `protocol::v4` already produces
 every key, value, message, receipt, and root the transitions need, and it is
