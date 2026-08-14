@@ -965,6 +965,38 @@ add_test(
     "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_cycle_test.py"
 )
 add_test(
+  NAME economy-transition-v3-vectors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tools/economy-transition-v3-vectors/verify.py"
+    --vectors
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v3.txt"
+)
+add_test(
+  NAME economy-transition-v3-envelope
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_v3_envelope_test.py"
+)
+add_test(
+  NAME economy-transition-v3-state
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_v3_state_test.py"
+)
+add_test(
+  NAME economy-transition-v3-codes
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_v3_codes_test.py"
+)
+add_test(
+  NAME economy-transition-v3-settlement
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_v3_settlement_test.py"
+)
+add_test(
   NAME founder-seat-vectors
   COMMAND
     "${Python3_EXECUTABLE}"
