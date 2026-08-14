@@ -22,7 +22,7 @@ from __future__ import annotations
 from . import contract as c
 from .envelope import Transaction
 from .genesis import Genesis
-from .settlement import SeatCycle
+from .settlement import Assignment, SeatCycle
 
 CHAIN_ID = bytes(range(32))
 SENDER_PUBLIC_KEY = bytes.fromhex(
@@ -216,7 +216,7 @@ REFERRER_MARKS: dict[bytes, int] = {
 }
 
 
-def assignments() -> dict[int, object]:
+def assignments() -> dict[int, Assignment]:
     """Both cycles' derived assignments, keyed by window."""
     from .settlement import derive_assignment
 
