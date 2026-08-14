@@ -18,7 +18,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from . import contract as c
-from .state import bit_is_set, bitmap, cycle_assignment_key, cycle_assignment_value
+from .state import (
+    bit_is_set,
+    bitmap,
+    cycle_assignment_key,
+    cycle_assignment_value,
+    decode_cycle_assignment_value,
+)
 from .winners import derive_winner_set, met_cycle, split_permission
 
 
@@ -203,8 +209,6 @@ def collect(
     A window with no record contributes nothing, so an absent record and a
     record with both bits clear are the same fact.
     """
-    from .state import decode_cycle_assignment_value
-
     per_channel = {channel: 0 for channel, _ in c.BASE_PERMISSION_LEGS}
     span = walk_range(mark, last_assigned)
     if span is None:
