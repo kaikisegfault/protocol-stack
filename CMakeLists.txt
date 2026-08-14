@@ -153,6 +153,12 @@ set(
   src/v1/execution.cpp
   src/v1/genesis.cpp
   src/v1/ledger.cpp
+  src/v4/economy_contract.cpp
+  src/v4/economy_envelope.cpp
+  src/v4/economy_genesis.cpp
+  src/v4/economy_messages.cpp
+  src/v4/economy_receipt.cpp
+  src/v4/economy_state.cpp
 )
 add_library(protocol_kernel STATIC ${PROTOCOL_STACK_KERNEL_SOURCES})
 target_include_directories(
@@ -227,6 +233,11 @@ add_executable(
   tests/kernel/primitives_test.cpp
 )
 target_link_libraries(kernel_primitive_tests PRIVATE protocol_kernel)
+add_executable(
+  economy_v4_codec_tests
+  tests/kernel/economy_v4_test.cpp
+)
+target_link_libraries(economy_v4_codec_tests PRIVATE protocol_kernel)
 add_executable(
   kernel_admission_tests
   tests/kernel/admission_test.cpp
@@ -577,6 +588,13 @@ add_test(
   COMMAND
     "${Python3_EXECUTABLE}"
     "${PROJECT_SOURCE_DIR}/tools/protocol-vectors/verify.py"
+    "${PROJECT_SOURCE_DIR}/test-vectors/protocol-primitives-v1.txt"
+)
+add_test(
+  NAME economy-transition-v4-cpp
+  COMMAND
+    economy_v4_codec_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v4.txt"
     "${PROJECT_SOURCE_DIR}/test-vectors/protocol-primitives-v1.txt"
 )
 add_test(
