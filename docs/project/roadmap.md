@@ -117,13 +117,17 @@ permissions are capped at thirty windows with the excess reallocating to the
 cycle's best performers, and a referrer must be HUB verified. Version two stays
 in place, passing, and unedited: a changed transition is a new version.
 
-A second round of answers the same day supersedes version three in one place.
-HUB verification is the ecosystem's recovery layer and **HUB signing is what
-adds a Founder Seat address**, where version three requires an existing
-manager's signature and leaves a founder with no keys stranded. That is an
-authorization change, so `economy-transition-v4` comes before the kernel, and
-two founder questions block it. [ADR 0035](../decisions/0035-founder-answers-on-payout-the-cap-and-hub-recovery.md)
-records both.
+A second round of answers the same day superseded version three, and
+`economy-transition-v4` encodes it. HUB verification is the root of identity: a
+registration holds the person's own public key, the ecosystem verifier signs
+registrations and nothing else, a seat is owned by a person rather than an
+address, HUB signing is what adds a seat address, a person manages their own
+address set, and referral earnings follow the person. The constitution's
+1,000-seat-per-human bound becomes enforceable and is enforced.
+[ADR 0035](../decisions/0035-founder-answers-on-payout-the-cap-and-hub-recovery.md)
+records the direction and
+[ADR 0036](../decisions/0036-economy-transition-v4-hub-as-the-identity-root.md)
+the encoding. **The C++ kernel implements version four.**
 
 ### M3.4 Uptime derivation — delivered
 
@@ -137,8 +141,7 @@ Implement the accepted contract in the deterministic ledger kernel with
 cross-language vectors, then operate adversarial four-node scenarios through
 restart and recovery.
 
-It implements the newest accepted transition version, which is
-`economy-transition-v4` once the two questions ADR 0035 records are answered.
+It implements `economy-transition-v4`, the newest accepted transition version.
 
 Take it in two pieces. The pure codec — the envelope and its bodies, the
 verifier messages, the receipt, the state keys, the trees, the roots, and
