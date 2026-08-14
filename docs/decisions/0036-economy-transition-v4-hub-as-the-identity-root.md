@@ -72,9 +72,12 @@ Requiring the sender to *be* the purchaser was considered and rejected: it
 removes a capability nothing asked to remove, and the HUB signature already
 prevents registering a seat against another person's identity.
 
-**Purchase loses a 64-byte signature.** HUB registration already did the
-biometric work, so no enrollment signature is carried and the largest
-transaction in the protocol falls from 325 bytes to 293.
+**Purchase loses the 32-byte biometric identity hash.** The seat's identity is
+the purchaser's HUB identity, which the chain reads from the registry rather
+than being told, so the field has nothing left to carry. The 64-byte signature
+stays and changes hands: the verifier's enrollment signature becomes the
+purchaser's own. The largest transaction in the protocol falls from 325 bytes to
+293.
 
 ### The per-human seat bound becomes enforceable, so it is enforced
 
