@@ -203,11 +203,12 @@ kind and result-code ranges widen. Leaving it at 2 would make a version-two
 reader classify a kind-7 receipt as invalid rather than as unknown, which is the
 misreading a version field exists to prevent.
 
-## Four defects in version two, found by deriving version three
+## Five defects in version two, found by deriving version three
 
-None of these changes what version two's vectors verified, and version two is
-not edited. They are recorded because version three fixes them and a reader
-comparing the two documents will otherwise read the differences as arbitrary.
+None of these changes what version two's vectors verified, and version two's
+normative artifacts are not edited. They are recorded because version three
+fixes them and a reader comparing the two documents will otherwise read the
+differences as arbitrary.
 
 **The bitmaps were indexed by in-scope rank.** Version two says a seat "reads
 its own bits" and calls the lookup `O(1)`. Reading bit *k* requires knowing the
@@ -240,6 +241,24 @@ byte, code, order, or rule moves, the verified vector file is unchanged, and
 leaving an accepted specification stating a figure its own derivation and its
 own vectors contradict would be worse than the repository's edit rule is
 protecting against.
+
+**One recorded vector states the opposite of what its name asserts.**
+`state.no_entry_is_keyed_by_seat_cycle=false` is in the accepted version-two
+vector file. The property is true — no version-two entry is keyed by a seat and
+a cycle at once — and the expression behind it is wrong: it accepts a key width
+below seven or an explicitly listed kind, and the cycle assignment's nine-byte
+key is neither. So the file records `false` for a design property the
+specification asserts, and a reader taking the vectors at face value reads the
+opposite of the truth. **This one is not repaired**, because the vector file is
+the normative artifact the hosted matrix verified on 2026-08-13 and editing it
+would change accepted evidence rather than prose.
+
+Version three replaces the check rather than patching the expression. It
+restates each entry key as its named fields, derives every key width from that
+table as a second derivation, and then asks the question directly: no key names
+both a `seat_id` and a `cycle_window`. That is a statement about the key space
+rather than an arithmetic coincidence between two byte counts, and it cannot
+pass while being false.
 
 ## Consequences
 

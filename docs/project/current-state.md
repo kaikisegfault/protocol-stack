@@ -106,7 +106,7 @@ enforced**, because enforcing it decides what happens to a verified human who
 loses their key, which is founder-reserved; the chain records what the verifier
 attested, exactly as it does for the seat biometric hash.
 
-**Four defects in version two were found by deriving version three, and three
+**Five defects in version two were found by deriving version three, and three
 are fixed by the new contract.** Its bitmaps are indexed by in-scope rank, so
 reading one seat's bit requires deriving the whole in-scope set inside a
 transition version two describes as `O(1)`; version three indexes by seat ID.
@@ -114,12 +114,21 @@ Its record carries no count of reallocated permissions, without which a winner's
 entitlement is not computable from the record, and the count cannot be recovered
 from the bitmaps. Its assignment adds the carried remainder beside outstanding
 rather than out of it, so the carry identity it states as an equality does not
-follow from its own steps. The fourth is a storage figure — the carry family
-recorded at 180 bytes beside the derivation `10 * (2 + 8)`, which gives 100, and
-which `test-vectors/economy-transition-v2.txt` also records as 100. **That one is
-repaired in place**, because a figure contradicting its own derivation is a
-documentation defect rather than a contract change, and no byte, code, order, or
-rule moves.
+follow from its own steps.
+
+The other two are evidence defects rather than contract ones. A storage figure —
+the carry family recorded at 180 bytes beside the derivation `10 * (2 + 8)`,
+which gives 100, and which `test-vectors/economy-transition-v2.txt` also records
+as 100 — **is repaired in place**, because a figure contradicting its own
+derivation is prose rather than a rule. And
+`state.no_entry_is_keyed_by_seat_cycle=false` in the accepted vector file
+**states the opposite of what its own name asserts**: the property is true and
+the expression behind it is wrong, so the file records `false` for a design
+property the specification claims. That one is left alone, because a vector file
+is the artifact the hosted matrix verified rather than prose. Version three
+replaces the check with one that cannot pass while being false: it restates each
+key as its named fields, derives every key width from that table, and then asks
+directly whether any key names both a seat and a cycle.
 
 **Storage moves in two directions and the one unbounded term does not move.**
 Typed custody collapses from 4,200,000 bytes at capacity to 168, because minted
