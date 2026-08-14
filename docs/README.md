@@ -359,9 +359,11 @@ immutable; compatible changes require a new version.
   whose switch is asymmetric, a thirty-window accumulation cap whose excess
   reallocates to the cycle's best performers, and a HUB-verified referrer. It
   adds four transaction kinds, three state entry kinds, and three result codes,
-  keeps the kind-1 byte identity and every version-two result number, and is the
-  contract requirement 10's C++ kernel implements. One authorization predicate
-  remains deliberately undefined.
+  and keeps the kind-1 byte identity and every version-two result number. One
+  authorization predicate remains deliberately undefined, and a second — who may
+  add a seat address — was superseded the same day by the HUB recovery direction
+  ADR 0035 records, so requirement 10's C++ kernel targets a version four rather
+  than this one.
 - `specifications/native-economy-simulation-v1.md`: versioned integer-only
   accounting, authority, event, trace, and metric contract for the independent
   M2 research simulator; it is not a consensus transition.
