@@ -1,0 +1,526 @@
+# Economy transition v4 normative vectors.
+# Byte counts, offsets, and storage bounds are unsigned decimal integers.
+# Every hex value is lowercase and unprefixed.
+#
+# Every value is rederived by `tools/economy-transition-v4-vectors/verify.py`.
+# Wherever both sources can reach a value it is derived twice: once from that
+# tool's `expected.py`, which imports nothing from `simulation/` and restates
+# the accepted version-one field tables and the Founder Constitution's figures
+# by hand, and once from a live run of `simulation/economy_transition_v4/`.
+#
+# `expected.py` builds the version-one transfer as one flat 136-byte field
+# table, exactly as `protocol-primitives-v1` writes it, while the model builds
+# it from a shared 80-byte header, a kind-specific body, and a shared 16-byte
+# trailer. It also carries a second implementation of the HUB registry, written
+# from the specification's prose, so a defect that kept a self-consistent
+# registry would still have to keep the same one twice.
+#
+# Three sections are checked against third sources: the kind-1 identity against
+# `test-vectors/protocol-primitives-v1.txt`, each predecessor root construction
+# against its own version's accepted vectors, and the settlement against
+# `test-vectors/economy-transition-v3.txt` — which version four imports rather
+# than reimplements, so the record it writes must be byte-identical.
+
+
+# The envelope. The header is the accepted transfer's first 80 bytes and the
+# trailer its last 16, so kind 1's body is what remains. Two pairs of kinds share
+# a body length, so a decoder dispatches on the kind byte. Purchase no longer
+# carries an enrollment signature — HUB registration already did that work — so
+# the largest transaction is smaller than version three's.
+envelope.header_bytes=80
+envelope.trailer_bytes=16
+envelope.signature_bytes=64
+envelope.schema_version=1
+envelope.kind_count=12
+envelope.kind_name.1=native_transfer
+envelope.body_bytes.native_transfer=40
+envelope.signed_bytes.native_transfer=200
+envelope.kind_name.2=purchase_seat
+envelope.body_bytes.purchase_seat=133
+envelope.signed_bytes.purchase_seat=293
+envelope.kind_name.3=activate_seat
+envelope.body_bytes.activate_seat=68
+envelope.signed_bytes.activate_seat=228
+envelope.kind_name.4=mint_node
+envelope.body_bytes.mint_node=4
+envelope.signed_bytes.mint_node=164
+envelope.kind_name.5=mint_referral
+envelope.body_bytes.mint_referral=0
+envelope.signed_bytes.mint_referral=160
+envelope.kind_name.6=direct_issue
+envelope.body_bytes.direct_issue=105
+envelope.signed_bytes.direct_issue=265
+envelope.kind_name.7=mint_node_verified
+envelope.body_bytes.mint_node_verified=68
+envelope.signed_bytes.mint_node_verified=228
+envelope.kind_name.8=set_mint_biometric
+envelope.body_bytes.set_mint_biometric=69
+envelope.signed_bytes.set_mint_biometric=229
+envelope.kind_name.9=add_manager
+envelope.body_bytes.add_manager=100
+envelope.signed_bytes.add_manager=260
+envelope.kind_name.10=hub_register
+envelope.body_bytes.hub_register=128
+envelope.signed_bytes.hub_register=288
+envelope.kind_name.11=hub_add_address
+envelope.body_bytes.hub_add_address=96
+envelope.signed_bytes.hub_add_address=256
+envelope.kind_name.12=hub_remove_address
+envelope.body_bytes.hub_remove_address=96
+envelope.signed_bytes.hub_remove_address=256
+envelope.every_kind_is_fixed_length=true
+envelope.kinds_sharing_a_body_length=activate_seat,hub_add_address,hub_remove_address,mint_node_verified
+envelope.distinct_body_lengths=10
+envelope.largest_signed_bytes=293
+envelope.version_three_largest_signed_bytes=325
+envelope.largest_is_smaller_than_version_three=true
+envelope.encoded_signed_bytes.activate_seat=228
+envelope.roundtrip.activate_seat=true
+envelope.roundtrip_signature.activate_seat=true
+envelope.encoded_signed_bytes.add_manager=260
+envelope.roundtrip.add_manager=true
+envelope.roundtrip_signature.add_manager=true
+envelope.encoded_signed_bytes.direct_issue=265
+envelope.roundtrip.direct_issue=true
+envelope.roundtrip_signature.direct_issue=true
+envelope.encoded_signed_bytes.disable_mint_biometric=229
+envelope.roundtrip.disable_mint_biometric=true
+envelope.roundtrip_signature.disable_mint_biometric=true
+envelope.encoded_signed_bytes.enable_mint_biometric=229
+envelope.roundtrip.enable_mint_biometric=true
+envelope.roundtrip_signature.enable_mint_biometric=true
+envelope.encoded_signed_bytes.hub_add_address=256
+envelope.roundtrip.hub_add_address=true
+envelope.roundtrip_signature.hub_add_address=true
+envelope.encoded_signed_bytes.hub_register=288
+envelope.roundtrip.hub_register=true
+envelope.roundtrip_signature.hub_register=true
+envelope.encoded_signed_bytes.hub_remove_address=256
+envelope.roundtrip.hub_remove_address=true
+envelope.roundtrip_signature.hub_remove_address=true
+envelope.encoded_signed_bytes.mint_node=164
+envelope.roundtrip.mint_node=true
+envelope.roundtrip_signature.mint_node=true
+envelope.encoded_signed_bytes.mint_node_verified=228
+envelope.roundtrip.mint_node_verified=true
+envelope.roundtrip_signature.mint_node_verified=true
+envelope.encoded_signed_bytes.mint_referral=160
+envelope.roundtrip.mint_referral=true
+envelope.roundtrip_signature.mint_referral=true
+envelope.encoded_signed_bytes.purchase_referred_seat=293
+envelope.roundtrip.purchase_referred_seat=true
+envelope.roundtrip_signature.purchase_referred_seat=true
+envelope.encoded_signed_bytes.purchase_unreferred_last_seat=293
+envelope.roundtrip.purchase_unreferred_last_seat=true
+envelope.roundtrip_signature.purchase_unreferred_last_seat=true
+envelope.encoded_signed_bytes.transfer=200
+envelope.roundtrip.transfer=true
+envelope.roundtrip_signature.transfer=true
+envelope.largest_fits_object_bound=true
+envelope.no_body_scales_with_the_population=true
+
+# Compatibility. Three contract revisions have now left the kind-1 identity
+# untouched, and it is checked against the accepted `protocol-primitives-v1`
+# bytes each time rather than against the previous version's model.
+compatibility.kind_one_unsigned_hex=50535458000101000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f01d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a0000000000000001202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f00000000000f424000000000000003e8000000000000002a
+compatibility.kind_one_matches_accepted_unsigned=true
+compatibility.kind_one_signed_hex=50535458000101000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f01d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a0000000000000001202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f00000000000f424000000000000003e8000000000000002a4678857e9c2da9acd3796819bd151958c6497122d962b0600ba51914d0b10d3ab922b9bba415e4fdc7d120227548a7c0ec87fc66315d01b8f64165944ee82b06
+compatibility.kind_one_matches_accepted_signed=true
+compatibility.kind_one_transaction_id=df2372fa965e33a7e6b871ac07acc2e2a0cb29c32939808cc6d9e1893d6d0997
+compatibility.kind_one_matches_accepted_transaction_id=true
+compatibility.sign_label=protocol-stack:v1:tx-sign
+compatibility.tx_id_label=protocol-stack:v1:tx-id
+compatibility.transaction_labels_are_version_one=true
+compatibility.hub_labels_are_version_four=true
+
+# Admission. Every rejection is a live run over a minimally mutated input with a
+# positive control. The two relabellings a length check cannot catch are admitted
+# and separated by the signing message instead.
+admission.code.1=MALFORMED_TRANSACTION
+admission.code.2=WRONG_CHAIN
+admission.code.3=INVALID_SIGNATURE
+admission.positive_control_accepts=true
+admission.reject.wrong_magic=MALFORMED_TRANSACTION
+admission.reject.wrong_schema_version=MALFORMED_TRANSACTION
+admission.reject.unknown_signature_scheme=MALFORMED_TRANSACTION
+admission.reject.trailing_byte=MALFORMED_TRANSACTION
+admission.reject.truncated=MALFORMED_TRANSACTION
+admission.reject.non_minimal_absent_referrer=MALFORMED_TRANSACTION
+admission.reject.non_canonical_bool=MALFORMED_TRANSACTION
+admission.reject.non_minimal_enabling_signature=MALFORMED_TRANSACTION
+admission.reject.non_canonical_enable_bool=MALFORMED_TRANSACTION
+admission.reject.unknown_kind=MALFORMED_TRANSACTION
+admission.reject.kind_zero=MALFORMED_TRANSACTION
+admission.relabelled_seat_kind_decodes=accepted
+admission.relabelled_seat_kind_is_read_as=7
+admission.relabelled_seat_kind_changes_the_signing_message=true
+admission.relabelled_address_kind_decodes=accepted
+admission.relabelled_address_kind_is_read_as=12
+admission.relabelled_address_kind_changes_the_signing_message=true
+admission.reject.relabelled_kind=MALFORMED_TRANSACTION
+admission.the_kind_byte_is_inside_the_signing_message=true
+
+# The HUB signature family. Seven of the eight messages verify against a person's
+# own recorded key; the ecosystem verifier signs registrations and nothing else.
+# Every message names the identity, so one person's signature is never another's.
+message.label.activation=protocol-stack:v4:seat-activation
+message.bytes.activation=110
+message.hex.activation=2170726f746f636f6c2d737461636b3a76343a736561742d61637469766174696f6e000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1fa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a100000000000000000000002a
+message.label.address_add=protocol-stack:v4:hub-address-add
+message.bytes.address_add=138
+message.hex.address_add=2170726f746f636f6c2d737461636b3a76343a6875622d616464726573732d616464000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1fa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4000000000000002a
+message.label.address_remove=protocol-stack:v4:hub-address-remove
+message.bytes.address_remove=141
+message.hex.address_remove=2470726f746f636f6c2d737461636b3a76343a6875622d616464726573732d72656d6f7665000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1fa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4000000000000002a
+message.label.manager=protocol-stack:v4:seat-manager
+message.bytes.manager=139
+message.hex.manager=1e70726f746f636f6c2d737461636b3a76343a736561742d6d616e61676572000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1fa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a100000000aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa000000000000002a
+message.label.mint=protocol-stack:v4:seat-mint
+message.bytes.mint=104
+message.hex.mint=1b70726f746f636f6c2d737461636b3a76343a736561742d6d696e74000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1fa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a100000000000000000000002a
+message.label.mint_biometric_disable=protocol-stack:v4:mint-biometric-disable
+message.bytes.mint_biometric_disable=117
+message.hex.mint_biometric_disable=2870726f746f636f6c2d737461636b3a76343a6d696e742d62696f6d65747269632d64697361626c65000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1fa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a100000000000000000000002a
+message.label.purchase=protocol-stack:v4:seat-purchase
+message.bytes.purchase=140
+message.hex.purchase=1f70726f746f636f6c2d737461636b3a76343a736561742d7075726368617365000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1fa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a100000000a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3000000000000002a
+message.label.registration=protocol-stack:v4:hub-registration
+message.bytes.registration=171
+message.hex.registration=2270726f746f636f6c2d737461636b3a76343a6875622d726567697374726174696f6e000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1fa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3000000000000002a
+message.count=8
+message.all_distinct=true
+message.verifier_signed_count=1
+message.verifier_signed=registration
+message.person_signed_count=7
+message.identical_field_shapes_differ_only_by_label=true
+message.every_message_names_the_identity=true
+message.rebinding_the_identity_changes_it=true
+message.rebinding_the_seat_changes_it=true
+message.rebinding_the_chain_changes_it=true
+message.rebinding_the_expiry_changes_it=true
+
+# The result-code space. Codes 0 through 23 keep their version-three meanings and
+# 0 through 8 their version-one meanings; two are new.
+codes.count=26
+codes.0=SUCCESS
+codes.1=ZERO_AMOUNT
+codes.2=FEE_LIMIT_TOO_LOW
+codes.3=EXPIRED
+codes.4=SENDER_NOT_FOUND
+codes.5=NONCE_EXHAUSTED
+codes.6=NONCE_MISMATCH
+codes.7=DEBIT_OVERFLOW
+codes.8=INSUFFICIENT_BALANCE
+codes.9=UNAUTHORIZED
+codes.10=CYCLE_RANGE
+codes.11=INVALID_REFERRER
+codes.12=REPLAY
+codes.13=SEAT_NOT_ACTIVATED
+codes.14=SEAT_NOT_PURCHASED
+codes.15=NOTHING_TO_MINT
+codes.16=INVALID_CHANNEL
+codes.17=MISSING_RESEARCH_INPUT
+codes.18=INVALID_RESEARCH_INPUT
+codes.19=NOT_ELIGIBLE
+codes.20=CHANNEL_CAP
+codes.21=NOT_HUB_VERIFIED
+codes.22=BIOMETRIC_REQUIRED
+codes.23=MANAGER_LIMIT
+codes.24=SEAT_LIMIT
+codes.25=ADDRESS_LIMIT
+codes.inherited_count=9
+codes.version_three_count=24
+codes.added_count=2
+codes.added_names=SEAT_LIMIT,ADDRESS_LIMIT
+codes.new_beyond_the_model=ADDRESS_LIMIT,BIOMETRIC_REQUIRED,MANAGER_LIMIT,NOTHING_TO_MINT,NOT_HUB_VERIFIED,SEAT_LIMIT,SEAT_NOT_PURCHASED,UNAUTHORIZED
+codes.version_one_meanings_preserved=true
+codes.numbering_is_contiguous=true
+
+# The total three-way disposition of the economy model's twenty-four codes,
+# unchanged because the model is unchanged.
+codes.model.declared=24
+codes.model.carried=11
+codes.model.guard=2
+codes.model.unrepresentable=11
+codes.model.partition_is_total=true
+codes.model.carried_targets_exist=true
+codes.model.guards_have_no_receipt_code=true
+codes.model.unrepresentable.HEIGHT_NOT_MONOTONIC=block heights increase by construction
+codes.model.unrepresentable.HEIGHT_RANGE=the activation height is the executing block height
+codes.model.unrepresentable.INCOMPLETE_UPTIME_RECORD=the in-scope set is derived, not supplied
+codes.model.unrepresentable.INCONSISTENT_UPTIME_RECORD=one assignment per cycle, by construction
+codes.model.unrepresentable.INVALID_UPTIME_RECORD=no transaction supplies a record; the chain writes it
+codes.model.unrepresentable.MISSING_UPTIME_RECORD=no transaction supplies a record; the chain writes it
+codes.model.unrepresentable.PERMISSION_NOT_FOUND=a mint takes everything, so there is no per-cycle key
+codes.model.unrepresentable.SEAT_NOT_IN_SCOPE=the in-scope set is derived, not supplied
+codes.model.unrepresentable.WINDOW_AFTER_ISSUANCE=no transaction names a window
+codes.model.unrepresentable.WINDOW_BEFORE_ISSUANCE=no transaction names a window
+codes.model.unrepresentable.WINDOW_NOT_FOR_CYCLE=no transaction names a window
+
+# The receipt. Its layout is version two's and its version field is not.
+receipt.bytes=56
+receipt.version=4
+receipt.layout_matches_version_two=true
+receipt.non_issuing_kinds=native_transfer,purchase_seat,activate_seat,set_mint_biometric,add_manager,hub_register,hub_add_address,hub_remove_address
+receipt.encoded_bytes=56
+receipt.roundtrip=true
+receipt.encoded_hex=505352430004abababababababababababababababababababababababababababababababab040000000000000003e80000000d5f184180
+receipt.reject.unknown_kind=INVALID_RECEIPT
+receipt.reject.unknown_result_code=INVALID_RECEIPT
+receipt.reject.failed_with_fee=INVALID_RECEIPT
+receipt.reject.failed_with_issuance=INVALID_RECEIPT
+receipt.reject.non_issuing_kind_issues=INVALID_RECEIPT
+receipt.reject.purchase_issues=INVALID_RECEIPT
+receipt.reject.hub_register_issues=INVALID_RECEIPT
+receipt.reject.hub_add_address_issues=INVALID_RECEIPT
+
+# The canonical economy state key space and its twelve entry kinds. Each key
+# width is derived a second time from its named fields, so the statement that no
+# key names both a seat and a cycle is about the key space rather than a byte
+# count.
+state.entry_kind_count=12
+state.key_bytes.seat=5
+state.value_bytes.seat=119
+state.key_fields.seat=seat_id
+state.key_bytes_from_fields.seat=5
+state.key_bytes.channel=2
+state.value_bytes.channel=16
+state.key_fields.channel=channel_id
+state.key_bytes_from_fields.channel=2
+state.key_bytes.cycle_assignment=9
+state.value_bytes.cycle_assignment=variable
+state.key_fields.cycle_assignment=cycle_window
+state.key_bytes_from_fields.cycle_assignment=9
+state.key_bytes.referral_balance=33
+state.value_bytes.referral_balance=24
+state.key_fields.referral_balance=hub_identity_hash
+state.key_bytes_from_fields.referral_balance=33
+state.key_bytes.direct_decision=33
+state.value_bytes.direct_decision=0
+state.key_fields.direct_decision=decision_id
+state.key_bytes_from_fields.direct_decision=33
+state.key_bytes.typed_custody=34
+state.value_bytes.typed_custody=8
+state.key_fields.typed_custody=beneficiary_kind,beneficiary_id
+state.key_bytes_from_fields.typed_custody=34
+state.key_bytes.carry=2
+state.value_bytes.carry=8
+state.key_fields.carry=channel_id
+state.key_bytes_from_fields.carry=2
+state.key_bytes.verifier_key=1
+state.value_bytes.verifier_key=32
+state.key_fields.verifier_key=
+state.key_bytes_from_fields.verifier_key=1
+state.key_bytes.seat_manager=37
+state.value_bytes.seat_manager=0
+state.key_fields.seat_manager=seat_id,manager_account_id
+state.key_bytes_from_fields.seat_manager=37
+state.key_bytes.hub_identity=33
+state.value_bytes.hub_identity=48
+state.key_fields.hub_identity=hub_identity_hash
+state.key_bytes_from_fields.hub_identity=33
+state.key_bytes.hub_address=33
+state.value_bytes.hub_address=32
+state.key_fields.hub_address=account_id
+state.key_bytes_from_fields.hub_address=33
+state.key_bytes.unreferred_pool=1
+state.value_bytes.unreferred_pool=16
+state.key_fields.unreferred_pool=
+state.key_bytes_from_fields.unreferred_pool=1
+state.cycle_assignment_fixed_value_bytes=24
+state.no_key_names_a_seat_and_a_cycle=true
+state.referral_balance_is_keyed_by_identity=true
+state.hub_address_is_keyed_by_account=true
+state.no_key_is_a_prefix_of_another=true
+state.keys_are_unique=true
+state.populated_covers_every_entry_kind=true
+state.beneficiary_kind_count=5
+state.beneficiary_kind.1=venture_escrow
+state.beneficiary_kind.2=community_grants_escrow
+state.beneficiary_kind.3=developer_incentives_escrow
+state.beneficiary_kind.4=system_creator_company
+state.beneficiary_kind.5=direct_beneficiary
+state.reject.singleton_with_a_named_beneficiary=INVALID_STATE_ENTRY
+state.reject.unknown_beneficiary_kind=INVALID_STATE_ENTRY
+state.max_seat_managers=16
+state.max_seat_managers_agrees=16
+state.reject.manager_count_above_the_bound=INVALID_STATE_ENTRY
+state.reject.referral_minted_above_accrued=INVALID_STATE_ENTRY
+state.reject.pool_minted_above_accrued=INVALID_STATE_ENTRY
+
+# The economy Merkle tree.
+state.economy_root_empty=406bc4e549599db4145714fe355b737539a51921b93f513c303b4670952fbfb7
+state.economy_entry_count_genesis=22
+state.economy_root_genesis=10fcac5afca8dc3207f3530d0008bedb17118987b0f81a6e93777c80ccfce515
+state.economy_entry_count_populated=37
+state.economy_root_populated=b2c536835dd6e5c52cc9021acae17efa6bb1e39fdbd1825356116c16b9c25cb6
+state.economy_root_differs_from_genesis=true
+state.economy_tree_prefix=protocol-stack:v4:economy
+state.economy_tree_prefix_separates_versions=true
+
+# The three predecessor root constructions, each required to reproduce its own
+# version's accepted vectors before the four-way non-collision rests on it.
+state.version_one_accounts_tree_matches_accepted=true
+state.version_one_root_matches_accepted=true
+state.version_2_root_matches_accepted=true
+state.version_3_root_matches_accepted=true
+
+# The version-four state root, and its non-collision with all three predecessors
+# over an identical account set and an empty economy.
+state.root_empty_economy=77afba594c7b832635cf0d8c606d8819fe60550b72fac5e780a120a6166a4fb7
+state.version_three_root_same_accounts=5697abf09da979502fee92910949da6cb2aabe9809fdd89c08a29a68c8e06222
+state.version_two_root_same_accounts=73320cf5fb117157d75219e5f914cf2a4fed427de17ebe022e57f4870cd51824
+state.version_one_root_same_accounts=3e4f52db11e093811acd3c1d4743e77888370ff4b1c9708e6b9d00acaf0b147b
+state.roots_differ_from_version_one=true
+state.roots_differ_from_version_two=true
+state.roots_differ_from_version_three=true
+state.all_four_roots_are_distinct=true
+state.root_schema_version=4
+state.root_label=protocol-stack:v4:state-root
+state.root_populated_economy=f9953c4d461f4d2aa4c72e8d8a71958d3e4d66865ee360b109ededdfa46ebcb6
+state.root_tracks_the_economy=true
+
+# Version-four genesis and chain identity.
+genesis.prefix_bytes=110
+genesis.max_accounts=21843
+genesis.max_accounts_bytes=1048574
+genesis.one_more_account_bytes=1048622
+genesis.max_accounts_fits_object_bound=true
+genesis.one_more_account_exceeds_object_bound=true
+genesis.accepting_margin_bytes=2
+genesis.bytes=110
+genesis.bytes_hex=5053474e0004000000044f1851909daf140000000000000000000000000000000000000000000000000084cca09865b6c62bf09d3f6bc3821a2527c7a4835652cffdc0ebefa34b314ce5555555555555555555555555555555555555555555555555555555555555555500000000
+genesis.chain_id=244e54043f708196e9726613b30bbd98f83225a9f6ef8701d8ee7b3bb289067b
+genesis.chain_id_label=protocol-stack:v4:chain-id
+genesis.schema_version=4
+genesis.manifest_digest=84cca09865b6c62bf09d3f6bc3821a2527c7a4835652cffdc0ebefa34b314ce5
+genesis.version_2_chain_id=f9c8621de0b55e76bb50687861497dac1c4b7faeb7d7f4caa7401a412fbf5bf7
+genesis.version_3_chain_id=71aa1576fa15c8425263c763d80fcd171754074071ae03d1eac52a780ea7ac8f
+genesis.chain_ids_are_distinct=true
+genesis.zero_total_supply_accepted=true
+genesis.zero_accounts_accepted=true
+genesis.zero_fee_accepted=true
+genesis.verifier_key_is_a_field=5555555555555555555555555555555555555555555555555555555555555555
+genesis.verifier_key_changes_chain_identity=true
+genesis.manifest_digest_changes_chain_identity=true
+genesis.writes_only_the_fixed_tables=true
+genesis.writes_no_hub_identity=true
+genesis.reject.zero_supply_limit=INVALID_GENESIS
+genesis.reject.supply_above_limit=INVALID_GENESIS
+genesis.reject.unconserved_supply=INVALID_GENESIS
+genesis.reject.zero_balance_account=INVALID_GENESIS
+genesis.reject.nonzero_nonce=INVALID_GENESIS
+genesis.reject.account_count_above_bound=INVALID_GENESIS
+
+# The HUB registry: identities, their address sets, and their two counts. One
+# person holds two addresses; another's only address is removed, which unlinks
+# the claim and touches nothing else; and an identity holding no addresses can
+# still add one, which is the recovery path the direction exists for.
+registry.identity_count=3
+registry.address_count=3
+registry.addresses.alice=2
+registry.seats.alice=1
+registry.addresses.bob=1
+registry.seats.bob=0
+registry.addresses.carol=0
+registry.seats.carol=0
+registry.two_addresses_resolve_to_one_identity=true
+registry.removal_unlinks_the_account=true
+registry.removal_keeps_the_identity=true
+registry.an_identity_may_hold_zero_addresses=true
+registry.zero_address_identity_can_recover=true
+registry.counts_agree=true
+registry.counts_disagree_when_a_seat_is_unaccounted=true
+registry.reject.adding_a_linked_account=REPLAY
+registry.reject.adding_to_an_unregistered_identity=NOT_HUB_VERIFIED
+registry.reject.address_beyond_the_bound=ADDRESS_LIMIT
+registry.reject.claiming_a_seat_for_an_unregistered_identity=NOT_HUB_VERIFIED
+registry.reject.removing_an_unlinked_account=NOT_HUB_VERIFIED
+registry.reject.reregistering_an_account=REPLAY
+registry.reject.reregistering_an_identity=REPLAY
+registry.max_identity_addresses=16
+registry.max_seats_per_identity=1000
+
+# The registry as canonical state entries.
+registry.entry_count=6
+registry.entry_kinds=hub_identity,hub_address
+registry.alice_identity_value_hex=a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a200000000000232800000000200000001
+registry.identity_value_bytes=48
+registry.identity_value_bytes_agrees=48
+registry.alice_address_value_hex=a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1
+registry.reject.address_count_above_the_bound=INVALID_STATE_ENTRY
+registry.reject.seat_count_above_the_bound=INVALID_STATE_ENTRY
+
+# The constitution's per-human seat bound, at 999, 1,000, and 1,001. Version
+# three records that this cannot be enforced; with one identity per person in
+# state it can be, and this is that rule reaching the chain.
+seats.claim_999=SUCCESS
+seats.claim_1000=SUCCESS
+seats.claim_1001=SEAT_LIMIT
+seats.count_stops_at_the_bound=true
+seats.limit_code=24
+seats.version_three_could_not_enforce_it=true
+
+# Self-referral across two addresses of one person, which version three cannot
+# see and version four always can.
+referral.self_referral_across_two_addresses_is_refused=true
+referral.a_different_person_is_accepted=true
+referral.no_referrer_is_accepted=true
+referral.version_three_would_have_accepted_it=true
+
+# The settlement, imported from version three rather than copied. Every value
+# here is required to equal what `test-vectors/economy-transition-v3.txt`
+# records, which is what makes 'the settlement did not move' evidence.
+cap.windows=30
+cap.matches_version_three=true
+cap.assignment_lag_windows=2
+cycle.assignment_key=0300000000000000c8
+cycle.assignment_value_hex=00000002a77e320000000002000000030000000600000018880100880001
+cycle.matches_version_three=true
+cycle.assignment_entry_bytes=39
+outage.assignment_key=0300000000000000c9
+outage.assignment_value_hex=000000000000000000000005000000000000000600000018000000000000
+outage.matches_version_three=true
+outage.assignment_entry_bytes=39
+mint.total_atomic.0=95716666666
+mint.matches_version_three.0=true
+mint.windows_walked.0=2
+mint.total_atomic.4=95716666666
+mint.matches_version_three.4=true
+mint.windows_walked.4=2
+mint.total_atomic.7=0
+mint.matches_version_three.7=true
+mint.windows_walked.7=2
+mint.total_atomic.11=0
+mint.matches_version_three.11=true
+mint.windows_walked.11=30
+mint.total_atomic.15=57430000000
+mint.matches_version_three.15=true
+mint.windows_walked.15=2
+mint.total_atomic.23=38286666666
+mint.matches_version_three.23=true
+mint.windows_walked.23=2
+referral.referrer_count=1
+referral.unreferred_pool_atomic=10260000000
+referral.pool_matches_version_three=true
+referral.accrued_to_an_identity=true
+referral.the_key_is_an_identity_not_an_account=true
+
+# Storage bounds. The HUB registry is bounded per participant rather than at seat
+# capacity, because it serves every participant class.
+storage.carries_bytes_at_capacity=100
+storage.channels_bytes_at_capacity=180
+storage.hub_address_per_account_bytes_at_capacity=65
+storage.hub_identity_per_person_bytes_at_capacity=81
+storage.referral_balance_per_identity_bytes_at_capacity=57
+storage.seat_managers_bytes_at_capacity=59200000
+storage.seats_bytes_at_capacity=12400000
+storage.typed_custody_bytes_at_capacity=168
+storage.unreferred_pool_bytes_at_capacity=17
+storage.verifier_key_bytes_at_capacity=33
+storage.hub_registry_bytes_at_the_minimum_principal_count=8100
+storage.hub_addresses_bytes_per_full_identity=1040
+storage.cycle_assignment_bytes_at_capacity=25033
+storage.cycles_per_year=365
+storage.cycle_assignment_bytes_per_year=9137045
+storage.cycle_assignment_matches_version_three_width=true
