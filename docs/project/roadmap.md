@@ -115,8 +115,15 @@ recorded manager address may act for a seat and receives what it mints, a
 biometric approval on minting is an option the founder switches on, unminted
 permissions are capped at thirty windows with the excess reallocating to the
 cycle's best performers, and a referrer must be HUB verified. Version two stays
-in place, passing, and unedited: a changed transition is a new version. **The
-C++ kernel implements version three.**
+in place, passing, and unedited: a changed transition is a new version.
+
+A second round of answers the same day supersedes version three in one place.
+HUB verification is the ecosystem's recovery layer and **HUB signing is what
+adds a Founder Seat address**, where version three requires an existing
+manager's signature and leaves a founder with no keys stranded. That is an
+authorization change, so `economy-transition-v4` comes before the kernel, and
+two founder questions block it. [ADR 0035](../decisions/0035-founder-answers-on-payout-the-cap-and-hub-recovery.md)
+records both.
 
 ### M3.4 Uptime derivation — delivered
 
@@ -130,12 +137,15 @@ Implement the accepted contract in the deterministic ledger kernel with
 cross-language vectors, then operate adversarial four-node scenarios through
 restart and recovery.
 
-Take it in two pieces. The pure codec — the envelope and its ten bodies, the six
+It implements the newest accepted transition version, which is
+`economy-transition-v4` once the two questions ADR 0035 records are answered.
+
+Take it in two pieces. The pure codec — the envelope and its bodies, the
 verifier messages, the receipt, the state keys, the trees, the roots, and
-genesis — is deterministic byte work against
-`test-vectors/economy-transition-v3.txt`. The transitions follow: purchase,
-activation, manager addition, the protection switch, HUB verification, the
-block-boundary cycle assignment, and the three mints.
+genesis — is deterministic byte work against a recorded vector file. The
+transitions follow: purchase, activation, manager addition, the protection
+switch, HUB verification, the block-boundary cycle assignment, and the three
+mints.
 
 Exit: every requirement in [`first-goal.md`](first-goal.md) passes and the
 devnet enforces the fixed cap and accepted Founder, referral, commercial, fee,

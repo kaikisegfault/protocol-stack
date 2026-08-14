@@ -43,11 +43,26 @@ with exact ties sharing, and a referrer must be HUB verified. HUB — Human
 Uniqueness Biometric verification — also becomes an ecosystem-wide identity
 layer serving every participant class, with its own direct-mint incentive.
 
-**Requirement 10 is unblocked and its target is now settled.** M3.8b delivered
-`economy-transition-v3` on 2026-08-14, so the C++ kernel is the next slice and it
-implements version three. `economy-transition-v2` stays in place, passing, and
-unedited apart from one storage figure that contradicted its own derivation and
-its own vectors.
+**M3.8b delivered `economy-transition-v3` on 2026-08-14** and merged at
+`688efd0`. `economy-transition-v2` stays in place, passing, and unedited apart
+from one storage figure that contradicted its own derivation and its own
+vectors.
+
+**Requirement 10's target moved again the same day, and the C++ kernel waits for
+`economy-transition-v4`.** The owner answered M3.8b's four questions; three
+confirmed what version three encodes and the fourth is new direction. HUB
+verification survives the loss of any address and is the ecosystem's recovery
+layer, and **HUB signing is what adds a Founder Seat address**. Version three
+requires an existing manager's signature, so a founder holding no keys has no
+path at all. Closing that changes an authorization rule, which is a new version
+rather than an edit. ADR 0035 records the direction, and the kernel waits on the
+same precedent M3.8a set: the encoding revision comes before the implementation,
+because a kernel written against a contract already known to be superseded is
+work that has to be done twice.
+
+**Version four is blocked on two founder questions**, both recorded under
+[Blockers](#blockers): whether buying a Founder Seat requires HUB verification
+first, and whether a HUB identity's set of addresses lives in consensus state.
 
 ### How M3.8b was delivered
 
@@ -1130,16 +1145,27 @@ slices.
   direct-mint channel capped at 2,500,020,000. A seat bought without a recorded
   referrer routes its allocation to a monthly unreferred performance pool, so
   the channel is consumed exactly. A referrer must be HUB verified.
-- A seat is controlled by a recorded set of manager addresses rather than by one
-  purchase address, a mint credits the address that signed it, and minted value
-  is spendable immediately with no withdrawal step. A founder may require a fresh
-  biometric approval on every mint; switching that on needs only an address
-  signature and switching it off needs a biometric approval.
+- A seat is controlled by a recorded set of at most 16 manager addresses rather
+  than by one purchase address, a mint credits the address that signed it, and
+  minted value is spendable immediately with no withdrawal step. A founder may
+  require a fresh biometric approval on every mint; switching that on needs only
+  an address signature and switching it off needs a biometric approval. A seat's
+  addresses are permanent and add-only, and **HUB signing is what adds one**, so
+  a founder who has lost every key still has a path back.
 - Unminted permissions accumulate for at most thirty cycles after the last
-  collection. Past that, a cycle's permission — and a referrer's accrual — goes
-  to that cycle's best performers or to the unreferred pool instead. It is a
-  collect-or-lose rule rather than a penalty: an unminted permission's units do
-  not exist and are not circulating.
+  collection. Past that, **a cycle a seat cannot collect is a cycle it failed**:
+  the day's generation goes to the best performers, and the full seat is not one
+  of them, because a failed seat never rewards another failed seat. What the seat
+  has already earned is untouched, and one collection restores both the room and
+  the eligibility. The same bound applies to a referrer's accrual, whose
+  forfeited value routes to the unreferred pool. It is a collect-or-lose rule
+  rather than a penalty: an unminted permission's units do not exist and are not
+  circulating.
+- **HUB verification is the ecosystem's recovery layer as well as its identity
+  layer.** It survives the loss of any address, so a registered person can always
+  sign back in, and a verified person may add and remove their own addresses
+  through it. Founder Seat addresses are the stated exception: add-only, never
+  removed.
 - Uptime reaches consensus without trusting self-reports: validator duties are
   derived on-chain, resource provision is proved by challenge-response, and the
   Ecosystem AI holds a bounded dispute window rather than a signature that
@@ -1167,20 +1193,24 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
-- Issue #139 and PR #140 are the M3.8a delivery, merged by rebase. The slice is
-  commits `f8d6374` through `5f66c49` on `main`. PR Actions run 31744378969 on
-  the final head `6ced9f7` passed the complete hosted matrix — scope
+- Issue #144 and PR #145 are the M3.8b delivery, merged by rebase. The slice is
+  commits `b04575d` through `688efd0` on `main`. PR Actions run 31823949771 on
+  the final head `a98ac85` passed the complete hosted matrix — scope
   classification `full`, GCC and Clang debug, both sanitizers, and the aggregate
-  required check. Post-merge run 31745207592 on `5f66c49` passed the same
+  required check. Post-merge run 31825463939 on `688efd0` passed the same
   complete matrix. Three earlier runs on that branch were cancelled as
   superseded, not failed.
-- **The margin is unchanged at about ten minutes.** Per-job durations against the
-  20-minute per-job timeout: `clang-debug` 6m27s, `gcc-debug` 7m53s,
-  `clang-sanitizers` 8m37s, `gcc-sanitizers` 9m16s. The slowest is now
-  `gcc-sanitizers` rather than `clang-sanitizers`, and 9m16s against M3.7a's
-  9m58s is inside the roughly 12% run-to-run variance that slice measured on
-  identical code. The slice added four Python test modules and one verifier and
-  moved the figure very little.
+- **The margin is about ten and a half minutes.** Per-job durations on the
+  post-merge run against the 20-minute per-job timeout: `gcc-debug` 8m29s,
+  `clang-debug` 8m46s, `gcc-sanitizers` 8m47s, `clang-sanitizers` 9m15s. The
+  slowest is `clang-sanitizers` again, and the whole spread sits inside the
+  roughly 12% run-to-run variance M3.7a measured on identical code. The slice
+  added four Python test modules and one verifier and moved the figure very
+  little, which is expected: the builds are the larger half of each job and a
+  Python module adds nothing to them.
+- Issue #139 and PR #140 were the M3.8a delivery, merged by rebase across
+  commits `f8d6374` through `5f66c49`. PR run 31744378969 on head `6ced9f7` and
+  post-merge run 31745207592 on `5f66c49` both passed the complete matrix.
 - The kind-1 identity is exact. The version-two encoder reproduces
   `test-vectors/protocol-primitives-v1.txt`'s recorded `unsigned_tx`,
   `signed_tx`, and `tx_id`
@@ -1831,18 +1861,32 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.9a: the version-three codec in the C++20 kernel**, which is
-the first half of `first-goal.md` requirement 10 and the whole of requirement 11
-for the bytes it covers. Use the `change-protocol` skill.
+Milestone slice **M3.8c: `economy-transition-v4`**, the one authorization change
+ADR 0035 records — HUB signing is what adds a Founder Seat address. Use the
+`change-protocol` skill. **It cannot be started until the two questions under
+[Blockers](#blockers) are answered**, because both decide what a participant
+must do to buy a seat or to keep control of one.
 
-Take the codec before the transitions, exactly as `roadmap.md` says. The
-envelope and its ten bodies, the six verifier messages, the 56-byte receipt, the
-state keys and values, the economy tree, the version-three state root, and
-genesis are deterministic byte work with a fixed target:
-`test-vectors/economy-transition-v3.txt`. The transitions — purchase,
-activation, manager addition, the protection switch, HUB verification, the
-block-boundary cycle assignment, and the three mints — follow in M3.9b, and they
-need block execution and a state store that the codec does not.
+The C++ kernel follows version four, not version three. That ordering is the
+precedent M3.8a set and the reason is the same: an implementation written
+against a contract already known to be superseded is work done twice.
+
+When the kernel slice does start, it is **M3.9a: the version-four codec**, the
+first half of `first-goal.md` requirement 10 and the whole of requirement 11 for
+the bytes it covers. Take the codec before the transitions, as `roadmap.md`
+says. The envelope and its bodies, the verifier messages, the 56-byte receipt,
+the state keys and values, the economy tree, the state root, and genesis are
+deterministic byte work against a recorded vector file. The transitions —
+purchase, activation, manager addition, the protection switch, HUB verification,
+the block-boundary cycle assignment, and the three mints — follow in M3.9b, and
+they need block execution and a state store that the codec does not.
+
+**Most of version three survives version four untouched**, so nothing in the
+guidance below is wasted. The four changes ADR 0035 forces are confined to kind
+9's authorization and to whatever the two open questions settle about kind 2 and
+the HUB registry; the envelope, the kind-1 identity, the receipt, the trees, the
+roots, genesis, the cap, the assignment record, and the mint walk are unaffected
+as far as the direction reaches.
 
 **Reproduce the recorded vectors; do not re-derive a second set.**
 `tools/protocol-vectors/` already carries a paired `verify.cpp` and `verify.py`
@@ -1895,26 +1939,36 @@ is this handoff's M3.9a and M3.9b C++ implementation and devnet work.
 
 ## Blockers
 
-None. Nothing in the C++ codec slice requires a founder answer: it reproduces an
-accepted byte surface and settles no value, beneficiary, or participation rule.
+**Two founder questions block `economy-transition-v4`, and version four blocks
+the C++ kernel.** Both follow from the HUB recovery direction of 2026-08-14 that
+ADR 0035 records, and both decide what a participant must do, so neither is
+invented:
 
-**Two answers M3.8b derived should be confirmed rather than assumed, and neither
-blocks the kernel.** Both are recorded in ADR 0034 with the reasoning. First,
-**a mint credits the address that signed it** rather than the seat's original
-purchase address, which is what makes adding a manager a working remedy for a
-lost key and which trades away version two's containment property that a stolen
-key could only mint to the seat's own account. Second, **a seat over the
-accumulation cap is excluded from that cycle's winner set**, so a seat that
-stopped collecting stops receiving as well; the alternative reading leaves the
-best performer eligible and strands its share as permanently unmintable. Both
-were deduced from decided principles rather than chosen, which the gate treats as
-delegated work, and both are cheap to reverse in a version four while no
-implementation depends on them.
+1. **Must a Founder Seat buyer be HUB verified before they buy**, so the seat is
+   tied to a HUB identity the chain can check a later address addition against?
+   If yes, HUB becomes the single identity record for a seat and "add an address
+   with HUB signing" is one lookup; the cost is that a buyer must complete
+   verification before purchase. If no, the chain carries two identity records
+   for one person and needs a recorded link between them.
+2. **Does a HUB identity's set of addresses live in consensus state?** On a chain
+   an account *is* an address, so "a verified person may add and remove their own
+   addresses through HUB" is either a rule the chain enforces over a recorded set
+   or an off-chain wallet convention the chain never sees. Founder Seat addresses
+   are already decided — permanent and add-only — so this question is about every
+   other ecosystem account.
 
-**One engineering default worth a glance:** a seat may record at most **16
-manager addresses**. It is a resource limit that makes the per-seat storage bound
-a constant rather than a statement about founders, and each addition already
-costs a fee and a fresh biometric approval.
+Everything else is unblocked, and there is no safe slice to run ahead of these:
+the kernel is the next work and it must target version four.
+
+**Three answers arrived on 2026-08-14 and confirmed version three unchanged.** A
+mint credits the address that signed it; sixteen manager addresses per seat; and
+a capped seat is excluded from the winner set — the last restated by the owner as
+one rule rather than two, that a cycle a seat cannot collect because it is full
+**is** a cycle it failed, so the day's generation goes to the best performers and
+the full seat is not one of them. Version three's behaviour was already exactly
+that; the specification and ADR 0034 now carry the shorter statement.
+
+`direct_issue_authority` remains reserved and kind 6 remains refused.
 
 The three questions the founder decisions of 2026-08-14 themselves raised are
 settled and recorded in ADR 0033, and all three are now encoded in

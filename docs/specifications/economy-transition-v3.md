@@ -348,10 +348,18 @@ present, so there is no intermediate state in which a manager is pending.
 **There is no removal transition.** The constitution states that "a recorded
 manager address remains in the historical ledger forever" and that "loss of an
 address is handled by adding a new verified manager, not by rewriting ownership
-history". A removal rule would decide what happens to a compromised address,
-which the constitution does not, so it is not invented here; the consequence is
-recorded in
+history", and the owner confirmed on 2026-08-14 that a Founder Seat's addresses
+are permanent and add-only. A removal rule would decide what happens to a
+compromised address, which nothing decides, so it is not invented here; the
+consequence is recorded in
 [What this specification does not establish](#what-this-specification-does-not-establish).
+
+**Version three's requirement that the sender already be a manager is
+superseded.** The owner decided on 2026-08-14 that HUB signing is what adds a
+Founder Seat address, so that a founder who has lost every address still has a
+path back. That is an authorization change and therefore a version four; ADR
+0035 records it and the two questions that must be settled before it can be
+written.
 
 ### Kind 10 — `hub_verify`
 
@@ -1110,6 +1118,11 @@ the mark to the last assigned window whether or not it collected anything, so a
 capped seat is never locked out; what it cannot do is recover the cycles that
 were reallocated while it was over the cap.
 
+**What the cap does not touch is what the seat has already earned.** A seat at
+the limit is full rather than emptied: its accumulated unminted value is intact
+and waiting, and what it loses is the new days it had no room for. ADR 0035
+records the owner's statement of this.
+
 **This is not a monetary penalty and does not contradict the constitution's
 no-slashing rule.** An unminted permission's units do not exist and are not
 circulating; the constitution says so directly and already accepts that a failed
@@ -1136,6 +1149,14 @@ The transition, in order:
 4. for each in-scope seat whose 731-cycle span contains `w`: set its accrued bit
    when it met the cycle and is under the cap, and otherwise count its
    permission as reallocated;
+
+   Steps 3 and 4 are one rule stated twice, and the founder states it in one
+   sentence: **a cycle a seat cannot collect because it is at the cap is treated
+   exactly as a cycle it failed.** Both consequences then follow from rules that
+   already exist — the day's permission goes to the best performers because that
+   is what happens to a failed cycle, and the capped seat is not one of them
+   because a winner must itself have met the cycle. The two formulations select
+   the same seats, and ADR 0035 records the confirmation;
 5. add one base permission's `outstanding_atomic` per in-scope seat whose span
    contains `w`, per leg;
 6. compute the per-winner share of one reallocated permission by dividing each
@@ -1147,13 +1168,14 @@ The transition, in order:
    and to the unreferred pool otherwise; `founder_referral.outstanding_atomic`
    increases by one referral leg in every case.
 
-**A capped seat is excluded from the winner set, and that is derived rather than
-chosen.** ADR 0033 states that a capped seat's permissions "go to that cycle's
-best performers instead". A capped seat can accrue nothing, so including it in
-the division would send its share nowhere and make the founder's own sentence
-false for that fraction. Excluding it is the reading under which every
-reallocated unit reaches a seat that can collect it, and no reallocated value is
-stranded as permanently unmintable.
+**A capped seat is excluded from the winner set, and the founder confirmed it.**
+ADR 0033 states that a capped seat's permissions "go to that cycle's best
+performers instead". A capped seat can accrue nothing, so including it in the
+division would send its share nowhere and make that sentence false for the
+fraction concerned. Excluding it is the reading under which every reallocated
+unit reaches a seat that can collect it. ADR 0035 records the owner's own
+statement of the same rule, which is shorter: a capped day is a failed day, and
+everything else follows from the failed-cycle rules already written.
 
 **Assignment is one automatic event per cycle, in cycle order, and it is
 founder-directed.** Nothing is claimed, requested, or reported, so a founder who
@@ -1495,12 +1517,18 @@ already-specified path; it does not change any byte defined here.
   verifier, which is where the seat biometric hash already stands.
 - **Manager compromise.** There is no removal transition, because the
   constitution names manager addition as the remedy for a *lost* address and
-  decides nothing about a *stolen* one. A compromised manager address retains
-  mint authority permanently. The founder's defence is to switch protection on,
-  which needs only their own address signature and which the thief cannot undo,
-  and it works — but only for value not yet minted, and only once the founder
-  notices. Revocation decides who can strip an authority the chain recorded as
-  permanent, so it is a founder decision rather than an invented rule.
+  decides nothing about a *stolen* one. The owner confirmed permanence on
+  2026-08-14: a Founder Seat's addresses are add-only and can never be removed.
+  A compromised manager address therefore retains mint authority permanently.
+  The founder's defence is to switch protection on, which needs only their own
+  address signature and which the thief cannot undo, and it works — but only for
+  value not yet minted, and only once the founder notices.
+- **Recovery when every manager key is lost.** Version three has no path: kind 9
+  requires an existing manager's signature, so a founder holding none cannot add
+  one. The owner closed this on 2026-08-14 — HUB signing is what adds a Founder
+  Seat address — and closing it changes an authorization rule, which
+  [ADR 0035](../decisions/0035-founder-answers-on-payout-the-cap-and-hub-recovery.md)
+  records as requiring `economy-transition-v4`.
 - **The payment.** Nothing here proves that BTC, ETH, or an approved stablecoin
   was received for a seat. The external settlement is a bridge commitment.
 - **Verifier key rotation.** The ecosystem verifier key is written at genesis and

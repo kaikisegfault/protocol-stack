@@ -35,7 +35,9 @@ inside a transition is the kind of implicit cost two implementations disagree
 about.
 
 **The mint credits the signing manager's account, and that is derived rather
-than chosen.** The Founder Constitution makes adding a verified manager the
+than chosen** — and confirmed by the owner on 2026-08-14 in
+[ADR 0035](0035-founder-answers-on-payout-the-cap-and-hub-recovery.md), together
+with the sixteen-address bound. The Founder Constitution makes adding a verified manager the
 remedy for a lost address. If minted value went to the recorded purchaser, a
 founder who lost that key could add a manager, mint, and still reach nothing, so
 the remedy the constitution names would recover nothing. The only address a mint
@@ -123,6 +125,13 @@ thing to read.
 
 ### A capped seat is excluded from the winner set
 
+> Confirmed by the owner on 2026-08-14 and restated more simply. A cycle a seat
+> cannot collect because it is at the cap **is** a cycle it failed, so both
+> consequences follow from the failed-cycle rules already written rather than
+> from a new predicate. [ADR 0035](0035-founder-answers-on-payout-the-cap-and-hub-recovery.md)
+> records it. The derivation below reached the same place by a longer route and
+> is kept because it shows why the alternative fails.
+
 ADR 0033 states that a capped seat's permissions "go to that cycle's best
 performers instead, by the same path a failed cycle takes". A capped seat can
 accrue nothing, so including it in the winner set would divide the reallocated
@@ -167,6 +176,14 @@ means.
 The alternative — a second entry keyed by the uniqueness hash, refusing a second
 registration — was rejected for that reason and not for cost. It is one entry
 kind and would be easy; what it is not is decided.
+
+> **Answered on 2026-08-14, and the answer supersedes this section.** HUB
+> verification survives the loss of any address, so a person never needs to
+> re-register and a HUB identity holds a set of addresses rather than one.
+> [ADR 0035](0035-founder-answers-on-payout-the-cap-and-hub-recovery.md) records
+> the direction and the two questions that must be settled before
+> `economy-transition-v4` can encode it. Version three's registry is the
+> narrower thing described above, and it stands until that version exists.
 
 ### Minted value lands in the account map
 
