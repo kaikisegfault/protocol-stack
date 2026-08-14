@@ -235,6 +235,17 @@ Permissions may be exercised immediately or accumulated. Until a permission
 is exercised, its units do not exist and are not circulating. Exercise is one
 atomic distribution: every beneficiary is credited or none is.
 
+**Accumulation is bounded, decided on 2026-08-14.** A seat may hold at most
+about thirty days of uncollected cycles. Once it is full, **a day it cannot
+collect is treated exactly as a day it failed**: that day's generation goes to
+the best-performing nodes, and the full seat is not one of them, because a
+failed seat never rewards another failed seat. What the seat has already earned
+is untouched and waiting; one collection restores both the room and the
+eligibility. This is a collect-or-lose rule rather than a penalty — an
+uncollected permission's units do not exist — and the same bound applies to
+referral earnings, whose forfeited value routes to the unreferred performance
+pool.
+
 If a seat fails an eligibility cycle, the complete 574.3-unit base permission
 is retained. The escrow and System Creator portions keep their original
 beneficiaries; only the 342-unit Founder portion changes beneficiary to the
@@ -475,6 +486,22 @@ usable only after deep biometric verification matches the permanent Founder
 identity. Loss of an address is handled by adding a new verified manager, not
 by rewriting ownership history.
 
+**HUB signing is what adds a manager address, decided on 2026-08-14.** A
+Founder Seat's addresses are permanent, can never be removed, and are add-only;
+a HUB-verified founder may add more at any time by signing with HUB. This is
+the exception to the ordinary ecosystem rule below, where a verified person may
+both add and remove their own addresses. It exists so that a founder who has
+lost every address they hold still has a path back to their seat, and it is
+recorded in
+[ADR 0035](../decisions/0035-founder-answers-on-payout-the-cap-and-hub-recovery.md).
+
+At most 16 manager addresses may be recorded for one seat. That figure is an
+engineering resource limit rather than a founder-directed value.
+
+**Minted value lands on the address that signed the mint.** Any recorded manager
+may collect, and the value arrives on that address ready to spend, which is what
+makes adding a verified address a working remedy for a lost key.
+
 ### HUB verification is one ecosystem-wide layer
 
 Human Uniqueness Biometric verification — **HUB** — is a foundational service of
@@ -490,6 +517,24 @@ personal secret, usable across ecosystem and blockchain operations. The
 cryptographic construction is engineering work; what is founder-directed is the
 shape — one identity layer, one source of truth, switchable per integration
 point, serving every participant class.
+
+**HUB verification survives the loss of any address, decided on 2026-08-14.**
+Once a person is registered, they can regain access at any time by signing in
+through HUB, including when the address the verification was tied to is gone.
+It is an ecosystem-wide universal one-time-password layer: once registered, it
+is what makes managing addresses, assets, and security matters straightforward
+across the whole system.
+
+**A verified person may add and remove their own addresses through HUB.** A HUB
+identity is therefore a set of addresses rather than a single one, and HUB
+signing is the authority over that set. Founder Seat addresses are the stated
+exception: they are permanent and add-only, as described under
+[Permanent biometric identity and managers](#permanent-biometric-identity-and-managers).
+
+Two consequences of this are not yet decided and are listed under
+[Explicitly unresolved founder details](#explicitly-unresolved-founder-details):
+whether buying a Founder Seat requires HUB verification first, and whether the
+chain holds a HUB identity's address set in consensus state.
 
 HUB-verified users earn from the `hub_verified_user_incentives` direct-mint
 channel. Verification is therefore both an identity primitive and a participant
@@ -687,6 +732,12 @@ milestone supplies enough evidence and context:
 - eligibility and anti-abuse mechanics for the liquidity-mining,
   impermanent-loss, and mystery-box direct-mint channels, and the *rate* of the
   HUB-verified-user channel, whose eligibility was decided on 2026-08-14;
+- whether buying a Founder Seat requires HUB verification first, so that the
+  seat is tied to a HUB identity the chain can check a later address addition
+  against;
+- whether a HUB identity's set of addresses is held in consensus state, which is
+  what "add and remove your own addresses through HUB" means on a chain where an
+  account is an address;
 - exact legacy inactivity bounds and contested-successor behavior;
 - stablecoin allowlist governance and any later bridge-asset change;
 - complete AI funding, moderation, biometric, and succession frameworks; and
@@ -708,6 +759,15 @@ permissions whose excess reallocates to the day's best performers, the
 single-best-plus-exact-ties rule for the unreferred pool, and HUB verification
 as the referrer requirement. `hub_verified_user_incentives` eligibility is
 decided — being HUB verified — while its rate remains open.
+
+Also resolved on 2026-08-14, in the second round recorded in
+[ADR 0035](../decisions/0035-founder-answers-on-payout-the-cap-and-hub-recovery.md):
+minted value lands on the address that signed the mint; a cycle a seat cannot
+collect because it is at the accumulation limit is treated exactly as a cycle it
+failed, so the day's generation goes to the best performers and the capped seat
+is not one of them; sixteen manager addresses per seat; and HUB verification as
+a recovery layer that survives the loss of any address, with HUB signing as what
+adds a Founder Seat address.
 
 Claude should ask focused questions at those boundaries. All other mechanism,
 encoding, storage, consensus scheduling, networking, testing, packaging, and

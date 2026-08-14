@@ -239,6 +239,22 @@ place because it contradicts its own derivation rather than a rule, and one
 recorded vector that states the opposite of what its own name asserts and is
 left alone because a vector file is accepted evidence rather than prose.
 
+ADR 0035 records the founder answers of 2026-08-14 to the four questions M3.8b
+raised. Three confirm what version three encodes: a mint credits the address
+that signed it, sixteen manager addresses per seat, and a capped seat excluded
+from the winner set — the last restated more simply by the owner as one rule,
+that a cycle a seat cannot collect because it is full **is** a cycle it failed,
+so both consequences follow from the failed-cycle rules already written. The
+fourth is new direction and supersedes version three in one place: HUB
+verification survives the loss of any address and is the recovery layer for the
+whole ecosystem, a verified person may add and remove their own addresses
+through it, and Founder Seat addresses are the exception — permanent, never
+removable, and added by HUB signing. Version three requires an existing manager's
+signature to add one, so a founder holding no keys has no path; closing that is
+an authorization change and therefore `economy-transition-v4`. Two questions must
+be settled before that version can be written, and both are recorded as blocking
+it.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
