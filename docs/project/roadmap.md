@@ -110,6 +110,14 @@ signature, the chain assigns mint permissions daily by itself, and a mint takes
 everything. Only direct-channel eligibility remains reserved, and it refuses one
 transaction kind rather than blocking the milestone.
 
+`economy-transition-v3` revises it on the founder direction of 2026-08-14. Any
+recorded manager address may act for a seat and receives what it mints, a
+biometric approval on minting is an option the founder switches on, unminted
+permissions are capped at thirty windows with the excess reallocating to the
+cycle's best performers, and a referrer must be HUB verified. Version two stays
+in place, passing, and unedited: a changed transition is a new version. **The
+C++ kernel implements version three.**
+
 ### M3.4 Uptime derivation — delivered
 
 Derive validator duties from on-chain participation, prove resource provision
@@ -122,11 +130,12 @@ Implement the accepted contract in the deterministic ledger kernel with
 cross-language vectors, then operate adversarial four-node scenarios through
 restart and recovery.
 
-Take it in two pieces. The pure codec — the envelope and its six bodies, the
-receipt, the state keys, the trees, the roots, and genesis — is deterministic
-byte work against `test-vectors/economy-transition-v2.txt`. The transitions
-follow: purchase, activation, the block-boundary cycle assignment, and the two
-mints.
+Take it in two pieces. The pure codec — the envelope and its ten bodies, the six
+verifier messages, the receipt, the state keys, the trees, the roots, and
+genesis — is deterministic byte work against
+`test-vectors/economy-transition-v3.txt`. The transitions follow: purchase,
+activation, manager addition, the protection switch, HUB verification, the
+block-boundary cycle assignment, and the three mints.
 
 Exit: every requirement in [`first-goal.md`](first-goal.md) passes and the
 devnet enforces the fixed cap and accepted Founder, referral, commercial, fee,

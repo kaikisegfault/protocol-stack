@@ -1044,7 +1044,7 @@ alone.
 | channels | 180 bytes | `10 * (2 + 16)` |
 | referral balances | 49 bytes per referrer | `33 + 16` |
 | typed custody | 4,200,000 bytes | `100,000 * (34 + 8)` per beneficiary kind |
-| carries | 180 bytes | `10 * (2 + 8)` |
+| carries | 100 bytes | `10 * (2 + 8)` |
 | verifier key | 33 bytes | one entry |
 | cycle assignment | 25,033 bytes per cycle | `9 + 24 + 2 * 12,500` |
 
