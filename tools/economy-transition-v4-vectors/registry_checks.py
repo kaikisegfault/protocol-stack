@@ -73,9 +73,7 @@ def check_registry(check: Checker) -> None:
         check.agree(
             f"registry.seats.{name}",
             independent.identities[who]["seats"],
-            model.identities[who].seats
-            if hasattr(model.identities[who], "seats")
-            else model.identities[who].seat_count,
+            model.identities[who].seat_count,
         )
 
     # One person, two addresses, and the same identity resolved from either.
