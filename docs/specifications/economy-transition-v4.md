@@ -184,9 +184,11 @@ carry one. A decoder dispatches on the kind byte, which is the rule version two
 stated for exactly this case and which version three first exercised.
 
 **The largest transaction in version four is 293 bytes**, down from version
-three's 325. Purchase no longer carries a 64-byte enrollment signature, because
-HUB registration already did that work. Nothing a transaction carries scales
-with the seat population.
+three's 325. Purchase no longer carries a 32-byte biometric identity hash,
+because the seat's identity is the purchaser's HUB identity and the chain reads
+it from the registry rather than being told it. The 64-byte signature stays, but
+it is the purchaser's own rather than the verifier's. Nothing a transaction
+carries scales with the seat population.
 
 ### Kind 10 — `hub_register`
 
@@ -194,7 +196,7 @@ with the seat population.
 | ---: | ---: | --- | --- |
 | 80 | 32 | HUB identity hash | 32 octets |
 | 112 | 32 | HUB public key | canonical Ed25519 key |
-| 176 | 64 | verifier signature | Ed25519 over the registration message |
+| 144 | 64 | verifier signature | Ed25519 over the registration message |
 
 The sender is the account being linked to the new identity, and it becomes that
 identity's first address. On success the transition writes the identity entry —

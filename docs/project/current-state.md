@@ -122,9 +122,11 @@ accrual's re-keying from an account to an identity needed no new code, because
 version three's referrer key is opaque bytes — which is itself evidence the
 settlement did not move.
 
-**The largest transaction shrank.** Purchase no longer carries a 64-byte
-enrollment signature, because HUB registration already did that work, so the
-protocol's largest transaction fell from 325 bytes to 293.
+**The largest transaction shrank.** Purchase no longer carries a 32-byte
+biometric identity hash, because the seat's identity is the purchaser's HUB
+identity and the chain reads it from the registry rather than being told it. The
+64-byte signature stays and changes hands, from the verifier's to the
+purchaser's own. The protocol's largest transaction fell from 325 bytes to 293.
 
 **Each of the three predecessor root constructions is required to reproduce its
 own accepted vectors** before the four-way non-collision rests on it, because a
