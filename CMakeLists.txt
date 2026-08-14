@@ -401,6 +401,7 @@ set(
   protocol_application
   protocol_application_server
   kernel_primitive_tests
+  economy_v4_codec_tests
   kernel_admission_tests
   kernel_execution_tests
   kernel_genesis_tests
