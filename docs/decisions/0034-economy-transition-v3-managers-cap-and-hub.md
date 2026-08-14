@@ -18,7 +18,7 @@ followed since.
 This ADR records the encoding decisions
 [`economy-transition-v3`](../specifications/economy-transition-v3.md) makes, the
 alternatives rejected, the two answers derived from decided principles rather
-than chosen, and the four defects found in version two while deriving them.
+than chosen, and the five defects found in version two while deriving them.
 
 ## Decision
 
@@ -206,9 +206,11 @@ misreading a version field exists to prevent.
 ## Five defects in version two, found by deriving version three
 
 None of these changes what version two's vectors verified, and version two's
-normative artifacts are not edited. They are recorded because version three
-fixes them and a reader comparing the two documents will otherwise read the
-differences as arbitrary.
+normative artifacts are not edited. The first three are contract defects that
+version three fixes by construction, and they are recorded because a reader
+comparing the two documents will otherwise read the differences as arbitrary.
+The last two are evidence defects: one is repaired in version two's own prose,
+and one is deliberately left alone.
 
 **The bitmaps were indexed by in-scope rank.** Version two says a seat "reads
 its own bits" and calls the lookup `O(1)`. Reading bit *k* requires knowing the
