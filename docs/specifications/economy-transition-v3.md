@@ -68,6 +68,12 @@ required deriving them and version two's text did not survive the derivation:
 - the beneficiary-kind space of the typed-custody key is **enumerated**, which
   version two used and never fixed.
 
+ADR 0034 records two further version-two defects that this contract cannot
+repair because they are evidence rather than rules: a storage figure that
+contradicts its own derivation, corrected in place in version two's prose, and a
+recorded vector whose value states the opposite of what its own name asserts,
+left alone because a vector file is the artifact the hosted matrix verified.
+
 The envelope factoring, the kind-1 byte identity, the shared header and trailer,
 the frozen version-one result numbers, the admission order, the Merkle
 construction, the genesis field table, and the compatibility argument are
