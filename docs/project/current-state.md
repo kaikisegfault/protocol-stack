@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-08-13
+Last updated: 2026-08-14
 
 ## Phase
 
@@ -12,7 +12,8 @@ enforced both inside the economy model and M3.6b rebound the escrow payout
 model to it, both on 2026-08-10. M3.6c rebound the scenario suite on 2026-08-11
 and closed the dependent rebinding. M3.7a reclaimed the hosted matrix margin on
 2026-08-12 and changed no protocol behavior. M3.8a defined the consensus
-transaction and state surface on 2026-08-13.
+transaction and state surface on 2026-08-13, and M3.8b revised it to
+`economy-transition-v3` on 2026-08-14.
 Requirements 3, 4, 5, 6, 7, and 12 of `first-goal.md` are satisfied;
 requirements 8 and 9 moved from specified to enforced; and requirement 14 is met
 against the v3 contract at the standard the M2 suite set.
@@ -42,12 +43,113 @@ with exact ties sharing, and a referrer must be HUB verified. HUB — Human
 Uniqueness Biometric verification — also becomes an ecosystem-wide identity
 layer serving every participant class, with its own direct-mint incentive.
 
-**Requirement 10 is unblocked and its target moved.** The C++ implementation
-must be written against `economy-transition-v3`, so the encoding revision comes
-first. `economy-transition-v2` is not edited: it is the accepted record of what
-was verified on 2026-08-13, and a changed transition is a new version rather
-than an edit, which is the rule ADR 0024 and ADR 0026 established and every
-economy contract has followed since.
+**Requirement 10 is unblocked and its target is now settled.** M3.8b delivered
+`economy-transition-v3` on 2026-08-14, so the C++ kernel is the next slice and it
+implements version three. `economy-transition-v2` stays in place, passing, and
+unedited apart from one storage figure that contradicted its own derivation and
+its own vectors.
+
+### How M3.8b was delivered
+
+Issue #144 and PR #145 delivered `economy-transition-v3` and ADR 0034. It added
+the specification, the ADR, a sibling codec-and-settlement model in
+`simulation/economy_transition_v3/`, 579 normative vectors, a verifier in
+`tools/economy-transition-v3-vectors/`, and 125 tests across four modules.
+
+**Four things changed and two followed from them.** Any recorded manager address
+may act for a seat; a biometric approval on minting is a per-seat option with an
+asymmetric switch; unminted permissions are capped at thirty windows with the
+excess reallocating to the cycle's best performers; and a referrer must hold a
+HUB registration. The two consequences of ADR 0033's first decision are that
+minted value lands in an ordinary spendable account rather than typed custody,
+and that the account credited is the signer's.
+
+**Two answers were derived rather than chosen, and both decide who is paid.**
+The mint must credit the signing manager, because the constitution makes adding
+a verified manager the remedy for a lost address, and a mint that credited the
+recorded purchaser would leave that remedy able to recover nothing. And a capped
+seat must be excluded from the winner set, because it can accrue nothing, so
+including it would divide a reallocated permission by a count containing a
+recipient that cannot receive and send that fraction nowhere — making ADR 0033's
+own sentence false for it and stranding the value as permanently unmintable.
+ADR 0034 records both derivations rather than burying them in an encoding.
+
+**The cap is measured in windows, and only that form bounds anything.** ADR 0033
+states that the cap turns the growth of a mint's work into a constant. A counter
+of accrued cycles does not: thirty accruals can be spread over any number of
+windows, so a mint would still walk every window since the mark to find them.
+Measuring in windows makes the walk `(mark, min(last, mark + 30)]`, and the bound
+is exact rather than conservative — the mark changes only at a mint and a mint
+sets it to the last assigned window, so every window in `(mark, last]` was
+assigned while the mark held its current value and the assignment applied the
+same predicate against that same mark.
+
+**A mint that collects nothing still advances the mark, and that is forced.** A
+seat that failed every cycle for two months would otherwise be permanently past
+the cap with nothing to collect, so `NOTHING_TO_MINT` would refuse the one action
+that could free it. The code is reserved for a mark already at the last assigned
+window.
+
+**The optional biometric is a second kind rather than an optional field, and
+kinds 3 and 7 therefore share a body length.** That is the case version two
+predicted when it required a decoder to dispatch on the kind byte rather than on
+the length, so the collision is evidence the rule was right rather than a defect
+it created. A single kind with a presence flag would have made every unprotected
+mint 229 bytes instead of 164 and needed a rule for a signature the seat did not
+require.
+
+**HUB verification enters consensus as one registry entry and one transaction,
+and no more.** ADR 0033 widens HUB into an ecosystem-wide identity layer, and
+that layer is an M4 milestone specified nowhere. What consensus needs is a
+registry a purchase can consult. **One-human-one-account is deliberately not
+enforced**, because enforcing it decides what happens to a verified human who
+loses their key, which is founder-reserved; the chain records what the verifier
+attested, exactly as it does for the seat biometric hash.
+
+**Four defects in version two were found by deriving version three, and three
+are fixed by the new contract.** Its bitmaps are indexed by in-scope rank, so
+reading one seat's bit requires deriving the whole in-scope set inside a
+transition version two describes as `O(1)`; version three indexes by seat ID.
+Its record carries no count of reallocated permissions, without which a winner's
+entitlement is not computable from the record, and the count cannot be recovered
+from the bitmaps. Its assignment adds the carried remainder beside outstanding
+rather than out of it, so the carry identity it states as an equality does not
+follow from its own steps. The fourth is a storage figure — the carry family
+recorded at 180 bytes beside the derivation `10 * (2 + 8)`, which gives 100, and
+which `test-vectors/economy-transition-v2.txt` also records as 100. **That one is
+repaired in place**, because a figure contradicting its own derivation is a
+documentation defect rather than a contract change, and no byte, code, order, or
+rule moves.
+
+**Storage moves in two directions and the one unbounded term does not move.**
+Typed custody collapses from 4,200,000 bytes at capacity to 168, because minted
+value lands in accounts founders already hold in order to pay a fee; the manager
+set adds a bounded 59,200,000-byte worst case at 16 managers per seat that no
+plausible deployment reaches. Cycle assignment records still accumulate at
+25,033 bytes per cycle — the same width as version two's while carrying one more
+field, because the two bitmap length prefixes are gone. **The cap does not prune
+them**: it bounds how many records a mint reads, not how old they are, and a seat
+whose mark is a thousand windows behind still walks records a thousand windows
+old.
+
+**The fixture is a discriminator rather than a restatement.** Seat 11 holds the
+cycle's maximum uptime and is over the cap, so under the rejected reading the
+winner set would be that seat alone — and the accepted economy model, which
+applies no cap, returns exactly that. Seat 23 is past its own 731 cycles and wins
+without accruing; seat 15 sits exactly on the 18-hour threshold and accrues
+without winning. A second cycle is a total outage, so the winner set is empty and
+the whole permission carries, which is the founder-directed rule for that case
+and the one path a busy cycle never reaches.
+
+**The verifier's independence is now two-sided.** `expected.py` still builds the
+version-one transfer as one flat 136-byte field table while the model builds it
+from three parts, and it now also reimplements the cap predicate, the winner
+rule, the split, and the mint walk from the specification's prose. A settlement
+defect that produced a self-consistent record would have to produce the same
+record twice. The version-two root restatement is checked against
+`test-vectors/economy-transition-v2.txt` before any non-collision claim rests on
+it, and all three state roots are required to differ over an identical account
+set and an empty economy.
 
 ### How M3.8a was delivered
 
@@ -971,6 +1073,27 @@ slices.
   signature is carried as recorded bytes and never computed. Its verifier derives
   the version-one transfer twice from two different shapes and checks both
   against the accepted `protocol-primitives-v1` vectors.
+- `economy-transition-v3` is the accepted consensus surface the C++ kernel must
+  be implemented against, and it supersedes version two as the implementation
+  target. It adds four transaction kinds — a biometrically approved mint, the
+  per-seat protection switch, manager addition, and HUB verification — three
+  state entry kinds, three result codes, and six domain-separated verifier
+  messages. Any recorded manager may act for a seat and receives what it mints; a
+  seat may require a fresh biometric approval to mint, and removing that
+  requirement itself needs one; unminted permissions are capped at thirty windows
+  and the excess reallocates to the cycle's best performers by the same path a
+  failed cycle takes; and a named referrer must hold a HUB registration. The
+  kind-1 byte identity, the shared envelope, the admission order, the genesis
+  field table, the receipt layout, and result codes 0 through 20 are unchanged.
+  Kind 6 is still specified and refused.
+- The codec-and-settlement model in `simulation/economy_transition_v3/` encodes
+  and decodes all ten kinds, builds all six verifier messages, derives every
+  state key, computes the economy tree and all three versions' state roots,
+  encodes the receipt, derives a cycle's assignment under the cap, and walks a
+  bounded mint. It implements no cryptographic primitive. Its verifier derives
+  every value twice — structurally for the compatibility claim and behaviourally
+  for the settlement — and fails closed on a tampered value, a missing key, and
+  an invented key alike.
 - The one-word `proceed`, `conclude`, and `status` workflows reconstruct,
   deliver, and report repository state. `proceed` runs an explicit
   founder-decision gate before starting a slice and reports its result whether or
@@ -988,14 +1111,26 @@ slices.
 - A cycle is met at 18 hours or more of cumulative fully operational uptime,
   where fully operational means every node component healthy at once. The
   6-hour grace allowance is cumulative and fragmentable.
-- A failed cycle's 342-unit Founder portion goes to the highest cumulative
+- A failed cycle's whole 574.3-unit permission goes to the highest cumulative
   uptime in that same cycle, shared equally among exact ties, restricted to
-  seats that met the cycle, with the integer remainder carried forward. It
-  settles when the failed seat next exercises a permission.
+  seats that met the cycle, with the integer remainder carried forward per
+  channel. It settles at the winner's mint rather than at a mint the failed seat
+  may never make, which is the 2026-08-13 revision of the constitution's original
+  "when the failed seat next exercises a permission".
 - The Founder referral benefit is 34.2 units per cycle, unconditional, and a
   direct-mint channel capped at 2,500,020,000. A seat bought without a recorded
   referrer routes its allocation to a monthly unreferred performance pool, so
-  the channel is consumed exactly.
+  the channel is consumed exactly. A referrer must be HUB verified.
+- A seat is controlled by a recorded set of manager addresses rather than by one
+  purchase address, a mint credits the address that signed it, and minted value
+  is spendable immediately with no withdrawal step. A founder may require a fresh
+  biometric approval on every mint; switching that on needs only an address
+  signature and switching it off needs a biometric approval.
+- Unminted permissions accumulate for at most thirty cycles after the last
+  collection. Past that, a cycle's permission — and a referrer's accrual — goes
+  to that cycle's best performers or to the unreferred pool instead. It is a
+  collect-or-lose rule rather than a penalty: an unminted permission's units do
+  not exist and are not circulating.
 - Uptime reaches consensus without trusting self-reports: validator duties are
   derived on-chain, resource provision is proved by challenge-response, and the
   Ecosystem AI holds a bounded dispute window rather than a signature that
@@ -1632,6 +1767,25 @@ economy's *accounting* is now proved at four levels — contract, model, enforce
 schedule, and canonical bytes — and its *access* has never been specified at
 any level.
 
+**M3.8b closed that access gap for every path except one, and it is still not
+execution.** `economy-transition-v3` defines who may act for a seat, what a mint
+credits, when a seat stops accruing, and what a referrer must hold, so a
+conforming version-three chain can be operated end to end apart from kind 6.
+What version three does not do is execute: no C++ implements it, no node has run
+it, and the cross-language agreement of requirement 11 is still exactly the check
+that would catch an encoding defect the code mapping cannot see.
+
+**Three limits version three adds are recorded rather than closed.** A
+compromised manager address keeps mint authority permanently, because the
+constitution names manager addition as the remedy for a *lost* address and
+decides nothing about a *stolen* one; the founder's only defence is to switch
+protection on, and only for value not yet minted. The chain does not check that a
+HUB uniqueness hash reaches at most one account, so HUB verification is exactly
+as strong as the off-chain verifier — where the seat biometric hash already
+stands. And the ecosystem verifier key now gates protected mints and manager
+additions as well as entry, so its unavailability stops more than it did in
+version two, though only for seats whose operators chose that.
+
 The bootstrap is a second gap of the same kind, found while deriving genesis. A
 chain with no genesis allocation and a nonzero fee cannot execute its first
 transaction, and every path to a first payable balance is external, so the fee
@@ -1668,58 +1822,52 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.8b: `economy-transition-v3`**, the four changes ADR 0033
-records. Use the `change-protocol` skill. Requirement 10, the C++ kernel, is the
-slice after it and must be written against version three rather than version
-two.
+Milestone slice **M3.9a: the version-three codec in the C++20 kernel**, which is
+the first half of `first-goal.md` requirement 10 and the whole of requirement 11
+for the bytes it covers. Use the `change-protocol` skill.
 
-| | v2 | v3 |
-| --- | --- | --- |
-| Who may act for a seat | the recorded purchaser only | any recorded manager address |
-| Biometric on minting | never | optional, per seat |
-| Permission accumulation | unbounded | capped, excess reallocated |
-| Referrer | any 32-byte account | must be HUB verified |
+Take the codec before the transitions, exactly as `roadmap.md` says. The
+envelope and its ten bodies, the six verifier messages, the 56-byte receipt, the
+state keys and values, the economy tree, the version-three state root, and
+genesis are deterministic byte work with a fixed target:
+`test-vectors/economy-transition-v3.txt`. The transitions — purchase,
+activation, manager addition, the protection switch, HUB verification, the
+block-boundary cycle assignment, and the three mints — follow in M3.9b, and they
+need block execution and a state store that the codec does not.
 
-Version three also needs the state those rules imply: a HUB-verified registry, a
-per-seat manager set, a per-seat biometric-on-mint flag, and an unminted-cycle
-count. The envelope factoring, the kind-1 byte identity, the compatibility
-boundary, the receipt, the trees, and the roots are unaffected and carry over.
-
-**Nothing is left to guess.** The three questions the founder decisions raised
-were answered the same day and are recorded under [Blockers](#blockers): a capped
-cycle moves its whole permission exactly as a failed cycle does, disabling
-biometric-on-mint requires a biometric approval while enabling it does not, and
-the cap applies to referral earnings with the forfeited value routing to the
-unreferred performance pool. Version three can be specified in full.
-
-**`economy-transition-v2` stays in place, passing, and unedited.** Its 238
-vectors and their digests are the accepted record of what the hosted matrix
-verified on 2026-08-13, and `simulation/economy_transition/` implements it. A
-version-three model is a sibling package rather than an edit, on the same test
-ADR 0029 states: version three changes transitions, inputs, and the state shape,
-so a shared implementation would have to branch inside every affected
-transition.
-
-**The C++ side must reproduce the recorded vectors, not re-derive its own.**
+**Reproduce the recorded vectors; do not re-derive a second set.**
 `tools/protocol-vectors/` already carries a paired `verify.cpp` and `verify.py`
 for the version-one primitives, and `tools/ledger-vectors/` the same for the
-transition. The kind-1 identity vectors are the first thing a version-three
-`verify.cpp` should reproduce: if the C++ encoder does not emit the accepted M1
-transfer bytes, the compatibility boundary is broken at its narrowest point.
+transition; a version-three pair belongs beside them. **Start with the kind-1
+identity vectors.** If the C++ encoder does not emit the accepted M1 transfer
+bytes, the compatibility boundary is broken at its narrowest point and nothing
+after it is worth checking.
 
-**Re-measure the hosted matrix margin after the kernel slice.** The slowest job
-is `gcc-sanitizers` at 9m16s against a 20-minute per-job timeout, and two runs on
-identical code have differed by 12%. The kernel slice adds source and tests to
-the builds, which are the larger half of each job and are not parallelised by
-`ctest --parallel`.
+**Three parts of the byte surface are the ones a C++ implementation is most
+likely to get wrong, and each has a vector waiting.** The two bitmaps are
+indexed by seat ID with the most significant bit first, so an implementation
+that packs least-significant-first passes every length check and fails
+`cycle.accrued_bitmap`. The cycle assignment value carries no bitmap length
+prefixes — both widths follow from `bitmap_bits` — so a decoder that expects
+version two's prefixed form misreads every record. And kinds 3 and 7 share a
+body length, so a decoder that dispatches on length rather than on the kind byte
+executes a protected mint as an activation; `admission.relabelled_kind_is_read_as`
+is the vector that catches it.
 
-Keep every accepted v1 and v2 model, vector, and digest in place and passing.
+**Keep every accepted v1, v2, and v3 artifact in place and passing.**
 `simulation/founder_economy/`, `simulation/founder_economy_v2/`,
 `simulation/founder_economy_v3/`, `simulation/cycle_boundary/`,
-`simulation/uptime_measurement/`, and `simulation/economy_transition/` stay
-untouched. `simulation/escrow_payout/` is shared by three bindings and should
-gain no fourth without a new contract version, and `simulation/scenarios/` holds
-three population generators that must stay independent for the same reason.
+`simulation/uptime_measurement/`, `simulation/economy_transition/`, and
+`simulation/economy_transition_v3/` stay untouched.
+`simulation/escrow_payout/` is shared by three bindings and should gain no
+fourth without a new contract version, and `simulation/scenarios/` holds three
+population generators that must stay independent for the same reason.
+
+**Re-measure the hosted matrix margin after the kernel slice.** The slowest job
+was `gcc-sanitizers` at 9m16s against a 20-minute per-job timeout before this
+slice, and two runs on identical code have differed by 12%. The kernel slice
+adds source and tests to the builds, which are the larger half of each job and
+are not parallelised by `ctest --parallel`.
 
 **Every new test and verifier must be registered in `CMakeLists.txt` and must run
 as `python3 <path>`.** `tests/tools/test_registration_test.py` enforces both, and
@@ -1734,15 +1882,34 @@ branch and pull request; a direct push to `main` is rejected.
 **The handoff's slice numbering is finer than `roadmap.md`'s.** The roadmap's
 M3.3 covers both the cycle boundary, delivered by this handoff's M3.4, and the
 consensus encoding, delivered by M3.8a and revised by M3.8b; the roadmap's M3.5
-is this handoff's C++ implementation and devnet work.
+is this handoff's M3.9a and M3.9b C++ implementation and devnet work.
 
 ## Blockers
 
-None. Every question raised on 2026-08-13 and 2026-08-14 was answered the same
-day, and `economy-transition-v3` can be specified in full.
+None. Nothing in the C++ codec slice requires a founder answer: it reproduces an
+accepted byte surface and settles no value, beneficiary, or participation rule.
 
-The three the founder decisions themselves raised are settled and recorded in
-ADR 0033:
+**Two answers M3.8b derived should be confirmed rather than assumed, and neither
+blocks the kernel.** Both are recorded in ADR 0034 with the reasoning. First,
+**a mint credits the address that signed it** rather than the seat's original
+purchase address, which is what makes adding a manager a working remedy for a
+lost key and which trades away version two's containment property that a stolen
+key could only mint to the seat's own account. Second, **a seat over the
+accumulation cap is excluded from that cycle's winner set**, so a seat that
+stopped collecting stops receiving as well; the alternative reading leaves the
+best performer eligible and strands its share as permanently unmintable. Both
+were deduced from decided principles rather than chosen, which the gate treats as
+delegated work, and both are cheap to reverse in a version four while no
+implementation depends on them.
+
+**One engineering default worth a glance:** a seat may record at most **16
+manager addresses**. It is a resource limit that makes the per-seat storage bound
+a constant rather than a statement about founders, and each addition already
+costs a fee and a fresh biometric approval.
+
+The three questions the founder decisions of 2026-08-14 themselves raised are
+settled and recorded in ADR 0033, and all three are now encoded in
+`economy-transition-v3`:
 
 1. **A capped cycle moves its whole permission**, escrow and System Creator legs
    included, exactly as a failed cycle does. One rule rather than two, and the
@@ -1783,6 +1950,34 @@ nowhere.** ADR 0033 widens M4 from a founder-seat biometric verifier to an
 ecosystem identity service serving every participant class, with a direct-mint
 incentive attached. The constitution's existing threat-model, unlinkability,
 retention, and independent-review requirements apply to the widened scope.
+
+M3.8b ran the founder-decision gate and passed it. Twenty-five decisions were
+enumerated before any was judged. Twenty are delegated: that a changed transition
+is a new version by ADR 0024, ADR 0026, and `economy-transition-v2`'s own
+versioning section; the manager rule, the optional biometric and its asymmetry,
+the cap and its reallocation path, the referral cap and its destination, and the
+HUB requirement by ADR 0033 and the constitution; that a manager may not be
+removed by the constitution's own "remains in the historical ledger forever";
+that HUB eligibility is "any participant who registers" and that its
+cryptographic construction is engineering work, both stated in the constitution;
+and the version number, labels, kind identifiers, body layouts, entry kinds,
+beneficiary numbering, result codes, cap figure, manager bound, and storage
+shapes as mechanism, encoding, and storage under `founder-constitution.md`
+lines 712-715.
+
+Three are deductions from decided principles, which the gate treats as delegated
+and expected: that a mint credits its signer, that a capped seat is not a winner,
+and that `mint_referral` gains no biometric option because the option is a
+property of a seat and a referrer need not hold one. The first two are raised
+above for confirmation because they decide who is paid.
+
+Two remain founder-reserved and neither blocks: `direct_issue_authority`, which
+keeps kind 6 refused, and **whether the chain enforces one HUB registration per
+human**. The second is new, and version three deliberately does not enforce it:
+doing so would decide what happens to a verified human who loses the key to
+their registered account, which sets what a user must own in order to keep
+participating. Not enforcing it is the smaller claim and leaves HUB exactly as
+strong as the off-chain verifier, where the seat biometric hash already stands.
 
 M3.8a ran the founder-decision gate and **it did not pass silently — it is what
 found the two blocking questions above.** Eighteen decisions were enumerated
