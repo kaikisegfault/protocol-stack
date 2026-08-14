@@ -255,6 +255,23 @@ an authorization change and therefore `economy-transition-v4`. Two questions mus
 be settled before that version can be written, and both are recorded as blocking
 it.
 
+ADR 0036 settles version four, once those two questions were answered the same
+day. It records that a HUB registration holds the person's own public key, so
+the ecosystem verifier signs registrations and nothing else — a stronger
+containment story than any earlier version, because an unavailable verifier now
+stops new people joining and stops no participant already inside; that a seat is
+owned by a person rather than an address, so losing every address does not lose
+the seat; that the constitution's 1,000-seat-per-human bound becomes enforceable
+and is therefore enforced, which version three records outright that it cannot
+do; that self-referral is now compared between people rather than between
+accounts, closing a gap two addresses could walk through; that referral earnings
+are keyed by identity, so a referrer who changes addresses keeps everything
+accrued; and that removing an address unlinks an identity claim and moves no
+value, because making a HUB signature able to move funds would be a far larger
+authority than the direction grants. It also records four review items, the
+sharpest being that adding a seat address now needs one factor where version
+three needed two.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
@@ -364,6 +381,16 @@ immutable; compatible changes require a new version.
   add a seat address — was superseded the same day by the HUB recovery direction
   ADR 0035 records, so requirement 10's C++ kernel targets a version four rather
   than this one.
+- `specifications/economy-transition-v4.md`: the same surface with HUB
+  verification as the root of identity — a registration holding the person's own
+  public key, an address set the person manages, a seat owned by a person rather
+  than an address, HUB signing as what adds a seat address, referral earnings
+  keyed by identity, and the constitution's 1,000-seat-per-human bound enforced
+  for the first time. The ecosystem verifier signs registrations and nothing
+  else. It adds two transaction kinds and two result codes, keeps the kind-1 byte
+  identity and every version-three result number, imports version three's
+  settlement unchanged, and is the contract requirement 10's C++ kernel
+  implements. One authorization predicate remains deliberately undefined.
 - `specifications/native-economy-simulation-v1.md`: versioned integer-only
   accounting, authority, event, trace, and metric contract for the independent
   M2 research simulator; it is not a consensus transition.
