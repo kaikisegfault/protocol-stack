@@ -13,8 +13,9 @@ model to it, both on 2026-08-10. M3.6c rebound the scenario suite on 2026-08-11
 and closed the dependent rebinding. M3.7a reclaimed the hosted matrix margin on
 2026-08-12 and changed no protocol behavior. M3.8a defined the consensus
 transaction and state surface on 2026-08-13, M3.8b revised it to
-`economy-transition-v3` on 2026-08-14, and M3.8c settled it as
-`economy-transition-v4` on 2026-08-15.
+`economy-transition-v3` on 2026-08-14, M3.8c settled it as
+`economy-transition-v4` on 2026-08-15, and M3.9a put that contract's codec into
+the C++20 kernel the same day.
 Requirements 3, 4, 5, 6, 7, and 12 of `first-goal.md` are satisfied;
 requirements 8 and 9 moved from specified to enforced; and requirement 14 is met
 against the v3 contract at the standard the M2 suite set.
@@ -66,6 +67,60 @@ Buying a seat requires HUB verification first and the seat is tied to that
 identity; a HUB identity's address set lives in consensus state. Requirement 10
 is now unblocked against a settled target, and nothing further is expected to
 move it.
+
+### How M3.9a was delivered
+
+Issue #150 and PR #151 delivered the version-four codec in the C++20 kernel. It
+added `include/protocol/v4/economy.hpp`, six sources under `src/v4/`, and
+`tests/kernel/economy_v4_test.cpp`, registered as `economy-transition-v4-cpp`
+beside `protocol-primitives-cpp`.
+
+**This is the first C++ in the milestone, and it is the first time requirement
+11 has anything to check.** Everything before it was specification and
+independent Python evidence; the codec is the same byte surface written a second
+time in the language consensus will run, and the test compares it against
+`test-vectors/economy-transition-v4.txt` rather than deriving a second set of
+expected values.
+
+**It is a codec alone.** Every entry point is a pure function of its arguments,
+it performs no state transition and reads no ledger, and decode failures are
+`std::nullopt` rather than exceptions — matching the version-one kernel, where
+admission judges shape and nothing else. The transitions are M3.9b and need
+block execution and a state store this does not.
+
+**Two things are checked against the accepted M1 file rather than against the
+version-four vectors.** The kind-1 identity, because if the C++ encoder does not
+emit the accepted transfer bytes the compatibility boundary is broken at its
+narrowest point. And the accounts tree, which is what keeps this file's
+restatement of the RFC 9162 construction equal to the version-one kernel's
+file-private one — that check is the reason a copy is acceptable at all, since
+the two produce the same recorded root or one of them fails.
+
+**All four hazards the M3.8c handoff predicted were covered, and two were
+demonstrated to be caught.** The bitmaps are packed most significant bit first
+and indexed by seat identifier; the cycle-assignment value carries no bitmap
+length prefixes, so a decoder must refuse a length that disagrees with its
+recorded bit count; dispatch is on the kind byte, and a same-length relabelling
+must decode as the kind its byte names and change the signing message; and the
+HUB identity record packs 32 + 8 + 4 + 4 into 48 octets with no padding.
+Mutating the bitmap packing to least-significant-first and narrowing the address
+count to sixteen bits each failed the test, at exactly the check named for them.
+
+**One build defect was found by reading rather than by a failing build.**
+`economy_v4_codec_tests` was declared and registered but absent from
+`PROTOCOL_STACK_TARGETS`, which is the list carrying `-Wall -Wextra -Wpedantic
+-Werror`, the sanitizer flags, `_GLIBCXX_ASSERTIONS`, and the libsodium link.
+It would not have linked — but the failure mode that matters is the other one: a
+target outside that list builds and passes while held to weaker rules than
+everything around it.
+
+**The codec passed on its first run, and the local check that established that
+is worth recording.** Building libsodium locally is the heavy operation
+`CLAUDE.md` refuses, so the harness supplies the two entry points the kernel
+uses and backs SHA-256 with the system OpenSSL — an existing audited
+implementation rather than a second one, in a scratch file that is never
+committed and never part of the build. That turned a ten-minute hosted iteration
+into a one-second one, and it is why three passes were enough.
 
 ### How M3.8c was delivered
 
@@ -1191,6 +1246,14 @@ slices.
   kind-1 byte identity, the shared envelope, the admission order, the genesis
   field table, the receipt layout, result codes 0 through 23, and the whole
   settlement carry over. Kind 6 is still specified and refused.
+- **The C++20 kernel implements the version-four codec**, and it is the first
+  consensus-language artifact in the milestone. `protocol::v4` encodes and
+  decodes all twelve transaction kinds, builds all eight HUB messages, derives
+  every state key and value, computes the economy tree and the version-four
+  state root, encodes genesis and derives the chain identifier, and encodes and
+  decodes the receipt. It reproduces `test-vectors/economy-transition-v4.txt`
+  and, for the kind-1 identity and the accounts tree, the accepted M1 file. It
+  runs no transition and reads no ledger.
 - The model in `simulation/economy_transition_v4/` encodes and decodes all
   twelve kinds, builds all eight HUB messages, derives every state key, computes
   the economy tree and all four versions' state roots, encodes the receipt, and
@@ -1951,44 +2014,57 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.9a: the version-four codec in the C++20 kernel**, the first
-half of `first-goal.md` requirement 10 and the whole of requirement 11 for the
-bytes it covers. Use the `change-protocol` skill. Nothing blocks it.
+Milestone slice **M3.9b: the version-four transitions in the C++20 kernel**, the
+second half of `first-goal.md` requirement 10. Use the `change-protocol` skill.
+Nothing blocks it.
 
-Take the codec before the transitions, as `roadmap.md` says. The envelope and
-its twelve bodies, the eight HUB messages, the 56-byte receipt, the state keys
-and values, the economy tree, the version-four state root, and genesis are
-deterministic byte work with a fixed target:
-`test-vectors/economy-transition-v4.txt`. The transitions — purchase,
-activation, manager addition, the protection switch, the three HUB
-transactions, the block-boundary cycle assignment, and the three mints — follow
-in M3.9b, and they need block execution and a state store that the codec does
-not.
+The codec is done and registered; what follows needs block execution and a state
+store, which is why it is a separate slice. Twelve transitions in the order the
+specification gives them, each with its ordered rejection conditions and its
+receipt: HUB registration, address add and remove, purchase, activation, the two
+node mints, the referral mint, the protection switch, manager addition, direct
+issue (refused), and the block-boundary cycle assignment the chain writes
+itself.
 
-**Reproduce the recorded vectors; do not re-derive a second set.**
-`tools/protocol-vectors/` already carries a paired `verify.cpp` and `verify.py`
-for the version-one primitives, and `tools/ledger-vectors/` the same for the
-transition; a version-four pair belongs beside them, registered as
-`economy-transition-v4-cpp`. The C++ side needs no new cryptography: the kernel
-already exposes `protocol::v1::hash(domain_label, payload)` and strict Ed25519
-verification, and `src/v1/encoding.hpp` already has the bounded big-endian
-readers. **Start with the kind-1 identity vectors.** If the C++ encoder does not
-emit the accepted M1 transfer bytes, the compatibility boundary is broken at its
-narrowest point and nothing after it is worth checking.
+**Three of them are the ones to get right first**, because they carry the
+founder-directed rules the whole milestone exists for: the cycle assignment,
+because a capped cycle is a failed cycle and the winner set excludes both;
+`mint_node`, because its walk is `(mark, min(last, mark + 30)]` and the bound is
+exact rather than conservative; and `purchase_seat`, because it is where the
+per-human seat bound and the HUB requirement are enforced.
 
-**Four parts of the byte surface are the ones a C++ implementation is most
-likely to get wrong, and each has a vector waiting.** The two bitmaps are
-indexed by seat ID with the most significant bit first, so packing
-least-significant-first passes every length check and fails
-`cycle.assignment_value_hex`. The cycle assignment value carries no bitmap
-length prefixes — both widths follow from `bitmap_bits` — so a decoder expecting
-a prefixed form misreads every record. Two pairs of kinds share a body length,
-so a decoder dispatching on length rather than on the kind byte executes a
-protected mint as an activation and an address removal as an addition;
-`admission.relabelled_seat_kind_is_read_as` and
-`admission.relabelled_address_kind_is_read_as` catch both. And the HUB identity
-record packs a 32-byte key, a `u64`, and two `u32` counts into 48 bytes with no
-padding, which a struct-copying implementation will get wrong on the first try.
+**The economy state needs a store before any of it runs.** Version four's state
+is version one's plus one ordered map from canonical byte keys to canonical byte
+values, and `src/storage/` already holds a SQLite ledger for the version-one
+half. Extending it is the first task of the slice, not an afterthought: every
+transition below reads and writes that map, and the state root is computed over
+it.
+
+**Reuse the codec rather than re-encoding.** `protocol::v4` already produces
+every key, value, message, receipt, and root the transitions need, and it is
+checked against the recorded vectors. A transition that builds its own bytes
+would be a second encoder with nothing keeping the two equal.
+
+**The cross-language evidence for the transitions has no vector file yet.**
+`test-vectors/economy-transition-v4.txt` records the codec's bytes and the
+settlement arithmetic, not a transition trace, so M3.9b must either extend the
+evidence or state plainly what it does not check. That decision belongs at the
+start of the slice rather than at its end.
+
+**The local C++ check that made M3.9a cheap is worth reusing.** Building
+libsodium locally is the heavy operation `CLAUDE.md` refuses, so a scratch
+harness supplies the two entry points the kernel uses and backs SHA-256 with the
+system OpenSSL — an existing audited implementation rather than a second one, in
+a file that is never committed and never part of the build. With it, the whole
+codec test compiles and runs in about a second under both compilers with the
+project's exact flags and under address and undefined-behaviour sanitizers,
+which turned a ten-minute hosted iteration into a one-second one.
+
+**Check that a new target is in `PROTOCOL_STACK_TARGETS`.** That list is what
+carries `-Wall -Wextra -Wpedantic -Werror`, the sanitizer flags,
+`_GLIBCXX_ASSERTIONS`, and the libsodium link. M3.9a declared a target, added
+its `add_test`, and left it off that list; the registration guard does not check
+it, because it checks that a test is *run* rather than how it is *built*.
 
 **Keep every accepted artifact in place and passing.**
 `simulation/founder_economy/`, `simulation/founder_economy_v2/`,
