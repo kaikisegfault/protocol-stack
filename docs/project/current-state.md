@@ -2226,8 +2226,49 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-**Ask the owner the one question that blocks the next slice, then specify
-`economy-transition-v6`.** Use the `change-protocol` skill. Do not write C++.
+Milestone slice **M3.10a: specify `economy-transition-v6`**, the contract that
+encodes the account architecture the four ADRs of 2026-08-15 settled. Use the
+`change-protocol` skill. **Nothing blocks it**, and no founder question is
+outstanding. Do not write C++ in this slice.
+
+**Deliver it the way every transition contract since M3.8a has been delivered**:
+the specification and its ADR, then a sibling model, then a recorded vector file
+and a verifier, then tests. Version five's evidence is what makes the successor's
+carryover check possible, and `docs/engineering/verification.md` now carries the
+three vector-file rules M3.9c produced.
+
+**What version six must define**, gathered from the four ADRs so the slice does
+not have to re-read them:
+
+1. **Identity as the account root.** Registration is mandatory and creates the
+   identity; a person holds as many keyless asset escrows as they want; signers
+   are assigned per escrow and are revocable; the identity is admin over both.
+2. **A keyless escrow identifier.** This is the one place the direction reaches
+   the M1 compatibility boundary. `protocol-primitives-v1` derives an account
+   identifier as `H(D("protocol-stack:v1:account") || 0x01 || public_key)`, and
+   four contract versions preserved that byte-for-byte along with the kind-1
+   transfer. An escrow has no key, so its identifier must come from something
+   else — the identity and an index is the obvious candidate. **Specify it
+   deliberately; do not discover it.**
+3. **An ordering rule for two signers on one escrow**, against version one's
+   single nonce sequence per account.
+4. **The entry airdrop**, issuing 171,000,000 atomic at first verification, with
+   the credit applied before any fee is assessed so registration is
+   self-funding, and paid once per identity.
+5. **The per-escrow and per-operation security policy** — biometric confirmation
+   on by default, with a minimum-amount threshold, time windows, or off
+   entirely, as per-identity state rather than a per-seat flag.
+6. **A seat with no address.** Kind 9 and the seat manager entries go; the seat
+   record names its owning identity, and a mint names a destination escrow the
+   chain checks belongs to the minting identity. ADR 0041 records that last one
+   as a derivation, so state it as such and let the vectors carry it.
+
+**Two accepted things must be re-checked rather than assumed.** Requirement 12's
+storage bounds move from per-seat manager entries to per-identity escrow and
+signer entries, so the figures are per-person now. And the settlement — the cap,
+the assignment record, the mint walk — has not moved since version three and
+should still be imported rather than copied, with the same third-source check
+against `test-vectors/economy-transition-v3.txt`.
 
 **The recorded next action changed at the end of the M3.9c session, and the
 reason is founder direction rather than a defect.** M3.9c closed by asking about
@@ -2270,9 +2311,23 @@ left for an add-only rule to govern. Seat addresses, the 16-manager limit, and
 the mint-to-the-signing-address rule are superseded together with the concept
 they governed. One uniform model covers every participant.
 
-**Nothing founder-reserved blocks the next slice.** What remains open is
-recorded in the constitution and is small: how a brand-new person pays for their
-genuine first action, before any value exists.
+**Every founder-reserved question this milestone raised is now closed.** The
+last was answered the same day, in
+[ADR 0042](../decisions/0042-the-hub-entry-airdrop-and-the-verified-user-rate.md).**
+A brand-new person's first action is funded by the protocol from an allocation
+they are already entitled to: on completing HUB verification for the first time
+the chain issues their first day's `hub_verified_user_incentives` portion as an
+entry airdrop, and every later day continues as an ordinary mint permission
+under the thirty-window cap. **Nothing founder-reserved blocks the next slice.**
+
+**The rate is derived, not chosen, and that is the strongest thing about it.**
+The owner supplied the population and the period — the first 1,000,000 verified
+users, daily, for two years — and those with the founder-directed cap divide
+exactly: 125,001,000,000,000,000 / 1,000,000 / 731 = 171,000,000 atomic, or 1.71
+native units per user per day, with no remainder. 730 cycles leaves 420,000,000,
+so the period is 731, the same as a seat's issuance period. Three supplied
+figures reproducing the accepted cap to the atomic unit is what makes this the
+intended reading rather than a plausible one.
 
 **What version six inherits, and why the pivot is cheaper than it looks.** The
 dilemma version five had to solve — who may link an address to an identity —
@@ -2353,14 +2408,16 @@ branch and pull request.
 
 ## Blockers
 
-**One, and it is narrow: how a brand-new person pays for their genuine first
-action**, before any value exists. Recovery no longer has this problem, because
-regaining an identity regains holding addresses that already hold value. Either
-registration is fee-exempt with a non-monetary limit, or it is performed by the
-company-hosted HUB service. It is the only residue of the original fee question.
+**None.** Every founder-reserved question this milestone raised is answered.
+The three that opened on 2026-08-15 all closed the same day: the recovery fee
+question by ADR 0040, the seat-permanence conflict by ADR 0041, and entry
+funding plus the verified-user rate by ADR 0042.
 
-The seat-permanence conflict ADR 0040 raised was resolved the same day by
-ADR 0041 and no longer blocks anything.
+What remains open in the constitution is not this milestone's: eligibility and
+anti-abuse for the liquidity-mining, impermanent-loss, and mystery-box channels,
+legacy inactivity bounds, stablecoin allowlist governance, the AI frameworks,
+and verifier key rotation. Kind 6 stays specified and refused because of the
+first of those, which costs one transaction kind rather than a milestone.
 
 Superseded, and kept for the record: **how a person who holds nothing pays for
 their first transaction.** The mandatory-verification direction of 2026-08-15 says

@@ -200,9 +200,31 @@ beneficiaries mint on their own schedule.
 
 The two subtotals add exactly to the maximum supply. The channel caps are
 founder-directed. Eligibility, proof, anti-abuse, timing, and per-participant
-limits for each direct-mint channel other than the referral channel remain to
-be specified and stress-tested; the referral channel's eligibility is the
-recorded referrer relationship itself, which the ledger already holds.
+limits for the liquidity-mining, impermanent-loss, and mystery-box channels
+remain to be specified and stress-tested; the referral channel's eligibility is
+the recorded referrer relationship itself, which the ledger already holds.
+
+**The HUB-verified-user channel is fully determined as of 2026-08-15.** Its
+eligibility was decided on 2026-08-14 — being HUB verified — and the owner
+supplied its population and period: the **first 1,000,000 verified users**,
+**daily**, for **two years**. Those three figures and the founder-directed cap
+determine the rate exactly, with no remainder:
+
+```text
+125,001,000,000,000,000 atomic / 1,000,000 users / 731 cycles
+  = 171,000,000 atomic = 1.71 native units per user per day
+```
+
+**The first day is paid as an entry airdrop rather than as a mint permission.**
+On completing HUB verification for the first time, the chain issues that
+person's first day's portion immediately, so a brand-new account can transact at
+all; from the second day it continues as an ordinary daily mint permission under
+the same thirty-window accumulation cap as every other permission. After the
+first million users the entry problem does not recur, because bridges, swaps,
+and direct purchases exist by then.
+[ADR 0042](../decisions/0042-the-hub-entry-airdrop-and-the-verified-user-rate.md)
+records the direction, the derivation, and why a fully pre-minted pool was
+rejected: it would be a genesis allocation under another name.
 
 The Founder referral benefit moved from the Founder Node channels to the
 direct-mint channels on 2026-08-07, and doubled. Both changes are explained
@@ -785,12 +807,6 @@ that technical production readiness follows automatically.
 The owner has intentionally deferred these value-bearing details until their
 milestone supplies enough evidence and context:
 
-- **how a brand-new person pays for their very first action.** Recovery no
-  longer has this problem, because regaining an identity regains holding
-  addresses that already hold value. Genuine first entry still does:
-  registration and the first holding address come before any value exists.
-  Either registration is fee-exempt with a non-monetary limit, or it is
-  performed by the company-hosted HUB service;
 - **how far mandatory verification reaches into a native transfer** — whether an
   unverified address may still receive native units, or whether both ends must
   be verified, which decides whether the kind-1 byte identity carried unchanged
@@ -802,8 +818,7 @@ milestone supplies enough evidence and context:
   nor remove the protection first. A user-configurable global policy must either
   preserve that asymmetry or knowingly drop it;
 - eligibility and anti-abuse mechanics for the liquidity-mining,
-  impermanent-loss, and mystery-box direct-mint channels, and the *rate* of the
-  HUB-verified-user channel, whose eligibility was decided on 2026-08-14;
+  impermanent-loss, and mystery-box direct-mint channels;
 - whether buying a Founder Seat requires HUB verification first, so that the
   seat is tied to a HUB identity the chain can check a later address addition
   against;
@@ -840,6 +855,14 @@ failed, so the day's generation goes to the best performers and the capped seat
 is not one of them; sixteen manager addresses per seat; and HUB verification as
 a recovery layer that survives the loss of any address, with HUB signing as what
 adds a Founder Seat address.
+
+Resolved on 2026-08-15, and recorded in
+[ADR 0042](../decisions/0042-the-hub-entry-airdrop-and-the-verified-user-rate.md):
+the HUB-verified-user channel pays the first 1,000,000 verified users 1.71
+native units a day for 731 days, the first day arriving as an entry airdrop at
+registration so a brand-new account can transact, and every later day as an
+ordinary mint permission. That closes the last founder-reserved question of the
+milestone.
 
 Resolved on 2026-08-15, and recorded in
 [ADR 0041](../decisions/0041-the-seat-is-tied-to-the-identity-not-an-address.md):
