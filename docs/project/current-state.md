@@ -15,9 +15,9 @@ and closed the dependent rebinding. M3.7a reclaimed the hosted matrix margin on
 transaction and state surface on 2026-08-13, M3.8b revised it to
 `economy-transition-v3` on 2026-08-14, M3.8c settled it as
 `economy-transition-v4` on 2026-08-15, M3.9a put that contract's codec into the
-C++20 kernel the same day, and M3.9b accepted `economy-transition-v5` after
+C++20 kernel the same day, M3.9b accepted `economy-transition-v5` after
 implementing version four exposed a transition with no conforming
-implementation.
+implementation, and M3.9c gave version five its model, vectors, and verifier.
 Requirements 3, 4, 5, 6, 7, and 12 of `first-goal.md` are satisfied;
 requirements 8 and 9 moved from specified to enforced; and requirement 14 is met
 against the v3 contract at the standard the M2 suite set.
@@ -70,6 +70,81 @@ identity; a HUB identity's address set lives in consensus state. Requirement 10
 is now unblocked against a settled target, and nothing further is expected to
 move it.
 
+### How M3.9c was delivered
+
+Issue #157 and PR #158 delivered version five's evidence and ADR 0038. It added
+`simulation/economy_transition_v5/`, 548 normative vectors, a verifier in
+`tools/economy-transition-v5-vectors/`, and four test modules with 64 tests.
+Version five's status line now says its model and vectors are recorded and its
+C++ implementation is not.
+
+**Almost nothing is duplicated, and that is the decision the slice turned on.**
+Version five changes one field's meaning, eight labels, and four version fields.
+The model imports version four's envelope, key space, registry, settlement,
+genesis table, and receipt layout; the independent derivation loads version
+four's accepted `expected.py` by path and overrides only what moved. Copying
+twelve kind identifiers, twelve entry kinds, and twenty-six result codes to
+change eight strings would be a second implementation of an accepted contract
+with nothing keeping the two equal — the defect ADR 0026 and ADR 0029 exist to
+avoid, and the condition ADR 0029 names for a sibling, a revised transition, is
+not met by a relabelling.
+
+**The claim that needed a new kind of evidence is the negative one.** "Everything
+else in version four carries over unchanged" cannot be demonstrated by
+deriving anything, because a width that moved is simply derived and recorded at
+its new value and passes. So the whole vector file is read a second time
+against `test-vectors/economy-transition-v4.txt`: every key that file records is
+classified as carried, renamed, or revised, the classification must be total, a
+carried key must hold version four's exact value, and a revised key must not.
+**409 carried, 30 revised, 2 renamed**, and the file records that no envelope,
+admission, code-space, state-key, storage, or settlement vector is among the
+revised. It fails closed in both directions, and both were demonstrated by
+mutation: an undeclared change lands in the carried set and disagrees, and a key
+wrongly declared revised lands in the revised set and agrees.
+
+**Kind 11 is now implementable, and the model makes that structural rather than
+asserted.** `address_add_message_for` takes one decoded transaction and derives
+every field from it — the identity from the body, the account from the sender —
+so there is no argument through which a caller can supply an identity the
+transaction does not carry. `apply_add_address` has no account parameter at all,
+which is what makes squatting unrepresentable rather than merely refused.
+
+**The squatting comparison runs both readings against one registry.** Under
+version four's, an attacker links a stranger's account to their own identity and
+that person's registration is `REPLAY` forever; under version five's, the same
+attacker's transaction links only the attacker's own account and the victim
+registers successfully. The superseded reading is kept in the model for exactly
+this, labelled as not part of the contract.
+
+**Version five is the first transition contract whose evidence needs the
+accepted version-one account derivation**, `H(D("protocol-stack:v1:account") ||
+0x01 || public_key)`, because it is the first in which a signed message is built
+from the sender rather than from an argument. Version four's fixture could
+declare account identifiers as constants precisely because nothing derived them.
+**The missing derivation and the defect are the same fact seen from two sides**,
+and that is worth carrying into M3.9e: a message assembled from arguments can
+name something the transaction does not carry, and one assembled from the
+transaction cannot.
+
+**One table is new and is not a relabelling.** `MESSAGE_IDENTITY_SOURCE` records
+where a chain obtains the identity each of the eight HUB messages binds — the
+body, the sender's address entry, the named account's address entry, or the seat
+entry — and records that version four's address add had none. ADR 0037's second
+review claim was that no comparable gap remains in the other eleven kinds,
+checked by reading; this is that reading written where the next reader can check
+it in one place. It is still asserted by the specification rather than executed.
+
+**The genesis fixture holds every field fixed on purpose.** The encoded object
+differs from version four's in the schema-version field alone — one octet — and
+the chain identifier derived from it differs entirely, which makes "the same
+fields under a different label are a different chain" a demonstration rather
+than a sentence.
+
+**Nothing accepted was edited.** `simulation/economy_transition/`,
+`simulation/economy_transition_v3/`, `simulation/economy_transition_v4/`, their
+verifiers, and the version-four C++ codec are untouched, and all four earlier
+vector files verify at their recorded counts: 238, 579, 441, and now 548.
+
 ### How M3.9b was delivered
 
 Issue #154 and PR #155 delivered `economy-transition-v5` and ADR 0037. It added
@@ -115,13 +190,12 @@ after, by its author, to save a version is a worse precedent than the version
 costs. No recorded byte changes as a consequence — version four's vectors, model,
 and C++ codec remain in place, passing, and unedited.
 
-**Version five is accepted without its evidence, which is a departure and is
+**Version five was accepted without its evidence, which was a departure and was
 stated as one.** Every earlier transition contract arrived with its model and its
-vectors in one slice. This one does not, because it exists to correct the
-contract the repository currently calls newest, and recording that correction was
-more urgent than recording it with its evidence. Until the next slice, version
-five is a specification whose claims rest on reading rather than on a passing
-check.
+vectors in one slice. This one did not, because it exists to correct the
+contract the repository then called newest, and recording that correction was
+more urgent than recording it with its evidence. M3.9c closed that gap the same
+day.
 
 ### How M3.9a was delivered
 
@@ -1294,8 +1368,9 @@ slices.
   kind 11's 32-byte field is the HUB identity hash and the account being linked
   is the sender — because version four's kind 11 names an identity it does not
   carry and therefore cannot be implemented. Everything else in version four is
-  incorporated by reference. **It has no model, no vectors, and no
-  implementation**, so its claims rest on reading rather than on a passing check.
+  incorporated by reference. It has a model, 548 vectors, and a verifier;
+  **what it does not yet have is the C++ implementation**, which still targets
+  version four.
 - `economy-transition-v4` is accepted, fully evidenced, and superseded in one
   place. HUB verification is the root of identity: a
   registration records the person's own public key and the ecosystem verifier
@@ -1414,10 +1489,11 @@ behavior.
   classification passed, the preset matrix was skipped as designed, and the
   aggregate required check passed. Post-merge run 31872875912 on `fa1907f`
   passed the same path.
-- **Version five has no evidence behind it, by decision rather than by
-  oversight.** No model, no vectors, no verifier, no implementation. Its status
-  line, its evidence section, the documentation index, and this handoff all say
-  so, and M3.9c is the recorded next action that repairs it.
+- Issue #157 and PR #158 are the M3.9c delivery. It adds the version-five model,
+  548 vectors, a verifier, four test modules, and ADR 0038, and edits no accepted
+  artifact.
+- **Version five's evidence gap is closed and the implementation gap is not.**
+  The C++ codec in `src/v4/` implements version four; M3.9d moves it.
 - Issue #150 and PR #151 are the M3.9a delivery, merged by rebase. The slice is
   commits `f457ca2` through `ab1e036` on `main`. PR Actions run 31849896862 on
   the final head `2c8d0fa` passed the complete hosted matrix — scope
@@ -2095,31 +2171,41 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.9c: the version-five model, vectors, and verifier**, in
-Python. Use the `change-protocol` skill. Nothing blocks it.
+Milestone slice **M3.9d: the C++ codec updated to version five**. Use the
+`change-protocol` skill. Nothing blocks it, and the vectors it must reproduce
+now exist.
 
-`economy-transition-v5` is accepted with no evidence behind it, and that is the
-first thing to repair. The slice is small because version five is version four
-with one field's meaning changed: a sibling package that imports the
-version-four codec for everything unchanged — exactly as version four imports
-version three's settlement — and overrides only the version labels and schema
-versions, the eight HUB message labels, and kind 11's decode. Then a recorded
-vector file, a verifier, and tests.
+The change is a set of labels and one field's meaning in `src/v4/` — rename to
+`src/v5/` and `protocol::v5`, because the namespace names the contract it
+implements. The envelope, the messages, the receipt, the state keys, the trees,
+the roots, and genesis are unchanged in shape. `tests/kernel/economy_v4_test.cpp`
+becomes the version-five test and reads
+`test-vectors/economy-transition-v5.txt`, registered as
+`economy-transition-v5-cpp`. The local harness described below makes the whole
+thing a one-second iteration.
 
-**Two checks are what the slice is for.** That kind 11's corrected body is 96
-octets with its 32-byte field read as an identity, and that the address-add
-message is built from the identity and the sender. And that the version-four and
-version-five constructions differ everywhere a chain is separated from another —
-chain ID, state root, economy tree — over identical inputs, with each
-version-four construction first required to reproduce its own accepted vectors so
-the comparison is against the real one.
+**Decide whether version four's C++ codec is retained or replaced, and say
+which.** The Python side kept version four in place because its 441 vectors are
+the record of what the hosted matrix verified. The C++ side has a weaker case
+for a copy: it is one implementation of a byte surface, and keeping two would
+double the build with nothing but the labels between them. Replacing it is the
+recommendation; whichever is chosen, record it, because the codec is the only
+place in the repository where a superseded contract would still be compiled.
 
-**Then M3.9d: the C++ codec updated to version five**, which is a set of labels
-and one field's meaning in `src/v4/` — rename to `src/v5/` and `protocol::v5`,
-because the namespace names the contract it implements. The envelope, the
-messages, the receipt, the state keys, the trees, the roots, and genesis are
-unchanged in shape, and the local harness described below makes the whole thing
-a one-second iteration.
+**Three things in the C++ move and are easy to miss.** The eight HUB message
+labels, which are string literals rather than a table. Kind 11's decode, which
+must name the 32-byte field an identity — and the C++ side has no sender
+derivation at all today, so if the kernel is to build the address-add message it
+needs `H(D("protocol-stack:v1:account") || 0x01 || pk)`, which
+`src/v1/admission.cpp` already implements and which should be reused rather than
+written twice. And the state-root version field, which is a number rather than a
+label and so will not show up in a search for `v4`.
+
+**Check that any new target is in `PROTOCOL_STACK_TARGETS`.** That list carries
+`-Wall -Wextra -Wpedantic -Werror`, the sanitizer flags, `_GLIBCXX_ASSERTIONS`,
+and the libsodium link. M3.9a declared a target, added its `add_test`, and left
+it off that list; the registration guard does not catch it, because it checks
+that a test is *run* rather than how it is *built*.
 
 **Then M3.9e: the execution model and its recorded transition trace**, which is
 issue #153 and is what this defect interrupted. It is now unblocked against a
@@ -2136,18 +2222,15 @@ never committed and never part of the build. With it the whole codec test
 compiles and runs in about a second under both compilers with the project's exact
 flags and under address and undefined-behaviour sanitizers.
 
-**Check that a new target is in `PROTOCOL_STACK_TARGETS`.** That list carries
-`-Wall -Wextra -Wpedantic -Werror`, the sanitizer flags, `_GLIBCXX_ASSERTIONS`,
-and the libsodium link. M3.9a declared a target, added its `add_test`, and left
-it off that list; the registration guard does not catch it, because it checks
-that a test is *run* rather than how it is *built*.
-
 **Keep every accepted artifact in place and passing.**
 `simulation/founder_economy/`, `simulation/founder_economy_v2/`,
 `simulation/founder_economy_v3/`, `simulation/cycle_boundary/`,
 `simulation/uptime_measurement/`, `simulation/economy_transition/`,
 `simulation/economy_transition_v3/`, and `simulation/economy_transition_v4/`
-stay untouched. `simulation/escrow_payout/` is shared by three bindings and
+stay untouched. **`simulation/economy_transition_v4/` is now load-bearing in a
+second way**: version five imports it, and version five's carryover check reads
+`test-vectors/economy-transition-v4.txt` directly, so editing either would move
+version five's evidence rather than only version four's. `simulation/escrow_payout/` is shared by three bindings and
 should gain no fourth without a new contract version, and
 `simulation/scenarios/` holds three population generators that must stay
 independent for the same reason.
@@ -2165,10 +2248,10 @@ remaining slice needs founder input: each reproduces an accepted byte surface or
 executes accepted rules, and none settles a value, beneficiary, or participation
 rule.
 
-**One accepted contract is knowingly ahead of its evidence, and that is the
-nearest thing to a debt.** `economy-transition-v5` has no model, no vectors, and
-no implementation, so its claims rest on reading. M3.9c repairs it and is the
-recorded next action.
+**The evidence debt M3.9b took on is repaid.** `economy-transition-v5` has a
+model, 548 vectors, and a verifier as of M3.9c. What remains is that the C++
+codec still implements version four, which is the recorded next action rather
+than a debt: it is the ordinary order the milestone has followed since M3.8a.
 
 **One accepted contract cannot be implemented and stays in the tree.**
 `economy-transition-v4`'s kind 11 has no conforming implementation; version five
@@ -2176,6 +2259,26 @@ corrects it and version four is retained unedited because its 441 vectors are
 the record of what the hosted matrix verified on 2026-08-15. Its specification
 and the documentation index both say so, so a reader cannot pick it up as the
 newest contract by accident.
+
+M3.9c ran the founder-decision gate and passed it. Every decision the slice had
+to settle was already decided or delegated: the corrected field meaning, the
+sender as the linked account, the rejection order, and the eight labels by the
+accepted `economy-transition-v5` and ADR 0037; the package layout by ADR 0026
+and ADR 0029; and the evidence method, the fixture, the vector names, and the
+test registration as engineering under `founder-constitution.md` lines 772-775.
+Nothing in it set or changed supply, allocation, beneficiaries, ownership,
+creator hierarchy, commercial routing, AI authority, bridge scope, content
+permanence, or what an end user must do, own, run, or receive.
+
+**One consequence of the accepted contract is worth the owner's eye even though
+it blocks nothing, and the gate flagged it rather than passing over it.**
+Requiring the sender to be the address being added means a person recovering
+from total address loss must first fund a fresh account themselves, and no third
+party can perform the addition on their behalf. ADR 0037 records that trade and
+lists it for review; it is stated here because it is the kind of thing the
+standing invitation of 2026-08-13 covers — a rule about what an end user must do
+to be paid — and because the moment to revisit it is before M3.9d rewrites the
+C++ codec against it, not after.
 
 M3.9b ran the founder-decision gate and passed it. Every decision the slice had
 to settle was mechanism: which of two repairs to make, whether to version or

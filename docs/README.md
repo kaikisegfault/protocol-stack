@@ -287,6 +287,22 @@ is a new version rather than a repair in place, because version four's own rule
 forbids reinterpreting a version-four field and overriding that rule the day
 after writing it is a worse precedent than the version costs.
 
+ADR 0038 records how version five is evidenced, and the one thing about it that
+is genuinely new. Version five changes one field's meaning, eight labels, and
+four version fields, so its central claim is negative — everything else carries
+over unchanged — and no derivation can demonstrate that a width did *not* move,
+because a width that moved is simply derived and recorded at its new value. So
+the model imports version four rather than restating it, the independent
+derivation loads version four's accepted one rather than transcribing the same
+documents a second time, and the whole vector file is read a second time against
+`test-vectors/economy-transition-v4.txt`: every key that file records is
+classified as carried, renamed, or revised, the classification must be total, a
+carried key must hold version four's exact value, and a revised key must not.
+It also records that version five is the first transition contract whose
+evidence needs the accepted version-one account derivation, because it is the
+first in which a signed message is built from the sender — the missing
+derivation and the defect being the same fact seen from two sides.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.

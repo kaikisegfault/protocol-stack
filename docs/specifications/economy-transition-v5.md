@@ -1,7 +1,7 @@
 # Economy transition v5
 
-Status: Accepted M3 consensus transition contract; model, vectors, and
-implementation not yet recorded
+Status: Accepted M3 consensus transition contract; model and vectors recorded,
+C++ implementation not yet updated
 
 This document defines the version-five Founder Economy consensus transition. It
 is [`economy-transition-v4`](economy-transition-v4.md) with **one field's
@@ -175,8 +175,11 @@ pool's payout; and that any of it executes.
 
 **One further limit is new and belongs to this version.** Version five makes
 kind 11 implementable; it does not demonstrate that the recovery path works end
-to end, because nothing executes any transition yet. That demonstration is the
-execution model and the transition trace, and it is the slice this defect
+to end, because nothing executes any transition yet. The model runs the
+registry operation and the vectors record its outcome, which establishes that
+the identity resolves and the account links — and not that a block containing
+the transaction executes, charges a fee, and commits a root. That demonstration
+is the execution model and the transition trace, and it is the slice this defect
 interrupted.
 
 ## Required vectors and evidence
@@ -199,14 +202,24 @@ as in every version since two, and the settlement is checked against
 `test-vectors/economy-transition-v3.txt`, which version four already established
 as the file that keeps an imported settlement honest.
 
-**None of that is recorded yet, and this document is accepted without it.**
-Every earlier transition contract arrived with its model and its vectors in one
-slice; this one does not, because it exists to correct a defect in the contract
-the repository currently calls newest, and recording that correction is more
-urgent than recording it with its evidence. The model, the vector file, its
-verifier, and the C++ codec update are the next slice, and until they exist
-version five is a specification whose claims rest on reading rather than on a
-passing check.
+**All of it is now recorded.** `simulation/economy_transition_v5/` is the model,
+`test-vectors/economy-transition-v5.txt` holds 548 normative vectors, and
+`tools/economy-transition-v5-vectors/verify.py` derives every one of them twice.
+[ADR 0038](../decisions/0038-version-five-evidence-by-carryover.md) records how,
+and why the model and the derivation import version four rather than restating
+it.
 
-Acceptance of those artifacts requires full GitHub-hosted verification on the
-exact commit that adds them.
+**The claim this document makes that needed a new kind of evidence is the
+negative one.** No derivation demonstrates that a width did *not* move, because
+a width that moved is simply derived and recorded at its new value. So the whole
+file is read a second time against `test-vectors/economy-transition-v4.txt`:
+every key version four records is classified as carried, renamed, or revised,
+the classification must be total, a carried key must hold version four's exact
+value, and a revised key must not. The result is 409 carried, 30 revised, and 2
+renamed, with no envelope, admission, code-space, state-key, storage, or
+settlement vector among the revised.
+
+The C++ codec in `src/v4/` still implements version four and is the next slice.
+
+Acceptance of the recorded artifacts required full GitHub-hosted verification on
+the exact commit that added them.
