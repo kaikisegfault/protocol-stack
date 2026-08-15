@@ -18,6 +18,17 @@ transaction and state surface on 2026-08-13, M3.8b revised it to
 C++20 kernel the same day, M3.9b accepted `economy-transition-v5` after
 implementing version four exposed a transition with no conforming
 implementation, and M3.9c gave version five its model, vectors, and verifier.
+
+**The owner directed a pivot at the close of M3.9c on 2026-08-15, and it changes
+the next action.** HUB verification becomes mandatory for anyone who registers
+and for interacting with any part of the ecosystem, an address becomes an
+operational tool rather than an identity root, and biometric confirmation
+becomes the default on every financial transaction and every mint.
+[ADR 0039](../decisions/0039-hub-verification-is-mandatory-for-everyone.md)
+records it and the constitution now fixes it. The C++ codec slice is withdrawn;
+the next slice is the contract that encodes the direction, and one
+founder-reserved question blocks it.
+
 Requirements 3, 4, 5, 6, 7, and 12 of `first-goal.md` are satisfied;
 requirements 8 and 9 moved from specified to enforced; and requirement 14 is met
 against the v3 contract at the standard the M2 suite set.
@@ -2215,26 +2226,67 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.9d: the C++ codec updated to version five**. Use the
-`change-protocol` skill. Nothing blocks it, and the vectors it must reproduce
-now exist.
+**Ask the owner the one question that blocks the next slice, then specify
+`economy-transition-v6`.** Use the `change-protocol` skill. Do not write C++.
 
-The change is a set of labels and one field's meaning in `src/v4/` — rename to
-`src/v5/` and `protocol::v5`, because the namespace names the contract it
-implements. The envelope, the messages, the receipt, the state keys, the trees,
-the roots, and genesis are unchanged in shape. `tests/kernel/economy_v4_test.cpp`
-becomes the version-five test and reads
-`test-vectors/economy-transition-v5.txt`, registered as
-`economy-transition-v5-cpp`. The local harness described below makes the whole
-thing a one-second iteration.
+**The recorded next action changed at the end of the M3.9c session, and the
+reason is founder direction rather than a defect.** M3.9c closed by asking about
+the recovery path version five encodes. The owner rejected the premise of the
+question and directed a pivot, recorded in
+[ADR 0039](../decisions/0039-hub-verification-is-mandatory-for-everyone.md) and
+in the constitution: **HUB verification is mandatory for anyone who registers
+and for interacting with any part of the ecosystem**, an address is an
+operational tool rather than an identity root, recovery is direct between the
+owner and their recorded biometric data with no third party at any step, and
+biometric confirmation is on by default for every financial transaction and
+every mint with each person free to set a minimum amount, set time windows, or
+turn it off entirely.
 
-**Decide whether version four's C++ codec is retained or replaced, and say
-which.** The Python side kept version four in place because its 441 vectors are
-the record of what the hosted matrix verified. The C++ side has a weaker case
-for a copy: it is one implementation of a byte surface, and keeping two would
-double the build with nothing but the labels between them. Replacing it is the
-recommendation; whichever is chosen, record it, because the codec is the only
-place in the repository where a superseded contract would still be compiled.
+**M3.9d — the C++ codec updated to version five — is therefore withdrawn as the
+next action.** It is not wrong work; it is work that would have to be done twice,
+which is the precedent M3.8a set and M3.9b repeated: a kernel written against a
+contract already known to be superseded is wasted. The kernel codec stays at
+version four until a contract exists that the direction does not supersede.
+
+**One founder question blocks the specification and must be asked first.** How a
+person who holds nothing pays for their first transaction. The direction says
+registration and recovery involve no helper and no third party; every
+transaction costs a fee paid by a sender; so either identity transactions are
+fee-exempt, or the fee is drawn from value the identity already holds on chain,
+or registration and recovery are performed by the company-hosted HUB service
+rather than by the person's own wallet. Each changes what a participant must do
+and own, so none is engineering's to pick. Two further questions are recorded in
+the constitution and are answerable alongside it: how far the requirement
+reaches into a native transfer, and what turning the confirmation off entirely
+means for a Founder Seat's existing protection asymmetry.
+
+**What version six inherits, and why the pivot is cheaper than it looks.** The
+dilemma version five had to solve — who may link an address to an identity —
+exists only because an address can exist, transact, and hold value with no
+identity behind it. When registration is HUB-first for everyone, an address is
+created under an identity that already exists, so kind 11 in its version-five
+form has nothing left to solve. The envelope, the key space, the settlement, the
+receipt, and the tree constructions are unaffected by any of this, and version
+five's model and vectors are what make a successor's carryover check possible.
+
+**When the C++ codec does come back, three things in it move and are easy to
+miss.** The eight HUB message labels, which are string literals rather than a
+table. Kind 11's decode, and the sender derivation the kernel does not have
+today — `H(D("protocol-stack:v1:account") || 0x01 || pk)` is implemented in
+`src/v1/admission.cpp` but is file-private there, so a restatement must be
+checked against the identifier `test-vectors/protocol-primitives-v1.txt`
+records, exactly as M3.9a did for the accounts tree. And the state-root version
+field, which is a number rather than a label and so will not appear in a search
+for `v4`.
+
+**Whenever it comes back, decide whether version four's C++ codec is retained or
+replaced, and say which.** The Python side kept version four in place because
+its 441 vectors are the record of what the hosted matrix verified. The C++ side
+has a weaker case for a copy: it is one implementation of a byte surface, and
+keeping two would double the build with nothing but labels between them.
+Replacing it is the recommendation; whichever is chosen, record it, because the
+codec is the only place in the repository where a superseded contract would
+still be compiled.
 
 **Three things in the C++ move and are easy to miss.** The eight HUB message
 labels, which are string literals rather than a table. Kind 11's decode, which
@@ -2287,15 +2339,31 @@ branch and pull request.
 
 ## Blockers
 
-None. Requirement 10's target is settled at `economy-transition-v5`, and no
-remaining slice needs founder input: each reproduces an accepted byte surface or
-executes accepted rules, and none settles a value, beneficiary, or participation
-rule.
+**One, and it is founder-reserved: how a person who holds nothing pays for their
+first transaction.** The mandatory-verification direction of 2026-08-15 says
+registration and recovery involve no helper and no third party, and every
+transaction costs a fee paid by a sender. The three candidate answers —
+fee-exempt identity transactions, a fee drawn from value the identity already
+holds on chain, or registration performed by the company-hosted HUB service —
+each change what a participant must do and own, so none may be invented. **It
+blocks `economy-transition-v6`, which is the next slice.** Two further questions
+in the constitution are answerable alongside it and block nothing on their own:
+how far mandatory verification reaches into a native transfer, and what turning
+biometric confirmation off entirely means for a Founder Seat's protection
+asymmetry.
+
+Requirement 10's target is no longer settled. It was `economy-transition-v5` for
+one day; the direction of 2026-08-15 supersedes it, and the C++ kernel waits for
+the contract that encodes the direction. **That is a change of target, not lost
+work**: the envelope, the key space, the settlement, the receipt, and the tree
+constructions are unaffected, and version five's model and vectors are what make
+a successor's carryover check possible.
 
 **The evidence debt M3.9b took on is repaid.** `economy-transition-v5` has a
-model, 550 vectors, and a verifier as of M3.9c. What remains is that the C++
-codec still implements version four, which is the recorded next action rather
-than a debt: it is the ordinary order the milestone has followed since M3.8a.
+model, 550 vectors, and a verifier as of M3.9c. It is a fully evidenced contract
+that was superseded as direction hours after it was evidenced — which is the
+same thing that happened to versions two, three, and four, and is the reason the
+repository evidences a contract before implementing it in C++ rather than after.
 
 **One accepted contract cannot be implemented and stays in the tree.**
 `economy-transition-v4`'s kind 11 has no conforming implementation; version five

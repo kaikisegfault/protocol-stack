@@ -507,10 +507,39 @@ makes adding a verified address a working remedy for a lost key.
 Human Uniqueness Biometric verification — **HUB** — is a foundational service of
 the whole ecosystem, decided on 2026-08-14. It is not a Founder Seat feature.
 
-Any participant who registers may be HUB verified: Founder Seat holders,
-project and product creators, ordinary users, and developers. It is one single
-source of truth that the company may switch on at any point in the system where
-it judges verification reasonable, and off where it does not.
+**HUB verification is mandatory, decided on 2026-08-15.** Anyone who wants to
+register must complete it, and it is required to interact with any part of the
+ecosystem. It is the single source of truth for registration, account holding,
+and security. There is no unverified participation.
+
+That supersedes the earlier framing, in which verification was available to
+every participant class and the company switched it on where it judged
+verification reasonable. The owner named the trade and accepted it: less
+flexibility and a higher barrier to entry, in exchange for more security, more
+simplicity, fewer vulnerabilities, one source of truth for who owns an account,
+and a single resolution of a family of account-related failure modes rather
+than one contract version at a time.
+[ADR 0039](../decisions/0039-hub-verification-is-mandatory-for-everyone.md)
+records the direction and what it leaves open.
+
+**An address is not an identity root.** A wallet address is an additional tool
+its owner holds for operations and transactions. The verificator is the person's
+HUB biometric facial data, recorded on chain permanently and immutably.
+
+**Recovery is direct, between the owner and their own recorded biometric data.**
+A person who has lost everything registers again and completes HUB verification;
+the system detects that this biometric identity already exists on chain and the
+person immediately regains access to the existing account. They then attach a
+new wallet address and continue. No friend, no helper, and no third party at any
+step.
+
+**Biometric confirmation is on by default for every financial transaction and
+every mint**, as an ecosystem-wide one-time-password layer. Each person may
+customise their own posture: a minimum amount below which it is not required,
+time windows, or turning it off entirely.
+
+Any participant who registers is therefore HUB verified: Founder Seat holders,
+project and product creators, ordinary users, and developers.
 
 Each verification produces a signature unique to that person, derived from their
 personal secret, usable across ecosystem and blockchain operations. The
@@ -540,6 +569,13 @@ HUB-verified users earn from the `hub_verified_user_incentives` direct-mint
 channel. Verification is therefore both an identity primitive and a participant
 benefit, and it is the mandatory entry requirement for referring a Founder Seat
 buyer.
+
+**Three consequences of the mandatory direction are not yet decided** and are
+listed under
+[Explicitly unresolved founder details](#explicitly-unresolved-founder-details):
+how a person holding nothing pays for their first transaction, how far the
+requirement reaches into a native transfer, and what turning the confirmation
+off entirely means for a Founder Seat's existing protection asymmetry.
 
 Biometric capture and evaluation use an ecosystem-owned camera-verification
 system and the company-hosted Ecosystem AI. Raw images, video, and private
@@ -729,6 +765,24 @@ that technical production readiness follows automatically.
 The owner has intentionally deferred these value-bearing details until their
 milestone supplies enough evidence and context:
 
+- **how a person who holds nothing pays for their first transaction.** The
+  mandatory-verification direction of 2026-08-15 says registration and recovery
+  involve no helper and no third party, and every transaction on a chain costs
+  a fee paid by a sender. Either identity transactions are fee-exempt, or the
+  fee is drawn from value the identity already holds on chain, or registration
+  and recovery are performed by the company-hosted HUB service rather than by
+  the person's own wallet. Each changes what a participant must do and own.
+  **This blocks the contract version that encodes the direction;**
+- **how far mandatory verification reaches into a native transfer** — whether an
+  unverified address may still receive native units, or whether both ends must
+  be verified, which decides whether the kind-1 byte identity carried unchanged
+  since M1 gains an authorization condition;
+- **what turning biometric confirmation off entirely means for a Founder Seat.**
+  Version three made biometric-on-mint a per-seat option with a deliberate
+  asymmetry — enabling needs only an address signature, disabling needs a
+  biometric approval, so a stolen key can neither mint against a protected seat
+  nor remove the protection first. A user-configurable global policy must either
+  preserve that asymmetry or knowingly drop it;
 - eligibility and anti-abuse mechanics for the liquidity-mining,
   impermanent-loss, and mystery-box direct-mint channels, and the *rate* of the
   HUB-verified-user channel, whose eligibility was decided on 2026-08-14;
@@ -768,6 +822,17 @@ failed, so the day's generation goes to the best performers and the capped seat
 is not one of them; sixteen manager addresses per seat; and HUB verification as
 a recovery layer that survives the loss of any address, with HUB signing as what
 adds a Founder Seat address.
+
+Resolved on 2026-08-15, and recorded in
+[ADR 0039](../decisions/0039-hub-verification-is-mandatory-for-everyone.md):
+HUB verification is mandatory for anyone who registers and for interacting with
+any part of the ecosystem; an address is an operational tool rather than an
+identity root; recovery is direct between the owner and their recorded biometric
+data with no third party at any step; and biometric confirmation is on by
+default for every financial transaction and every mint, with each person free to
+set a minimum amount, set time windows, or turn it off entirely. The direction
+supersedes the earlier framing in which the company switched verification on
+where it judged it reasonable.
 
 Claude should ask focused questions at those boundaries. All other mechanism,
 encoding, storage, consensus scheduling, networking, testing, packaging, and
