@@ -230,10 +230,10 @@ rejected: it would be a genesis allocation under another name.
 2026-08-15.** Every other channel sends forfeited value somewhere — a failed or
 capped seat's permission to the day's best performers, a capped referral to the
 unreferred pool — and this channel has no second destination, so none is
-invented. Value left uncollected past the accumulation cap stays outstanding and
-enters no one's balance, and total supply ends below the maximum by exactly that
-amount. It is the same collect-or-lose rule, applied where there is nobody to
-give the forfeited value to.
+invented. Value left uncollected past the accumulation cap is never issued, and
+total supply ends below the maximum by exactly that amount. It is the same
+collect-or-lose rule, applied where there is nobody to give the forfeited value
+to.
 [ADR 0043](../decisions/0043-founder-answers-on-reach-asymmetry-forfeiture-and-signers.md)
 records it.
 
