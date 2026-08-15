@@ -1552,8 +1552,9 @@ It fixes five things that are new with this version:
   same bytes refused with `RECIPIENT_NOT_REGISTERED` against an unregistered
   recipient; and
 - **the verified-user arithmetic**: the rate derivation reproducing the accepted
-  channel cap to the atomic unit, the entry airdrop, a full 731-window
-  collection, and a forfeiting mint at 31, 40, and 800 windows of neglect.
+  channel cap to the atomic unit, the remainder a 730-cycle period would leave,
+  the entry airdrop, a full 731-window collection, and a forfeiting mint at the
+  cap, one window past it, ten windows past it, and long past the period.
 
 The conservation vectors are the load-bearing ones, and the four structural
 invariants are checked alongside them, the first by requiring the account map's
@@ -1567,6 +1568,16 @@ Constitution's tables, and the accepted manifest's channel order by hand.
 `docs/engineering/verification.md`'s three vector-file rules apply: a boolean
 vector may only be true, a name must assert no more than its value establishes,
 and a claim must be checked against something other than itself.
+
+**All of it is recorded.** `simulation/economy_transition_v6/` is the model,
+`test-vectors/economy-transition-v6.txt` holds 462 normative vectors, and
+`tools/economy-transition-v6-vectors/verify.py` derives every one of them twice.
+Four mutation probes establish that it fails closed: a changed escrow label, a
+relaxation predicate that lost one disjunct, a removed accumulation cap, and a
+changed account domain octet are each rejected — the last **with the octet
+changed in both the model and the independent derivation**, because it is
+checked against `test-vectors/protocol-primitives-v1.txt` rather than against a
+second restatement of its own formula.
 
 Acceptance requires full GitHub-hosted verification on the exact commit. Passing
 these checks establishes an exact, auditable encoding and compatibility boundary.
