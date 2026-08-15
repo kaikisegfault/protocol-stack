@@ -320,6 +320,23 @@ is withdrawn rather than built against a contract already superseded. It leaves
 three things undecided, of which one blocks the next contract version: how a
 person who holds nothing pays for their first transaction.
 
+ADR 0040, ADR 0041, and ADR 0042 complete the account architecture the
+mandatory-HUB pivot began, and each was answered the same day it was raised.
+ADR 0040 replaces addresses-as-identity with a verified identity holding as many
+keyless asset escrows as the person wants, signers assigned to those escrows
+separately and revocably, and the identity as the admin over both — which
+settles recovery funding, because regaining an identity regains escrows that
+already hold value. ADR 0041 closes the conflict that left open, by naming what
+the permanent add-only seat-address rule was *for*: non-sellability. Tying the
+seat to the HUB verified data serves that purpose better, so a Founder Seat has
+no address at all and the rule loses its subject, along with the 16-manager
+limit. ADR 0042 closes the last question — entry funding — from tokenomics that
+already existed: the first 1,000,000 verified users receive 1.71 native units a
+day for 731 days, the first day arriving as an entry airdrop at registration so
+a brand-new account can transact. That rate is derived rather than chosen, and
+the three founder-supplied figures reproduce the accepted channel cap to the
+atomic unit.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
