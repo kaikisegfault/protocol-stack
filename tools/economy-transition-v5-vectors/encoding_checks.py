@@ -137,11 +137,21 @@ def check_compatibility(check: Checker, vector_root: Path) -> None:
     # The account derivation is version one's too, and version five is the first
     # transition contract that has to perform it: its address-add message is
     # built from the sender rather than from a supplied argument.
+    #
+    # Both restatements are checked against the accepted file rather than only
+    # against each other. `protocol-primitives-v1` records the identifier of
+    # this exact public key, so a formula both this model and the derivation got
+    # wrong the same way still fails.
     check.equal("compatibility.account_id_label", c.ACCOUNT_ID_LABEL)
+    derived_account = envelope.sender_account_id(transfer)
     check.agree(
         "compatibility.account_id_of_the_accepted_sender",
         e.account_id(scenario.SENDER_PUBLIC_KEY).hex(),
-        envelope.sender_account_id(transfer).hex(),
+        derived_account.hex(),
+    )
+    check.equal(
+        "compatibility.account_id_matches_accepted",
+        derived_account.hex() == accepted["account_id"],
     )
 
 
