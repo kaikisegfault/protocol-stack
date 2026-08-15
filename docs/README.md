@@ -337,6 +337,23 @@ a brand-new account can transact. That rate is derived rather than chosen, and
 the three founder-supplied figures reproduce the accepted channel cap to the
 atomic unit.
 
+ADR 0043 records the four answers that unblocked `economy-transition-v6`, and
+they exist because the founder-decision gate **stopped** that slice rather than
+clearing it — the second time it has, after M3.8a. Enumerating thirty-six
+decisions before judging any showed that two items the constitution had listed
+as unresolved since the pivot sit inside the contract rather than beside it.
+Verification is the entry point and reaches the recipient, so a transfer to an
+unregistered holding address is refused rather than creating one, and no account
+exists that is not an escrow beneath a registered identity. The security
+asymmetry that protected a Founder Seat's minting generalises to every
+participant: relaxing a posture requires a biometric approval, tightening it
+requires only a signer signature. A verified user's uncollected incentive is
+never issued, because that channel is the one with no second destination. And a
+signer key belongs to exactly one holding address, which is what keeps the
+kind-1 transaction bytes identical for a fifth version — while answer one gives
+those unchanged bytes a new rejection condition, so the byte identity is
+preserved and the execution identity is not.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.

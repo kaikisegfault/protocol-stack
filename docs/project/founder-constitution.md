@@ -226,6 +226,17 @@ and direct purchases exist by then.
 records the direction, the derivation, and why a fully pre-minted pool was
 rejected: it would be a genesis allocation under another name.
 
+**What a verified user does not collect in time is never issued, decided on
+2026-08-15.** Every other channel sends forfeited value somewhere — a failed or
+capped seat's permission to the day's best performers, a capped referral to the
+unreferred pool — and this channel has no second destination, so none is
+invented. Value left uncollected past the accumulation cap stays outstanding and
+enters no one's balance, and total supply ends below the maximum by exactly that
+amount. It is the same collect-or-lose rule, applied where there is nobody to
+give the forfeited value to.
+[ADR 0043](../decisions/0043-founder-answers-on-reach-asymmetry-forfeiture-and-signers.md)
+records it.
+
 The Founder referral benefit moved from the Founder Node channels to the
 direct-mint channels on 2026-08-07, and doubled. Both changes are explained
 under [Founder referrals](#founder-referrals).
@@ -555,6 +566,17 @@ records the direction and what it leaves open.
 its owner holds for operations and transactions. The verificator is the person's
 HUB biometric facial data, recorded on chain permanently and immutably.
 
+**Verification is the entry point, and it reaches the recipient of a payment,
+decided on 2026-08-15.** A person who has not registered and completed HUB
+verification cannot interact with the ecosystem in any way: no wallet, no
+transaction, nothing. There is therefore no account for a payment to reach, and
+**a transfer naming a recipient that is not a registered holding address is
+refused** rather than creating one. Native units cannot be sent to a person who
+has not joined; joining is free and self-funding, because the entry airdrop pays
+for it.
+[ADR 0043](../decisions/0043-founder-answers-on-reach-asymmetry-forfeiture-and-signers.md)
+records this and the three answers alongside it.
+
 **Recovery is direct, between the owner and their own recorded biometric data.**
 A person who has lost everything registers again and completes HUB verification;
 the system detects that this biometric identity already exists on chain and the
@@ -567,6 +589,14 @@ every mint**, as an ecosystem-wide one-time-password layer. Each person may
 customise their own posture: a minimum amount below which it is not required,
 time windows, or turning it off entirely.
 
+**Changing that posture is asymmetric, decided on 2026-08-15.** Relaxing it —
+turning confirmation off, raising the minimum amount, or widening a window in
+which it is not required — requires a biometric approval. Tightening it requires
+only a signer signature. The rule that protected a Founder Seat's minting since
+version three now covers every participant, every holding address, and every
+operation, so a stolen signer key can never weaken the protection it is stealing
+against.
+
 **A verified identity holds fund-holding addresses, and those hold no keys,
 decided on 2026-08-15.** A person may have as many as they want; they are where
 assets accumulate and they never change. Signing keys are separate and
@@ -576,9 +606,15 @@ an identity on a new device regains the holding addresses directly, so the perso
 can revoke old signers and register new ones with no funds and no third party
 needed. Each person configures their own signing logic and security options per
 address and per transaction.
+
 [ADR 0040](../decisions/0040-holder-addresses-and-revocable-signers.md) records
 the direction, what it settles, and the one conflict it raises with the Founder
 Seat address rule.
+
+**A signer key belongs to exactly one holding address, decided on 2026-08-15.**
+A person with several holding addresses holds a signer key for each, which a
+wallet derives without their involvement. A stolen or revoked key therefore
+reaches exactly one holding address and nothing else.
 
 Any participant who registers is therefore HUB verified: Founder Seat holders,
 project and product creators, ordinary users, and developers.
@@ -598,26 +634,28 @@ across the whole system.
 
 **A verified person may add and remove their own addresses through HUB.** A HUB
 identity is therefore a set of addresses rather than a single one, and HUB
-signing is the authority over that set. Founder Seat addresses are the stated
-exception: they are permanent and add-only, as described under
-[Permanent biometric identity and managers](#permanent-biometric-identity-and-managers).
+signing is the authority over that set. **There is no longer a Founder Seat
+exception to this**: the permanent add-only seat address was superseded on
+2026-08-15 together with the concept it governed, because a seat has no address
+at all.
 
-Two consequences of this are not yet decided and are listed under
-[Explicitly unresolved founder details](#explicitly-unresolved-founder-details):
-whether buying a Founder Seat requires HUB verification first, and whether the
-chain holds a HUB identity's address set in consensus state.
+The two consequences this raised are both decided. Buying a Founder Seat
+requires HUB verification first and ties the seat to that identity, and the chain
+holds a HUB identity's address set in consensus state; both were answered on
+2026-08-14 and are recorded under
+[Explicitly unresolved founder details](#explicitly-unresolved-founder-details)
+as resolved.
 
 HUB-verified users earn from the `hub_verified_user_incentives` direct-mint
 channel. Verification is therefore both an identity primitive and a participant
 benefit, and it is the mandatory entry requirement for referring a Founder Seat
 buyer.
 
-**Three consequences of the mandatory direction are not yet decided** and are
-listed under
-[Explicitly unresolved founder details](#explicitly-unresolved-founder-details):
-how a person holding nothing pays for their first transaction, how far the
-requirement reaches into a native transfer, and what turning the confirmation
-off entirely means for a Founder Seat's existing protection asymmetry.
+**The three consequences of the mandatory direction are all decided.** How a
+person holding nothing pays for their first transaction is the entry airdrop of
+ADR 0042; how far the requirement reaches into a native transfer and what turning
+the confirmation off entirely means for a seat's protection asymmetry are both
+answered above and recorded in ADR 0043.
 
 Biometric capture and evaluation use an ecosystem-owned camera-verification
 system and the company-hosted Ecosystem AI. Raw images, video, and private
@@ -807,16 +845,6 @@ that technical production readiness follows automatically.
 The owner has intentionally deferred these value-bearing details until their
 milestone supplies enough evidence and context:
 
-- **how far mandatory verification reaches into a native transfer** — whether an
-  unverified address may still receive native units, or whether both ends must
-  be verified, which decides whether the kind-1 byte identity carried unchanged
-  since M1 gains an authorization condition;
-- **what turning biometric confirmation off entirely means for a Founder Seat.**
-  Version three made biometric-on-mint a per-seat option with a deliberate
-  asymmetry — enabling needs only an address signature, disabling needs a
-  biometric approval, so a stolen key can neither mint against a protected seat
-  nor remove the protection first. A user-configurable global policy must either
-  preserve that asymmetry or knowingly drop it;
 - eligibility and anti-abuse mechanics for the liquidity-mining,
   impermanent-loss, and mystery-box direct-mint channels;
 - exact legacy inactivity bounds and contested-successor behavior;
@@ -849,6 +877,18 @@ failed, so the day's generation goes to the best performers and the capped seat
 is not one of them; sixteen manager addresses per seat; and HUB verification as
 a recovery layer that survives the loss of any address, with HUB signing as what
 adds a Founder Seat address.
+
+Resolved on 2026-08-15, and recorded in
+[ADR 0043](../decisions/0043-founder-answers-on-reach-asymmetry-forfeiture-and-signers.md),
+which the founder-decision gate for `economy-transition-v6` asked for after
+enumerating that slice showed two of these were inside the contract rather than
+beside it: verification is the entry point and reaches the recipient, so a
+transfer to an unregistered holding address is refused rather than creating one;
+relaxing a security posture requires a biometric approval while tightening it
+requires only a signer signature, for every participant rather than for Founder
+Seats alone; a verified user's uncollected incentive is never issued; and a
+signer key belongs to exactly one holding address. **The first two of those had
+been listed here as unresolved since the mandatory-verification pivot.**
 
 Resolved on 2026-08-15, and recorded in
 [ADR 0042](../decisions/0042-the-hub-entry-airdrop-and-the-verified-user-rate.md):
