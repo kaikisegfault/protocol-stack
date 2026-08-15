@@ -64,12 +64,8 @@ def check_add_address_body(check: Checker, vector_root: Path) -> None:
         "add_address.shares_a_length_with_remove",
         c.BODY_BYTES[c.HUB_ADD_ADDRESS] == c.BODY_BYTES[c.HUB_REMOVE_ADDRESS],
     )
-    check.equal(
-        "add_address.rejection_order",
-        ",".join(c.ADD_ADDRESS_REJECTION_ORDER),
-    )
     check.agree(
-        "add_address.rejection_order_agrees",
+        "add_address.rejection_order",
         ",".join(e.ADD_ADDRESS_REJECTION_ORDER),
         ",".join(c.ADD_ADDRESS_REJECTION_ORDER),
     )
@@ -77,7 +73,7 @@ def check_add_address_body(check: Checker, vector_root: Path) -> None:
     transaction = scenario.recovery_transaction()
     body = envelope.body_bytes(c.HUB_ADD_ADDRESS, transaction.body)
     check.equal("add_address.body_hex", body.hex())
-    check.equal("add_address.body_names_the_identity", body[0:32].hex())
+    check.equal("add_address.body_identity_field_hex", body[0:32].hex())
     check.equal(
         "add_address.body_field_is_the_identity",
         body[0:32] == transaction.body["hub_identity_hash"],
@@ -348,7 +344,11 @@ def check_recovery(check: Checker) -> None:
     # needs a funded account first. That is the bootstrap dependency version two
     # recorded and the bridge milestone owns; it is stated because recovery is
     # the path it now sits on.
-    check.equal("recovery.the_sender_pays_the_fee", transaction.fee_limit)
+    check.equal("recovery.sender_fee_limit", transaction.fee_limit)
+    check.equal(
+        "recovery.the_kind_is_not_fee_exempt",
+        c.HUB_ADD_ADDRESS in c.TRANSACTION_KINDS and transaction.fee_limit > 0,
+    )
 
 
 def check_version_four_separation(check: Checker, vector_root: Path) -> None:
@@ -391,9 +391,12 @@ def check_version_four_separation(check: Checker, vector_root: Path) -> None:
         "separation.economy_roots_differ",
         state.economy_root(populated).hex() != four_tree,
     )
+    # The roots differ over an *identical* entry set, which is the claim. The
+    # comparison is against version four's own fixture rather than against this
+    # one, because comparing a fixture to itself establishes nothing.
     check.equal(
         "separation.the_entries_are_identical",
-        populated == scenario.populated_economy(),
+        populated == v4_scenario.populated_economy(),
     )
 
     # The genesis fields are held fixed, so the encoded object differs from
@@ -405,7 +408,11 @@ def check_version_four_separation(check: Checker, vector_root: Path) -> None:
         "separation.genesis_bytes_are_the_accepted_ones",
         four_bytes.hex() == accepted["genesis.bytes_hex"],
     )
-    check.equal("separation.genesis_bytes_length_is_unchanged", len(five_bytes))
+    check.equal("separation.genesis_bytes_length", len(five_bytes))
+    check.equal(
+        "separation.genesis_bytes_length_is_unchanged",
+        len(five_bytes) == len(four_bytes),
+    )
     check.equal(
         "separation.genesis_differing_octets",
         sum(1 for a, b in zip(five_bytes, four_bytes) if a != b),
