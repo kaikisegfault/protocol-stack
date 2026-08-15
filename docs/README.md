@@ -354,6 +354,21 @@ kind-1 transaction bytes identical for a fifth version — while answer one give
 those unchanged bytes a new rejection condition, so the byte identity is
 preserved and the execution identity is not.
 
+ADR 0044 records `economy-transition-v6` — the contract that encodes all of it —
+and the decisions the direction did not make. The escrow identifier is derived
+from the identity and a never-decreasing index rather than allocated, so a wallet
+can compute it offline and a deleted escrow's identifier is never reissued. The
+accepted version-one account derivation survives by changing what it names, from
+an account to a signer, which is why the pivot is cheaper at the primitive layer
+than ADR 0040 expected. The signature-scheme byte carries the second
+authorization mode, with the key in the header and the identity hash in the body
+specifically so admission still verifies a signature without reading state. The
+nonce belongs to the escrow, which answers ADR 0040's two-signer question with
+version one's own rule. Registration is fee-exempt against ADR 0042's stated
+preference, because credit-before-fee closes the ecosystem to new members at user
+1,000,001. And the verified-user cap is applied at the mint rather than at
+assignment, because no per-window record for a million identities is affordable.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
@@ -478,8 +493,19 @@ immutable; compatible changes require a new version.
   meaning corrected — kind 11's 32-byte field is the HUB identity hash and the
   account being linked is the sender — because version four's kind 11 names an
   identity it does not carry. Everything else in version four is incorporated by
-  reference. It is the contract requirement 10's C++ kernel implements. Its
-  model, vectors, and implementation are not yet recorded.
+  reference. Its model and vectors are recorded; its C++ implementation is not,
+  and the founder direction of 2026-08-15 superseded it before one was written.
+- `specifications/economy-transition-v6.md`: the account architecture the
+  mandatory-verification pivot requires. A verified identity is the root, an
+  escrow with no key of its own is where value sits, and a revocable signer
+  assigned to exactly one escrow is who may act on it. Registration creates all
+  three atomically, is fee-exempt, and pays the entry airdrop; a Founder Seat has
+  no address and a mint names a destination escrow the chain checks; a transfer
+  refuses an unregistered recipient, which withdraws `ledger-transition-v1`'s
+  recipient-creating transfer and makes "every account is an escrow" a structural
+  invariant. The signature-scheme byte carries a second authorization mode so
+  that identity administration works with no key at all. It is the contract
+  requirement 10's C++ kernel implements.
 - `specifications/native-economy-simulation-v1.md`: versioned integer-only
   accounting, authority, event, trace, and metric contract for the independent
   M2 research simulator; it is not a consensus transition.

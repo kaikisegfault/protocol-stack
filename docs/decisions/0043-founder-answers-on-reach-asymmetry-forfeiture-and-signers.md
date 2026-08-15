@@ -76,9 +76,14 @@ capped referral routes to the unreferred pool by
 [ADR 0034](0034-economy-transition-v3-managers-cap-and-hub.md).
 
 **The verified-user channel has none, and none is invented.** Value a verified
-user does not collect within the cap stays `outstanding` in its channel and is
-never issued. Total supply ends below the founder-directed maximum by exactly
-what was not collected.
+user does not collect within the cap is **never issued**. Total supply ends below
+the founder-directed maximum by exactly what was not collected.
+
+`economy-transition-v6` records the mechanism this implies, which is narrower
+than "the value sits somewhere unclaimed": the channel has no accrual step and
+therefore no `outstanding` term at all, so uncollected value is never represented
+in state rather than being represented and left alone. The channel satisfies an
+inequality against its cap where every other channel satisfies an equality.
 
 That is the collect-or-lose rule the owner already chose for referrals, applied
 where there is nobody to give the forfeited value to. It rules out the two
@@ -132,10 +137,10 @@ make that decidable from the two stored postures alone rather than from intent,
 because a chain cannot read intent: a change is a relaxation when it could
 reduce the set of operations that require confirmation.
 
-**Answer 3 leaves one accounting statement for the specification to make
-precisely.** With forfeiture issuing nothing, the channel's conservation identity
-becomes an inequality against the cap rather than an equality, and the exact form
-belongs in the contract beside the carry identity it resembles.
+**Answer 3's accounting statement is made precisely in
+`economy-transition-v6`**, and it came out narrower than this ADR first put it:
+the channel has no `outstanding` term to leave value in, so the identity is
+`outstanding = 0` and `issued <= cap` rather than a conservation equality.
 
 ## Consequences
 
