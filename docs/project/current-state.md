@@ -35,8 +35,10 @@ contract that encodes the direction. **Its founder-decision gate stopped it on
 2026-08-15 with four reserved decisions**, two of which the constitution had
 listed as unresolved since the pivot; the owner answered all four the same day
 and [ADR 0043](../decisions/0043-founder-answers-on-reach-asymmetry-forfeiture-and-signers.md)
-records them, so the slice is unblocked and nothing founder-reserved remains in
-front of it.
+records them. **M3.10a then delivered `economy-transition-v6` the same day** —
+the specification, ADR 0044, a sibling model, 462 vectors, a verifier, and 91
+tests — so requirement 10's target is settled again and the C++ kernel has a
+contract the direction does not supersede.
 
 Requirements 3, 4, 5, 6, 7, and 12 of `first-goal.md` are satisfied;
 requirements 8 and 9 moved from specified to enforced; and requirement 14 is met
@@ -89,6 +91,113 @@ Buying a seat requires HUB verification first and the seat is tied to that
 identity; a HUB identity's address set lives in consensus state. Requirement 10
 is now unblocked against a settled target, and nothing further is expected to
 move it.
+
+### How M3.10a was delivered
+
+Issue #169 and PR #170 delivered `economy-transition-v6` and ADR 0044. It added
+the specification, the ADR, a sibling model in `simulation/economy_transition_v6/`,
+462 normative vectors, a verifier in `tools/economy-transition-v6-vectors/`, and
+four test modules with 91 tests.
+
+**A verified identity is the root, an escrow is where value sits, and a signer is
+who may act on one escrow.** Three objects, each answering exactly one question,
+with the version-one account map holding an escrow's balance and nonce — so a
+version-six state is still a version-one state plus an economy map and every
+version-one invariant holds.
+
+**The kind-1 bytes survive a fifth version and their execution does not**, and
+the two facts have to be stated together or the compatibility section is wrong.
+The accepted 136-byte unsigned and 200-byte signed transfer and its transaction
+ID are reproduced exactly, and the same bytes are refused with
+`RECIPIENT_NOT_REGISTERED` when the recipient is not a registered escrow. That
+withdraws `ledger-transition-v1`'s recipient-creating transfer, which was the
+last way an account could exist with no identity behind it, and makes **every
+account is an escrow** a structural invariant rather than a policy.
+
+**The signature-scheme byte carries the second authorization mode, and that is
+what lets recovery pay a fee with no key.** Version one fixes the byte at `1` and
+reads offset 40 as the sender's public key; version six reads it as an authority
+public key and lets the scheme say whose — a signer key, or an identity's HUB
+key. Both verify the envelope signature against the header key, so **admission
+still reads no state**. An earlier draft put the identity hash in the header and
+looked its key up in state; it works and would let an unsigned transaction reach
+execution, so the key went in the header and the identity hash in the body.
+
+**Recovery is not a transaction.** It is the ordinary `signer_add`, authorized by
+the identity rather than by a key, against an escrow that already holds value.
+The version-five dilemma — who may link an address to an identity — has no
+subject here, because an escrow is created beneath an identity and never relinked.
+
+**Registration is fee-exempt, against ADR 0042's stated preference, and the
+reason is the millionth user.** The ADR prefers crediting the airdrop before the
+fee because 1.71 units exceeds any plausible fee; that holds only while an
+airdrop exists. The airdrop is bounded at 1,000,000 identities, so user
+1,000,001 would create a zero-balance escrow and fail with
+`INSUFFICIENT_BALANCE` — the ecosystem would close to new members at exactly the
+point ADR 0042 says the problem stops recurring. Exemption works forever and its
+anti-abuse bound is already non-monetary: only the verifier can sign a
+registration.
+
+**ADR 0040's two-signer question is answered by version one's own rule.** The
+nonce belongs to the escrow rather than to the signer, so two signers race for
+one sequence and the loser gets `NONCE_MISMATCH`. No new machinery.
+
+**The escrow identifier is derived rather than allocated**, from the identity and
+an index that never decreases. A wallet computes its own identifiers offline, and
+a deleted escrow's identifier is never reissued — which is why the identity
+record carries `next_escrow_index` and `escrow_count` separately. **The accepted
+version-one account derivation survives with its subject moved** from an account
+to a signer, which is what a public-key hash is, so the M1 primitive is extended
+rather than replaced.
+
+**The posture's direction is derived from the two stored postures**, because a
+chain cannot read intent: turning confirmation off, raising the minimum, or
+setting an exempt slot bit that was clear. Any one makes the change a relaxation
+and requires the HUB signature, so a mixed change that weakens anything counts as
+a weakening. Time windows are the accepted grid's 24 one-hour slots — heights,
+never a clock.
+
+**Two claims are checked against a third source.** The kind-1 identity and the
+signer derivation both against `test-vectors/protocol-primitives-v1.txt`, and the
+second matters most: a restatement checked only against its own formula agrees
+with itself while both are wrong. **The probe was run with the account domain
+octet changed in the model and in the independent derivation, and it still
+fails.**
+
+**Four mutation probes establish fail-closed behaviour**, and one of them is the
+generator refusing to emit at all: a changed escrow label, a relaxation predicate
+that lost its slot-mask disjunct, a removed accumulation cap, and the account
+octet. **The boolean rule fired during generation and cost three renamings** —
+three posture cases whose answer is "no confirmation" now record the negation
+positively rather than recording `false` under a name asserting the opposite.
+
+**The verified-user cap is applied at the mint rather than at assignment, and the
+mechanism differs while the rule does not.** A seat's cap is applied when the
+chain writes the assignment record, where a capped seat's permission moves to
+that day's best performers; no per-window record for a million identities is
+affordable at 25 kB a window. So a collection covers the most recent thirty
+windows and the mark advances past everything older, which is what makes the
+forfeiture permanent rather than deferred. **Channel 8 therefore satisfies an
+inequality rather than an equality**: it has no accrual step and so no
+`outstanding` term, and a chain whose users forfeit ends below the maximum supply
+rather than holding the difference somewhere. ADR 0043 and the constitution were
+corrected from "stays outstanding" to "never issued" on the same commit, because
+the mechanism does not support the stronger wording.
+
+**Five transaction kinds and two entry kinds are retired rather than reused.**
+Each lost its subject, and reusing a number a reader associates with an accepted
+contract is the cheapest way to create an auditing mistake. **Three frozen result
+codes become unreachable** — `SENDER_NOT_FOUND`, `MANAGER_LIMIT`, and
+`ADDRESS_LIMIT` — each because its subject is gone rather than its meaning.
+
+**The seat family fell by an order of magnitude**, from version four's 71,600,000
+bytes of seats and managers at capacity to 8,700,000 bytes of seats. **A new
+unbounded term appears**: escrow and signer entries accumulate with adoption,
+bounded only by the fee, at about 1.3 GB for ten million participants holding one
+escrow each. That is recorded rather than solved.
+
+**Nothing accepted was edited.** All five predecessor vector files verify at their
+recorded counts — 238, 579, 441, 550 — and the version-one primitives.
 
 ### How M3.9c was delivered
 
@@ -2237,139 +2346,74 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.10a: specify `economy-transition-v6`**, the contract that
-encodes the account architecture the four ADRs of 2026-08-15 settled. Use the
-`change-protocol` skill. Do not write C++ in this slice.
+Milestone slice **M3.10b: the version-six execution model and its recorded
+transition trace**, which is issue #153 rebound from version five. Use the
+`change-protocol` skill. **Do not write C++ before it.**
 
-**Its gate stopped it on 2026-08-15, the owner answered the same day, and it is
-now unblocked.** The gate enumerated thirty-six decisions before judging any and
-found four founder-reserved, two of which had been listed under **Explicitly
-unresolved founder details** since the pivot. All four answers are recorded in
-[ADR 0043](../decisions/0043-founder-answers-on-reach-asymmetry-forfeiture-and-signers.md)
-and in the constitution:
+**The order is the repository's own lesson rather than a preference.** M3.9a
+implemented a codec and M3.9b found that two implementations agreed perfectly
+about a message neither could construct, because a codec never asks where a
+transaction gets its arguments. The execution model is the first step that runs
+a transition, and version six has more transitions with more state behind them
+than any predecessor.
 
-1. **Verification is the entry point and it reaches the recipient.** A transfer
-   naming a recipient that is not a registered holding address is refused rather
-   than creating one, so `ledger-transition-v1`'s recipient-creating transfer is
-   withdrawn for version six and **no account exists that is not an escrow
-   beneath a registered identity**. That is a structural invariant to state and
-   to check in the vectors, not a policy.
-2. **The security asymmetry generalises to every participant.** Relaxing a
-   posture — off, a higher minimum, a wider window — requires a biometric
-   approval; tightening requires only a signer signature. The per-seat
-   `mint_requires_biometric` flag disappears into the per-identity posture and
-   its protection survives as the general rule. The specification must make
-   "relaxes" decidable from the two stored postures alone, because a chain
-   cannot read intent.
-3. **A verified user's uncollected incentive is never issued.** It stays
-   `outstanding`, and the channel's conservation statement becomes an inequality
-   against the cap rather than an equality. State that form precisely beside the
-   carry identity it resembles.
-4. **A signer key belongs to exactly one escrow**, so the chain resolves the
-   paying escrow from the signer and the version-one 80-byte header needs no
-   escrow field.
+**What it must exercise, chosen for what would go undetected otherwise:**
 
-**Answers 1 and 4 must be stated together or the compatibility section will be
-wrong.** Answer 4 keeps kind 1's body at 40 octets and reproduces the accepted
-136-byte unsigned and 200-byte signed transfer byte-for-byte; answer 1 gives that
-unchanged byte sequence a rejection condition it did not have. **The byte
-identity is preserved and the execution identity is not** — a version-one
-transfer to a fresh recipient succeeds under version one and is refused under
-version six — and the boundary must say so in those terms rather than claiming
-the transfer carried over.
+1. **The recovery path end to end.** A person with an identity, no signer, and an
+   escrow that holds value assigns a new signer with scheme 2, pays the fee from
+   that escrow, and then transacts with the new key. That is the path version
+   four disabled and version five could not fund, and a trace that does not walk
+   it would not have caught either defect.
+2. **Registration as one atomic execution.** Identity, escrow zero, first signer,
+   and the entry airdrop, with a fee-exempt envelope and a zero nonce — and the
+   same registration past the millionth identity, which must still succeed with a
+   zero balance.
+3. **A transfer refused for its recipient**, immediately after the accepted
+   version-one bytes are admitted, so the byte identity and the execution
+   divergence appear in one trace.
+4. **Both directions of a posture change**, including a mixed change that
+   tightens one field and relaxes another and therefore needs the HUB signature.
+5. **A block that commits a root**, because everything recorded so far
+   establishes that values encode and not that a block executes, charges a fee,
+   and commits.
 
-**Deliver it the way every transition contract since M3.8a has been delivered**:
-the specification and its ADR, then a sibling model, then a recorded vector file
-and a verifier, then tests. Version five's evidence is what makes the successor's
-carryover check possible, and `docs/engineering/verification.md` now carries the
-three vector-file rules M3.9c produced.
+**Then M3.10c: the C++20 kernel codec for version six**, which is requirement 10.
+**Replace `src/v4/` rather than adding `src/v6/` beside it**, and record the
+decision either way: the Python side keeps version four because its 441 vectors
+are the record of what the hosted matrix verified, and the C++ side has a weaker
+case for a copy, since it is one implementation of a byte surface and keeping two
+would double the build with nothing but labels between them. **The codec is the
+only place in the repository where a superseded contract would still be
+compiled.**
 
-**What version six must define**, gathered from the four ADRs so the slice does
-not have to re-read them:
+**Four things in the C++ move and are easy to miss.** The six HUB message labels,
+which are string literals rather than a table. The scheme byte, which is a
+`switch` the version-one kernel does not have — it reads offset 39 as a constant.
+The signer derivation, `H(D("protocol-stack:v1:account") || 0x01 || pk)`, which
+`src/v1/admission.cpp` already implements file-privately and which should be
+reused rather than written twice, checked against the identifier
+`test-vectors/protocol-primitives-v1.txt` records. And the state-root version
+field, which is a number rather than a label and so will not appear in a search
+for `v4`.
 
-1. **Identity as the account root.** Registration is mandatory and creates the
-   identity; a person holds as many keyless asset escrows as they want; signers
-   are assigned per escrow and are revocable; the identity is admin over both.
-2. **A keyless escrow identifier.** This is the one place the direction reaches
-   the M1 compatibility boundary. `protocol-primitives-v1` derives an account
-   identifier as `H(D("protocol-stack:v1:account") || 0x01 || public_key)`, and
-   four contract versions preserved that byte-for-byte along with the kind-1
-   transfer. An escrow has no key, so its identifier must come from something
-   else — the identity and an index is the obvious candidate. **Specify it
-   deliberately; do not discover it.**
-3. **An ordering rule for two signers on one escrow**, against version one's
-   single nonce sequence per account.
-4. **The entry airdrop**, issuing 171,000,000 atomic at first verification, with
-   the credit applied before any fee is assessed so registration is
-   self-funding, and paid once per identity.
-5. **The per-escrow and per-operation security policy** — biometric confirmation
-   on by default, with a minimum-amount threshold, time windows, or off
-   entirely, as per-identity state rather than a per-seat flag.
-6. **A seat with no address.** Kind 9 and the seat manager entries go; the seat
-   record names its owning identity, and a mint names a destination escrow the
-   chain checks belongs to the minting identity. ADR 0041 records that last one
-   as a derivation, so state it as such and let the vectors carry it.
+**The local C++ harness is the reusable result of M3.9a.** Building libsodium
+locally is the heavy operation `CLAUDE.md` refuses, so a scratch harness supplies
+the two entry points the kernel uses and backs SHA-256 with the system OpenSSL —
+an existing audited implementation rather than a second one, in a file that is
+never committed and never part of the build. With it the whole codec test
+compiles and runs in about a second under both compilers with the project's exact
+flags and under address and undefined-behaviour sanitizers.
 
-### What the M3.10a gate's enumeration found
+**One local hazard cost time in M3.10a and will again.** Stale `__pycache__` made
+a reverted mutation appear to still fail and a real failure appear to pass. A
+hosted runner starts clean, so it is a local-only trap; clear it before believing
+a probe result.
 
-**These are findings, not decisions.** Nothing below is specified, accepted, or
-encoded anywhere; the slice was stopped before its work began. They are recorded
-because they were derived while enumerating, they are what makes the four
-reserved questions concrete, and re-deriving them next session is waste.
-
-**Registration should be fee-exempt, which is the opposite of what ADR 0042
-recommends, and the reason is the millionth user.** ADR 0042 offers two ways to
-make registration self-funding — credit the entry airdrop before the fee, or
-exempt registration from the fee — and prefers the first as "the smaller change",
-on the ground that 1.71 units is far above any plausible fixed fee. That holds
-only while an airdrop exists. The airdrop is bounded at 1,000,000 identities, so
-user 1,000,001 creates an escrow with a zero balance and their registration fails
-with `INSUFFICIENT_BALANCE` under the credit-before-fee rule. Exemption works for
-every user forever, and its anti-abuse bound is non-monetary and already present:
-only the ecosystem verifier can sign a registration. This is mechanism under
-ADR 0042's own "either satisfies the direction", so it is engineering's to
-choose — it is recorded rather than buried because the ADR recommends the other
-one.
-
-**The signature-scheme byte can carry a second authorization mode, and that is
-what lets recovery pay a fee with no key.** A person recovering holds their face
-and nothing else, so the transaction that registers a new signer cannot be signed
-by a signer. Version one's header has a signature-scheme byte at offset 39, fixed
-at `1`. Reading the 32-byte field at offset 40 as an *authority* public key —
-a signer key under scheme `1`, the identity's HUB key under a new scheme `2` —
-gives HUB-authorized transactions a home without widening the header, and the fee
-is drawn from an escrow the body already names. Kind 1 keeps scheme `1` and its
-bytes. This is the finding that makes the pivot look cheap at the envelope, and
-it is worth checking hard before it is relied on.
-
-**The accepted account derivation survives, with its role narrowed.**
-`H(D("protocol-stack:v1:account") || 0x01 || public_key)` stops identifying
-accounts and starts identifying *signers*, which is exactly what it is: a hash
-of a public key. An escrow, having no key, needs its own derivation from the
-identity and an index. So the M1 primitive is extended rather than replaced, and
-the thing ADR 0040 flagged as reaching the compatibility boundary reaches a
-narrower part of it than expected.
-
-**ADR 0040's ordering question is answered by version one's own rule.** Two
-signers on one escrow race for one nonce sequence, because the nonce belongs to
-the escrow rather than to the signer — which is what version one already does per
-account and needs no new machinery. Concurrency is the wallet's problem;
-`NONCE_MISMATCH` is the chain's answer, unchanged.
-
-**Three smaller derivations, each the narrower claim.** Escrow deletion requires
-a zero balance, because any other rule either destroys value or invents a sweep
-destination. A policy's "time windows" must be block heights, because the
-constitution forbids a transition from reading a wall clock. And multi-signer
-thresholds — one of the postures ADR 0040 lists — are the single capability a
-one-signature envelope cannot carry, so version six either widens the envelope or
-states plainly that thresholds wait.
-
-**Two accepted things must be re-checked rather than assumed.** Requirement 12's
-storage bounds move from per-seat manager entries to per-identity escrow and
-signer entries, so the figures are per-person now. And the settlement — the cap,
-the assignment record, the mint walk — has not moved since version three and
-should still be imported rather than copied, with the same third-source check
-against `test-vectors/economy-transition-v3.txt`.
+**Both things M3.10a was told to re-check were re-checked.** Requirement 12's
+storage bounds moved to per-identity escrow and signer entries and are recorded
+as a per-person figure, and the settlement was imported rather than copied, with
+the two assignment records required to equal the bytes
+`test-vectors/economy-transition-v3.txt` fixes.
 
 **The recorded next action changed at the end of the M3.9c session, and the
 reason is founder direction rather than a defect.** M3.9c closed by asking about
@@ -2445,55 +2489,26 @@ form has nothing left to solve. The envelope, the key space, the settlement, the
 receipt, and the tree constructions are unaffected by any of this, and version
 five's model and vectors are what make a successor's carryover check possible.
 
-**When the C++ codec does come back, three things in it move and are easy to
-miss.** The eight HUB message labels, which are string literals rather than a
-table. Kind 11's decode, and the sender derivation the kernel does not have
-today — `H(D("protocol-stack:v1:account") || 0x01 || pk)` is implemented in
-`src/v1/admission.cpp` but is file-private there, so a restatement must be
-checked against the identifier `test-vectors/protocol-primitives-v1.txt`
-records, exactly as M3.9a did for the accounts tree. And the state-root version
-field, which is a number rather than a label and so will not appear in a search
-for `v4`.
-
-**Whenever it comes back, decide whether version four's C++ codec is retained or
-replaced, and say which.** The Python side kept version four in place because
-its 441 vectors are the record of what the hosted matrix verified. The C++ side
-has a weaker case for a copy: it is one implementation of a byte surface, and
-keeping two would double the build with nothing but labels between them.
-Replacing it is the recommendation; whichever is chosen, record it, because the
-codec is the only place in the repository where a superseded contract would
-still be compiled.
-
 **Check that any new target is in `PROTOCOL_STACK_TARGETS`.** That list carries
 `-Wall -Wextra -Wpedantic -Werror`, the sanitizer flags, `_GLIBCXX_ASSERTIONS`,
 and the libsodium link. M3.9a declared a target, added its `add_test`, and left
 it off that list; the registration guard does not catch it, because it checks
 that a test is *run* rather than how it is *built*.
 
-**Then M3.9e: the execution model and its recorded transition trace**, which is
-issue #153 and is what this defect interrupted. It is now unblocked against a
-contract that can be implemented. **It should exercise the recovery path
-specifically**: a person with an identity, no linked addresses, and a fresh
-funded account adding one. That is the path version four disabled, and a trace
-that does not walk it would not have caught the defect either.
-
-**The local C++ harness is the reusable result of M3.9a.** Building libsodium
-locally is the heavy operation `CLAUDE.md` refuses, so a scratch harness supplies
-the two entry points the kernel uses and backs SHA-256 with the system OpenSSL —
-an existing audited implementation rather than a second one, in a file that is
-never committed and never part of the build. With it the whole codec test
-compiles and runs in about a second under both compilers with the project's exact
-flags and under address and undefined-behaviour sanitizers.
-
 **Keep every accepted artifact in place and passing.**
 `simulation/founder_economy/`, `simulation/founder_economy_v2/`,
 `simulation/founder_economy_v3/`, `simulation/cycle_boundary/`,
 `simulation/uptime_measurement/`, `simulation/economy_transition/`,
-`simulation/economy_transition_v3/`, and `simulation/economy_transition_v4/`
-stay untouched. **`simulation/economy_transition_v4/` is now load-bearing in a
-second way**: version five imports it, and version five's carryover check reads
-`test-vectors/economy-transition-v4.txt` directly, so editing either would move
-version five's evidence rather than only version four's. `simulation/escrow_payout/` is shared by three bindings and
+`simulation/economy_transition_v3/`, `simulation/economy_transition_v4/`, and
+`simulation/economy_transition_v5/` stay untouched.
+**`simulation/economy_transition_v4/` is now load-bearing three ways**: version
+five imports it, version five's carryover check reads
+`test-vectors/economy-transition-v4.txt` directly, and version six imports its
+constants and its independent derivation — so editing it would move three
+versions' evidence rather than one. **`simulation/economy_transition_v3/` is
+load-bearing twice**, because versions four and six both import its settlement
+and both require its two recorded assignment records.
+`simulation/escrow_payout/` is shared by three bindings and
 should gain no fourth without a new contract version, and
 `simulation/scenarios/` holds three population generators that must stay
 independent for the same reason.
@@ -2507,13 +2522,14 @@ branch and pull request.
 ## Blockers
 
 **None.** The founder-decision gate stopped `economy-transition-v6` on
-2026-08-15 with four reserved decisions, and the owner answered all four the same
-day. ADR 0043 records them, the constitution states them, and its unresolved list
-is two entries shorter.
+2026-08-15 with four reserved decisions, the owner answered all four the same
+day, and the contract that encodes them was delivered the same day. ADR 0043
+records the answers, ADR 0044 records the contract, the constitution states both,
+and the unresolved list is two entries shorter.
 
-**The four answers are in the [Exact next action](#exact-next-action) section**,
-where the slice that needs them can be read in one place rather than assembled
-from a blocker list.
+**Requirement 10's target is settled again**, at `economy-transition-v6`, and it
+is the first version-six-era contract the direction does not supersede. Nothing
+founder-reserved stands in front of the execution model or the C++ kernel.
 
 **How the gate came to stop the slice is worth keeping, because the failure mode
 recurs.** The handoff had said "Blockers: None". The pivot's own three questions
@@ -2581,7 +2597,9 @@ newest contract by accident.
 M3.10a ran the founder-decision gate and **did not pass it**, which is the second
 time the gate has stopped a slice rather than clearing it; M3.8a was the first,
 and that slice's specification had to be rebuilt because the answers changed the
-transaction set rather than filling in blanks.
+transaction set rather than filling in blanks. **The answers arrived the same day
+and the slice was then delivered in full**, so the stop cost a question rather
+than a session.
 
 Thirty-six decisions were enumerated before any was judged. Thirty-two are
 delegated. Mandatory registration, the address as an operational tool, direct
