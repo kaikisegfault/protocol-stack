@@ -31,7 +31,9 @@ ADR 0040 replaced addresses-as-identity with keyless asset escrows and revocable
 signers, ADR 0041 tied the Founder Seat to the identity rather than to any
 address, and ADR 0042 funded a brand-new account's first action from the
 verified-user channel. The C++ codec slice is withdrawn; the next slice is the
-contract that encodes the direction, and nothing blocks it.
+contract that encodes the direction, **and its founder-decision gate stopped it
+on 2026-08-15 with four reserved decisions**, two of which the constitution has
+listed as unresolved since the pivot. See [Blockers](#blockers).
 
 Requirements 3, 4, 5, 6, 7, and 12 of `first-goal.md` are satisfied;
 requirements 8 and 9 moved from specified to enforced; and requirement 14 is met
@@ -2234,8 +2236,17 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 Milestone slice **M3.10a: specify `economy-transition-v6`**, the contract that
 encodes the account architecture the four ADRs of 2026-08-15 settled. Use the
-`change-protocol` skill. **Nothing blocks it**, and no founder question is
-outstanding. Do not write C++ in this slice.
+`change-protocol` skill. Do not write C++ in this slice.
+
+**It is blocked, and the founder-decision gate is what found that.** The slice
+was selected on 2026-08-15 and its gate enumerated thirty-six decisions before
+judging any. Two of them appear verbatim under **Explicitly unresolved founder
+details** in `founder-constitution.md`, which makes them founder-reserved by the
+gate's first test, and both are inside the contract rather than beside it. Two
+more are reserved by the second test. All four are listed under
+[Blockers](#blockers) with what each one blocks. **Do not start the
+specification until they are answered**, and do not fill any of them with a
+default.
 
 **Deliver it the way every transition contract since M3.8a has been delivered**:
 the specification and its ADR, then a sibling model, then a recorded vector file
@@ -2268,6 +2279,60 @@ not have to re-read them:
    record names its owning identity, and a mint names a destination escrow the
    chain checks belongs to the minting identity. ADR 0041 records that last one
    as a derivation, so state it as such and let the vectors carry it.
+
+### What the M3.10a gate's enumeration found
+
+**These are findings, not decisions.** Nothing below is specified, accepted, or
+encoded anywhere; the slice was stopped before its work began. They are recorded
+because they were derived while enumerating, they are what makes the four
+reserved questions concrete, and re-deriving them next session is waste.
+
+**Registration should be fee-exempt, which is the opposite of what ADR 0042
+recommends, and the reason is the millionth user.** ADR 0042 offers two ways to
+make registration self-funding — credit the entry airdrop before the fee, or
+exempt registration from the fee — and prefers the first as "the smaller change",
+on the ground that 1.71 units is far above any plausible fixed fee. That holds
+only while an airdrop exists. The airdrop is bounded at 1,000,000 identities, so
+user 1,000,001 creates an escrow with a zero balance and their registration fails
+with `INSUFFICIENT_BALANCE` under the credit-before-fee rule. Exemption works for
+every user forever, and its anti-abuse bound is non-monetary and already present:
+only the ecosystem verifier can sign a registration. This is mechanism under
+ADR 0042's own "either satisfies the direction", so it is engineering's to
+choose — it is recorded rather than buried because the ADR recommends the other
+one.
+
+**The signature-scheme byte can carry a second authorization mode, and that is
+what lets recovery pay a fee with no key.** A person recovering holds their face
+and nothing else, so the transaction that registers a new signer cannot be signed
+by a signer. Version one's header has a signature-scheme byte at offset 39, fixed
+at `1`. Reading the 32-byte field at offset 40 as an *authority* public key —
+a signer key under scheme `1`, the identity's HUB key under a new scheme `2` —
+gives HUB-authorized transactions a home without widening the header, and the fee
+is drawn from an escrow the body already names. Kind 1 keeps scheme `1` and its
+bytes. This is the finding that makes the pivot look cheap at the envelope, and
+it is worth checking hard before it is relied on.
+
+**The accepted account derivation survives, with its role narrowed.**
+`H(D("protocol-stack:v1:account") || 0x01 || public_key)` stops identifying
+accounts and starts identifying *signers*, which is exactly what it is: a hash
+of a public key. An escrow, having no key, needs its own derivation from the
+identity and an index. So the M1 primitive is extended rather than replaced, and
+the thing ADR 0040 flagged as reaching the compatibility boundary reaches a
+narrower part of it than expected.
+
+**ADR 0040's ordering question is answered by version one's own rule.** Two
+signers on one escrow race for one nonce sequence, because the nonce belongs to
+the escrow rather than to the signer — which is what version one already does per
+account and needs no new machinery. Concurrency is the wallet's problem;
+`NONCE_MISMATCH` is the chain's answer, unchanged.
+
+**Three smaller derivations, each the narrower claim.** Escrow deletion requires
+a zero balance, because any other rule either destroys value or invents a sweep
+destination. A policy's "time windows" must be block heights, because the
+constitution forbids a transition from reading a wall clock. And multi-signer
+thresholds — one of the postures ADR 0040 lists — are the single capability a
+one-signature envelope cannot carry, so version six either widens the envelope or
+states plainly that thresholds wait.
 
 **Two accepted things must be re-checked rather than assumed.** Requirement 12's
 storage bounds move from per-seat manager entries to per-identity escrow and
@@ -2317,14 +2382,19 @@ left for an add-only rule to govern. Seat addresses, the 16-manager limit, and
 the mint-to-the-signing-address rule are superseded together with the concept
 they governed. One uniform model covers every participant.
 
-**Every founder-reserved question this milestone raised is now closed.** The
-last was answered the same day, in
-[ADR 0042](../decisions/0042-the-hub-entry-airdrop-and-the-verified-user-rate.md).**
+**Every founder-reserved question the pivot itself raised was closed the same
+day**, the last in
+[ADR 0042](../decisions/0042-the-hub-entry-airdrop-and-the-verified-user-rate.md).
 A brand-new person's first action is funded by the protocol from an allocation
 they are already entitled to: on completing HUB verification for the first time
 the chain issues their first day's `hub_verified_user_incentives` portion as an
 entry airdrop, and every later day continues as an ordinary mint permission
-under the thirty-window cap. **Nothing founder-reserved blocks the next slice.**
+under the thirty-window cap.
+
+**That is not the same as nothing blocking the next slice, and the handoff said
+it was.** Writing the contract reaches two decisions the constitution had already
+listed as unresolved and two the ADRs leave open, none of which the pivot's own
+three questions covered. They are in [Blockers](#blockers).
 
 **The rate is derived, not chosen, and that is the strongest thing about it.**
 The owner supplied the population and the period — the first 1,000,000 verified
@@ -2362,15 +2432,6 @@ keeping two would double the build with nothing but labels between them.
 Replacing it is the recommendation; whichever is chosen, record it, because the
 codec is the only place in the repository where a superseded contract would
 still be compiled.
-
-**Three things in the C++ move and are easy to miss.** The eight HUB message
-labels, which are string literals rather than a table. Kind 11's decode, which
-must name the 32-byte field an identity — and the C++ side has no sender
-derivation at all today, so if the kernel is to build the address-add message it
-needs `H(D("protocol-stack:v1:account") || 0x01 || pk)`, which
-`src/v1/admission.cpp` already implements and which should be reused rather than
-written twice. And the state-root version field, which is a number rather than a
-label and so will not show up in a search for `v4`.
 
 **Check that any new target is in `PROTOCOL_STACK_TARGETS`.** That list carries
 `-Wall -Wextra -Wpedantic -Werror`, the sanitizer flags, `_GLIBCXX_ASSERTIONS`,
@@ -2414,16 +2475,83 @@ branch and pull request.
 
 ## Blockers
 
-**None.** Every founder-reserved question this milestone raised is answered.
-The three that opened on 2026-08-15 all closed the same day: the recovery fee
-question by ADR 0040, the seat-permanence conflict by ADR 0041, and entry
-funding plus the verified-user rate by ADR 0042.
+**Four founder-reserved decisions block `economy-transition-v6`, and the
+founder-decision gate found them by enumerating the slice rather than judging it
+whole.** They were asked on 2026-08-15 and the slice was not started.
 
-What remains open in the constitution is not this milestone's: eligibility and
-anti-abuse for the liquidity-mining, impermanent-loss, and mystery-box channels,
-legacy inactivity bounds, stablecoin allowlist governance, the AI frameworks,
-and verifier key rotation. Kind 6 stays specified and refused because of the
-first of those, which costs one transaction kind rather than a milestone.
+**The handoff said "None" before this, and that was wrong rather than stale.**
+The three questions that opened on 2026-08-15 did all close the same day — the
+recovery fee by ADR 0040, the seat-permanence conflict by ADR 0041, entry funding
+and the verified-user rate by ADR 0042 — and the handoff generalised from those
+three closures to the milestone. Two items the constitution has listed as
+unresolved since the pivot were read as "not this milestone's" while being inside
+the very next contract. **Nothing had changed in the repository; what changed is
+that the next slice reached them**, which is what the gate exists to detect and
+what "record a reserved decision once it becomes the nearest dependency" means.
+
+### 1. How far mandatory verification reaches into a native transfer
+
+Listed under **Explicitly unresolved founder details**. `ledger-transition-v1`
+creates an absent recipient on transfer, and four contract versions have carried
+that unchanged. Under the uniform model every account is an escrow created
+beneath a registered identity, so version six must either keep recipient-creation
+and admit accounts with no identity behind them — contradicting "there is no
+unverified participation" — or refuse an unregistered recipient, which ends
+sending native units to a person who has not joined yet. **Kind 1's rejection
+conditions cannot be written either way without the answer**, and kind 1 is the
+one transaction whose bytes have survived every version since M1.
+
+### 2. What turning biometric confirmation off entirely means for a Founder Seat
+
+Listed under **Explicitly unresolved founder details**. Version three made
+biometric-on-mint a per-seat option with a deliberate asymmetry: enabling
+protection needs only an address signature, disabling it needs a biometric
+approval, so a stolen key can neither mint against a protected seat nor remove
+the protection first. ADR 0039 makes the posture per-person and user-configurable
+including off. **The constitution requires the new policy to preserve that
+asymmetry or knowingly drop it**, and says so in those words. It governs kinds 4,
+7, and 8 and the shape of the policy state, so it is not separable from the
+contract.
+
+### 3. Where a verified user's forfeited daily incentive goes
+
+ADR 0042 subjects the verified-user permission to the same thirty-window
+accumulation cap as every other permission, and the cap forfeits what is not
+collected. Every other channel has a recorded destination for that value — a
+failed or capped seat's permission goes to the day's best performers by ADR 0033,
+and a capped referral routes to the unreferred pool by ADR 0034, which the owner
+chose against the recommendation offered. **The verified-user channel has no
+second destination**, so the value either stays permanently `outstanding` and is
+never issued, or a destination is invented. It decides what a participant
+receives, which is reserved by the second test.
+
+### 4. Whether one signer key may be assigned to more than one escrow
+
+Reserved by the second test, narrowly: it sets how many keys a person must hold
+per device. It is here because of what it decides beside that. If a signer key
+binds to exactly one escrow, the chain resolves the paying escrow from the signer
+and **the version-one 80-byte header and the kind-1 byte identity survive
+untouched**; if one key may serve several, the transaction must name the escrow
+and kind 1's body grows, ending a byte identity four contract versions preserved.
+The direction says signers are "assigned to" holding addresses and are revocable
+per address, which reads as the first; it does not settle it, and a vector file
+written on the wrong reading is expensive to unwind.
+
+### What proceeds regardless
+
+Nothing in the milestone. Every remaining requirement — 10, 11, and 13, the C++
+kernel, the cross-language vectors, and the four-node adversarial scenarios —
+sits behind a contract that these four questions shape. M3.9e is unblocked as
+work and pointless as sequencing: an execution model built against version five
+would be built against a contract the direction already supersedes, which is the
+precedent M3.8a set and M3.9b repeated.
+
+### What remains open in the constitution and is genuinely not this milestone's
+
+Eligibility and anti-abuse for the liquidity-mining, impermanent-loss, and
+mystery-box channels; legacy inactivity bounds; stablecoin allowlist governance;
+the AI frameworks; and verifier key rotation. Kind 6 stays specified and refused
+because of the first, which costs one transaction kind rather than a milestone.
 
 Superseded, and kept for the record: **how a person who holds nothing pays for
 their first transaction.** The mandatory-verification direction of 2026-08-15 says
@@ -2431,12 +2559,16 @@ registration and recovery involve no helper and no third party, and every
 transaction costs a fee paid by a sender. The three candidate answers —
 fee-exempt identity transactions, a fee drawn from value the identity already
 holds on chain, or registration performed by the company-hosted HUB service —
-each change what a participant must do and own, so none may be invented. **It
-blocks `economy-transition-v6`, which is the next slice.** Two further questions
-in the constitution are answerable alongside it and block nothing on their own:
-how far mandatory verification reaches into a native transfer, and what turning
-biometric confirmation off entirely means for a Founder Seat's protection
-asymmetry.
+each change what a participant must do and own, so none may be invented. ADR 0040
+answered it for recovery and ADR 0042 for entry, and it no longer blocks
+anything.
+
+**The two questions this entry filed beside it as blocking nothing are
+blockers 1 and 2 above**, and the reclassification is the correction rather than
+new information. They were recorded as "answerable alongside" the entry-funding
+question while it was the nearest dependency; once it closed, the next slice
+became the contract, and the contract reaches both. Neither moved — the slice
+moved toward them.
 
 Requirement 10's target is no longer settled. It was `economy-transition-v5` for
 one day; the direction of 2026-08-15 supersedes it, and the C++ kernel waits for
@@ -2457,6 +2589,47 @@ corrects it and version four is retained unedited because its 441 vectors are
 the record of what the hosted matrix verified on 2026-08-15. Its specification
 and the documentation index both say so, so a reader cannot pick it up as the
 newest contract by accident.
+
+M3.10a ran the founder-decision gate and **did not pass it**, which is the second
+time the gate has stopped a slice rather than clearing it; M3.8a was the first,
+and that slice's specification had to be rebuilt because the answers changed the
+transaction set rather than filling in blanks.
+
+Thirty-six decisions were enumerated before any was judged. Thirty-two are
+delegated. Mandatory registration, the address as an operational tool, direct
+recovery, and biometric-by-default are ADR 0039 and the constitution. The
+identity as admin, escrows that hold no keys, revocable per-escrow signers, and
+unlimited escrows per person are ADR 0040 and the constitution's uniform-model
+paragraph. A seat with no address, the removal of kind 9 and the manager set, and
+a mint naming a destination escrow the chain checks belongs to the minting
+identity are ADR 0041, the last recorded there as a derivation. The entry
+airdrop, its 171,000,000-atomic rate, its one-per-identity bound, the
+1,000,000-identity enrollment, the 731-cycle period, and who submits a
+registration are ADR 0042. The escrow identifier derivation and the two-signer
+ordering rule are named as engineering by ADR 0040 in those words. The version
+labels, kind identifiers, body layouts, entry kinds, result codes, storage
+shapes, receipt version, genesis fields, and root constructions are mechanism,
+encoding, and storage under `founder-constitution.md` lines 883-886.
+
+Six were deductions from decided principles, which the gate treats as delegated
+and expected: that registration must create the identity, its first escrow, and
+its first signer in one atomic execution or the airdrop has nowhere to land; that
+registration is better made fee-exempt than credit-before-fee, because the
+airdrop is bounded at a million identities and the fee is not; that the accepted
+version-one account derivation becomes the *signer* identifier; that the nonce
+belongs to the escrow rather than the signer; that escrow deletion requires a zero
+balance; and that a policy's time windows are block heights, because a transition
+may not read a wall clock. All six are recorded under
+[What the M3.10a gate's enumeration found](#what-the-m310a-gates-enumeration-found).
+
+**The four that are reserved are listed above with what each blocks.** Two of
+them — the reach of mandatory verification into a transfer, and what "off
+entirely" means for a seat's protection asymmetry — have been in the
+constitution's unresolved list since the pivot was recorded, and enumerating is
+what showed they are inside the contract rather than beside it. Assessed whole,
+"specify the account architecture the four ADRs settled" reads as pure
+engineering, and both reserved decisions are inside it. That is the same failure
+mode M3.8a's gate caught, in the same place.
 
 M3.9c ran the founder-decision gate and passed it. Every decision the slice had
 to settle was already decided or delegated: the corrected field meaning, the
