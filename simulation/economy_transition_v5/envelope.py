@@ -42,6 +42,7 @@ from . import contract as c
 __all__ = [
     "MalformedTransaction",
     "Transaction",
+    "account_id",
     "body_bytes",
     "decode_signed",
     "expected_signed_length",
@@ -57,21 +58,25 @@ __all__ = [
 ]
 
 
-def sender_account_id(transaction: Transaction) -> bytes:
-    """`H(D("protocol-stack:v1:account") || 0x01 || sender_public_key)`.
+def account_id(public_key: bytes) -> bytes:
+    """`H(D("protocol-stack:v1:account") || 0x01 || public_key)`.
 
     The accepted version-one derivation, restated rather than reimplemented:
     the digest construction is the same domain-separated SHA-256 every model
-    uses, and no cryptographic primitive is written here.
+    uses, and no cryptographic primitive is written here. The kernel's own
+    version-one implementation is file-private to `src/v1/admission.cpp`, so
+    this restatement is checked against the identifier
+    `test-vectors/protocol-primitives-v1.txt` records rather than against it.
     """
-    if type(transaction.sender_public_key) is not bytes:
-        raise MalformedTransaction("public key is not octets")
-    if len(transaction.sender_public_key) != 32:
-        raise MalformedTransaction("public key is not 32 octets")
     return digest(
         c.ACCOUNT_ID_LABEL,
-        bytes([c.ACCOUNT_ID_DOMAIN]) + transaction.sender_public_key,
+        bytes([c.ACCOUNT_ID_DOMAIN]) + _octets(public_key, 32, "public key"),
     )
+
+
+def sender_account_id(transaction: Transaction) -> bytes:
+    """The account a transaction was sent from."""
+    return account_id(transaction.sender_public_key)
 
 
 def body_bytes(kind: int, body: dict) -> bytes:

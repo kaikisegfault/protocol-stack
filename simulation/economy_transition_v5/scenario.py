@@ -31,7 +31,7 @@ from simulation.economy_transition_v4 import scenario as v4
 from simulation.economy_transition_v3.settlement import SeatCycle
 
 from . import contract as c
-from .envelope import Transaction, sender_account_id
+from .envelope import Transaction, account_id
 from .genesis import Genesis
 from .identity import Registry
 
@@ -119,7 +119,7 @@ def recovery_transaction() -> Transaction:
 
 
 def recovery_account_id() -> bytes:
-    return sender_account_id(recovery_transaction())
+    return account_id(RECOVERY_PUBLIC_KEY)
 
 
 def attacker_transaction() -> Transaction:
@@ -128,13 +128,12 @@ def attacker_transaction() -> Transaction:
 
 
 def attacker_account_id() -> bytes:
-    return sender_account_id(attacker_transaction())
+    return account_id(ATTACKER_PUBLIC_KEY)
 
 
 def victim_account_id() -> bytes:
-    return sender_account_id(
-        add_address_transaction(VICTIM_IDENTITY, VICTIM_PUBLIC_KEY, nonce=1)
-    )
+    """The victim never sends a kind 11 at all; the attack is about their account."""
+    return account_id(VICTIM_PUBLIC_KEY)
 
 
 def transactions() -> dict[str, Transaction]:
