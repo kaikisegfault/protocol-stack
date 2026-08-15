@@ -1048,6 +1048,38 @@ add_test(
     "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_v4_identity_test.py"
 )
 add_test(
+  NAME economy-transition-v5-vectors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tools/economy-transition-v5-vectors/verify.py"
+    --vectors
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v5.txt"
+)
+add_test(
+  NAME economy-transition-v5-envelope
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_v5_envelope_test.py"
+)
+add_test(
+  NAME economy-transition-v5-state
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_v5_state_test.py"
+)
+add_test(
+  NAME economy-transition-v5-identity
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_v5_identity_test.py"
+)
+add_test(
+  NAME economy-transition-v5-carryover
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_v5_carryover_test.py"
+)
+add_test(
   NAME founder-seat-vectors
   COMMAND
     "${Python3_EXECUTABLE}"
