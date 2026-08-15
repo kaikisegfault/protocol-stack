@@ -819,12 +819,6 @@ milestone supplies enough evidence and context:
   preserve that asymmetry or knowingly drop it;
 - eligibility and anti-abuse mechanics for the liquidity-mining,
   impermanent-loss, and mystery-box direct-mint channels;
-- whether buying a Founder Seat requires HUB verification first, so that the
-  seat is tied to a HUB identity the chain can check a later address addition
-  against;
-- whether a HUB identity's set of addresses is held in consensus state, which is
-  what "add and remove your own addresses through HUB" means on a chain where an
-  account is an address;
 - exact legacy inactivity bounds and contested-successor behavior;
 - stablecoin allowlist governance and any later bridge-asset change;
 - complete AI funding, moderation, biometric, and succession frameworks; and

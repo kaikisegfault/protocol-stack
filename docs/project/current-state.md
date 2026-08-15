@@ -25,9 +25,13 @@ and for interacting with any part of the ecosystem, an address becomes an
 operational tool rather than an identity root, and biometric confirmation
 becomes the default on every financial transaction and every mint.
 [ADR 0039](../decisions/0039-hub-verification-is-mandatory-for-everyone.md)
-records it and the constitution now fixes it. The C++ codec slice is withdrawn;
-the next slice is the contract that encodes the direction, and one
-founder-reserved question blocks it.
+records it and the constitution now fixes it. **Three further ADRs the same day
+completed the architecture and closed every founder question it raised**:
+ADR 0040 replaced addresses-as-identity with keyless asset escrows and revocable
+signers, ADR 0041 tied the Founder Seat to the identity rather than to any
+address, and ADR 0042 funded a brand-new account's first action from the
+verified-user channel. The C++ codec slice is withdrawn; the next slice is the
+contract that encodes the direction, and nothing blocks it.
 
 Requirements 3, 4, 5, 6, 7, and 12 of `first-goal.md` are satisfied;
 requirements 8 and 9 moved from specified to enforced; and requirement 14 is met
@@ -1543,8 +1547,10 @@ behavior.
   the figures sit inside the roughly 12% run-to-run variance M3.7a measured on
   identical code. **M3.9d is the one to watch**: it is C++, and build time is
   the larger half of each job.
-- **Version five's evidence gap is closed and the implementation gap is not.**
-  The C++ codec in `src/v4/` implements version four; M3.9d moves it.
+- **Version five's evidence gap is closed and its implementation gap is now
+  moot.** The C++ codec in `src/v4/` implements version four and stays there;
+  M3.9d was withdrawn the same day, because the direction of 2026-08-15
+  supersedes version five as the kernel's target.
 - Issue #153 was opened as M3.9b against version four and is renumbered M3.9e
   and rebound to version five. Writing it is what found version four's kind-11
   defect, so three slices landed in front of it. Its recorded scope now requires
@@ -2469,8 +2475,16 @@ from total address loss must first fund a fresh account themselves, and no third
 party can perform the addition on their behalf. ADR 0037 records that trade and
 lists it for review; it is stated here because it is the kind of thing the
 standing invitation of 2026-08-13 covers — a rule about what an end user must do
-to be paid — and because the moment to revisit it is before M3.9d rewrites the
-C++ codec against it, not after.
+to be paid — and because the moment to revisit it was before the C++ codec was
+rewritten against it, not after.
+
+**Asking it was the right call, and the answer went further than the question.**
+The owner rejected all three offered flows and directed the pivot ADRs 0039
+through 0042 record. The consequence flagged here no longer exists: a recovering
+person regains escrows that already hold value, and a brand-new one is funded by
+the entry airdrop. That is the second time the standing invitation of 2026-08-13
+produced a materially better design than inference would have — the first was
+M3.8a, which the invitation itself cites.
 
 M3.9b ran the founder-decision gate and passed it. Every decision the slice had
 to settle was mechanism: which of two repairs to make, whether to version or
