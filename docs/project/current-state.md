@@ -94,10 +94,13 @@ move it.
 
 ### How M3.10a was delivered
 
-Issue #169 and PR #170 delivered `economy-transition-v6` and ADR 0044. It added
-the specification, the ADR, a sibling model in `simulation/economy_transition_v6/`,
-462 normative vectors, a verifier in `tools/economy-transition-v6-vectors/`, and
-four test modules with 91 tests.
+Issue #169 and PR #170 delivered `economy-transition-v6` and ADR 0044, merged by
+rebase across commits `6fb57f6` through `15b5e90`. It added the specification,
+the ADR, a sibling model in `simulation/economy_transition_v6/`, 462 normative
+vectors, a verifier in `tools/economy-transition-v6-vectors/`, and four test
+modules with 91 tests. The full hosted matrix passed on the exact candidate —
+`gcc-debug` 8m33s, `clang-debug` 8m57s, `clang-sanitizers` 9m02s,
+`gcc-sanitizers` 9m27s — and again post-merge on `main` in 9m48s.
 
 **A verified identity is the root, an escrow is where value sits, and a signer is
 who may act on one escrow.** Three objects, each answering exactly one question,
@@ -1521,14 +1524,28 @@ slices.
   kind-1 byte identity, the shared envelope, the admission order, the genesis
   field table, the receipt layout, and result codes 0 through 20 are unchanged.
   Kind 6 is still specified and refused.
-- `economy-transition-v5` is the accepted consensus surface the C++ kernel must
-  be implemented against. It is version four with one field's meaning corrected —
-  kind 11's 32-byte field is the HUB identity hash and the account being linked
-  is the sender — because version four's kind 11 names an identity it does not
-  carry and therefore cannot be implemented. Everything else in version four is
-  incorporated by reference. It has a model, 550 vectors, and a verifier;
-  **what it does not yet have is the C++ implementation**, which still targets
-  version four.
+- `economy-transition-v6` is the accepted consensus surface the C++ kernel must
+  be implemented against. A verified identity is the root of every account, a
+  keyless escrow is where value sits, and a revocable signer assigned to exactly
+  one escrow is who may act on it; an escrow's balance and nonce stay in the
+  version-one account map, so a version-six state is a version-one state plus an
+  economy map. Registration is fee-exempt and creates the identity, escrow zero,
+  the first signer, and the entry airdrop in one atomic execution. A Founder Seat
+  has no address and a mint names a destination escrow the chain checks. A
+  transfer refuses an unregistered recipient, which withdraws
+  `ledger-transition-v1`'s recipient-creating transfer and makes **every account
+  is an escrow** a structural invariant. The signature-scheme byte carries a
+  second authorization mode so that identity administration works with no key at
+  all, and admission still verifies a signature without reading state. It has a
+  model, 462 vectors, a verifier, and 91 tests; **what it does not yet have is
+  the C++ implementation**, which still targets version four.
+- `economy-transition-v5` is accepted, fully evidenced, and superseded as
+  direction hours after it was evidenced. It is version four with one field's
+  meaning corrected — kind 11's 32-byte field is the HUB identity hash and the
+  account being linked is the sender — because version four's kind 11 names an
+  identity it does not carry and therefore cannot be implemented. Its model, 550
+  vectors, and verifier remain in place and passing. No C++ was ever written
+  against it, which is the precedent working rather than failing.
 - `economy-transition-v4` is accepted, fully evidenced, and superseded in one
   place. HUB verification is the root of identity: a
   registration records the person's own public key and the ecosystem verifier
