@@ -138,6 +138,7 @@ compatibility.transaction_labels_are_version_one=true
 compatibility.hub_labels_are_version_five=true
 compatibility.account_id_label=protocol-stack:v1:account
 compatibility.account_id_of_the_accepted_sender=c0bb72f8dfedb1a333ca4116b94676c5be73583d3ecfce48401768b0c804e65e
+compatibility.account_id_matches_accepted=true
 
 
 # Admission, with every rejection produced by mutating an accepted encoding.
@@ -666,7 +667,7 @@ carryover.version_four_keys=441
 carryover.carried=409
 carryover.revised=30
 carryover.renamed=2
-carryover.added=107
+carryover.added=108
 carryover.classification_is_total=true
 carryover.revised_keys=genesis.bytes_hex,genesis.chain_id,genesis.chain_id_label,genesis.schema_version,message.hex.activation,message.hex.address_add,message.hex.address_remove,message.hex.manager,message.hex.mint,message.hex.mint_biometric_disable,message.hex.purchase,message.hex.registration,message.label.activation,message.label.address_add,message.label.address_remove,message.label.manager,message.label.mint,message.label.mint_biometric_disable,message.label.purchase,message.label.registration,receipt.encoded_hex,receipt.version,state.economy_root_empty,state.economy_root_genesis,state.economy_root_populated,state.economy_tree_prefix,state.root_empty_economy,state.root_label,state.root_populated_economy,state.root_schema_version
 carryover.renamed_keys=compatibility.hub_labels_are_version_four->compatibility.hub_labels_are_version_five,state.all_four_roots_are_distinct->state.all_five_roots_are_distinct
