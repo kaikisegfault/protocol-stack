@@ -66,7 +66,7 @@ transcription error, and the version four one is the one already checked.
 
 ### The vector file is complete, and is read a second time against version four's
 
-`test-vectors/economy-transition-v5.txt` records all 548 values under version
+`test-vectors/economy-transition-v5.txt` records all 550 values under version
 five's labels, because the specification requires it to fix everything version
 four's file fixes. Every value is still derived twice: once from the derivation
 and once from a live run of the model.

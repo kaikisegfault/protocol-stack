@@ -73,7 +73,7 @@ move it.
 ### How M3.9c was delivered
 
 Issue #157 and PR #158 delivered version five's evidence and ADR 0038. It added
-`simulation/economy_transition_v5/`, 548 normative vectors, a verifier in
+`simulation/economy_transition_v5/`, 550 normative vectors, a verifier in
 `tools/economy-transition-v5-vectors/`, and four test modules with 64 tests.
 Version five's status line now says its model and vectors are recorded and its
 C++ implementation is not.
@@ -140,10 +140,39 @@ the chain identifier derived from it differs entirely, which makes "the same
 fields under a different label are a different chain" a demonstration rather
 than a sentence.
 
+**Three verification rules came out of probing the slice's own evidence, and
+they are now repository rules in `docs/engineering/verification.md`.** All three
+close the same hole from different sides: **a defect present before a vector
+file is first written is recorded at its wrong value and then faithfully
+reproduced, so nothing ever fails.**
+
+1. **A boolean vector may only be true.** Its name is the claim, so recording
+   `false` records the negation — which is exactly
+   `state.no_entry_is_keyed_by_seat_cycle=false`, the defect M3.8b found in an
+   accepted file and could only leave in place. A derived `False` is now a
+   failure in the checker rather than a value, and it fails twice: once for
+   being false and once for leaving its recorded key underived. Neither this
+   file nor version four's records a single `false`, so the rule cost nothing.
+2. **A name must assert no more than its value establishes.** Three keys in the
+   first draft did not: `recovery.the_sender_pays_the_fee` recorded a fee
+   *limit*, and two others recorded a hex field or a length under a name that
+   claimed a property.
+3. **A claim must be checked against something other than itself.** Two checks
+   in the first draft were vacuous — one compared a fixture to itself and one
+   checked a list against an inline copy of the same list — and both would have
+   recorded `true` forever. The account derivation is now checked against
+   `test-vectors/protocol-primitives-v1.txt` rather than only against its own
+   second restatement, so a formula the model and the derivation got wrong the
+   same way still fails.
+
+Each was demonstrated by mutation rather than asserted, and with the account
+domain octet changed in *both* sources the generator now refuses to emit a file
+at all.
+
 **Nothing accepted was edited.** `simulation/economy_transition/`,
 `simulation/economy_transition_v3/`, `simulation/economy_transition_v4/`, their
 verifiers, and the version-four C++ codec are untouched, and all four earlier
-vector files verify at their recorded counts: 238, 579, 441, and now 548.
+vector files verify at their recorded counts: 238, 579, 441, and now 550.
 
 ### How M3.9b was delivered
 
@@ -1368,7 +1397,7 @@ slices.
   kind 11's 32-byte field is the HUB identity hash and the account being linked
   is the sender — because version four's kind 11 names an identity it does not
   carry and therefore cannot be implemented. Everything else in version four is
-  incorporated by reference. It has a model, 548 vectors, and a verifier;
+  incorporated by reference. It has a model, 550 vectors, and a verifier;
   **what it does not yet have is the C++ implementation**, which still targets
   version four.
 - `economy-transition-v4` is accepted, fully evidenced, and superseded in one
@@ -1489,11 +1518,26 @@ behavior.
   classification passed, the preset matrix was skipped as designed, and the
   aggregate required check passed. Post-merge run 31872875912 on `fa1907f`
   passed the same path.
-- Issue #157 and PR #158 are the M3.9c delivery. It adds the version-five model,
-  548 vectors, a verifier, four test modules, and ADR 0038, and edits no accepted
-  artifact.
+- Issue #157 and PR #158 are the M3.9c delivery, merged by rebase across commits
+  `0f93026` through `c1e9ee4` on `main`. It adds the version-five model, 550
+  vectors, a verifier, four test modules, and ADR 0038, and edits no accepted
+  artifact. PR run 31880586047 on the final head `13c8229` passed the complete
+  hosted matrix — scope classification `full`, GCC and Clang debug, both
+  sanitizers, and the aggregate required check.
+- **The margin is unchanged at about eleven minutes**, which is the expected
+  result and is recorded so the next slice has a baseline. Per-job durations
+  against the 20-minute per-job timeout: `gcc-sanitizers` 6m15s, `clang-debug`
+  8m06s, `gcc-debug` 8m16s, `clang-sanitizers` 8m51s. The slice adds no
+  translation unit, and `ctest --parallel` absorbs four fast Python entries, so
+  the figures sit inside the roughly 12% run-to-run variance M3.7a measured on
+  identical code. **M3.9d is the one to watch**: it is C++, and build time is
+  the larger half of each job.
 - **Version five's evidence gap is closed and the implementation gap is not.**
   The C++ codec in `src/v4/` implements version four; M3.9d moves it.
+- Issue #153 was opened as M3.9b against version four and is renumbered M3.9e
+  and rebound to version five. Writing it is what found version four's kind-11
+  defect, so three slices landed in front of it. Its recorded scope now requires
+  the trace to walk the recovery path specifically.
 - Issue #150 and PR #151 are the M3.9a delivery, merged by rebase. The slice is
   commits `f457ca2` through `ab1e036` on `main`. PR Actions run 31849896862 on
   the final head `2c8d0fa` passed the complete hosted matrix — scope
@@ -2249,7 +2293,7 @@ executes accepted rules, and none settles a value, beneficiary, or participation
 rule.
 
 **The evidence debt M3.9b took on is repaid.** `economy-transition-v5` has a
-model, 548 vectors, and a verifier as of M3.9c. What remains is that the C++
+model, 550 vectors, and a verifier as of M3.9c. What remains is that the C++
 codec still implements version four, which is the recorded next action rather
 than a debt: it is the ordinary order the milestone has followed since M3.8a.
 

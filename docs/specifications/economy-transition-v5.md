@@ -203,7 +203,7 @@ as in every version since two, and the settlement is checked against
 as the file that keeps an imported settlement honest.
 
 **All of it is now recorded.** `simulation/economy_transition_v5/` is the model,
-`test-vectors/economy-transition-v5.txt` holds 548 normative vectors, and
+`test-vectors/economy-transition-v5.txt` holds 550 normative vectors, and
 `tools/economy-transition-v5-vectors/verify.py` derives every one of them twice.
 [ADR 0038](../decisions/0038-version-five-evidence-by-carryover.md) records how,
 and why the model and the derivation import version four rather than restating
