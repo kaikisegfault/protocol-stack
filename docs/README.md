@@ -303,6 +303,23 @@ evidence needs the accepted version-one account derivation, because it is the
 first in which a signed message is built from the sender — the missing
 derivation and the defect being the same fact seen from two sides.
 
+ADR 0039 records a founder pivot that arrived as the answer to a narrow
+question and rejected its premise. M3.9c closed by asking which of three
+recovery flows the owner wanted for a person who had lost every address; the
+answer is that the architecture underneath the question is wrong. **HUB
+verification is mandatory for anyone who registers and for interacting with any
+part of the ecosystem**, an address is an operational tool rather than an
+identity root, recovery is direct between the owner and their own recorded
+biometric data with no third party at any step, and biometric confirmation is
+on by default for every financial transaction and every mint, with each person
+free to set a minimum amount, set time windows, or turn it off entirely. The ADR
+records why the previous architecture produced the dilemma at all — an address
+could exist and hold value with no identity behind it, so the chain had to
+reason about linking two separately real things — and that the C++ codec slice
+is withdrawn rather than built against a contract already superseded. It leaves
+three things undecided, of which one blocks the next contract version: how a
+person who holds nothing pays for their first transaction.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
