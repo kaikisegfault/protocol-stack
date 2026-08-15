@@ -2261,15 +2261,18 @@ dilemma.** Maria never arrives at an empty address, so nothing needs funding and
 no helper is involved; and an address created beneath an identity is never
 relinked, so there is nothing to link and nothing to squat.
 
-**One founder-reserved conflict now blocks the specification and must be settled
-first: whether a Founder Seat's addresses stay permanent and add-only.** The
-constitution says a seat's addresses can never be removed and a recorded manager
-remains in the ledger forever; the new direction says the identity may revoke a
-signer at any time. Both cannot hold. ADR 0040 records the three readings and
-recommends none, because the choice decides what a founder can lose. A second,
-smaller question is answerable alongside it: how a brand-new person pays for
-their very first action, which is now the only residue of the original fee
-problem.
+**That conflict was resolved the same day, in
+[ADR 0041](../decisions/0041-the-seat-is-tied-to-the-identity-not-an-address.md),
+by naming what the add-only rule was for.** It was never about addresses; it was
+about non-sellability. A seat is now tied permanently to the owner's HUB
+verified data, **so a Founder Seat has no address at all** and there is nothing
+left for an add-only rule to govern. Seat addresses, the 16-manager limit, and
+the mint-to-the-signing-address rule are superseded together with the concept
+they governed. One uniform model covers every participant.
+
+**Nothing founder-reserved blocks the next slice.** What remains open is
+recorded in the constitution and is small: how a brand-new person pays for their
+genuine first action, before any value exists.
 
 **What version six inherits, and why the pivot is cheaper than it looks.** The
 dilemma version five had to solve — who may link an address to an identity —
@@ -2350,13 +2353,14 @@ branch and pull request.
 
 ## Blockers
 
-**One, and it is founder-reserved: whether a Founder Seat's addresses stay
-permanent and add-only now that signers are revocable.** ADR 0040 records the
-conflict and three readings of it; the choice decides what a founder can lose,
-so none may be picked by engineering. It blocks the next contract version. The
-original fee question is largely answered — recovery regains holding addresses
-that already hold value — and its residue is narrow: how a brand-new person pays
-for their very first action, before any value exists.
+**One, and it is narrow: how a brand-new person pays for their genuine first
+action**, before any value exists. Recovery no longer has this problem, because
+regaining an identity regains holding addresses that already hold value. Either
+registration is fee-exempt with a non-monetary limit, or it is performed by the
+company-hosted HUB service. It is the only residue of the original fee question.
+
+The seat-permanence conflict ADR 0040 raised was resolved the same day by
+ADR 0041 and no longer blocks anything.
 
 Superseded, and kept for the record: **how a person who holds nothing pays for
 their first transaction.** The mandatory-verification direction of 2026-08-15 says

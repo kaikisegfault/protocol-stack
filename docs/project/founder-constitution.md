@@ -486,21 +486,28 @@ usable only after deep biometric verification matches the permanent Founder
 identity. Loss of an address is handled by adding a new verified manager, not
 by rewriting ownership history.
 
-**HUB signing is what adds a manager address, decided on 2026-08-14.** A
-Founder Seat's addresses are permanent, can never be removed, and are add-only;
-a HUB-verified founder may add more at any time by signing with HUB. This is
-the exception to the ordinary ecosystem rule below, where a verified person may
-both add and remove their own addresses. It exists so that a founder who has
-lost every address they hold still has a path back to their seat, and it is
-recorded in
-[ADR 0035](../decisions/0035-founder-answers-on-payout-the-cap-and-hub-recovery.md).
+**A Founder Seat has no address, decided on 2026-08-15.** It is tied
+permanently to the owner's HUB verified data itself. The earlier rule — that a
+seat's addresses are permanent, can never be removed, and are add-only — is
+superseded together with the concept it governed, and so is the 16-manager
+limit.
 
-At most 16 manager addresses may be recorded for one seat. That figure is an
-engineering resource limit rather than a founder-directed value.
+**That rule existed to make a seat non-sellable**, and tying the seat to the
+identity serves the purpose better than tying it to an address ever did. A
+biometric identity is not assignable, so seat ownership cannot move. Two parties
+may still privately negotiate management, and they cannot take over: the
+HUB-verified owner remains in charge and in full control, and may revoke any
+signer at any time. Legacy succession is the one path by which a seat's identity
+changes, and it runs through the recorded legacy instruction rather than through
+an address.
+[ADR 0041](../decisions/0041-the-seat-is-tied-to-the-identity-not-an-address.md)
+records the resolution.
 
-**Minted value lands on the address that signed the mint.** Any recorded manager
-may collect, and the value arrives on that address ready to spend, which is what
-makes adding a verified address a working remedy for a lost key.
+**Minted value lands in one of the owner's asset-holding addresses.** The
+earlier rule sent it to the address that signed the mint, so that a recovered
+address could receive; a signer now holds no funds, and regaining an identity
+regains its holding addresses, so that purpose is served without the rule. Which
+holding address a mint credits is specification work recorded in ADR 0041.
 
 ### HUB verification is one ecosystem-wide layer
 
@@ -778,18 +785,6 @@ that technical production readiness follows automatically.
 The owner has intentionally deferred these value-bearing details until their
 milestone supplies enough evidence and context:
 
-- **whether a Founder Seat's addresses stay permanent and add-only, now that
-  signers are revocable.** The holder-and-signer direction of 2026-08-15 makes
-  the identity an admin that may revoke a signer at any time; this document also
-  says a seat's addresses "are permanent, can never be removed, and are
-  add-only" and that a recorded manager "remains in the historical ledger
-  forever". Both cannot hold for a seat. Withdrawing permanence lets a
-  compromised HUB signature remove a legitimate manager rather than only add
-  one; keeping it gives the ecosystem two address models. A third reading —
-  the historical record stays permanent while a signer's authority becomes
-  revocable — appears to satisfy both sentences and is recorded in ADR 0040 as
-  a reading rather than adopted. **This blocks the contract version that
-  encodes the direction;**
 - **how a brand-new person pays for their very first action.** Recovery no
   longer has this problem, because regaining an identity regains holding
   addresses that already hold value. Genuine first entry still does:
@@ -845,6 +840,17 @@ failed, so the day's generation goes to the best performers and the capped seat
 is not one of them; sixteen manager addresses per seat; and HUB verification as
 a recovery layer that survives the loss of any address, with HUB signing as what
 adds a Founder Seat address.
+
+Resolved on 2026-08-15, and recorded in
+[ADR 0041](../decisions/0041-the-seat-is-tied-to-the-identity-not-an-address.md):
+a Founder Seat is tied to the owner's HUB verified data rather than to any
+address, which supersedes the permanent add-only seat-address rule and the
+16-manager limit by serving their purpose — non-sellability — better than they
+did. One uniform model now covers every participant: HUB verified data as the
+single source of truth for authentication, asset-holding addresses that behave
+like personal escrows and may be created, managed, and deleted, signer keys
+assigned to those escrows separately and revocably, and security options
+customisable per escrow and per financial operation.
 
 Resolved on 2026-08-15, and recorded in
 [ADR 0039](../decisions/0039-hub-verification-is-mandatory-for-everyone.md):
