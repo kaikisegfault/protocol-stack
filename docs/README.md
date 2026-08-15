@@ -272,6 +272,21 @@ authority than the direction grants. It also records four review items, the
 sharpest being that adding a seat address now needs one factor where version
 three needed two.
 
+ADR 0037 records a defect in version four found by implementing it, and the
+version-five correction. Kind 11 carries an account and a signature and nothing
+else, while its rejection conditions and its message both require a HUB identity
+hash the transaction never carries — and the sender is deliberately
+unconstrained, so the chain cannot derive one either. **No conforming
+implementation of kind 11 exists**, which disables exactly the recovery path the
+founder direction was answered into the contract to provide. It records that a
+byte-level cross-language check could not have caught it, because neither
+implementation executes anything; that the correction reads the 32-byte field as
+the identity and the added account as the sender, which keeps the body at 96
+octets and closes a squatting hole the obvious repair leaves open; and that this
+is a new version rather than a repair in place, because version four's own rule
+forbids reinterpreting a version-four field and overriding that rule the day
+after writing it is a worse precedent than the version costs.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
@@ -389,8 +404,15 @@ immutable; compatible changes require a new version.
   for the first time. The ecosystem verifier signs registrations and nothing
   else. It adds two transaction kinds and two result codes, keeps the kind-1 byte
   identity and every version-three result number, imports version three's
-  settlement unchanged, and is the contract requirement 10's C++ kernel
-  implements. One authorization predicate remains deliberately undefined.
+  settlement unchanged. One authorization predicate remains deliberately
+  undefined, and its kind 11 has no conforming implementation, which
+  `economy-transition-v5.md` corrects.
+- `specifications/economy-transition-v5.md`: version four with one field's
+  meaning corrected — kind 11's 32-byte field is the HUB identity hash and the
+  account being linked is the sender — because version four's kind 11 names an
+  identity it does not carry. Everything else in version four is incorporated by
+  reference. It is the contract requirement 10's C++ kernel implements. Its
+  model, vectors, and implementation are not yet recorded.
 - `specifications/native-economy-simulation-v1.md`: versioned integer-only
   accounting, authority, event, trace, and metric contract for the independent
   M2 research simulator; it is not a consensus transition.

@@ -127,7 +127,15 @@ address set, and referral earnings follow the person. The constitution's
 [ADR 0035](../decisions/0035-founder-answers-on-payout-the-cap-and-hub-recovery.md)
 records the direction and
 [ADR 0036](../decisions/0036-economy-transition-v4-hub-as-the-identity-root.md)
-the encoding. **The C++ kernel implements version four.**
+the encoding.
+
+`economy-transition-v5` corrects one field of it. Version four's kind 11 names a
+HUB identity it does not carry, so no conforming implementation exists and the
+recovery path the direction exists for is disabled; version five reads that
+field as the identity and takes the added account from the sender.
+[ADR 0037](../decisions/0037-economy-transition-v5-the-kind-eleven-identity.md)
+records how implementing the contract found it. **The C++ kernel implements
+version five.**
 
 ### M3.4 Uptime derivation — delivered
 
@@ -141,7 +149,7 @@ Implement the accepted contract in the deterministic ledger kernel with
 cross-language vectors, then operate adversarial four-node scenarios through
 restart and recovery.
 
-It implements `economy-transition-v4`, the newest accepted transition version.
+It implements `economy-transition-v5`, the newest accepted transition version.
 
 Take it in two pieces. The pure codec — the envelope and its bodies, the
 verifier messages, the receipt, the state keys, the trees, the roots, and

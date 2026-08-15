@@ -14,8 +14,10 @@ and closed the dependent rebinding. M3.7a reclaimed the hosted matrix margin on
 2026-08-12 and changed no protocol behavior. M3.8a defined the consensus
 transaction and state surface on 2026-08-13, M3.8b revised it to
 `economy-transition-v3` on 2026-08-14, M3.8c settled it as
-`economy-transition-v4` on 2026-08-15, and M3.9a put that contract's codec into
-the C++20 kernel the same day.
+`economy-transition-v4` on 2026-08-15, M3.9a put that contract's codec into the
+C++20 kernel the same day, and M3.9b accepted `economy-transition-v5` after
+implementing version four exposed a transition with no conforming
+implementation.
 Requirements 3, 4, 5, 6, 7, and 12 of `first-goal.md` are satisfied;
 requirements 8 and 9 moved from specified to enforced; and requirement 14 is met
 against the v3 contract at the standard the M2 suite set.
@@ -67,6 +69,59 @@ Buying a seat requires HUB verification first and the seat is tied to that
 identity; a HUB identity's address set lives in consensus state. Requirement 10
 is now unblocked against a settled target, and nothing further is expected to
 move it.
+
+### How M3.9b was delivered
+
+Issue #154 and PR #155 delivered `economy-transition-v5` and ADR 0037. It added
+the specification and the ADR and nothing else; the model, the vectors, the
+verifier, and the C++ update are the next slice and are recorded as absent.
+
+**The slice exists because implementing version four stopped at kind 11.**
+`hub_add_address` carries an account and a signature and nothing else, while its
+ordered rejection conditions open with "an unregistered `hub_identity_hash` is
+`NOT_HUB_VERIFIED`" and its message binds one. The transaction never carries that
+identity, and the chain cannot derive it: version four makes the sender
+deliberately unconstrained and says why — "a person who holds none of their
+linked addresses can still act" — so there is no linked sender to resolve, and
+trying every registered key is neither canonical nor bounded.
+
+**No conforming implementation of kind 11 exists**, and the consequence is not a
+missing convenience: a founder who has lost every address has no way back, which
+is the one guarantee the founder direction of 2026-08-14 was answered into the
+contract to provide.
+
+**A byte-level cross-language check could not have caught it, and that is the
+general lesson.** M3.9a implements bytes, not transitions. The vectors fix
+`message.hex.address_add`, which is built from an identity supplied as an
+argument, and nothing in a codec ever asks where a transaction gets that
+argument. Two implementations agreed with each other perfectly about a message
+neither could construct. The repository's own order — specification, model,
+vectors, C++ — is what surfaces this class of defect, and it surfaced this one at
+the first step that runs anything.
+
+**The correction reads the 32-byte field as the identity and takes the linked
+account from the sender.** The body stays 96 octets and the message keeps its
+shape. The obvious repair — an identity field beside the account, widening the
+body to 128 — works and leaves squatting open: with the account named in the body
+and any sender permitted, anyone may link another person's address to their own
+identity, after which that person can never register it and cannot call removal,
+because removal is authorized by the identity the address is linked to. Requiring
+the sender to be the address added makes squatting unrepresentable.
+
+**It is a new version rather than a repair in place.** Version four's own
+versioning section forbids reinterpreting a version-four identifier, and this
+reinterprets one. That rule was written one slice earlier; overriding it the day
+after, by its author, to save a version is a worse precedent than the version
+costs. No recorded byte changes as a consequence — version four's vectors, model,
+and C++ codec remain in place, passing, and unedited.
+
+**Version five is accepted without its evidence, which is a departure and is
+stated as one.** Every earlier transition contract arrived with its model and its
+vectors in one slice. This one does not, because it exists to correct the
+contract the repository currently calls newest, and recording that correction was
+more urgent than recording it with its evidence. Until the next slice, version
+five is a specification whose claims rest on reading rather than on a passing
+check.
 
 ### How M3.9a was delivered
 
@@ -1234,8 +1289,15 @@ slices.
   kind-1 byte identity, the shared envelope, the admission order, the genesis
   field table, the receipt layout, and result codes 0 through 20 are unchanged.
   Kind 6 is still specified and refused.
-- `economy-transition-v4` is the accepted consensus surface the C++ kernel must
-  be implemented against. HUB verification is the root of identity: a
+- `economy-transition-v5` is the accepted consensus surface the C++ kernel must
+  be implemented against. It is version four with one field's meaning corrected —
+  kind 11's 32-byte field is the HUB identity hash and the account being linked
+  is the sender — because version four's kind 11 names an identity it does not
+  carry and therefore cannot be implemented. Everything else in version four is
+  incorporated by reference. **It has no model, no vectors, and no
+  implementation**, so its claims rest on reading rather than on a passing check.
+- `economy-transition-v4` is accepted, fully evidenced, and superseded in one
+  place. HUB verification is the root of identity: a
   registration records the person's own public key and the ecosystem verifier
   signs registrations and nothing else; a person holds a set of up to 16
   addresses and manages it themselves; a seat is owned by a person rather than
@@ -2023,77 +2085,52 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.9b: the version-four execution model and its recorded
-transition trace**, in Python. Use the `change-protocol` skill. Nothing blocks
-it. The C++ transitions are **M3.9c** and come after, against the file this
-slice records.
+Milestone slice **M3.9c: the version-five model, vectors, and verifier**, in
+Python. Use the `change-protocol` skill. Nothing blocks it.
 
-**That order is the repository's own, and the reason to keep it is requirement
-11.** Every economy contract so far has gone specification, then an independent
-Python model, then recorded vectors, then C++ against them — which is exactly
-how M3.8c and M3.9a just went. Writing the C++ transitions first would leave
-them checked against nothing but the specification prose they were written from,
-which is single-implementation evidence and is what requirement 11 exists to
-refuse.
+`economy-transition-v5` is accepted with no evidence behind it, and that is the
+first thing to repair. The slice is small because version five is version four
+with one field's meaning changed: a sibling package that imports the
+version-four codec for everything unchanged — exactly as version four imports
+version three's settlement — and overrides only the version labels and schema
+versions, the eight HUB message labels, and kind 11's decode. Then a recorded
+vector file, a verifier, and tests.
 
-The twelve transitions in the order the specification gives them, each with its
-ordered rejection conditions and its receipt: HUB registration, address add and
-remove, purchase, activation, the two node mints, the referral mint, the
-protection switch, manager addition, direct issue (refused), and the
-block-boundary cycle assignment the chain writes itself.
+**Two checks are what the slice is for.** That kind 11's corrected body is 96
+octets with its 32-byte field read as an identity, and that the address-add
+message is built from the identity and the sender. And that the version-four and
+version-five constructions differ everywhere a chain is separated from another —
+chain ID, state root, economy tree — over identical inputs, with each
+version-four construction first required to reproduce its own accepted vectors so
+the comparison is against the real one.
 
-**The recorded file is new evidence rather than a required one.**
-`economy-transition-v4.txt` fixes the codec's bytes and the settlement
-arithmetic, and the accepted specification's evidence section asks for no
-transition trace. A trace file is therefore an addition — the specification
-fixes a minimum, not a maximum — and it should record, for one ordered event
-sequence: each transaction's result code, its receipt bytes, the economy root
-after it, and the channel and carry totals at the end.
+**Then M3.9d: the C++ codec updated to version five**, which is a set of labels
+and one field's meaning in `src/v4/` — rename to `src/v5/` and `protocol::v5`,
+because the namespace names the contract it implements. The envelope, the
+messages, the receipt, the state keys, the trees, the roots, and genesis are
+unchanged in shape, and the local harness described below makes the whole thing
+a one-second iteration.
 
-**Three of them are the ones to get right first**, because they carry the
-founder-directed rules the whole milestone exists for: the cycle assignment,
-because a capped cycle is a failed cycle and the winner set excludes both;
-`mint_node`, because its walk is `(mark, min(last, mark + 30)]` and the bound is
-exact rather than conservative; and `purchase_seat`, because it is where the
-per-human seat bound and the HUB requirement are enforced.
+**Then M3.9e: the execution model and its recorded transition trace**, which is
+issue #153 and is what this defect interrupted. It is now unblocked against a
+contract that can be implemented. **It should exercise the recovery path
+specifically**: a person with an identity, no linked addresses, and a fresh
+funded account adding one. That is the path version four disabled, and a trace
+that does not walk it would not have caught the defect either.
 
-**Take the transitions as pure functions first, and persistence after.** The
-version-one kernel already shows the shape: `execute_transfer` takes a
-`State&` and a block height and touches no storage, while `src/storage/`
-persists that `State` separately. Version four's economy state is version one's
-plus one ordered map from canonical byte keys to canonical byte values, so the
-same split holds — an in-memory economy state and twelve transitions over it is
-a complete, testable slice with no SQLite in it, and extending the store is the
-slice after.
+**The local C++ harness is the reusable result of M3.9a.** Building libsodium
+locally is the heavy operation `CLAUDE.md` refuses, so a scratch harness supplies
+the two entry points the kernel uses and backs SHA-256 with the system OpenSSL —
+an existing audited implementation rather than a second one, in a file that is
+never committed and never part of the build. With it the whole codec test
+compiles and runs in about a second under both compilers with the project's exact
+flags and under address and undefined-behaviour sanitizers.
 
-That ordering is a correction: this handoff first recorded the store as the
-prerequisite, which the version-one kernel's own structure disproves.
-
-**Reuse the codec rather than re-encoding.** `protocol::v4` already produces
-every key, value, message, receipt, and root the transitions need, and it is
-checked against the recorded vectors. A transition that builds its own bytes
-would be a second encoder with nothing keeping the two equal.
-
-**The cross-language evidence for the transitions has no vector file yet.**
-`test-vectors/economy-transition-v4.txt` records the codec's bytes and the
-settlement arithmetic, not a transition trace, so M3.9b must either extend the
-evidence or state plainly what it does not check. That decision belongs at the
-start of the slice rather than at its end.
-
-**The local C++ check that made M3.9a cheap is worth reusing.** Building
-libsodium locally is the heavy operation `CLAUDE.md` refuses, so a scratch
-harness supplies the two entry points the kernel uses and backs SHA-256 with the
-system OpenSSL — an existing audited implementation rather than a second one, in
-a file that is never committed and never part of the build. With it, the whole
-codec test compiles and runs in about a second under both compilers with the
-project's exact flags and under address and undefined-behaviour sanitizers,
-which turned a ten-minute hosted iteration into a one-second one.
-
-**Check that a new target is in `PROTOCOL_STACK_TARGETS`.** That list is what
-carries `-Wall -Wextra -Wpedantic -Werror`, the sanitizer flags,
-`_GLIBCXX_ASSERTIONS`, and the libsodium link. M3.9a declared a target, added
-its `add_test`, and left it off that list; the registration guard does not check
-it, because it checks that a test is *run* rather than how it is *built*.
+**Check that a new target is in `PROTOCOL_STACK_TARGETS`.** That list carries
+`-Wall -Wextra -Wpedantic -Werror`, the sanitizer flags, `_GLIBCXX_ASSERTIONS`,
+and the libsodium link. M3.9a declared a target, added its `add_test`, and left
+it off that list; the registration guard does not catch it, because it checks
+that a test is *run* rather than how it is *built*.
 
 **Keep every accepted artifact in place and passing.**
 `simulation/founder_economy/`, `simulation/founder_economy_v2/`,
@@ -2105,67 +2142,38 @@ should gain no fourth without a new contract version, and
 `simulation/scenarios/` holds three population generators that must stay
 independent for the same reason.
 
-**Re-measure the hosted matrix margin after the kernel slice.** The slowest job
-was `clang-sanitizers` at about 9m15s against a 20-minute per-job timeout before
-this slice, and two runs on identical code have differed by 12%. The kernel
-slice adds source and tests to the builds, which are the larger half of each job
-and are not parallelised by `ctest --parallel`.
-
-**Reproduce the recorded vectors; do not re-derive a second set.**
-`tools/protocol-vectors/` already carries a paired `verify.cpp` and `verify.py`
-for the version-one primitives, and `tools/ledger-vectors/` the same for the
-transition; a version-three pair belongs beside them. **Start with the kind-1
-identity vectors.** If the C++ encoder does not emit the accepted M1 transfer
-bytes, the compatibility boundary is broken at its narrowest point and nothing
-after it is worth checking.
-
-**Three parts of the byte surface are the ones a C++ implementation is most
-likely to get wrong, and each has a vector waiting.** The two bitmaps are
-indexed by seat ID with the most significant bit first, so an implementation
-that packs least-significant-first passes every length check and fails
-`cycle.accrued_bitmap`. The cycle assignment value carries no bitmap length
-prefixes — both widths follow from `bitmap_bits` — so a decoder that expects
-version two's prefixed form misreads every record. And kinds 3 and 7 share a
-body length, so a decoder that dispatches on length rather than on the kind byte
-executes a protected mint as an activation; `admission.relabelled_kind_is_read_as`
-is the vector that catches it.
-
-**Keep every accepted v1, v2, and v3 artifact in place and passing.**
-`simulation/founder_economy/`, `simulation/founder_economy_v2/`,
-`simulation/founder_economy_v3/`, `simulation/cycle_boundary/`,
-`simulation/uptime_measurement/`, `simulation/economy_transition/`, and
-`simulation/economy_transition_v3/` stay untouched.
-`simulation/escrow_payout/` is shared by three bindings and should gain no
-fourth without a new contract version, and `simulation/scenarios/` holds three
-population generators that must stay independent for the same reason.
-
-**Re-measure the hosted matrix margin after the kernel slice.** The slowest job
-was `gcc-sanitizers` at 9m16s against a 20-minute per-job timeout before this
-slice, and two runs on identical code have differed by 12%. The kernel slice
-adds source and tests to the builds, which are the larger half of each job and
-are not parallelised by `ctest --parallel`.
-
 **Every new test and verifier must be registered in `CMakeLists.txt` and must run
-as `python3 <path>`.** `tests/tools/test_registration_test.py` enforces both, and
-since 2026-08-12 it also enforces that every `tests/tools` module is registered
-and that its own parse reaches every `add_test(` in the file. A new entry that
-writes must be given its own path under the build directory, because the test
-phase runs concurrently.
+as `python3 <path>`.** `tests/tools/test_registration_test.py` enforces both.
 
 **`main` is branch-protected.** Even a documentation-only commit needs its own
-branch and pull request; a direct push to `main` is rejected.
-
-**The handoff's slice numbering is finer than `roadmap.md`'s.** The roadmap's
-M3.3 covers both the cycle boundary, delivered by this handoff's M3.4, and the
-consensus encoding, delivered by M3.8a and revised by M3.8b; the roadmap's M3.5
-is this handoff's M3.9a and M3.9b C++ implementation and devnet work.
+branch and pull request.
 
 ## Blockers
 
-None. The two questions that blocked `economy-transition-v4` were answered on
-2026-08-14 and version four is accepted, so requirement 10's target is settled
-and the C++ codec slice needs no founder input: it reproduces an accepted byte
-surface and settles no value, beneficiary, or participation rule.
+None. Requirement 10's target is settled at `economy-transition-v5`, and no
+remaining slice needs founder input: each reproduces an accepted byte surface or
+executes accepted rules, and none settles a value, beneficiary, or participation
+rule.
+
+**One accepted contract is knowingly ahead of its evidence, and that is the
+nearest thing to a debt.** `economy-transition-v5` has no model, no vectors, and
+no implementation, so its claims rest on reading. M3.9c repairs it and is the
+recorded next action.
+
+**One accepted contract cannot be implemented and stays in the tree.**
+`economy-transition-v4`'s kind 11 has no conforming implementation; version five
+corrects it and version four is retained unedited because its 441 vectors are
+the record of what the hosted matrix verified on 2026-08-15. Its specification
+and the documentation index both say so, so a reader cannot pick it up as the
+newest contract by accident.
+
+M3.9b ran the founder-decision gate and passed it. Every decision the slice had
+to settle was mechanism: which of two repairs to make, whether to version or
+repair in place, and the version-five labels. Nothing in it set or changed
+supply, allocation, beneficiaries, ownership, creator hierarchy, commercial
+routing, AI authority, bridge scope, content permanence, or what an end user must
+do, own, run, or receive. The correction restores a capability the founder
+direction already granted rather than granting a new one.
 
 **Six answers arrived on 2026-08-14 and all six are now encoded.** A mint credits
 the address that signed it; sixteen manager addresses per seat; a cycle a seat
