@@ -2248,17 +2248,28 @@ which is the precedent M3.8a set and M3.9b repeated: a kernel written against a
 contract already known to be superseded is wasted. The kernel codec stays at
 version four until a contract exists that the direction does not supersede.
 
-**One founder question blocks the specification and must be asked first.** How a
-person who holds nothing pays for their first transaction. The direction says
-registration and recovery involve no helper and no third party; every
-transaction costs a fee paid by a sender; so either identity transactions are
-fee-exempt, or the fee is drawn from value the identity already holds on chain,
-or registration and recovery are performed by the company-hosted HUB service
-rather than by the person's own wallet. Each changes what a participant must do
-and own, so none is engineering's to pick. Two further questions are recorded in
-the constitution and are answerable alongside it: how far the requirement
-reaches into a native transfer, and what turning the confirmation off entirely
-means for a Founder Seat's existing protection asymmetry.
+**The account model was answered the same day and is recorded in
+[ADR 0040](../decisions/0040-holder-addresses-and-revocable-signers.md).** A
+verified identity holds as many fund-holding addresses as the person wants;
+those hold no keys and never change; signers are separate, revocable, and
+assigned per holding address; and the identity is the admin that may add,
+remove, revoke, or modify them. Regaining an identity on a new device regains
+the holding addresses directly.
+
+**That answered the fee question for recovery and dissolved the version-five
+dilemma.** Maria never arrives at an empty address, so nothing needs funding and
+no helper is involved; and an address created beneath an identity is never
+relinked, so there is nothing to link and nothing to squat.
+
+**One founder-reserved conflict now blocks the specification and must be settled
+first: whether a Founder Seat's addresses stay permanent and add-only.** The
+constitution says a seat's addresses can never be removed and a recorded manager
+remains in the ledger forever; the new direction says the identity may revoke a
+signer at any time. Both cannot hold. ADR 0040 records the three readings and
+recommends none, because the choice decides what a founder can lose. A second,
+smaller question is answerable alongside it: how a brand-new person pays for
+their very first action, which is now the only residue of the original fee
+problem.
 
 **What version six inherits, and why the pivot is cheaper than it looks.** The
 dilemma version five had to solve — who may link an address to an identity —
@@ -2339,8 +2350,16 @@ branch and pull request.
 
 ## Blockers
 
-**One, and it is founder-reserved: how a person who holds nothing pays for their
-first transaction.** The mandatory-verification direction of 2026-08-15 says
+**One, and it is founder-reserved: whether a Founder Seat's addresses stay
+permanent and add-only now that signers are revocable.** ADR 0040 records the
+conflict and three readings of it; the choice decides what a founder can lose,
+so none may be picked by engineering. It blocks the next contract version. The
+original fee question is largely answered — recovery regains holding addresses
+that already hold value — and its residue is narrow: how a brand-new person pays
+for their very first action, before any value exists.
+
+Superseded, and kept for the record: **how a person who holds nothing pays for
+their first transaction.** The mandatory-verification direction of 2026-08-15 says
 registration and recovery involve no helper and no third party, and every
 transaction costs a fee paid by a sender. The three candidate answers —
 fee-exempt identity transactions, a fee drawn from value the identity already
