@@ -105,3 +105,33 @@ Do not claim a check passed without exact local output or a terminal GitHub
 check on the current commit. Record the exact command or check and concise
 result in the relevant PR or `current-state.md`. If a required check cannot
 run, describe why and do not silently downgrade the definition of done.
+
+## Vector file conventions
+
+A recorded vector file in `test-vectors/` is normative, and every value in one
+must be reproduced by a registered verifier that fails in both directions: a
+derived key the file does not carry is a failure, and a recorded key no
+derivation reaches is also a failure.
+
+Three rules exist because each was learned from a defect that reached an
+accepted file.
+
+**A boolean vector may only be true.** Its name is the claim, so recording
+`false` records the negation of what the name says — and nothing catches it,
+because a derivation returning `False` is faithfully recorded as `false` and
+then faithfully reproduced. M3.8b found
+`state.no_entry_is_keyed_by_seat_cycle=false` in an accepted file doing exactly
+that. Phrase negative properties positively, and make a derived `False` a
+failure in the checker rather than a value.
+
+**A vector's name must assert no more than its value establishes.** A key called
+`..._is_unchanged` whose value is a length has not established that anything is
+unchanged; record the length under a plain name and the equality as a boolean
+beside it.
+
+**A claim must be checked against something other than itself.** A comparison
+between a fixture and the same fixture, or a set membership that holds by
+construction, records `true` forever and detects nothing. Where a third source
+exists — an accepted vector file from an earlier version — compare against it,
+so a formula that a model and its independent derivation got wrong the same way
+still fails.

@@ -94,6 +94,32 @@ than the two files, in
 `tests/simulation/economy_transition_v5_carryover_test.py`. It catches the
 different defect: a constant that moved without any vector reaching it.
 
+### A boolean vector may only be true
+
+Probing this slice's own evidence exposed a hole none of the above closes: a
+defect present *before* the vector file was first written is recorded at its
+wrong value and then faithfully reproduced, so nothing ever fails. Two forms of
+it appeared here.
+
+A derivation that returns `False` is faithfully recorded as `false`. That is
+precisely the defect M3.8b found in an accepted file —
+`state.no_entry_is_keyed_by_seat_cycle=false` records the negation of what its
+own name asserts — and it survived because nothing said a boolean vector cannot
+be false. So `Checker.equal` now treats a derived `False` as a failure rather
+than a value. Neither this file nor version four's records a single `false`, so
+the rule costs nothing and closes the hole; negative properties are phrased
+positively instead.
+
+And a value derived twice from two restatements of the same formula proves only
+that the two restatements agree. The account derivation is therefore checked
+against `test-vectors/protocol-primitives-v1.txt`, which records the identifier
+of the exact public key the fixture sends from. With the domain octet changed in
+*both* the model and the derivation, generation itself now refuses.
+
+Both rules, and the naming rule that a vector must assert no more than its value
+establishes, are recorded in `docs/engineering/verification.md` so the next
+version inherits them.
+
 ## Consequences
 
 **Version five's carried values rest on version four's accepted file.** That is

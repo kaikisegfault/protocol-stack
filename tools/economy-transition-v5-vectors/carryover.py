@@ -68,6 +68,22 @@ REVISED: frozenset[str] = frozenset(
     }
 )
 
+# The constructions the specification's version-identity table lists, as the key
+# prefixes they appear under. A revised key that names none of them is a change
+# version five did not declare.
+RELABELLED_PREFIXES: tuple[str, ...] = (
+    "message.label.",
+    "message.hex.",
+    "receipt.version",
+    "receipt.encoded_hex",
+    "state.economy_root",
+    "state.economy_tree_prefix",
+    "state.root_",
+    "genesis.schema_version",
+    "genesis.chain_id",
+    "genesis.bytes_hex",
+)
+
 # Keys whose claim survives under a new name because the name counts versions.
 RENAMED: dict[str, str] = {
     "compatibility.hub_labels_are_version_four": (
@@ -129,32 +145,13 @@ def check_carryover(check: Checker, vector_root: Path, recorded: Path) -> None:
         "carryover.renamed_keys",
         ",".join(f"{old}->{new}" for old, new in sorted(RENAMED.items())),
     )
-    # Every revision traces to one of the six constructions the specification's
-    # version-identity table lists, or to a message label. Nothing else in
-    # version four had a version in it.
+    # Every revision names one of the constructions the specification's
+    # version-identity table lists, or a message label. This bounds the revised
+    # set from the positive side, where the three checks below bound it from the
+    # negative; a newly revised `envelope.` or `codes.` key would fail all four.
     check.equal(
         "carryover.every_revision_is_a_relabelling",
-        all(
-            key.startswith(("message.label.", "message.hex."))
-            or key
-            in {
-                "receipt.version",
-                "receipt.encoded_hex",
-                "state.economy_tree_prefix",
-                "state.economy_root_empty",
-                "state.economy_root_genesis",
-                "state.economy_root_populated",
-                "state.root_label",
-                "state.root_schema_version",
-                "state.root_empty_economy",
-                "state.root_populated_economy",
-                "genesis.schema_version",
-                "genesis.chain_id_label",
-                "genesis.bytes_hex",
-                "genesis.chain_id",
-            }
-            for key in REVISED
-        ),
+        all(key.startswith(RELABELLED_PREFIXES) for key in REVISED),
     )
     # No transaction encoding is revised at all, which is the sharpest form of
     # "the bytes did not move": kind 11's correction changes what a field means
