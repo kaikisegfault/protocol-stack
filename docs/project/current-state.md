@@ -1408,6 +1408,16 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #154 and PR #155 are the M3.9b delivery, merged by rebase at commit
+  `fa1907f` on `main`. It is documentation only — a specification and an ADR —
+  so it took the focused metadata path rather than the matrix: scope
+  classification passed, the preset matrix was skipped as designed, and the
+  aggregate required check passed. Post-merge run 31872875912 on `fa1907f`
+  passed the same path.
+- **Version five has no evidence behind it, by decision rather than by
+  oversight.** No model, no vectors, no verifier, no implementation. Its status
+  line, its evidence section, the documentation index, and this handoff all say
+  so, and M3.9c is the recorded next action that repairs it.
 - Issue #150 and PR #151 are the M3.9a delivery, merged by rebase. The slice is
   commits `f457ca2` through `ab1e036` on `main`. PR Actions run 31849896862 on
   the final head `2c8d0fa` passed the complete hosted matrix — scope
