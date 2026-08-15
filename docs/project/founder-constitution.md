@@ -538,6 +538,19 @@ every mint**, as an ecosystem-wide one-time-password layer. Each person may
 customise their own posture: a minimum amount below which it is not required,
 time windows, or turning it off entirely.
 
+**A verified identity holds fund-holding addresses, and those hold no keys,
+decided on 2026-08-15.** A person may have as many as they want; they are where
+assets accumulate and they never change. Signing keys are separate and
+revocable: a person assigns one or more signers to any holding address, and the
+HUB identity is the admin that may add, remove, revoke, or modify them. Regaining
+an identity on a new device regains the holding addresses directly, so the person
+can revoke old signers and register new ones with no funds and no third party
+needed. Each person configures their own signing logic and security options per
+address and per transaction.
+[ADR 0040](../decisions/0040-holder-addresses-and-revocable-signers.md) records
+the direction, what it settles, and the one conflict it raises with the Founder
+Seat address rule.
+
 Any participant who registers is therefore HUB verified: Founder Seat holders,
 project and product creators, ordinary users, and developers.
 
@@ -765,14 +778,24 @@ that technical production readiness follows automatically.
 The owner has intentionally deferred these value-bearing details until their
 milestone supplies enough evidence and context:
 
-- **how a person who holds nothing pays for their first transaction.** The
-  mandatory-verification direction of 2026-08-15 says registration and recovery
-  involve no helper and no third party, and every transaction on a chain costs
-  a fee paid by a sender. Either identity transactions are fee-exempt, or the
-  fee is drawn from value the identity already holds on chain, or registration
-  and recovery are performed by the company-hosted HUB service rather than by
-  the person's own wallet. Each changes what a participant must do and own.
-  **This blocks the contract version that encodes the direction;**
+- **whether a Founder Seat's addresses stay permanent and add-only, now that
+  signers are revocable.** The holder-and-signer direction of 2026-08-15 makes
+  the identity an admin that may revoke a signer at any time; this document also
+  says a seat's addresses "are permanent, can never be removed, and are
+  add-only" and that a recorded manager "remains in the historical ledger
+  forever". Both cannot hold for a seat. Withdrawing permanence lets a
+  compromised HUB signature remove a legitimate manager rather than only add
+  one; keeping it gives the ecosystem two address models. A third reading —
+  the historical record stays permanent while a signer's authority becomes
+  revocable — appears to satisfy both sentences and is recorded in ADR 0040 as
+  a reading rather than adopted. **This blocks the contract version that
+  encodes the direction;**
+- **how a brand-new person pays for their very first action.** Recovery no
+  longer has this problem, because regaining an identity regains holding
+  addresses that already hold value. Genuine first entry still does:
+  registration and the first holding address come before any value exists.
+  Either registration is fee-exempt with a non-monetary limit, or it is
+  performed by the company-hosted HUB service;
 - **how far mandatory verification reaches into a native transfer** — whether an
   unverified address may still receive native units, or whether both ends must
   be verified, which decides whether the kind-1 byte identity carried unchanged
