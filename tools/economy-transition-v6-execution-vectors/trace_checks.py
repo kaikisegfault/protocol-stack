@@ -195,10 +195,17 @@ def check_scenario(check: Checker, scenario, totals: dict[str, int], shape: int)
         for earlier, later in zip(scenario.blocks, scenario.blocks[1:])
         if later.height == earlier.height + 1
     ]
+    # An `all()` over an empty set is true and establishes nothing, which is
+    # exactly the vacuous claim `docs/engineering/verification.md`'s third rule
+    # forbids. Every scenario has at least one consecutive pair, and the count
+    # is recorded so a fixture that lost its last one fails here.
+    if not consecutive:
+        check.failures.append(f"{name}: no consecutive block pair to chain")
     check.equal(f"{name}.consecutive_block_pairs", len(consecutive))
     check.equal(
         f"{name}.every_consecutive_block_opens_on_its_predecessor_root",
-        all(
+        bool(consecutive)
+        and all(
             later.previous_state_root == earlier.resulting_state_root
             for earlier, later in consecutive
         ),

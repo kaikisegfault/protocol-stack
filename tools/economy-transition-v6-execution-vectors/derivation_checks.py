@@ -166,7 +166,7 @@ def _reachable(candidate: bytes, indexes: int) -> bool:
 def check_ordering(check: Checker, scenario) -> None:
     """Both readings of the boundary block, run against identical inputs."""
     check.section("Where the cycle assignment lands inside a block, and what it costs.")
-    accepted_block = scenario.blocks[-1]
+    accepted_block = scenario.blocks[scenario.notes["boundary_block_index"]]
     rejected_block = scenario.notes["rejected_ordering"]
     accepted_ledger = scenario.ledger
     rejected_ledger = scenario.notes["rejected_ledger"]

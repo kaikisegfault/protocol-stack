@@ -41,7 +41,7 @@ tests — so requirement 10's target is settled again and the C++ kernel has a
 contract the direction does not supersede. **M3.10b then made that contract
 execute on 2026-08-16** — a ledger state, the fourteen transitions in their
 rejection orders, ordered block execution with the cycle-assignment prologue, a
-recorded six-scenario trace, 499 vectors, a verifier, and 50 tests. It is the
+recorded six-scenario trace, 512 vectors, a verifier, and 51 tests. It is the
 first time anything in the repository *runs* a version-six transition rather
 than encoding one, and it settled four execution rules the accepted contract
 left to be derived. ADR 0045 records them.
@@ -106,9 +106,9 @@ move it.
 Issue #153 and PR #173 delivered the version-six execution model and its recorded
 transition trace. It added `ledger.py`, `execution.py`, `transitions.py`,
 `value_transitions.py`, `block.py`, and `trace.py` to
-`simulation/economy_transition_v6/`, 499 normative vectors in
+`simulation/economy_transition_v6/`, 512 normative vectors in
 `test-vectors/economy-transition-v6-execution.txt`, a verifier in
-`tools/economy-transition-v6-execution-vectors/`, ADR 0045, and 50 tests across
+`tools/economy-transition-v6-execution-vectors/`, ADR 0045, and 51 tests across
 two modules.
 
 **It comes before the C++ kernel because a codec never asks where a transaction
@@ -216,13 +216,24 @@ version of `1`** — version six re-versions genesis, the receipt, and the state
 root and says nothing about either, and it states that
 `protocol-primitives-v1`'s definitions govern where it imposes no narrower rule.
 
-**Five mutation probes establish that the verifier fails closed**: a re-versioned
+**Six mutation probes establish that the verifier fails closed**: a re-versioned
 block header (104 failures), the cycle assignment moved after the transactions
 (33), an unrequested confirmation no longer refused (10), the literal
-`NOTHING_TO_MINT` equality (36), and a changed escrow domain label (116). The
-second probe had to be rewritten once: mutating the flag's *default* changed
-nothing, because the fixture passes it explicitly, so the probe was measuring the
-argument rather than the behaviour.
+`NOTHING_TO_MINT` equality (36), a changed escrow domain label (116), and a
+fixture that loses its last consecutive block pair (20). The second probe had to
+be rewritten once: mutating the flag's *default* changed nothing, because the
+fixture passes it explicitly, so the probe was measuring the argument rather than
+the behaviour.
+
+**The sixth probe exists because this slice's own file held a vacuous claim.**
+Every block in the boundary scenario was separated by a height jump, so the
+per-scenario "every consecutive block opens on its predecessor's root" was an
+`all()` over an empty set — true forever, establishing nothing. That is exactly
+the hazard `docs/engineering/verification.md`'s third rule names, found in the
+file written by the person who applied the rule. The scenario gained a real
+successor block at the very next height, which also demonstrates that the window
+the boundary block assigned is not assigned a second time, and the checker now
+**fails** rather than emitting a boolean over an empty set.
 
 **Two states are stamped rather than executed, and both are recorded as stamps.**
 The enrollment counter is set one short of the population before any block runs,
@@ -1703,7 +1714,7 @@ slices.
   recovery with no signer at all, the accepted version-one transfer admitted and
   refused for its recipient, both directions of a posture change, and a mint that
   collects the cycle the block it is in just assigned.
-  `test-vectors/economy-transition-v6-execution.txt` fixes 499 vectors over it
+  `test-vectors/economy-transition-v6-execution.txt` fixes 512 vectors over it
   and five mutation probes establish that the verifier fails closed. It is still
   Python that activates nothing; what changed is that the evidence is now about
   transitions rather than about bytes.
@@ -1828,7 +1839,7 @@ behavior.
 - Repository: `kaikisegfault/protocol-stack`.
 - Issue #153 and PR #173 are the M3.10b delivery, merged by rebase across
   commits `bcad56e` through `089e9b4` on `main`. It adds the version-six
-  execution model, 499 vectors, a verifier, ADR 0045, and two test modules, and
+  execution model, 512 vectors, a verifier, ADR 0045, and two test modules, and
   edits no accepted artifact. The complete hosted matrix passed on the exact
   candidate and again post-merge on `main`; per-job durations and the resulting
   margin are recorded below.

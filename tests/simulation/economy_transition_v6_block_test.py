@@ -161,7 +161,9 @@ class AssignmentPrologueTest(unittest.TestCase):
 
     def setUp(self) -> None:
         self.scenario, _signatures = trace.block_scenario()
-        self.accepted = self.scenario.blocks[-1]
+        self.accepted = self.scenario.blocks[
+            self.scenario.notes["boundary_block_index"]
+        ]
         self.rejected = self.scenario.notes["rejected_ordering"]
 
     def test_the_boundary_block_writes_the_window_it_is_due(self) -> None:

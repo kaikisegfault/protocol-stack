@@ -366,5 +366,7 @@ EXPECTED_RESULTS: dict[str, tuple[str, str]] = {
     "alice_mints_unconfirmed": ("BIOMETRIC_REQUIRED", "kind 4 condition 8: the destination's posture confirms the total"),
     "alice_mints_confirmed": ("SUCCESS", "the walk covers the window the prologue just assigned"),
     "bob_mints_his_referral": ("SUCCESS", "the prologue accrued the referral before the transaction ran"),
+    "bob_mints_his_referral_again": ("NOTHING_TO_MINT", "kind 5 condition 3: accrued equals minted and the mark is the last assigned window"),
+    "alice_mints_the_day_after": ("NOTHING_TO_MINT", "kind 4 condition 7: no window has been assigned since the mark advanced"),
     "alice_mints_again": ("NOTHING_TO_MINT", "kind 4 condition 7: the mark is now the last assigned window"),
 }

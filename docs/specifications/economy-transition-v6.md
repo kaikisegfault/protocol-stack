@@ -1574,7 +1574,7 @@ and a claim must be checked against something other than itself.
 `tools/economy-transition-v6-vectors/verify.py` derives every one of them twice.
 
 **A second, separate file records what a chain conforming to this document
-*does*.** `test-vectors/economy-transition-v6-execution.txt` holds 499 normative
+*does*.** `test-vectors/economy-transition-v6-execution.txt` holds 512 normative
 vectors over a recorded transition trace: registration as one atomic execution,
 the recovery path end to end, the accepted version-one transfer admitted and
 refused for its recipient, both directions of a posture change, and a block that

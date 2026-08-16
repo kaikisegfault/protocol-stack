@@ -198,6 +198,13 @@ admission code it cannot return. The other two derivations are readings the
 accepted text supports; this one is a rule the accepted text states in a place it
 cannot hold.
 
+**A vacuous claim was found in this slice's own vector file, which is the third
+rule of `docs/engineering/verification.md` catching its own author.** Every block
+in the boundary scenario was separated by a height jump, so the per-scenario
+root-chaining claim was an `all()` over an empty set. The scenario gained a real
+successor block at the next height and the checker now fails rather than emitting
+a boolean over an empty set.
+
 **The trace does not prove the chain reachable end to end.** Two states are
 stamped rather than executed, and both are recorded as stamps: the enrollment
 counter one short of the population, because reaching 999,999 needs 999,999
