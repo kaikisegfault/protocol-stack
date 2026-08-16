@@ -212,12 +212,21 @@ registrations; and the height between segments, which stands in for a run of
 empty blocks and refuses to skip a window boundary that would have written an
 assignment.
 
-**A consequence of the accepted rules is now visible and is worth the founder's
-attention rather than an engineering decision.** The millionth-and-first verified
+**A consequence of the accepted rules is now visible, and the owner settled it
+the same day by leaving it as it stands.** The millionth-and-first verified
 person registers successfully, receives no entry airdrop, and holds an escrow
 with a zero balance — so every transaction they can sign, including the one that
 would collect a verified-user permission they do not have, answers
-`INSUFFICIENT_BALANCE` until somebody already inside the ecosystem sends them
-value. That follows from two accepted decisions, the bounded airdrop of ADR 0042
-and the universal fee, and nothing in this slice changes it. It is recorded here
-and raised in the handoff.
+`INSUFFICIENT_BALANCE` until they are funded. That follows from two accepted
+decisions, the bounded airdrop of ADR 0042 and the universal fee, and nothing in
+this slice changes it.
+
+**The founder answer of 2026-08-16 is that the entry airdrop is a launch
+incentive with a bound rather than the permanent funding path.** By a million
+verified identities the native asset is purchasable outside the ecosystem through
+bridges and external venues, so a new participant funds their own escrow from
+outside or an existing member sends them value. No rule moves. What the answer
+adds is a sequencing constraint the protocol cannot enforce and the roadmap must
+carry: **external purchasability has to exist before the airdrop bound is
+reached**, because until then the airdrop is the only funding path a newcomer
+has.
