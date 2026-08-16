@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-08-15
+Last updated: 2026-08-16
 
 ## Phase
 
@@ -38,7 +38,13 @@ and [ADR 0043](../decisions/0043-founder-answers-on-reach-asymmetry-forfeiture-a
 records them. **M3.10a then delivered `economy-transition-v6` the same day** —
 the specification, ADR 0044, a sibling model, 462 vectors, a verifier, and 91
 tests — so requirement 10's target is settled again and the C++ kernel has a
-contract the direction does not supersede.
+contract the direction does not supersede. **M3.10b then made that contract
+execute on 2026-08-16** — a ledger state, the fourteen transitions in their
+rejection orders, ordered block execution with the cycle-assignment prologue, a
+recorded six-scenario trace, 499 vectors, a verifier, and 50 tests. It is the
+first time anything in the repository *runs* a version-six transition rather
+than encoding one, and it settled four execution rules the accepted contract
+left to be derived. ADR 0045 records them.
 
 Requirements 3, 4, 5, 6, 7, and 12 of `first-goal.md` are satisfied;
 requirements 8 and 9 moved from specified to enforced; and requirement 14 is met
@@ -49,7 +55,10 @@ M2 completed on 2026-08-05 with all sixteen requirements of
 **The remaining M3 work is the C++ half.** Requirements 10, 11, and 13 — the
 C++20 kernel implementation, cross-language vectors, and four-node adversarial
 scenarios — have not started. Everything delivered so far is specification and
-independent Python evidence that activates nothing.
+independent Python evidence that activates nothing. **What M3.10b changed is what
+that evidence covers**, not whether it activates anything: it is the first
+evidence about transitions rather than about bytes, and it is what the C++ side
+now has to reproduce.
 
 **The two blocking founder questions M3.8a raised were answered the same day.**
 Its gate found that all three authorization predicates the consensus encoding
@@ -91,6 +100,145 @@ Buying a seat requires HUB verification first and the seat is tied to that
 identity; a HUB identity's address set lives in consensus state. Requirement 10
 is now unblocked against a settled target, and nothing further is expected to
 move it.
+
+### How M3.10b was delivered
+
+Issue #153 and PR #173 delivered the version-six execution model and its recorded
+transition trace. It added `ledger.py`, `execution.py`, `transitions.py`,
+`value_transitions.py`, `block.py`, and `trace.py` to
+`simulation/economy_transition_v6/`, 499 normative vectors in
+`test-vectors/economy-transition-v6-execution.txt`, a verifier in
+`tools/economy-transition-v6-execution-vectors/`, ADR 0045, and 50 tests across
+two modules.
+
+**It comes before the C++ kernel because a codec never asks where a transaction
+gets its arguments.** M3.9a implemented a version-four codec and M3.9b found that
+two implementations agreed perfectly about a message neither could construct.
+This is the first step that runs a transition, and it found four things a
+byte-level cross-language check could not have.
+
+**Three of them are places where the accepted contract admits two readings, and
+one is a place where it is silent.** Every one is consensus-visible: two
+conforming implementations that chose differently would return different result
+codes, or pay a founder differently, for the same bytes against the same state.
+None is founder-reserved — each is a rejection order or a code assignment, which
+the constitution names as mechanism — and each is recorded with its alternative
+in ADR 0045 rather than settled silently in code.
+
+**Where a cycle assignment lands inside a block is worth more than the other
+three together, and it is a decision about money.** `ledger-transition-v1` does
+not say whether a record due at a window boundary is written before or after that
+block's transactions. Version six's own sentence decides it — "the last assigned
+window at any height `h` is `window_of_height(h) - 2`" is a statement about every
+transaction executing at `h` — and the trace runs both readings against identical
+inputs. Written first, a founder's mint at the boundary collects 114,860,000,000
+atomic. Written after, the same mint **succeeds, collects zero, and advances its
+mark to that window anyway**, so the cycle is forfeited permanently rather than
+deferred. A referral mint in the same block is only deferred, because kind 5
+advances its own mark on success alone. Both figures are recorded as vectors.
+
+**`DEBIT_OVERFLOW` had to move to envelope check 8, and the reason is that the
+literal order makes the specification contradict itself.** Check 8 is "escrow
+balance is below what it must debit", and for a transfer that is
+`amount + fixed_fee` — the exact sum kind 1's own condition 5 tests. Evaluating
+the overflow test afterwards leaves check 8 undefined on a sum that does not fit
+`u64`, and it would make code 7 unreachable in version six, while the
+specification lists exactly three unreachable frozen codes and does not list it.
+**One real divergence from version one survives and is recorded rather than
+smoothed over**: `INSUFFICIENT_BALANCE` now precedes `ZERO_AMOUNT` for kind 1, so
+a zero-amount transfer from an escrow that cannot pay the fee answers differently
+under the two versions.
+
+**The zero-confirmation-field rule is stated in a place that cannot evaluate it
+and names a code that does not exist.** Whether an operation requires a
+confirmation is a predicate over the escrow's stored posture, and the
+specification says twice that admission reads no state; and the admission and
+result code spaces are disjoint namespaces sharing numbers, so result `1` is
+`ZERO_AMOUNT` and there is no result code named `MALFORMED_TRANSACTION` to put in
+a receipt. It is refused at execution with `UNAUTHORIZED`. **This is the one
+specification correction owed to a later version**, and it is the only one.
+
+**`NOTHING_TO_MINT` is the empty walk range rather than an equality**, because a
+seat activated in window `w` holds mark `w` while the last assigned window is
+`w - 2`. Under the literal wording that mint would succeed, collect nothing, and
+set the mark to `w - 2` — a mark that decreases, which destroys the exactness
+argument the whole accumulation cap rests on. The trace exercises it directly:
+Alice mints immediately after activating and is refused.
+
+**One real defect was found by the tests rather than by the vectors, and it is
+the same confusion the second derived rule turns on.** `admit` looked its three
+codes up in the *result* code table, so `MALFORMED_TRANSACTION`, `WRONG_CHAIN`,
+and `INVALID_SIGNATURE` all raised `KeyError`. The vectors passed anyway, because
+the trace had no admission failure in it — so a second finding is that a trace
+without a refused input never exercises admission at all. Two admission failures
+are now in the fixture and their codes are recorded.
+
+**The accepted version-one transfer is executed, not just encoded.** The exact
+200 octets are admitted on a chain stamped with the accepted vectors' chain ID —
+which is the only way those bytes reach execution rather than `WRONG_CHAIN` — and
+refused with `RECIPIENT_NOT_REGISTERED`. The same transaction with only its 32
+recipient octets replaced is accepted. **The byte identity is preserved and the
+execution identity is not**, in one trace. The accepted recipient can never be a
+registered escrow on any conforming chain, because an escrow identifier is a
+digest of an identity and an index and reaching a chosen value is a SHA-256
+preimage.
+
+**Version six is the first contract under which a nonzero fixed fee is reachable
+from genesis**, and the whole trace runs on the accepted version-one devnet fee
+of 1,000 to demonstrate it. Version two derived that a conforming chain must
+permit a zero fee, because a zero allocation and a nonzero fee leave nobody able
+to pay for the first transaction. Registration is fee-exempt and pays the entry
+airdrop, so the first transaction funds itself.
+
+**A registration is exempt from the fee-limit floor as well as from the fee, and
+that is forced rather than chosen.** Its fee-limit field is required to be zero,
+so a `FEE_LIMIT_TOO_LOW` check would refuse every registration on any chain with
+a nonzero fee — closing the ecosystem to new members, which is the opposite of
+what exemption exists to guarantee. Expiry still applies.
+
+**The millionth-and-first user is recorded as a consequence rather than argued
+about.** They register successfully, receive no airdrop, and hold a zero-balance
+escrow, so every transaction they can sign — including the kind-18 mint for a
+permission they do not have — answers `INSUFFICIENT_BALANCE` until somebody
+already inside the ecosystem sends them value. Only then does the refusal become
+`NOT_ENROLLED`. That follows from two accepted decisions, ADR 0042's bounded
+airdrop and the universal fee, and nothing in this slice changes it. It is raised
+in the handoff as a surface-logic question rather than settled here.
+
+**Every value two sources can reach is derived twice and recorded only when both
+agree**, and `expected.py` imports nothing from `simulation/`. Three inherited
+constructions are checked against a third source before anything rests on them:
+the ordered transaction tree and the accepted signed transfer against
+`test-vectors/protocol-primitives-v1.txt`, and the 146-byte block header and the
+block ID against `test-vectors/ledger-transition-v1.txt`. **The block header and
+the transaction tree are inherited unchanged, including the header's schema
+version of `1`** — version six re-versions genesis, the receipt, and the state
+root and says nothing about either, and it states that
+`protocol-primitives-v1`'s definitions govern where it imposes no narrower rule.
+
+**Five mutation probes establish that the verifier fails closed**: a re-versioned
+block header (104 failures), the cycle assignment moved after the transactions
+(33), an unrequested confirmation no longer refused (10), the literal
+`NOTHING_TO_MINT` equality (36), and a changed escrow domain label (116). The
+second probe had to be rewritten once: mutating the flag's *default* changed
+nothing, because the fixture passes it explicitly, so the probe was measuring the
+argument rather than the behaviour.
+
+**Two states are stamped rather than executed, and both are recorded as stamps.**
+The enrollment counter is set one short of the population before any block runs,
+so the boundary is then crossed by a real registration; and a height jump between
+segments stands in for a run of empty blocks, refusing to skip any window
+boundary that would have written an assignment.
+
+**Failed-transition atomicity is checked rather than asserted.** The block
+executor commits the state root before every transaction and requires it
+unchanged after any non-success result, and the count of refusals that check
+covered is recorded per scenario.
+
+**Nothing accepted was edited.** All five predecessor vector files verify at their
+recorded counts — 238, 579, 441, 550, and 462 — and
+`test-vectors/economy-transition-v6.txt` is byte-for-byte unchanged. The
+specification gained an evidence pointer and no rule.
 
 ### How M3.10a was delivered
 
@@ -1539,6 +1687,22 @@ slices.
   all, and admission still verifies a signature without reading state. It has a
   model, 462 vectors, a verifier, and 91 tests; **what it does not yet have is
   the C++ implementation**, which still targets version four.
+- **`economy-transition-v6` also executes, in Python.** The same package now
+  holds a version-six ledger state, escrow resolution under both authorization
+  schemes, the shared envelope checks, the fourteen transitions in their
+  specified rejection orders, and ordered block execution that writes a cycle
+  assignment at a window boundary, charges the fixed fee, advances the escrow's
+  nonce, produces one 56-byte receipt per admitted transaction, and commits a
+  state root, a transaction root, a 146-byte header, and a block ID. A recorded
+  six-scenario trace walks registration and its entry airdrop, a forfeiting
+  verified-user collection thirty windows later, the millionth-and-first user,
+  recovery with no signer at all, the accepted version-one transfer admitted and
+  refused for its recipient, both directions of a posture change, and a mint that
+  collects the cycle the block it is in just assigned.
+  `test-vectors/economy-transition-v6-execution.txt` fixes 499 vectors over it
+  and five mutation probes establish that the verifier fails closed. It is still
+  Python that activates nothing; what changed is that the evidence is now about
+  transitions rather than about bytes.
 - `economy-transition-v5` is accepted, fully evidenced, and superseded as
   direction hours after it was evidenced. It is version four with one field's
   meaning corrected — kind 11's 32-byte field is the HUB identity hash and the
@@ -1658,6 +1822,23 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #153 and PR #173 are the M3.10b delivery, merged by rebase across
+  commits `bcad56e` through `089e9b4` on `main`. It adds the version-six
+  execution model, 499 vectors, a verifier, ADR 0045, and two test modules, and
+  edits no accepted artifact. The complete hosted matrix passed on the exact
+  candidate and again post-merge on `main`; per-job durations and the resulting
+  margin are recorded below.
+- Issue #153's scope has been rebound twice. It was opened as M3.9b against
+  version four, renumbered M3.9e and rebound to version five when version four's
+  kind-11 defect pushed three slices in front of it, and finally rebound to
+  version six after the pivot of 2026-08-15. It closed as M3.10b, and its
+  recorded requirement that the trace walk the recovery path is satisfied by the
+  `recovery` scenario.
+- Issue #169 and PR #170 are the M3.10a delivery, merged by rebase across
+  commits `6fb57f6` through `15b5e90` on `main`, with PR #171 closing out the
+  handoff at `07afe4c`. The complete hosted matrix passed on the exact candidate
+  — `gcc-debug` 8m33s, `clang-debug` 8m57s, `clang-sanitizers` 9m02s,
+  `gcc-sanitizers` 9m27s — and again post-merge in 9m48s.
 - Issue #154 and PR #155 are the M3.9b delivery, merged by rebase at commit
   `fa1907f` on `main`. It is documentation only — a specification and an ADR —
   so it took the focused metadata path rather than the matrix: scope
@@ -1682,10 +1863,6 @@ behavior.
   moot.** The C++ codec in `src/v4/` implements version four and stays there;
   M3.9d was withdrawn the same day, because the direction of 2026-08-15
   supersedes version five as the kernel's target.
-- Issue #153 was opened as M3.9b against version four and is renumbered M3.9e
-  and rebound to version five. Writing it is what found version four's kind-11
-  defect, so three slices landed in front of it. Its recorded scope now requires
-  the trace to walk the recovery path specifically.
 - Issue #150 and PR #151 are the M3.9a delivery, merged by rebase. The slice is
   commits `f457ca2` through `ab1e036` on `main`. PR Actions run 31849896862 on
   the final head `2c8d0fa` passed the complete hosted matrix — scope
@@ -2363,55 +2540,41 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.10b: the version-six execution model and its recorded
-transition trace**, which is issue #153 rebound from version five. Use the
-`change-protocol` skill. **Do not write C++ before it.**
+Milestone slice **M3.10c: the C++20 kernel codec and transitions for
+`economy-transition-v6`**, which is requirement 10. Use the `change-protocol`
+skill.
 
-**The order is the repository's own lesson rather than a preference.** M3.9a
-implemented a codec and M3.9b found that two implementations agreed perfectly
-about a message neither could construct, because a codec never asks where a
-transaction gets its arguments. The execution model is the first step that runs
-a transition, and version six has more transitions with more state behind them
-than any predecessor.
-
-**What it must exercise, chosen for what would go undetected otherwise:**
-
-1. **The recovery path end to end.** A person with an identity, no signer, and an
-   escrow that holds value assigns a new signer with scheme 2, pays the fee from
-   that escrow, and then transacts with the new key. That is the path version
-   four disabled and version five could not fund, and a trace that does not walk
-   it would not have caught either defect.
-2. **Registration as one atomic execution.** Identity, escrow zero, first signer,
-   and the entry airdrop, with a fee-exempt envelope and a zero nonce — and the
-   same registration past the millionth identity, which must still succeed with a
-   zero balance.
-3. **A transfer refused for its recipient**, immediately after the accepted
-   version-one bytes are admitted, so the byte identity and the execution
-   divergence appear in one trace.
-4. **Both directions of a posture change**, including a mixed change that
-   tightens one field and relaxes another and therefore needs the HUB signature.
-5. **A block that commits a root**, because everything recorded so far
-   establishes that values encode and not that a block executes, charges a fee,
-   and commits.
-
-**Then M3.10c: the C++20 kernel codec for version six**, which is requirement 10.
 **Replace `src/v4/` rather than adding `src/v6/` beside it**, and record the
-decision either way: the Python side keeps version four because its 441 vectors
-are the record of what the hosted matrix verified, and the C++ side has a weaker
-case for a copy, since it is one implementation of a byte surface and keeping two
+decision either way. The Python side keeps version four because its 441 vectors
+are the record of what the hosted matrix verified; the C++ side has a weaker case
+for a copy, since it is one implementation of a byte surface and keeping two
 would double the build with nothing but labels between them. **The codec is the
 only place in the repository where a superseded contract would still be
 compiled.**
 
-**Four things in the C++ move and are easy to miss.** The six HUB message labels,
-which are string literals rather than a table. The scheme byte, which is a
-`switch` the version-one kernel does not have — it reads offset 39 as a constant.
-The signer derivation, `H(D("protocol-stack:v1:account") || 0x01 || pk)`, which
-`src/v1/admission.cpp` already implements file-privately and which should be
-reused rather than written twice, checked against the identifier
+**Four things in the C++ move and are easy to miss.** The six HUB message
+labels, which are string literals rather than a table. The scheme byte, which is
+a `switch` the version-one kernel does not have — it reads offset 39 as a
+constant. The signer derivation, `H(D("protocol-stack:v1:account") || 0x01 ||
+pk)`, which `src/v1/admission.cpp` already implements file-privately and which
+should be reused rather than written twice, checked against the identifier
 `test-vectors/protocol-primitives-v1.txt` records. And the state-root version
 field, which is a number rather than a label and so will not appear in a search
 for `v4`.
+
+**M3.10b's four derived rules are what the C++ must reproduce, and they are
+exactly the class a byte-level cross-language check cannot catch.** ADR 0045
+records each with its alternative: `DEBIT_OVERFLOW` at envelope check 8, an
+unrequested confirmation field refused at execution with `UNAUTHORIZED` rather
+than at admission with a code the result space does not contain,
+`NOTHING_TO_MINT` as the empty walk range, and the cycle assignment written
+before a boundary block's transactions. **Whether M3.10c is a codec alone or a
+codec plus transitions decides which of them it can demonstrate.** M3.9a's
+version-four codec was a codec alone and every entry point was a pure function of
+its arguments; a codec cannot reach any of the four, so a codec-only slice leaves
+requirement 11's cross-language vectors covering bytes and nothing else — which
+is the shape of the M3.9b defect one layer up. Prefer the codec **plus** the
+envelope-check order and the four rules, and record what was left out.
 
 **The local C++ harness is the reusable result of M3.9a.** Building libsodium
 locally is the heavy operation `CLAUDE.md` refuses, so a scratch harness supplies
@@ -2421,10 +2584,21 @@ never committed and never part of the build. With it the whole codec test
 compiles and runs in about a second under both compilers with the project's exact
 flags and under address and undefined-behaviour sanitizers.
 
-**One local hazard cost time in M3.10a and will again.** Stale `__pycache__` made
-a reverted mutation appear to still fail and a real failure appear to pass. A
-hosted runner starts clean, so it is a local-only trap; clear it before believing
-a probe result.
+**One local hazard cost time in M3.10a and again in M3.10b.** Stale
+`__pycache__` made a reverted mutation appear to still fail and a real failure
+appear to pass. A hosted runner starts clean, so it is a local-only trap; clear
+it before believing a probe result.
+
+**A mutation probe must mutate the behaviour rather than an argument's default.**
+M3.10b's assignment-ordering probe passed on its first attempt because the
+fixture passes the flag explicitly, so changing the default changed nothing. The
+probe was measuring the argument. Re-run any probe that passes.
+
+### What M3.10b superseded in this section
+
+The rest of what stood here is delivered. The execution model was written, the
+five things it had to exercise were exercised, and the order it was written in —
+model before kernel — found four things a codec could not have.
 
 **Both things M3.10a was told to re-check were re-checked.** Requirement 12's
 storage bounds moved to per-identity escrow and signer entries and are recorded
@@ -2538,15 +2712,55 @@ branch and pull request.
 
 ## Blockers
 
-**None.** The founder-decision gate stopped `economy-transition-v6` on
-2026-08-15 with four reserved decisions, the owner answered all four the same
-day, and the contract that encodes them was delivered the same day. ADR 0043
-records the answers, ADR 0044 records the contract, the constitution states both,
-and the unresolved list is two entries shorter.
+**None for M3.10c.** M3.10b ran the founder-decision gate and **passed** it.
+Every decision the slice had to settle was already decided or delegated:
+where the execution model lives, which vector file records it, the order of the
+shared envelope checks, where the debit-overflow test sits inside them, which
+result code an unrequested confirmation field earns, what `NOTHING_TO_MINT`
+means for a fresh mark, where a cycle assignment lands inside a block, whether
+the block header and transaction tree are re-versioned, what fee the trace runs
+on, and how a signature is modelled without implementing one. **Four of those had
+to be derived rather than looked up**, because the accepted contract admits two
+readings of three of them and is silent on the fourth; every one is a rejection
+order or a code assignment, which `founder-constitution.md` lines 883-886 name
+as mechanism, and each is recorded with its alternative in ADR 0045 rather than
+settled silently. None sets or changes supply, allocation, beneficiaries, Founder
+ownership, creator hierarchy, commercial routing, AI institutional authority,
+bridge scope, content permanence, or what a participant must do, own, run, or
+receive.
+
+**One founder-reserved question is recorded and is not blocking.** The
+millionth-and-first verified person registers successfully, receives no entry
+airdrop, and holds a zero-balance escrow — so until somebody already inside the
+ecosystem sends them value, every transaction they can sign answers
+`INSUFFICIENT_BALANCE`, including the mint for a verified-user permission they do
+not have. **That is a consequence of two accepted decisions rather than a new
+rule**: ADR 0042 bounds the airdrop at 1,000,000 identities and the constitution
+applies a fixed fee to every accepted state transition. It is founder-reserved
+because it decides what a new end user must do in order to participate at all,
+and it was raised to the owner at the close of the M3.10b session. It blocks
+nothing now — the C++ kernel implements whatever the answer is — and it becomes
+the nearest dependency the first time a public-facing entry flow is specified.
+
+**The founder-decision gate stopped `economy-transition-v6` on 2026-08-15 with
+four reserved decisions**, the owner answered all four the same day, and the
+contract that encodes them was delivered the same day. ADR 0043 records the
+answers, ADR 0044 records the contract, the constitution states both, and the
+unresolved list is two entries shorter.
 
 **Requirement 10's target is settled again**, at `economy-transition-v6`, and it
 is the first version-six-era contract the direction does not supersede. Nothing
-founder-reserved stands in front of the execution model or the C++ kernel.
+founder-reserved stands in front of the C++ kernel, and the execution model that
+was to precede it is delivered.
+
+**One specification correction is owed to a later contract version, and only
+one.** `economy-transition-v6`'s requirement that an unrequested confirmation
+field be 64 zero octets is placed at admission, which cannot read the stored
+posture its predicate needs, and names `MALFORMED_TRANSACTION`, which is an
+admission code and has no counterpart in the result-code space a receipt records.
+M3.10b refuses it at execution with `UNAUTHORIZED` and ADR 0045 records why.
+**No rule in the accepted specification was edited**, and the correction is a
+note for version seven rather than a defect that stops anything.
 
 **How the gate came to stop the slice is worth keeping, because the failure mode
 recurs.** The handoff had said "Blockers: None". The pivot's own three questions
