@@ -1005,6 +1005,20 @@ def block_scenario() -> tuple[Scenario, Signatures]:
         Step("alice_mints_again", _mint_node(signatures, ledger, 4, 0, True)),
     ]
     _run(scenario, signatures, boundary_steps, uptime=uptime)
+    scenario.notes["boundary_block_index"] = len(scenario.blocks) - 1
+
+    # One more block at the very next height, so the boundary block's root is
+    # chained forward by a real successor rather than by an empty claim — and so
+    # the window it assigned is not assigned a second time.
+    _run(
+        scenario,
+        signatures,
+        [
+            Step("bob_mints_his_referral_again", _mint_referral(signatures, ledger, 2)),
+            Step("alice_mints_the_day_after", _mint_node(signatures, ledger, 4, 0, True)),
+        ],
+        uptime=uptime,
+    )
 
     rejected_block = execute_block(
         rejected,
