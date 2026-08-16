@@ -1112,6 +1112,26 @@ add_test(
     "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_v6_verified_user_test.py"
 )
 add_test(
+  NAME economy-transition-v6-execution-vectors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tools/economy-transition-v6-execution-vectors/verify.py"
+    --vectors
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v6-execution.txt"
+)
+add_test(
+  NAME economy-transition-v6-execution
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_v6_execution_test.py"
+)
+add_test(
+  NAME economy-transition-v6-block
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_v6_block_test.py"
+)
+add_test(
   NAME founder-seat-vectors
   COMMAND
     "${Python3_EXECUTABLE}"
