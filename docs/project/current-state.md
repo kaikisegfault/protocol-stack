@@ -202,8 +202,12 @@ escrow, so every transaction they can sign — including the kind-18 mint for a
 permission they do not have — answers `INSUFFICIENT_BALANCE` until somebody
 already inside the ecosystem sends them value. Only then does the refusal become
 `NOT_ENROLLED`. That follows from two accepted decisions, ADR 0042's bounded
-airdrop and the universal fee, and nothing in this slice changes it. It is raised
-in the handoff as a surface-logic question rather than settled here.
+airdrop and the universal fee, and nothing in this slice changes it. **The owner
+settled it the same day by leaving it as it stands**: the entry airdrop is a
+launch incentive with a bound rather than the permanent funding path, and by a
+million verified identities the native asset is purchasable outside the
+ecosystem, so a newcomer funds their own escrow from outside or an existing
+member sends them value.
 
 **Every value two sources can reach is derived twice and recorded only when both
 agree**, and `expected.py` imports nothing from `simulation/`. Three inherited
@@ -2387,6 +2391,16 @@ implemented. The Founder issuance schedule, permission transitions, revenue
 routing, and escrow payouts now exist only as independent Python models, not as
 C++ consensus behavior.
 
+**One of those absences now carries a dependency rather than only a roadmap
+position.** The founder answer of 2026-08-16 makes external purchasability the
+permanent funding path for a new participant once the entry airdrop's
+1,000,000-identity bound is reached. Until a bridge or an external venue exists,
+the airdrop is the *only* path by which a person who holds nothing can make their
+first transaction, so **external purchasability has to exist before the millionth
+identity registers**. No transition can enforce that ordering; it is a sequencing
+constraint on the bridge and liquidity milestones, and it is recorded here so a
+later session does not rediscover it from an `INSUFFICIENT_BALANCE` vector.
+
 All sixteen requirements of `goals/m2-founder-economy-proof.md` passed against
 `founder-economy-manifest-v1`. What that does and does not establish is stated
 in `founder-economy-report-v1.md` rather than summarized here.
@@ -2754,18 +2768,30 @@ ownership, creator hierarchy, commercial routing, AI institutional authority,
 bridge scope, content permanence, or what a participant must do, own, run, or
 receive.
 
-**One founder-reserved question is recorded and is not blocking.** The
-millionth-and-first verified person registers successfully, receives no entry
-airdrop, and holds a zero-balance escrow — so until somebody already inside the
-ecosystem sends them value, every transaction they can sign answers
-`INSUFFICIENT_BALANCE`, including the mint for a verified-user permission they do
-not have. **That is a consequence of two accepted decisions rather than a new
-rule**: ADR 0042 bounds the airdrop at 1,000,000 identities and the constitution
-applies a fixed fee to every accepted state transition. It is founder-reserved
-because it decides what a new end user must do in order to participate at all,
-and it was raised to the owner at the close of the M3.10b session. It blocks
-nothing now — the C++ kernel implements whatever the answer is — and it becomes
-the nearest dependency the first time a public-facing entry flow is specified.
+**The one founder-reserved question M3.10b raised was answered the same day, and
+the answer is that the accepted rule stands.** The millionth-and-first verified
+person registers successfully, receives no entry airdrop, and holds a
+zero-balance escrow — so until they are funded, every transaction they can sign
+answers `INSUFFICIENT_BALANCE`, including the mint for a verified-user permission
+they do not have. **That is a consequence of two accepted decisions rather than a
+new rule**: ADR 0042 bounds the airdrop at 1,000,000 identities and the
+constitution applies a fixed fee to every accepted state transition.
+
+**The owner's answer on 2026-08-16 was to change nothing, and the reasoning
+supplies what the question was missing.** By the time a million people hold HUB
+verification the project has scaled past the point where the native asset exists
+only inside the ecosystem: bridges and external venues make it purchasable, so a
+new participant funds their own escrow from outside, or an existing member sends
+them value. The entry airdrop is a launch incentive with a bound, not the
+permanent funding path, and **the permanent funding path is external liquidity**.
+No specification, model, vector, or ADR rule changes; `economy-transition-v6` and
+ADR 0042 already encode the answer.
+
+**It creates one checkable roadmap dependency, and that is the part worth
+carrying.** External purchasability must exist before the millionth identity
+registers, because the airdrop is the only funding path a newcomer has until it
+does. That is a sequencing constraint on the bridge and liquidity milestones
+rather than a protocol change, and no transition here can enforce it.
 
 **The founder-decision gate stopped `economy-transition-v6` on 2026-08-15 with
 four reserved decisions**, the owner answered all four the same day, and the
