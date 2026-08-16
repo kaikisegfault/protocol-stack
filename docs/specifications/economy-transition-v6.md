@@ -1572,6 +1572,23 @@ and a claim must be checked against something other than itself.
 **All of it is recorded.** `simulation/economy_transition_v6/` is the model,
 `test-vectors/economy-transition-v6.txt` holds 462 normative vectors, and
 `tools/economy-transition-v6-vectors/verify.py` derives every one of them twice.
+
+**A second, separate file records what a chain conforming to this document
+*does*.** `test-vectors/economy-transition-v6-execution.txt` holds 499 normative
+vectors over a recorded transition trace: registration as one atomic execution,
+the recovery path end to end, the accepted version-one transfer admitted and
+refused for its recipient, both directions of a posture change, and a block that
+writes a cycle assignment and commits a root. It is a separate file because this
+one is the artifact the hosted matrix verified on 2026-08-15 and an accepted
+vector file is not edited. Building the execution model reached three places
+where this document admits two readings and one place where it is silent;
+[ADR 0045](../decisions/0045-the-version-six-execution-model-and-three-derived-rules.md)
+records each reading, the alternative, and why the alternative was rejected. **No
+rule in this document changes as a consequence**, and one — the requirement that
+an unrequested confirmation field be zero, placed at admission and named
+`MALFORMED_TRANSACTION` — is stated in a place that cannot evaluate it and names
+a code the result space does not contain, which a later version should correct
+outright rather than leave derived.
 Four mutation probes establish that it fails closed: a changed escrow label, a
 relaxation predicate that lost one disjunct, a removed accumulation cap, and a
 changed account domain octet are each rejected — the last **with the octet

@@ -369,6 +369,22 @@ preference, because credit-before-fee closes the ecosystem to new members at use
 1,000,001. And the verified-user cap is applied at the mint rather than at
 assignment, because no per-window record for a million identities is affordable.
 
+ADR 0045 records the version-six execution model and the three rules it had to
+derive, because building the first thing that *runs* a version-six transition
+reached three places where the accepted contract admits two readings. Version one
+puts the debit-overflow test before the balance comparison and version six's
+shared-envelope sentence appears to move it after, which would leave the balance
+check undefined on its own input and make a frozen code unreachable that the
+specification does not list as unreachable. The rule that a confirmation field
+must be zero when no confirmation is required is placed at admission and named a
+code the result space does not contain, and admission cannot read the stored
+posture the predicate needs. And `NOTHING_TO_MINT`'s literal wording would let a
+freshly activated seat's mint lower its own accumulation mark by two windows.
+The fourth decision is where a cycle assignment lands inside a block, and it is
+worth more than the other three together: written before the block's
+transactions a founder's mint at the boundary collects the cycle, and written
+after it succeeds, collects nothing, and forfeits that day permanently.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
@@ -505,7 +521,8 @@ immutable; compatible changes require a new version.
   recipient-creating transfer and makes "every account is an escrow" a structural
   invariant. The signature-scheme byte carries a second authorization mode so
   that identity administration works with no key at all. It is the contract
-  requirement 10's C++ kernel implements.
+  requirement 10's C++ kernel implements, and
+  `simulation/economy_transition_v6/` now both encodes and executes it.
 - `specifications/native-economy-simulation-v1.md`: versioned integer-only
   accounting, authority, event, trace, and metric contract for the independent
   M2 research simulator; it is not a consensus transition.
