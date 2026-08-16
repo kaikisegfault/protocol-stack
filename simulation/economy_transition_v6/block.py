@@ -30,6 +30,7 @@ both readings.
 
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass, field
 
 from simulation.economy_transition.merkle import digest, root
@@ -42,7 +43,7 @@ from simulation.economy_transition_v3.settlement import (
 from . import contract as c
 from .envelope import u16, u32, u64
 from .execution import Admission, Outcome, SignatureOracle, admit, execute, receipt_for
-from .ledger import Ledger
+from .ledger import ConservationFailure, Ledger
 from .receipt import Receipt, encode as encode_receipt
 
 BLOCK_MAGIC = b"PSBL"
@@ -125,6 +126,32 @@ def execute_block(
     height = ledger.height + 1
     if height > c.MAX_U64:
         raise InvalidBlock("block height overflow")
+
+    # "The block transition is atomic: an internal invariant failure, height
+    # error, or resource-bound violation rejects the whole proposed block and
+    # preserves the pre-block state." Ordinary transaction results never reach
+    # here, because a refusal is a result rather than an exception.
+    snapshot = deepcopy(ledger.__dict__)
+    try:
+        return _execute_block(
+            ledger, raw_inputs, oracle, uptime, assignment_is_prologue,
+            height, previous_root,
+        )
+    except (InvalidBlock, ConservationFailure):
+        ledger.__dict__.clear()
+        ledger.__dict__.update(snapshot)
+        raise
+
+
+def _execute_block(
+    ledger: Ledger,
+    raw_inputs: list[bytes],
+    oracle: SignatureOracle,
+    uptime: dict[int, list[SeatCycle]] | None,
+    assignment_is_prologue: bool,
+    height: int,
+    previous_root: str,
+) -> BlockOutcome:
     ledger.height = height
 
     outcome = BlockOutcome(

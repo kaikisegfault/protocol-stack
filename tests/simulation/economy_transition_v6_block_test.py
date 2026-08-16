@@ -128,6 +128,26 @@ class BlockTest(unittest.TestCase):
             execute_block(ledger, [b""] * 65_536, SignatureOracle())
         self.assertEqual(ledger.height, 0)
 
+    def test_a_rejected_block_preserves_the_pre_block_state(self) -> None:
+        """An invariant failure rejects the whole block, not one transaction.
+
+        The state is rewound to just before the boundary block, which no real
+        chain does — that is the point: it constructs the state a defect would
+        produce, so the prologue is offered a window the state already holds.
+        """
+        from simulation.economy_transition_v6.ledger import ConservationFailure
+
+        scenario, _signatures = trace.block_scenario()
+        ledger = scenario.ledger
+        ledger.height = trace.BOUNDARY_HEIGHT - 1
+        before = ledger.state_root()
+        with self.assertRaises(ConservationFailure):
+            execute_block(
+                ledger, [], SignatureOracle(), uptime=trace.uptime_records()
+            )
+        self.assertEqual(ledger.height, trace.BOUNDARY_HEIGHT - 1)
+        self.assertEqual(ledger.state_root(), before)
+
     def test_an_empty_block_advances_height_and_commits_the_empty_root(self) -> None:
         ledger = Ledger.from_genesis(trace.genesis())
         block = execute_block(ledger, [], SignatureOracle())

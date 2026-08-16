@@ -233,7 +233,11 @@ boundary that would have written an assignment.
 **Failed-transition atomicity is checked rather than asserted.** The block
 executor commits the state root before every transaction and requires it
 unchanged after any non-success result, and the count of refusals that check
-covered is recorded per scenario.
+covered is recorded per scenario. **Block-level atomicity is the separate rule
+and it is implemented rather than described**: an invariant failure, a height
+error, or a resource-bound violation restores the pre-block state before the
+failure propagates, which is what `ledger-transition-v1` requires and what a
+model that only raised would have left as prose.
 
 **Nothing accepted was edited.** All five predecessor vector files verify at their
 recorded counts — 238, 579, 441, 550, and 462 — and
