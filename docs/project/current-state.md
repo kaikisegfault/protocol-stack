@@ -1838,11 +1838,21 @@ behavior.
 
 - Repository: `kaikisegfault/protocol-stack`.
 - Issue #153 and PR #173 are the M3.10b delivery, merged by rebase across
-  commits `bcad56e` through `089e9b4` on `main`. It adds the version-six
+  commits `19107df` through `cc2e8fc` on `main`. It adds the version-six
   execution model, 512 vectors, a verifier, ADR 0045, and two test modules, and
-  edits no accepted artifact. The complete hosted matrix passed on the exact
-  candidate and again post-merge on `main`; per-job durations and the resulting
-  margin are recorded below.
+  edits no accepted artifact. PR run 31952597793 on the final head `66fcab8`
+  passed the complete hosted matrix — scope classification `full`, GCC and Clang
+  debug, both sanitizers, and the aggregate required check — and post-merge run
+  31953123699 on `cc2e8fc` passed the same matrix.
+- **The margin is about ten and a half minutes, and the slice moved it very
+  little.** Per-job durations on the candidate against the 20-minute per-job
+  timeout: `gcc-debug` 5m48s, `clang-sanitizers` 7m21s, `clang-debug` 8m45s,
+  `gcc-sanitizers` 9m21s. Post-merge on `main`: `clang-debug` 8m15s, `gcc-debug`
+  8m17s, `clang-sanitizers` 8m50s, `gcc-sanitizers` 9m20s. The slice adds no
+  translation unit and two fast Python entries that `ctest --parallel` absorbs,
+  so the spread sits inside the roughly 12% run-to-run variance M3.7a measured
+  on identical code. **M3.10c is the one to watch**: it is C++, and build time is
+  the larger half of each job.
 - Issue #153's scope has been rebound twice. It was opened as M3.9b against
   version four, renumbered M3.9e and rebound to version five when version four's
   kind-11 defect pushed three slices in front of it, and finally rebound to
