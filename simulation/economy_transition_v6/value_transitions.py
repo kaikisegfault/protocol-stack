@@ -31,7 +31,7 @@ from . import contract as c
 from . import messages, verified_user
 from .envelope import Transaction
 from .execution import Outcome, Refused, SignatureOracle, require_zero_confirmation
-from .ledger import Ledger, ReferralBalance, Seat
+from .ledger import ConservationFailure, Ledger, ReferralBalance, Seat
 from .transitions import _charged, activation_mark, confirmation_required
 
 ZERO_CONFIRMATION = bytes(c.HUB_SIGNATURE_BYTES)
@@ -225,7 +225,11 @@ def mint_referral(
         last_assigned is None or entry.collected_through_window >= last_assigned
     ):
         raise Refused("NOTHING_TO_MINT")
-    assert last_assigned is not None
+    if last_assigned is None:
+        # A referral balance is written by the assignment prologue, so one can
+        # only exist on a chain that has assigned a window. Reaching this is a
+        # state no sequence of conforming transitions produces.
+        raise ConservationFailure("a referral balance exists with no window assigned")
     amount = entry.accrued_atomic - entry.minted_atomic
     _require_confirmation(
         ledger,
