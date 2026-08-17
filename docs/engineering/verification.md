@@ -135,3 +135,23 @@ construction, records `true` forever and detects nothing. Where a third source
 exists — an accepted vector file from an earlier version — compare against it,
 so a formula that a model and its independent derivation got wrong the same way
 still fails.
+
+## Guards
+
+A guard is a check whose subject is the gate rather than the protocol: that a
+test is registered, that a target carries the project's build rules, that a
+vector file has a verifier. It exists because the failure it catches is silent,
+which means **nothing else will notice when the guard itself stops working**.
+
+**A guard must be run against the omission it exists to catch, and be seen to
+fail.** Adding it and observing that the repository passes establishes nothing;
+the repository passed before it was written. Introduce each omission the guard
+claims to catch, one at a time, and record that each fails.
+
+**A guard that parses `CMakeLists.txt` must assert what its pattern reached.**
+Both defects found so far are the same one: a pattern anchored to a closing
+paren in column zero does not terminate at a block nested inside `if(...)`, so
+the match runs on into unrelated blocks and finds the name it was asked to
+notice was missing. M3.7a found it in the `add_test` parser and M3.10c found it
+one block later in the target-list parser. Assert the number of blocks or entries
+the parse found, so a pattern that swallowed the file fails rather than passes.

@@ -77,7 +77,10 @@ translation units over a shared fixture header, and
 `tests/fuzz/economy_v6_fuzz.cpp`; it removed `include/protocol/v4/economy.hpp`,
 the six sources under `src/v4/`, and `tests/kernel/economy_v4_test.cpp`. The
 CTest entry `economy-transition-v4-cpp` became `economy-transition-v6-cpp` and
-gained `economy-transition-v6-fuzz-smoke`.
+gained `economy-transition-v6-fuzz-smoke`. It merged by rebase across commits
+`0563dab` through `5f6f70a`. PR run 32038739390 on the final head `ea7f916`
+passed the complete hosted matrix — scope classification `full`, GCC and Clang
+debug, both sanitizers, and the aggregate required check.
 
 **Version four's codec is removed rather than kept beside version six's, and the
 reason is what version four is.** The kernel was compiling exactly one economy
@@ -164,6 +167,15 @@ block is nested inside `if(PROTOCOL_STACK_ENABLE_FUZZING)` and closes on an
 **That is the same defect M3.7a found in this file's `add_test` parser**, one
 block later in the same file, and the guard now asserts that its own list parse
 finds exactly two blocks.
+
+**Twice is a rule, and `docs/engineering/verification.md` gained a Guards
+section.** A guard's subject is the gate rather than the protocol, so the failure
+it catches is silent and nothing else notices when the guard stops working. Two
+rules: a guard must be run against the omission it exists to catch and be seen to
+fail, because adding it and observing that the repository passes establishes
+nothing — the repository passed before it was written; and a guard that parses
+`CMakeLists.txt` must assert what its pattern reached, because both defects found
+so far are a pattern that ran past a block nested inside `if(...)`.
 
 **The test file was split by subject because one file reached 1,430 lines**, more
 than twice the largest test in the repository. It is now four check units over a
@@ -1985,8 +1997,18 @@ behavior.
   8m17s, `clang-sanitizers` 8m50s, `gcc-sanitizers` 9m20s. The slice adds no
   translation unit and two fast Python entries that `ctest --parallel` absorbs,
   so the spread sits inside the roughly 12% run-to-run variance M3.7a measured
-  on identical code. **M3.10c is the one to watch**: it is C++, and build time is
-  the larger half of each job.
+  on identical code. **M3.10c was the one to watch**, and the figure below is
+  the answer.
+- **M3.10c's margin is about eleven minutes, and replacing a codec cost nothing
+  measurable.** Per-job durations on the candidate `ea7f916` against the
+  20-minute per-job timeout: `gcc-sanitizers` 7m38s, `clang-debug` 8m07s,
+  `gcc-debug` 8m22s, `clang-sanitizers` 8m48s. The slice removed six translation
+  units and added ten, plus five test units in one executable and one fuzz
+  target, and the slowest job moved from 9m21s to 8m48s — inside the roughly 12%
+  run-to-run variance M3.7a measured on identical code, and in the direction that
+  says the exchange was roughly even. **`clang-sanitizers` remains the slowest**
+  and is the only preset that builds the fuzz targets at all, so it is where
+  M3.10d's transitions will show first.
 - Issue #153's scope has been rebound twice. It was opened as M3.9b against
   version four, renumbered M3.9e and rebound to version five when version four's
   kind-11 defect pushed three slices in front of it, and finally rebound to
