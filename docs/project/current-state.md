@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-08-16
+Last updated: 2026-08-17
 
 ## Phase
 
@@ -44,7 +44,16 @@ rejection orders, ordered block execution with the cycle-assignment prologue, a
 recorded six-scenario trace, 512 vectors, a verifier, and 51 tests. It is the
 first time anything in the repository *runs* a version-six transition rather
 than encoding one, and it settled four execution rules the accepted contract
-left to be derived. ADR 0045 records them.
+left to be derived. ADR 0045 records them. **M3.10c then put version six's byte
+and derivation surface into the C++20 kernel on 2026-08-17**, replacing version
+four's codec rather than adding beside it, and gave the decoders the fuzz target
+the codec should always have had. ADR 0046 records both decisions.
+
+**Requirement 10 is now partly satisfied and the remainder is named.** For the
+first time the kernel compiles a contract nothing supersedes; before M3.10c it
+compiled `economy-transition-v4`, which is the one economy contract already known
+to have no conforming implementation. What executes is a codec plus the pure
+derivations, and it performs no state transition, so no chain runs on it.
 
 Requirements 3, 4, 5, 6, 7, and 12 of `first-goal.md` are satisfied;
 requirements 8 and 9 moved from specified to enforced; and requirement 14 is met
@@ -52,13 +61,125 @@ against the v3 contract at the standard the M2 suite set.
 M2 completed on 2026-08-05 with all sixteen requirements of
 `goals/m2-founder-economy-proof.md` passing.
 
-**The remaining M3 work is the C++ half.** Requirements 10, 11, and 13 — the
-C++20 kernel implementation, cross-language vectors, and four-node adversarial
-scenarios — have not started. Everything delivered so far is specification and
-independent Python evidence that activates nothing. **What M3.10b changed is what
-that evidence covers**, not whether it activates anything: it is the first
-evidence about transitions rather than about bytes, and it is what the C++ side
-now has to reproduce.
+**The remaining M3 work is the rest of the C++ half.** Requirement 10 is half
+done: the byte and derivation surface is in the kernel and the fourteen
+transitions are not. Requirement 11 is met for that surface — the C++ and the
+Python model reproduce `test-vectors/economy-transition-v6.txt` — and covers
+nothing about execution. Requirement 13, the four-node adversarial scenarios, has
+not started. **Nothing yet activates a chain**: the codec is a set of pure
+functions and the execution evidence is still Python.
+
+### How M3.10c was delivered
+
+Issue #177 and PR #178 delivered the version-six kernel codec and ADR 0046. It
+added `include/protocol/v6/economy.hpp`, nine sources under `src/v6/`, five test
+translation units over a shared fixture header, and
+`tests/fuzz/economy_v6_fuzz.cpp`; it removed `include/protocol/v4/economy.hpp`,
+the six sources under `src/v4/`, and `tests/kernel/economy_v4_test.cpp`. The
+CTest entry `economy-transition-v4-cpp` became `economy-transition-v6-cpp` and
+gained `economy-transition-v6-fuzz-smoke`.
+
+**Version four's codec is removed rather than kept beside version six's, and the
+reason is what version four is.** The kernel was compiling exactly one economy
+contract and it was the one already known to have no conforming implementation —
+version four's kind 11 opens its rejection conditions with "an unregistered
+`hub_identity_hash` is `NOT_HUB_VERIFIED`" over an identity the transaction never
+carries, which is why versions five and six exist. Every Python model and vector
+file is retained, because a model plus its vectors is the record of what the
+hosted matrix verified and `tools/economy-transition-v4-vectors/` still verifies
+its 441. A codec records nothing; it is one implementation of a byte surface.
+
+**The accepted version-one account derivation is now defined once and shared.**
+`H(D("protocol-stack:v1:account") || 0x01 || pk)` moved from a file-private
+helper in `src/v1/admission.cpp` to `src/v1/account.hpp`, and version one's
+admission path and version six's `signer_id` both call it. A second
+implementation of one derivation is a second place for it to drift, and the drift
+would be silent because both copies would agree with themselves.
+
+**Of ADR 0045's four derived rules a codec can reach one, and it reaches it.**
+`NOTHING_TO_MINT` is the empty walk range rather than the literal equality, so a
+mark can never decrease; the test pins all three cases including the one the
+literal reading gets wrong, a mark *above* the last assigned window. The other
+three need a ledger this does not have.
+
+**One of those three is pinned from the admitting side anyway, and a probe is the
+only reason it is.** A mutation making the codec *refuse* a mint carrying a
+nonzero confirmation field — the rule version six's text literally states, at
+admission, under a code the result space does not contain — **passed**. Nothing
+in the test or in either accepted vector file noticed an implementation stricter
+than the contract can be. The test now requires such a mint to be admitted, which
+is the only side a codec can fix that rule from.
+
+**The populated economy root is what makes this more than a table of widths.**
+The 44-entry fixture covers all fourteen assigned entry kinds, so one recorded
+root constrains every value encoding at once. Two probes swapping adjacent
+same-width fields — `signer_count` with `exempt_slot_mask` in the escrow record,
+`next_escrow_index` with `escrow_count` in the identity record — failed there and
+nowhere else. A width table would have accepted both.
+
+**Three checks reach a third source rather than a second opinion of the
+version-six file**: the kind-1 identity and the signer derivation against
+`test-vectors/protocol-primitives-v1.txt`, the accounts tree against the same,
+and the two cycle-assignment records against
+`test-vectors/economy-transition-v3.txt`, because version six's settlement is
+version three's imported rather than reimplemented.
+
+**Nineteen mutation probes establish that the checks fail closed**, and one of
+them found the gap above rather than confirming a check. Among the others: the
+escrow domain label, the version-one account octet in the one place it now lives,
+the state-root schema version — a *number*, which the M3.10b handoff warned would
+not appear in a search for `v4` — the RFC 9162 split replaced by a halving, the
+bitmap packed least-significant-bit first, a retired kind given a width, the
+scheme rule dropped, and genesis admitting an account.
+
+**The decoders gained the fuzz target the codec should always have had.** Three
+entry points take untrusted bytes and M3.9a shipped with none, which was a gap in
+required evidence rather than a judgement that one did not apply. It asserts that
+decoding is deterministic and that decoding round-trips — anything accepted
+re-encodes to exactly its own bytes, which is what makes a canonical encoding
+canonical. A probe that dropped the non-minimal absent-referrer rule fails
+against it. Locally it ran 300,000 iterations under libFuzzer with address and
+undefined-behaviour sanitizers, from a seeded corpus of one well-formed instance
+per kind, with no crash.
+
+**Registering the fuzz target exposed that one is registered in four places, and
+the hosted matrix caught the one omission that fails loudly.** The first
+candidate left `economy_v6_fuzz` out of the loop applying `-fsanitize=fuzzer`, so
+it had no libFuzzer `main` and `clang-sanitizers` failed at the link while the
+two debug jobs passed. **The other two omissions are silent**: out of
+`PROTOCOL_STACK_TARGETS` a target builds without `-Werror`, the sanitizer flags,
+and the libsodium link — the M3.9a defect — and out of the instrumentation loop
+it runs with no coverage feedback and explores nothing while reporting success.
+`tests/tools/test_registration_test.py` now requires every file under
+`tests/fuzz/` to appear in all four, and all five omissions were demonstrated to
+fail it.
+
+**That guard's first draft was vacuous in the exact shape it exists to catch, and
+a probe is the only reason that is known.** It split `CMakeLists.txt` at the
+first `PROTOCOL_STACK_TARGETS` and searched everything after it for an indented
+name — which matched the target's own `add_executable` block, so it passed with
+the target removed from the list entirely. The cause is that the `list(APPEND)`
+block is nested inside `if(PROTOCOL_STACK_ENABLE_FUZZING)` and closes on an
+*indented* paren, so a pattern anchored to column zero does not terminate there.
+**That is the same defect M3.7a found in this file's `add_test` parser**, one
+block later in the same file, and the guard now asserts that its own list parse
+finds exactly two blocks.
+
+**The test file was split by subject because one file reached 1,430 lines**, more
+than twice the largest test in the repository. It is now four check units over a
+shared fixture header, mirroring the Python verifier's own
+`encoding_checks`/`registry_checks`/`state_checks` split, and `economy_state.cpp`
+was likewise split from `economy_tree.cpp`. Every probe was re-run after both
+splits.
+
+**The local harness of M3.9a was reused and its one limit is now known.** A
+scratch `sodium.h` backed by the system OpenSSL supplies the two entry points the
+kernel uses, so the whole codec compiles and runs in about a second. It is never
+committed and never part of the build. **It does not reproduce libsodium's
+rejection of small-order public keys**, so `tests/kernel/primitives_test.cpp`
+fails under it at exactly that assertion and passes under the hosted matrix.
+That is a property of the harness, not of the kernel: `src/v1/crypto.cpp` is
+byte-identical to `origin/main`.
 
 **The two blocking founder questions M3.8a raised were answered the same day.**
 Its gate found that all three authorization predicates the consensus encoding
@@ -1741,14 +1862,23 @@ slices.
   kind-1 byte identity, the shared envelope, the admission order, the genesis
   field table, the receipt layout, result codes 0 through 23, and the whole
   settlement carry over. Kind 6 is still specified and refused.
-- **The C++20 kernel implements the version-four codec**, and it is the first
-  consensus-language artifact in the milestone. `protocol::v4` encodes and
-  decodes all twelve transaction kinds, builds all eight HUB messages, derives
-  every state key and value, computes the economy tree and the version-four
-  state root, encodes genesis and derives the chain identifier, and encodes and
-  decodes the receipt. It reproduces `test-vectors/economy-transition-v4.txt`
-  and, for the kind-1 identity and the accounts tree, the accepted M1 file. It
-  runs no transition and reads no ledger.
+- **The C++20 kernel implements the version-six byte and derivation surface**,
+  and it is the only economy contract the kernel compiles. `protocol::v6`
+  encodes and decodes all fourteen transaction kinds and refuses the five
+  retired numbers, enforces the scheme a kind permits, builds all six HUB
+  messages, derives an escrow identifier and a signer identifier, evaluates the
+  posture's two predicates, derives every state key and value, computes the
+  economy tree and the version-six state root, encodes genesis and derives the
+  chain identifier, encodes and decodes the receipt, and computes the bounded
+  mint walk and the verified-user collection. It reproduces
+  `test-vectors/economy-transition-v6.txt`, and reaches three third sources: the
+  kind-1 identity, the signer derivation, and the accounts tree against the
+  accepted M1 file, and the two cycle-assignment records against version three's.
+  **It runs no transition and reads no ledger**, so no chain runs on it.
+- **Version four's codec is gone from the kernel and its Python evidence is
+  intact.** `src/v4/` is removed, because it implemented the one economy
+  contract already known to have no conforming implementation;
+  `tools/economy-transition-v4-vectors/` still verifies its 441 vectors.
 - The model in `simulation/economy_transition_v4/` encodes and decodes all
   twelve kinds, builds all eight HUB messages, derives every state key, computes
   the economy tree and all four versions' state roots, encodes the receipt, and
@@ -1889,9 +2019,10 @@ behavior.
   identical code. **M3.9d is the one to watch**: it is C++, and build time is
   the larger half of each job.
 - **Version five's evidence gap is closed and its implementation gap is now
-  moot.** The C++ codec in `src/v4/` implements version four and stays there;
-  M3.9d was withdrawn the same day, because the direction of 2026-08-15
-  supersedes version five as the kernel's target.
+  moot.** M3.9d — the kernel updated to version five — was withdrawn on
+  2026-08-15, because the direction of that day superseded version five as the
+  kernel's target. The kernel carried version four's codec until M3.10c replaced
+  it with version six's on 2026-08-17.
 - Issue #150 and PR #151 are the M3.9a delivery, merged by rebase. The slice is
   commits `f457ca2` through `ab1e036` on `main`. PR Actions run 31849896862 on
   the final head `2c8d0fa` passed the complete hosted matrix — scope
@@ -1915,10 +2046,12 @@ behavior.
   commits `f8d6374` through `5f66c49`. PR run 31744378969 on head `6ced9f7` and
   post-merge run 31745207592 on `5f66c49` both passed the complete matrix.
 - **The C++ codec reproduces the recorded vectors on every hosted preset.** The
-  `economy-transition-v4-cpp` entry runs under GCC and Clang, debug and
-  sanitized, and compares against `test-vectors/economy-transition-v4.txt` and —
-  for the kind-1 identity and the accounts tree — against
-  `test-vectors/protocol-primitives-v1.txt`.
+  `economy-transition-v6-cpp` entry runs under GCC and Clang, debug and
+  sanitized, and compares against `test-vectors/economy-transition-v6.txt` and,
+  for the four claims checked against a third source, against
+  `test-vectors/protocol-primitives-v1.txt` and
+  `test-vectors/economy-transition-v3.txt`. `economy-transition-v6-fuzz-smoke`
+  runs the decoders under libFuzzer on the fuzzing preset.
 - The kind-1 identity is exact. The version-two encoder reproduces
   `test-vectors/protocol-primitives-v1.txt`'s recorded `unsigned_tx`,
   `signed_tx`, and `tx_id`
@@ -2579,54 +2712,63 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.10c: the C++20 kernel codec and transitions for
-`economy-transition-v6`**, which is requirement 10. Use the `change-protocol`
-skill.
+Milestone slice **M3.10d: the fourteen version-six transitions in the C++20
+kernel**, which is the rest of requirement 10. Use the `change-protocol` skill.
 
-**Replace `src/v4/` rather than adding `src/v6/` beside it**, and record the
-decision either way. The Python side keeps version four because its 441 vectors
-are the record of what the hosted matrix verified; the C++ side has a weaker case
-for a copy, since it is one implementation of a byte surface and keeping two
-would double the build with nothing but labels between them. **The codec is the
-only place in the repository where a superseded contract would still be
-compiled.**
+**M3.10c delivered the byte and derivation surface and stopped there**, and what
+it could not reach is exactly what this slice is for. A codec has no ledger, so
+it cannot resolve an acting escrow, order the shared envelope checks, or write a
+cycle assignment. `simulation/economy_transition_v6/`'s `ledger.py`,
+`execution.py`, `transitions.py`, `value_transitions.py`, and `block.py` are the
+model to reproduce, and `test-vectors/economy-transition-v6-execution.txt`'s 512
+vectors are what the C++ must satisfy.
 
-**Four things in the C++ move and are easy to miss.** The six HUB message
-labels, which are string literals rather than a table. The scheme byte, which is
-a `switch` the version-one kernel does not have — it reads offset 39 as a
-constant. The signer derivation, `H(D("protocol-stack:v1:account") || 0x01 ||
-pk)`, which `src/v1/admission.cpp` already implements file-privately and which
-should be reused rather than written twice, checked against the identifier
-`test-vectors/protocol-primitives-v1.txt` records. And the state-root version
-field, which is a number rather than a label and so will not appear in a search
-for `v4`.
+**Three of ADR 0045's four derived rules are still unreproduced in C++, and they
+are the class a byte-level check cannot catch.** `DEBIT_OVERFLOW` belongs inside
+envelope check 8 and precedes it, because check 8 tests `amount + fixed_fee` and
+the literal order leaves it undefined on a sum that does not fit `u64` — and
+would make code 7 unreachable in a version whose specification lists exactly
+three unreachable frozen codes and does not list it. An unrequested confirmation
+field is refused at execution with `UNAUTHORIZED`. And the cycle assignment is a
+block's **prologue**: written first, a founder's mint at the boundary collects
+114,860,000,000 atomic; written after, the same mint succeeds, collects zero, and
+forfeits the cycle permanently. Both figures are recorded as vectors.
 
-**M3.10b's four derived rules are what the C++ must reproduce, and they are
-exactly the class a byte-level cross-language check cannot catch.** ADR 0045
-records each with its alternative: `DEBIT_OVERFLOW` at envelope check 8, an
-unrequested confirmation field refused at execution with `UNAUTHORIZED` rather
-than at admission with a code the result space does not contain,
-`NOTHING_TO_MINT` as the empty walk range, and the cycle assignment written
-before a boundary block's transactions. **Whether M3.10c is a codec alone or a
-codec plus transitions decides which of them it can demonstrate.** M3.9a's
-version-four codec was a codec alone and every entry point was a pure function of
-its arguments; a codec cannot reach any of the four, so a codec-only slice leaves
-requirement 11's cross-language vectors covering bytes and nothing else — which
-is the shape of the M3.9b defect one layer up. Prefer the codec **plus** the
-envelope-check order and the four rules, and record what was left out.
+**The fourth is already in the kernel and is the template for the other three.**
+`walk_range` is `NOTHING_TO_MINT` as the empty range, and `economy_settlement.cpp`
+carries the derivation with its rejected alternative in the comment. Do the same
+for each rule this slice reaches rather than leaving the reading only in the ADR.
 
-**The local C++ harness is the reusable result of M3.9a.** Building libsodium
-locally is the heavy operation `CLAUDE.md` refuses, so a scratch harness supplies
-the two entry points the kernel uses and backs SHA-256 with the system OpenSSL —
-an existing audited implementation rather than a second one, in a file that is
-never committed and never part of the build. With it the whole codec test
-compiles and runs in about a second under both compilers with the project's exact
-flags and under address and undefined-behaviour sanitizers.
+**One consequence of the shared-envelope order is a real divergence from version
+one and must survive into the C++.** `INSUFFICIENT_BALANCE` now precedes
+`ZERO_AMOUNT` for kind 1, so a zero-amount transfer from an escrow that cannot
+pay the fee answers differently under the two versions. The execution vectors
+record it; an implementation that "fixed" it would fail them.
 
-**One local hazard cost time in M3.10a and again in M3.10b.** Stale
-`__pycache__` made a reverted mutation appear to still fail and a real failure
-appear to pass. A hosted runner starts clean, so it is a local-only trap; clear
-it before believing a probe result.
+**The codec's own boundary is where to start.** `decode_signed` returns an
+`Envelope` and nothing more — no acting escrow, no posture, no identity. The
+transitions need a state store keyed the way `economy_state.cpp` writes keys, and
+the roots in `economy_tree.cpp` are already what a committed state must produce,
+so the seam is a ledger that owns the entry map and calls the existing encoders
+rather than a second set of them.
+
+**Check that any new target is in `PROTOCOL_STACK_TARGETS`.** That list carries
+`-Wall -Wextra -Wpedantic -Werror`, the sanitizer flags, `_GLIBCXX_ASSERTIONS`,
+and the libsodium link. M3.9a declared a target, added its `add_test`, and left
+it off that list; the registration guard does not catch it, because it checks
+that a test is *run* rather than how it is *built*.
+
+**The local C++ harness is the reusable result of M3.9a and M3.10c.** Building
+libsodium locally is the heavy operation `CLAUDE.md` refuses, so a scratch
+`sodium.h` supplies the two entry points the kernel uses and backs SHA-256 with
+the system OpenSSL — an existing audited implementation rather than a second one,
+in a file that is never committed and never part of the build. With it the whole
+codec, its five test units, and the fuzz target compile and run in about a second
+under both compilers with the project's exact flags and under address and
+undefined-behaviour sanitizers. **Its one known limit**: it does not reproduce
+libsodium's rejection of small-order public keys, so
+`tests/kernel/primitives_test.cpp` fails under it at that assertion and passes
+under the hosted matrix. Do not read that failure as a kernel defect.
 
 **A mutation probe must mutate the behaviour rather than an argument's default.**
 M3.10b's assignment-ordering probe passed on its first attempt because the
@@ -2751,7 +2893,27 @@ branch and pull request.
 
 ## Blockers
 
-**None for M3.10c.** M3.10b ran the founder-decision gate and **passed** it.
+**None for M3.10d.** M3.10c ran the founder-decision gate and **passed** it. It
+enumerated twenty-one decisions the slice had to settle — whether to replace or
+sibling version four's codec, the namespace and file layout, the fourteen kind
+identifiers and their body widths, the five retired numbers and their treatment,
+which admission checks live in the decoder, the two schemes and which kinds
+permit which, the six HUB message constructions, the escrow and signer
+derivations, the posture default and its two predicates, `slot_of` and the grid
+constants, the fourteen entry kinds and their encodings, the two retired entry
+kinds, the tree labels and the root construction, the genesis layout and its new
+zero-account requirement, the receipt version and its issuing sets, the 33 result
+codes and the three frozen unreachables, the verified-user arithmetic, the walk
+range, whether the test derives its own expected values or compares against the
+recorded file, whether to keep the version-four CTest entry, and whether to add a
+fuzz target. **Every one is fixed by an accepted specification or is mechanism,
+naming, or layout**, which `founder-constitution.md` lines 883-886 name as
+engineering work. None sets or changes supply, allocation, beneficiaries, Founder
+ownership, creator hierarchy, commercial routing, AI institutional authority,
+bridge scope, content permanence, or what a participant must do, own, run, or
+receive. No question was asked because none was reserved.
+
+**M3.10b ran the same gate and passed it.**
 Every decision the slice had to settle was already decided or delegated:
 where the execution model lives, which vector file records it, the order of the
 shared envelope checks, where the debit-overflow test sits inside them, which
@@ -2799,10 +2961,11 @@ contract that encodes them was delivered the same day. ADR 0043 records the
 answers, ADR 0044 records the contract, the constitution states both, and the
 unresolved list is two entries shorter.
 
-**Requirement 10's target is settled again**, at `economy-transition-v6`, and it
-is the first version-six-era contract the direction does not supersede. Nothing
-founder-reserved stands in front of the C++ kernel, and the execution model that
-was to precede it is delivered.
+**Requirement 10's target is settled at `economy-transition-v6` and half of it is
+built.** It is the first version-six-era contract the direction does not
+supersede, nothing founder-reserved stands in front of the kernel, and as of
+M3.10c the kernel implements its byte and derivation surface. What remains is the
+fourteen transitions.
 
 **One specification correction is owed to a later contract version, and only
 one.** `economy-transition-v6`'s requirement that an unrequested confirmation

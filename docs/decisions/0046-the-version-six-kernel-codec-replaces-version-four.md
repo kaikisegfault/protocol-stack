@@ -138,6 +138,28 @@ canonical, and it is what would catch a decoder quietly tolerating a second
 representation of one transaction — a probe that dropped the non-minimal
 absent-referrer rule fails against it.
 
+**Registering it exposed that a fuzz target is registered in four places, and the
+hosted matrix caught the one omission that fails loudly.** The first candidate
+declared `economy_v6_fuzz`, added it to `PROTOCOL_STACK_TARGETS`, and left it out
+of the loop applying `-fsanitize=fuzzer`; it had no libFuzzer `main` and
+`clang-sanitizers` failed at the link. **The other two omissions are silent**:
+left out of `PROTOCOL_STACK_TARGETS` a target builds without `-Werror`, the
+sanitizer flags, and the libsodium link — the M3.9a defect — and left out of the
+instrumentation loop it runs with no coverage feedback and explores nothing while
+reporting success. `tests/tools/test_registration_test.py` now requires every
+file under `tests/fuzz/` to appear in all four, and every one of the five
+omissions was demonstrated to fail it.
+
+**That guard's first draft was itself vacuous, in the exact shape it exists to
+catch.** It split `CMakeLists.txt` at the first `PROTOCOL_STACK_TARGETS` and
+looked for an indented name in everything after — which matched the target's own
+`add_executable` block, so the check passed with the target removed from the list
+entirely. The cause is that the `list(APPEND)` block is nested inside
+`if(PROTOCOL_STACK_ENABLE_FUZZING)` and closes on an *indented* paren, so a
+pattern anchored to column zero does not terminate there and runs on. That is the
+same defect M3.7a found in this file's `add_test` parser, one block later, and
+the guard now asserts that its own list parse finds exactly two blocks.
+
 **Nineteen mutation probes establish that the checks fail closed**, and one of
 them found the gap recorded above rather than confirming a check. Among the
 others: a changed escrow label, the version-one account octet changed in the one
