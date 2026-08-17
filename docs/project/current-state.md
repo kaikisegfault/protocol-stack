@@ -80,7 +80,9 @@ CTest entry `economy-transition-v4-cpp` became `economy-transition-v6-cpp` and
 gained `economy-transition-v6-fuzz-smoke`. It merged by rebase across commits
 `0563dab` through `5f6f70a`. PR run 32038739390 on the final head `ea7f916`
 passed the complete hosted matrix — scope classification `full`, GCC and Clang
-debug, both sanitizers, and the aggregate required check.
+debug, both sanitizers, and the aggregate required check — and post-merge run
+32039379092 on `5f6f70a` passed the same matrix. One earlier candidate run
+failed and one was cancelled as obsolete; both are described above.
 
 **Version four's codec is removed rather than kept beside version six's, and the
 reason is what version four is.** The kernel was compiling exactly one economy
