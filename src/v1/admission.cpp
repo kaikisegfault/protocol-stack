@@ -1,5 +1,7 @@
 #include "protocol/v1/admission.hpp"
 
+#include "account.hpp"
+
 #include "protocol/v1/crypto.hpp"
 
 #include <algorithm>
@@ -35,9 +37,7 @@ std::uint64_t read_u64(std::span<const std::uint8_t> raw,
 }
 
 AccountId sender_id(std::span<const std::uint8_t> public_key) {
-  Bytes payload{1};
-  payload.insert(payload.end(), public_key.begin(), public_key.end());
-  return AccountId(hash("protocol-stack:v1:account", payload));
+  return internal::account_id_from_public_key(public_key);
 }
 
 Bytes signing_message(std::span<const std::uint8_t> unsigned_transaction) {
@@ -50,6 +50,16 @@ Bytes signing_message(std::span<const std::uint8_t> unsigned_transaction) {
 }
 
 }  // namespace
+
+namespace internal {
+
+AccountId account_id_from_public_key(std::span<const std::uint8_t> public_key) {
+  Bytes payload{1};
+  payload.insert(payload.end(), public_key.begin(), public_key.end());
+  return AccountId(hash("protocol-stack:v1:account", payload));
+}
+
+}  // namespace internal
 
 Admission admit_transfer(std::span<const std::uint8_t> raw,
                          const ChainId& expected_chain_id) {

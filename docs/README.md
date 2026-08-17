@@ -385,6 +385,21 @@ worth more than the other three together: written before the block's
 transactions a founder's mint at the boundary collects the cycle, and written
 after it succeeds, collects nothing, and forfeits that day permanently.
 
+ADR 0046 records that the C++20 kernel's economy codec is now version six's and
+that version four's is removed rather than kept beside it. The kernel had been
+compiling exactly one economy contract and it was the one contract already known
+to have no conforming implementation, because version four's kind 11 names an
+identity the transaction never carries. Every Python model and vector file is
+retained, because a model plus its vectors is the record of what the hosted
+matrix verified; a codec is one implementation of a byte surface and records
+nothing. The accepted version-one account derivation is now defined once and
+shared by the version-one admission path and the version-six signer derivation,
+rather than copied. Of the four rules ADR 0045 derived, a codec can reach one —
+`NOTHING_TO_MINT` as the empty walk range — and it does; a mutation probe then
+showed that nothing anywhere would have caught an implementation that refused an
+unrequested confirmation field at admission, which is stricter than the contract
+can be, so the test now requires such a transaction to be admitted.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
@@ -521,8 +536,9 @@ immutable; compatible changes require a new version.
   recipient-creating transfer and makes "every account is an escrow" a structural
   invariant. The signature-scheme byte carries a second authorization mode so
   that identity administration works with no key at all. It is the contract
-  requirement 10's C++ kernel implements, and
-  `simulation/economy_transition_v6/` now both encodes and executes it.
+  requirement 10's C++ kernel implements, `simulation/economy_transition_v6/`
+  now both encodes and executes it, and `src/v6/` implements its byte surface
+  and its pure derivations while its transitions remain unwritten.
 - `specifications/native-economy-simulation-v1.md`: versioned integer-only
   accounting, authority, event, trace, and metric contract for the independent
   M2 research simulator; it is not a consensus transition.
