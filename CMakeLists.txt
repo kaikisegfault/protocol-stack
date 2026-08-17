@@ -561,6 +561,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       kernel_admission_fuzz
       kernel_address_fuzz
       kernel_genesis_fuzz
+      economy_v6_fuzz
       protocol_storage_fuzz
       storage_snapshot_fuzz
       storage_archive_fuzz
@@ -579,6 +580,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       kernel_admission_fuzz
       kernel_address_fuzz
       kernel_genesis_fuzz
+      economy_v6_fuzz
       storage_snapshot_fuzz
       storage_archive_fuzz
       application_wire_fuzz
