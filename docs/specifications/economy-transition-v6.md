@@ -1,6 +1,7 @@
 # Economy transition v6
 
-Status: Accepted M3 consensus transition contract; not yet implemented in C++
+Status: Accepted M3 consensus transition contract; its byte and derivation
+surface is implemented in the C++20 kernel and its transitions are not
 
 This document is normative for the canonical transaction bytes, state keys,
 state-root construction, receipt bytes, and numeric result codes of the Founder
@@ -1506,7 +1507,11 @@ place, passing, and unedited.
   no transition changes it.
 - **The payment.** Nothing here proves that BTC, ETH, or an approved stablecoin
   was received for a seat.
-- **That any of this executes.** No C++ implementation exists.
+- **That any of this executes.** The C++20 kernel implements the byte surface
+  and the pure derivations of this document and performs no state transition,
+  so no chain runs on it.
+  [ADR 0046](../decisions/0046-the-version-six-kernel-codec-replaces-version-four.md)
+  records what it covers and what it leaves to the transitions.
 - **The measurement.** Everything `uptime-measurement-v1` does not establish is
   inherited unchanged.
 - **Distribution.** No kind here distributes transaction fees or commercial

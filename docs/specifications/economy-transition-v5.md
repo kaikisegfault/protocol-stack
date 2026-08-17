@@ -219,7 +219,12 @@ value, and a revised key must not. The result is 409 carried, 30 revised, and 2
 renamed, with no envelope, admission, code-space, state-key, storage, or
 settlement vector among the revised.
 
-The C++ codec in `src/v4/` still implements version four and is the next slice.
+The C++ codec implemented version four when this document was accepted. It now
+implements [`economy-transition-v6`](economy-transition-v6.md) and lives in
+`src/v6/`;
+[ADR 0046](../decisions/0046-the-version-six-kernel-codec-replaces-version-four.md)
+records why the kernel carries one contract while every Python model and vector
+file is retained.
 
 Acceptance of the recorded artifacts required full GitHub-hosted verification on
 the exact commit that added them.

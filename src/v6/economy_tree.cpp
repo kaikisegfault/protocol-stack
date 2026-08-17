@@ -1,3 +1,10 @@
+// The economy tree, the version-six state root, and the one variable-width
+// value the tree has to size for itself.
+//
+// The roots are fallible because an entry no transition could have written is
+// refused rather than hashed: a hash cannot signal an unknown kind, a wrong
+// width, or a duplicated key, and the specification forbids all three.
+
 #include "economy_internal.hpp"
 
 #include "protocol/v1/crypto.hpp"
@@ -5,10 +12,10 @@
 #include <algorithm>
 #include <string>
 
-namespace protocol::v4 {
+namespace protocol::v6 {
 namespace {
 
-namespace i = protocol::v4::internal;
+namespace i = protocol::v6::internal;
 
 // The accepted RFC 9162 shape: split the ordered leaves at the largest power of
 // two strictly less than the count, recurse, and hash the two child roots. No
@@ -47,15 +54,15 @@ Hash merkle(std::span<const Bytes> leaves, const TreeLabels& labels) {
   const auto right = merkle(leaves.subspan(split), labels);
   Bytes children;
   children.reserve(left.size() + right.size());
-  i::append(children, std::span<const std::uint8_t>(left.data(), left.size()));
-  i::append(children, std::span<const std::uint8_t>(right.data(), right.size()));
+  i::append(children, left);
+  i::append(children, right);
   return protocol::v1::hash(labels.node, children);
 }
 
-// An entry no transition could have written: an unknown kind, a key or value of
-// the wrong width, or a cycle assignment whose length disagrees with its own
-// recorded bit count. The specification forbids all three, and a hash cannot
-// signal any of them, which is why the root is fallible.
+// An entry no transition could have written: an unknown or retired kind, a key
+// or value of the wrong width, or a cycle assignment whose length disagrees
+// with its own recorded bit count. The specification forbids all of them, and a
+// hash cannot signal any, which is why the root is fallible.
 bool entry_shape_is_valid(const EconomyEntry& entry) {
   if (entry.key.empty()) return false;
   const auto kind = entry.key.front();
@@ -67,147 +74,7 @@ bool entry_shape_is_valid(const EconomyEntry& entry) {
   return entry.value.size() == *value_width;
 }
 
-Bytes with_prefix(Entry entry, std::span<const std::uint8_t> tail) {
-  auto key = i::key_prefix(entry);
-  i::append(key, tail);
-  return key;
-}
-
 }  // namespace
-
-Bytes seat_key(std::uint32_t seat_id) {
-  auto key = i::key_prefix(Entry::seat);
-  i::append_u32(key, seat_id);
-  return key;
-}
-
-Bytes channel_key(std::uint8_t channel_index) {
-  auto key = i::key_prefix(Entry::channel);
-  i::append_u8(key, channel_index);
-  return key;
-}
-
-Bytes cycle_assignment_key(std::uint64_t cycle_window) {
-  auto key = i::key_prefix(Entry::cycle_assignment);
-  i::append_u64(key, cycle_window);
-  return key;
-}
-
-Bytes referral_balance_key(std::span<const std::uint8_t> hub_identity_hash) {
-  return with_prefix(Entry::referral_balance, hub_identity_hash);
-}
-
-Bytes direct_decision_key(std::span<const std::uint8_t> decision_id) {
-  return with_prefix(Entry::direct_decision, decision_id);
-}
-
-Bytes typed_custody_key(std::uint8_t beneficiary_kind,
-                        std::span<const std::uint8_t> beneficiary_id) {
-  auto key = i::key_prefix(Entry::typed_custody);
-  i::append_u8(key, beneficiary_kind);
-  i::append(key, beneficiary_id);
-  return key;
-}
-
-Bytes carry_key(std::uint8_t channel_index) {
-  auto key = i::key_prefix(Entry::carry);
-  i::append_u8(key, channel_index);
-  return key;
-}
-
-Bytes verifier_key_key() { return i::key_prefix(Entry::verifier_key); }
-
-Bytes seat_manager_key(std::uint32_t seat_id,
-                       std::span<const std::uint8_t> manager_account_id) {
-  auto key = i::key_prefix(Entry::seat_manager);
-  i::append_u32(key, seat_id);
-  i::append(key, manager_account_id);
-  return key;
-}
-
-Bytes hub_identity_key(std::span<const std::uint8_t> hub_identity_hash) {
-  return with_prefix(Entry::hub_identity, hub_identity_hash);
-}
-
-Bytes hub_address_key(std::span<const std::uint8_t> account_id) {
-  return with_prefix(Entry::hub_address, account_id);
-}
-
-Bytes unreferred_pool_key() { return i::key_prefix(Entry::unreferred_pool); }
-
-Bytes seat_value(const SeatRecord& seat) {
-  Bytes value;
-  value.reserve(119);
-  i::append(value, seat.hub_identity_hash);
-  i::append(value, seat.purchaser_account_id);
-  i::append_u8(value, seat.has_referrer ? 1 : 0);
-  if (seat.has_referrer) {
-    i::append(value, seat.referrer_hub_identity);
-  } else {
-    value.insert(value.end(), 32, 0);
-  }
-  i::append_u8(value, seat.is_activated ? 1 : 0);
-  i::append_u64(value, seat.is_activated ? seat.activation_height : 0);
-  i::append_u64(value, seat.minted_through_window);
-  i::append_u8(value, seat.mint_requires_biometric ? 1 : 0);
-  i::append_u32(value, seat.manager_count);
-  return value;
-}
-
-Bytes channel_value(std::uint64_t issued_atomic, std::uint64_t outstanding_atomic) {
-  Bytes value;
-  i::append_u64(value, issued_atomic);
-  i::append_u64(value, outstanding_atomic);
-  return value;
-}
-
-Bytes referral_balance_value(std::uint64_t accrued_atomic,
-                             std::uint64_t minted_atomic,
-                             std::uint64_t collected_through_window) {
-  Bytes value;
-  i::append_u64(value, accrued_atomic);
-  i::append_u64(value, minted_atomic);
-  i::append_u64(value, collected_through_window);
-  return value;
-}
-
-Bytes unreferred_pool_value(std::uint64_t accrued_atomic,
-                            std::uint64_t minted_atomic) {
-  Bytes value;
-  i::append_u64(value, accrued_atomic);
-  i::append_u64(value, minted_atomic);
-  return value;
-}
-
-Bytes typed_custody_value(std::uint64_t amount_atomic) {
-  Bytes value;
-  i::append_u64(value, amount_atomic);
-  return value;
-}
-
-Bytes carry_value(std::uint64_t carry_atomic) {
-  Bytes value;
-  i::append_u64(value, carry_atomic);
-  return value;
-}
-
-Bytes verifier_key_value(std::span<const std::uint8_t> public_key) {
-  return Bytes(public_key.begin(), public_key.end());
-}
-
-Bytes hub_identity_value(const HubIdentityRecord& identity) {
-  Bytes value;
-  value.reserve(48);
-  i::append(value, identity.hub_public_key);
-  i::append_u64(value, identity.registered_at_height);
-  i::append_u32(value, identity.address_count);
-  i::append_u32(value, identity.seat_count);
-  return value;
-}
-
-Bytes hub_address_value(std::span<const std::uint8_t> hub_identity_hash) {
-  return Bytes(hub_identity_hash.begin(), hub_identity_hash.end());
-}
 
 std::size_t bitmap_bytes(std::uint32_t bitmap_bits) {
   return (static_cast<std::size_t>(bitmap_bits) + 7) / 8;
@@ -297,7 +164,7 @@ Hash accounts_root(std::span<const AccountEntry> accounts) {
   leaves.reserve(accounts.size());
   for (const auto& account : accounts) {
     Bytes leaf;
-    leaf.reserve(48);
+    leaf.reserve(kAccountEntryBytes);
     i::append(leaf, account.account_id);
     i::append_u64(leaf, account.balance);
     i::append_u64(leaf, account.nonce);
@@ -322,12 +189,10 @@ std::optional<Hash> state_root(const StateSummary& summary,
   i::append_u64(payload, summary.total_supply);
   i::append_u64(payload, summary.fee_pool_balance);
   i::append_u64(payload, static_cast<std::uint64_t>(accounts.size()));
-  i::append(payload, std::span<const std::uint8_t>(accounts_hash.data(),
-                                                   accounts_hash.size()));
+  i::append(payload, accounts_hash);
   i::append_u64(payload, static_cast<std::uint64_t>(economy_count));
-  i::append(payload,
-            std::span<const std::uint8_t>(economy_hash->data(), economy_hash->size()));
+  i::append(payload, *economy_hash);
   return protocol::v1::hash(kStateRootLabel, payload);
 }
 
-}  // namespace protocol::v4
+}  // namespace protocol::v6

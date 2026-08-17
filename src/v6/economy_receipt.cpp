@@ -3,26 +3,29 @@
 #include <algorithm>
 #include <array>
 
-namespace protocol::v4 {
+namespace protocol::v6 {
 namespace {
 
-namespace i = protocol::v4::internal;
+namespace i = protocol::v6::internal;
 
 constexpr std::array<std::uint8_t, 4> kReceiptMagic{'P', 'S', 'R', 'C'};
 
-// Issuance happens at the two node mints, the referral mint, and direct issue.
-// A transfer moves units that already exist; purchase, activation, the
-// protection switch, manager addition, and the three HUB transactions write
-// authority and identity rather than value.
-constexpr std::array<std::uint8_t, 8> kNonIssuingKinds{
+// The nine kinds that move no new units into existence. A transfer moves units
+// that already exist; purchase, activation, the four identity administrations,
+// and the posture change write authority rather than value.
+//
+// The issuing kinds are 4, 5, 6, 18, and **10**, which is new with this
+// version: a registration issues the entry airdrop.
+constexpr std::array<std::uint8_t, 9> kNonIssuingKinds{
     static_cast<std::uint8_t>(Kind::native_transfer),
     static_cast<std::uint8_t>(Kind::purchase_seat),
     static_cast<std::uint8_t>(Kind::activate_seat),
-    static_cast<std::uint8_t>(Kind::set_mint_biometric),
-    static_cast<std::uint8_t>(Kind::add_manager),
-    static_cast<std::uint8_t>(Kind::hub_register),
-    static_cast<std::uint8_t>(Kind::hub_add_address),
-    static_cast<std::uint8_t>(Kind::hub_remove_address),
+    static_cast<std::uint8_t>(Kind::escrow_create),
+    static_cast<std::uint8_t>(Kind::escrow_delete),
+    static_cast<std::uint8_t>(Kind::signer_add),
+    static_cast<std::uint8_t>(Kind::signer_revoke),
+    static_cast<std::uint8_t>(Kind::set_security_posture),
+    static_cast<std::uint8_t>(Kind::native_transfer_verified),
 };
 
 bool is_non_issuing(std::uint8_t kind) {
@@ -39,6 +42,13 @@ bool receipt_is_consistent(const Receipt& receipt) {
   if (failed && receipt.fee_charged != 0) return false;
   if (failed && receipt.issued_atomic != 0) return false;
   if (is_non_issuing(receipt.kind) && receipt.issued_atomic != 0) return false;
+  // A successful registration charges a zero fee, which is the one success in
+  // any version with no fee, and the receipt records it as zero rather than as
+  // the fixed fee.
+  if (receipt.kind == static_cast<std::uint8_t>(Kind::hub_register) &&
+      receipt.fee_charged != 0) {
+    return false;
+  }
   return true;
 }
 
@@ -78,4 +88,4 @@ std::optional<Receipt> decode_receipt(std::span<const std::uint8_t> raw) {
   return receipt;
 }
 
-}  // namespace protocol::v4
+}  // namespace protocol::v6

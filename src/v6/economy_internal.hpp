@@ -1,22 +1,23 @@
 #pragma once
 
-// Byte-appending helpers shared by the version-four codec translation units.
+// Byte-appending helpers shared by the version-six codec translation units.
 //
-// Every field in this contract is fixed-width big-endian, so these five
-// functions are the whole encoding vocabulary. Reads reuse the version-one
-// kernel's bounded readers rather than restating them, because a second set of
-// bounds checks is a second place for one to be wrong.
+// Every field in this contract is fixed-width big-endian, so these functions are
+// the whole encoding vocabulary. Reads reuse the version-one kernel's bounded
+// readers rather than restating them, because a second set of bounds checks is a
+// second place for one to be wrong.
 
-#include "protocol/v4/economy.hpp"
+#include "protocol/v6/economy.hpp"
 
 #include "../v1/encoding.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <span>
 #include <string_view>
 
-namespace protocol::v4::internal {
+namespace protocol::v6::internal {
 
 inline void append_u8(Bytes& target, std::uint8_t value) {
   target.push_back(value);
@@ -43,6 +44,8 @@ inline void append(Bytes& target, std::span<const std::uint8_t> source) {
   target.insert(target.end(), source.begin(), source.end());
 }
 
+// `Hash` and `Octets32` are the same 32-octet array, so this one overload
+// covers a chain identifier, an escrow identifier, a key, and a digest alike.
 inline void append(Bytes& target, const Octets32& source) {
   target.insert(target.end(), source.begin(), source.end());
 }
@@ -56,10 +59,22 @@ inline void append_length_prefixed(Bytes& target,
   append(target, source);
 }
 
+// Each message opens with its domain label, length-prefixed, exactly as
+// `protocol-primitives-v1` defines `D(label)`.
+inline void append_domain(Bytes& target, std::string_view label) {
+  target.push_back(static_cast<std::uint8_t>(label.size()));
+  target.insert(target.end(), label.begin(), label.end());
+}
+
 inline bool copy32(std::span<const std::uint8_t> source, Octets32& target) {
   if (source.size() != target.size()) return false;
   std::copy(source.begin(), source.end(), target.begin());
   return true;
+}
+
+inline bool all_zero(std::span<const std::uint8_t> value) {
+  return std::all_of(value.begin(), value.end(),
+                     [](std::uint8_t octet) { return octet == 0; });
 }
 
 inline std::optional<std::uint8_t> read_u8(std::span<const std::uint8_t> input,
@@ -77,4 +92,4 @@ inline Bytes key_prefix(Entry entry) {
   return Bytes{static_cast<std::uint8_t>(entry)};
 }
 
-}  // namespace protocol::v4::internal
+}  // namespace protocol::v6::internal
