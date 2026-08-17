@@ -126,6 +126,18 @@ both failed there and nowhere else. A table of widths would have accepted both.
 **Requirement 10 is partly satisfied and the remainder is named.** The byte and
 derivation surface executes; the transitions do not. No chain can run on this.
 
+**The decoders gained the fuzz target the codec should always have had.** Three
+entry points take untrusted bytes — the signed transaction, the receipt, and the
+one variable-width state value — and M3.9a's version-four codec shipped with
+none, which was a gap in the required evidence rather than a judgement that one
+did not apply. `tests/fuzz/economy_v6_fuzz.cpp` asserts more than absence of a
+crash: **decoding is deterministic**, so two nodes handed identical bytes reach
+identical answers, and **decoding round-trips**, so anything accepted re-encodes
+to exactly the bytes it came from. The second is what makes a canonical encoding
+canonical, and it is what would catch a decoder quietly tolerating a second
+representation of one transaction — a probe that dropped the non-minimal
+absent-referrer rule fails against it.
+
 **Nineteen mutation probes establish that the checks fail closed**, and one of
 them found the gap recorded above rather than confirming a check. Among the
 others: a changed escrow label, the version-one account octet changed in the one
