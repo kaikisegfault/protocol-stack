@@ -163,6 +163,7 @@ def check_predecessor_restatements(check, accepted: Path) -> None:
     from simulation.economy_transition.merkle import root as merkle_root
 
     files = {
+        2: ("economy-transition-v2.txt", "state.economy_root_empty"),
         3: ("economy-transition-v3.txt", "state.economy_root_empty"),
         4: ("economy-transition-v4.txt", "state.economy_root_empty"),
         5: ("economy-transition-v5.txt", "state.economy_root_empty"),
