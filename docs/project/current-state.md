@@ -29,6 +29,15 @@ so the pivot arrived before its cost rather than after it.
 C++20 kernel on 2026-08-19.** It is the first time anything in the repository
 executes a version-six transition in C++ rather than encoding one.
 
+**M3.11a delivered `founder-economy-manifest-v3` the same day**, which is the
+first piece of the pivot to become an accepted contract. It renames issuance
+channel 9 from `initial_mystery_box_incentives` to `mini_gamified_incentives`
+and changes nothing else, which is why it is a whole manifest version: a channel
+identifier sits inside the manifest JSON, the digest is a hash over that JSON,
+the digest is a genesis field, and the chain ID is a hash of genesis.
+[ADR 0053](../decisions/0053-founder-economy-manifest-v3-the-channel-rename.md)
+records it.
+
 M3 — Founder Economy devnet, in progress. Slice M3.1 delivered the revised
 economic contract, M3.2 made it executable, and M3.3 rebound every dependent
 model to it, all on 2026-08-08. M3.4 defined the cycle boundary in chain heights
@@ -93,6 +102,86 @@ Python model reproduce `test-vectors/economy-transition-v6.txt` — and covers
 nothing about execution. Requirement 13, the four-node adversarial scenarios, has
 not started. **Nothing yet activates a chain**: the codec is a set of pure
 functions and the execution evidence is still Python.
+
+### How M3.11a was delivered
+
+Issue #184 and PR #185 delivered `founder-economy-manifest-v3`, ADR 0053, the
+manifest JSON, 171 vectors, an independent verifier, the contract table with its
+loader binding, and 31 tests. It merged by rebase across commits `ad88f0d`
+through `57d6400`.
+
+**Exactly one thing changed, and it is an identifier.** Channel 9 is
+`mini_gamified_incentives`. Every cap, issuance kind, channel order, base leg,
+subtotal, bound, the 56,993,950,100-display-unit maximum, the referral benefit
+with both destinations, the denomination, the seat schedule, and the single
+research placeholder are version two's. The schema string is
+`protocol-stack/founder-economy-manifest/v3`, the domain label is
+`protocol-stack:founder-economy:manifest-v3`, the canonical JSON is 2,261 bytes,
+and the digest is
+`af153c99adf7c49e5a92563946cf0e60dfd7a58785462530988f661aa68faaa7`.
+
+**The rename is accounted for in both directions rather than asserted.** The
+contract table is *derived* from version two's by applying the one substitution,
+so a moved cap, leg, kind, order, or bound cannot be expressed at all; version
+two hand-wrote its table because it genuinely changed founder-directed values,
+and version three changes none. The `rename.` vector group then records exactly
+one changed identifier, zero changed caps, kinds, legs, and totals, zero
+occurrences of the retired identifier in the accepted canonical bytes, and a
+canonical length 6 bytes shorter than version two's 2,267 — **which is the
+identifier's own change in length, 30 bytes to 24**, and holds only because the
+two schema strings and the two domain labels are each the same length as their
+counterpart. That last identity is what makes "and nothing else" checkable in
+bytes rather than by reading a table.
+
+**Independence moved outside the models, which is what makes the derivation
+safe.** `tools/founder-economy-manifest-v3-vectors/expected.py` converts the
+Founder Constitution's two allocation tables by hand and imports nothing from
+`simulation/`. The constitution states the economy both as per-cycle amounts and
+as channel totals without deriving either from the other, so requiring them to
+agree checks the manifest against its source rather than against a second
+reading of a specification.
+
+**The loader is now one implementation bound to each version's table.** The
+ordered acceptance stages, the field inventory, and the checked derivations
+carry no founder-directed value, so they moved to
+`simulation/founder_economy_manifest/` and each version binds them. Copying
+roughly 450 lines of acceptance order for a one-string change is the failure
+mode M3.10c named when it deleted version four's codec. **The refactor is its
+own commit and was proved behavior-preserving before version three existed**:
+version two's 154 vectors — canonical length, digest, and every ordered failure
+code — its 23 manifest tests, its 38 error tests, all 18 registered vector
+verifiers, and every `tests/simulation` and `tests/tools` module passed
+unchanged.
+
+**Seven mutation probes ran and three of them proved nothing.** Making version
+three rename nothing, making it rename a second channel, and adding a byte to a
+fixed string were each caught by the loader's fixed-value comparison *before*
+the group under test ran, so they establish that the loader works and say
+nothing about the `rename.` group. They are recorded that way rather than
+counted as successes, which is the discipline the M3.10d handoff asked for.
+
+**The probe that reached the group was a self-consistent version three**: the
+renamed channel's cap raised by one display unit, with the direct-mint subtotal
+and both maximum-supply figures raised to match, in the contract table and in
+the manifest JSON together. Every loader stage and every checked derivation
+accepted it; the constitution comparison and three `rename.` values rejected it.
+A cap moved by a single *atomic* unit is caught earlier, because a display
+maximum that is not a whole number of display units fails the derivation stage.
+The remaining probes confirm the verifier fails closed both ways — a tampered
+recorded value, a deleted recorded key, an unreached recorded key, a reused
+domain label, and an edit to the retained version-two canonical length.
+
+**A probing hazard is recorded because it favours false success, which is the
+dangerous direction.** Python validates its bytecode cache on whole-second
+source mtime plus file size, so a probe edit and its restore landing in the same
+second at the same size can leave a stale `.pyc` in place and the mutation is
+never compiled. It was hit here during the probe cycle. Every probe was re-run
+with `python3 -B`, and any future probe cycle on Python sources should be.
+
+**Nothing downstream is rebound, deliberately.** No simulator, transition model,
+or C++ kernel loads version three. `economy-transition-v6` and every model that
+binds version two continue to bind version two and remain correct against it.
+The rename reaches execution in `economy-transition-v7`.
 
 ### How M3.10d was delivered
 
@@ -1774,6 +1863,15 @@ slices.
   the referral in the direct-mint group at 250,002,000,000,000,000 atomic. Its
   strict loader enforces the eight ordered failure codes and rederives every
   product and subtotal.
+- The accepted `founder-economy-manifest-v3` contract is version two with one
+  channel identifier renamed — `mini_gamified_incentives` in place of
+  `initial_mystery_box_incentives` — at 2,261 JCS bytes with digest
+  `af153c99adf7c49e5a92563946cf0e60dfd7a58785462530988f661aa68faaa7`. Every
+  founder-directed figure is version two's, and its table is derived from
+  version two's rather than restated so a moved one could not be written. Both
+  versions coexist and neither loader accepts the other's manifest. **Nothing
+  loads version three yet**: every simulator, transition model, and kernel path
+  still binds version two, which remains correct against it.
 - The `founder-economy-simulator-v2` model executes that contract. It runs seat
   activation, base permission evaluation, unconditional referral accrual, atomic
   exercise, and capped direct issuance with deterministic trace, state, and
@@ -2117,6 +2215,42 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #184 and PR #185 are the M3.11a delivery, merged by rebase across
+  commits `ad88f0d` through `57d6400` on `main`. It adds
+  `founder-economy-manifest-v3` — the specification, ADR 0053, the manifest
+  JSON, 171 vectors, a verifier, the contract table with its loader binding, and
+  31 tests — and edits no accepted artifact. It also refactors the ordered
+  manifest loader into `simulation/founder_economy_manifest/` so both accepted
+  versions bind one implementation; that refactor is its own commit and version
+  two's complete evidence passed unchanged on it. Two ctest entries were added,
+  `founder-economy-manifest-v3-vectors` and `founder-economy-manifest-v3`,
+  taking the suite from 136 to 138 entries in the debug presets and 143 to 145
+  under `clang-sanitizers`. PR run 32279213408 on head `8723149` passed the
+  complete hosted matrix — scope classification `full`, GCC and Clang debug,
+  both sanitizers, and the aggregate required check — and both new entries were
+  confirmed to run and pass in all four preset jobs. Post-merge run 32281261842
+  on `57d6400` passed the same matrix with no re-run needed.
+- **One job in that run hung on runner infrastructure and it is the second time
+  this shape has appeared.** `gcc-sanitizers` sat on the runner's `Install host
+  prerequisites` step for twelve minutes while its three siblings cleared the
+  same step in seconds. M3.10d recorded the identical shape. The remedy is the
+  same and it worked: cancel the run, `gh run rerun --failed`, which re-runs
+  only the hung job and leaves the three successes in place. The re-run passed
+  in 5m35s. **Twice is a pattern**: a single job stalled on package install,
+  with siblings past it, is the runner rather than the change, and should be
+  cancelled and re-run rather than waited out to the 20-minute timeout.
+- **M3.11a's margin is about ten and a half minutes, and the candidate run is
+  the wrong place to read it from.** Against the 20-minute per-job timeout, the
+  candidate gave `clang-sanitizers` 5m31s, `gcc-sanitizers` 5m35s on the re-run,
+  `clang-debug` 10m11s, and `gcc-debug` 10m56s — a spread far wider than the
+  roughly 12% run-to-run variance M3.7a measured on identical code. The
+  post-merge run on the same tree gave `clang-sanitizers` 7m42s, `gcc-debug`
+  8m20s, `clang-debug` 9m06s, and `gcc-sanitizers` 9m31s, which sits inside that
+  variance against M3.10c's figures. **Same code, two runs, a five-and-a-half
+  minute swing on `gcc-debug`**, so a single run's timing is not a measurement.
+  Take the post-merge figures as the baseline: the slowest job is 9m31s and the
+  slice adds no translation unit, only two Python entries that finish in about a
+  tenth of a second each.
 - Issue #153 and PR #173 are the M3.10b delivery, merged by rebase across
   commits `19107df` through `cc2e8fc` on `main`. It adds the version-six
   execution model, 512 vectors, a verifier, ADR 0045, and two test modules, and
@@ -2868,15 +3002,12 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.11a: the revised settlement contract**, which is the
-tokenomics half of the 2026-08-19 pivot. Use the `change-protocol` skill.
+Milestone slice **M3.11b: the settlement respecification and its Python model**,
+which is the second of M3.11a's four sub-slices. Use the `change-protocol`
+skill. The manifest half is done; this is the half that changes behavior.
 
-**Do not start the C++ settlement.** The slice that was next before the pivot —
-the version-three settlement, the assignment prologue, and the four seat
-transitions in C++ — would implement rules the pivot has changed. The settlement
-must be respecified first.
-
-**Three changes, all recorded in ADR 0049 and now in the constitution.**
+**Three rules to specify, all recorded in ADR 0049 and now in the
+constitution.**
 
 1. **The per-channel carry is deleted from state and replaced by a recovery
    pool.** A zero-winner cycle contributes its whole base permission; an
@@ -2886,31 +3017,39 @@ must be respecified first.
    remainder rule of its own, because the winner set already splits an exact tie
    equally and the pool's own dust returns to it.
 2. **The winner rule splits into two sets.** The *contributing set* is the seats
-   inside their own 731 cycles, which generate permissions. The *eligible set* is
-   every operational seat that met the cycle's duty, in span or not, which
-   competes. Today `derive_winner_set` sees only the first, so a machine past its
-   distribution cannot win anything — which is what makes the recovery pool
-   strandable and contradicts what the 731 cycles are for.
-3. **Channel 9 is renamed** `initial_mystery_box_incentives` to
-   `mini_gamified_incentives`.
+   inside their own 731 cycles, which generate permissions. The *eligible set*
+   is every operational seat that met the cycle's duty, in span or not, which
+   competes for the daily reallocation, the recovery pool, and the monthly
+   unreferred pool.
+3. **Best-performer ranking is permanent infrastructure.** A machine past its
+   own distribution keeps operating, keeps being ranked, and can win any pool
+   that still holds value. This is what makes the recovery pool unstrandable, so
+   it is a property to state and check rather than a note.
 
-**The rename is not cosmetic and it sets the shape of the slice.** The channel
-identifier sits inside the manifest JSON, the manifest digest is a hash over
-that JSON, the digest is a genesis field, and the chain ID is a hash of genesis.
-So the rename changes the manifest digest, then genesis bytes, then the chain
-ID, then every recorded vector that embeds any of them. Combined with deleting
-entry kind 7 and adding a recovery-pool entry, this is **a new manifest and a
-new economy contract version, not an edit to `economy-transition-v6`**.
+**Where the code is.** `simulation/founder_economy_v3/uptime.py` holds
+`winner_seats` and `reallocate`; `handlers_permissions.py` reads and writes
+`state.performance_carry_atomic`; `operations.py` journals carry movement under
+the `carry:performance` bucket; `engine.py` asserts
+`founder_outstanding + carry_total == FOUNDER_OPERATOR_LEG`. All four change.
+`winner_seats` today ranks only the entries in the cycle record, which is the
+contributing set, and that is precisely the defect rule 2 fixes.
 
-**Suggested order**, each its own slice with its own vectors and verifier:
+**One wording ambiguity in ADR 0049 to resolve in the specification, not to
+invent an answer for.** The ADR says a zero-winner cycle contributes "its whole
+base permission" to the pool and describes today's behavior as
+`split_permission(0)` putting "the entire base permission" into `carry`. The
+model in fact moves only the 34,200,000,000-atomic `founder_operator` leg; the
+other four legs settle to their escrows whether or not the seat met the cycle.
+Check the constitution's own statement of what a failed cycle forfeits before
+writing this down. If it turns out the constitution does not settle whether the
+four fixed legs survive a zero-winner cycle, that is a founder-reserved question
+about beneficiaries — ask it rather than choosing.
 
-* `founder-economy-manifest-v3` — the rename, with the ten caps still summing to
-  56,993,950,100 display units and every derivation re-proved.
-* the settlement respecification and its Python model — the recovery pool, the
-  two sets, and the permanence rule, with `founder-economy-simulator-v4` or an
-  extension of v3 carrying it.
+**Then, in order, each its own slice:**
+
 * `economy-transition-v7` — entry kind 7 removed, the recovery pool entry added,
-  the carry identity losing its third term, and the state root re-versioned.
+  the carry identity losing its third term, the state root re-versioned, and the
+  contract rebound to `founder-economy-manifest-v3`.
 * only then the C++ settlement and the four seat transitions.
 
 **Two further specifications the pivot opened, neither blocking the above.**
@@ -2931,37 +3070,45 @@ transactions, because a mint at the boundary otherwise succeeds, collects
 nothing, and forfeits the cycle permanently. Both figures are recorded as
 vectors.
 
-**Reusable results from M3.10d worth not rediscovering.** The local harness is a
-scratch `sodium.h` backed by the system OpenSSL, never committed and never part
-of the build; with it the whole kernel and its test units compile and run in
-about a second under both compilers with the project's exact flags and under
-address and undefined-behaviour sanitizers. Its one known limit is that it does
-not reproduce libsodium's rejection of small-order public keys, so
-`tests/kernel/primitives_test.cpp` fails under it at that assertion and passes
-on the hosted matrix. **Run Clang locally before pushing**: it caught a
-structured-binding capture GCC accepts and the matrix rejects. And **a probe that
-passes must be re-examined before it is trusted** — of two that passed in
-M3.10d, one was an equivalent mutation measuring nothing and one was a real
-uncovered rule.
+**Reusable results worth not rediscovering.** The local C++ harness is a scratch
+`sodium.h` backed by the system OpenSSL, never committed and never part of the
+build; with it the whole kernel and its test units compile and run in about a
+second under both compilers with the project's exact flags and under address and
+undefined-behaviour sanitizers. Its one known limit is that it does not
+reproduce libsodium's rejection of small-order public keys, so
+`tests/kernel/primitives_test.cpp` fails under it at that assertion and passes on
+the hosted matrix. **Run Clang locally before pushing**: it caught a
+structured-binding capture GCC accepts and the matrix rejects. **A probe that
+passes must be re-examined before it is trusted** — and on Python sources it must
+be run with `python3 -B`, because M3.11a hit a stale bytecode cache that would
+have made a probe appear to pass without ever compiling the mutation. **A probe
+caught by an earlier stage than the one under test proves nothing about that
+stage**; three of M3.11a's seven were, and are recorded as such.
 
 ## Blockers
 
-**None for M3.11a.** M3.10d ran the founder-decision gate and **passed** it. It
-enumerated eighteen decisions the slice had to settle — the ledger's file layout
-and state representation, whether the account map lives inside the registry, the
-resolution order for both schemes, the shared envelope check order, the two
-derived rules of ADR 0045, the registration fee exemption and its envelope
-exemptions, the entry airdrop amount and its bound, the refusal of an
-unregistered recipient, the signer and seat limits, the block constructions and
-their inherited schema version, the signature-verifier seam, the representation
-of a refusal against an invariant failure, the conservation checks, the test
-layout and CTest registration, and whether to add a fuzz target. **Every one is
-fixed by an accepted specification or ADR, or is mechanism, naming, or layout**,
-which `founder-constitution.md` names as engineering work. None sets or changes
+**None for M3.11b.** M3.11a ran the founder-decision gate and **passed** it. It
+enumerated eleven decisions the slice had to settle — channel 9's new
+identifier, the ten caps and two subtotals, the maximum supply, the base
+permission legs and total, the referral amount with its destinations and
+unconditionality, the denomination and seat schedule, the research placeholder
+set, whether the recovery pool belongs in the manifest, the schema string and
+domain label and digest and canonical length, whether version two is retired or
+coexists, and the package, tool, and test layout including the loader
+extraction. **Every one is fixed by the Founder Constitution, an accepted
+specification, or an accepted ADR, or is encoding, mechanism, or layout**, which
+`founder-constitution.md` names as engineering work. None sets or changes
 supply, allocation, beneficiaries, Founder ownership, creator hierarchy,
 commercial routing, AI institutional authority, bridge scope, content
 permanence, or what a participant must do, own, run, or receive. No question was
 asked because none was reserved.
+
+**One question is named for M3.11b and is not yet blocking**, recorded above
+under the next action: whether a zero-winner cycle forfeits the whole 574.3-unit
+base permission to the recovery pool or only the 342-unit `founder_operator`
+leg. Read the constitution's statement of what a failed cycle forfeits first —
+it may already settle it, in which case this is delegated. If it does not, it
+sets who receives value and is founder-reserved.
 
 **The 2026-08-19 pivot raised eight founder-reserved questions and the owner
 answered all of them the same day.** Where AI runs; whether a Founder Machine
