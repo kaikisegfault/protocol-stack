@@ -38,6 +38,15 @@ the digest is a genesis field, and the chain ID is a hash of genesis.
 [ADR 0053](../decisions/0053-founder-economy-manifest-v3-the-channel-rename.md)
 records it.
 
+**M3.11b delivered `economy-transition-v7` the same day**, which is the piece of
+the pivot that changes behaviour rather than an identifier. The per-channel carry
+is deleted from state and replaced by a recovery pool, so the node distribution
+assigns 100% of the permissions the manifest promises instead of leaking two
+silent remainders into a term nothing ever released.
+[ADR 0054](../decisions/0054-economy-transition-v7-the-recovery-pool.md) records
+the four decisions ADR 0049 left a contract to settle, and one thing ADR 0049
+got wrong.
+
 M3 — Founder Economy devnet, in progress. Slice M3.1 delivered the revised
 economic contract, M3.2 made it executable, and M3.3 rebound every dependent
 model to it, all on 2026-08-08. M3.4 defined the cycle boundary in chain heights
@@ -102,6 +111,126 @@ Python model reproduce `test-vectors/economy-transition-v6.txt` — and covers
 nothing about execution. Requirement 13, the four-node adversarial scenarios, has
 not started. **Nothing yet activates a chain**: the codec is a set of pure
 functions and the execution evidence is still Python.
+
+### How M3.11b was delivered
+
+Issue #189 and PR #190 delivered `economy-transition-v7` — the specification,
+ADR 0054, a sibling Python model, 395 vectors, an independent verifier, and 82
+tests. It merged by rebase across commits `dbc1495` through `01527e5` and edits
+no accepted artifact.
+
+**Four things change and the specification defines exactly those four.** The
+state loses entry kind 7 and gains entry kind 17. The cycle assignment record
+gains five fields. Settlement steps 5 through 7 are respecified. And the
+per-channel conservation identity loses its third term and gains a companion.
+Everything else in version six carries over and is incorporated by reference.
+
+**The recovery pool is one entry carrying five legs, and per-channel is derived
+rather than chosen.** The five legs have five different beneficiaries — the
+Founder operator's own escrow and four typed custody kinds — and five different
+caps and identities, so a single scalar could not say which channel a recovered
+unit belongs to and could not be paid out without inventing a split. The ten
+`carry` entries collapse to one because one entry holds five fields; the five
+fields do not collapse further. Five of those ten were structurally always zero.
+
+**Entry kind 7 is retired permanently rather than reused**, joining 9 and 11.
+
+**The cycle assignment record records what the cycle absorbed, and recording it
+is forced rather than chosen.** The pool's balance at a window is a function of
+every earlier cycle, so a mint that derived it would replay the whole assignment
+history — unbounded work inside a transition that must stay `O(cap)`. The record
+grows from 24 fixed octets to 64. The absorbed amount is recorded rather than the
+per-winner share, because the residual returned to the pool is
+`absorbed - winner_count * (absorbed // winner_count)` and a share alone cannot
+express it.
+
+**Step 6 reads the pool before step 7 writes it**, so a cycle's own reallocation
+dust and the residual of the pool it just divided both belong to the cycle after.
+That order is the difference between two self-consistent readings of ADR 0049's
+own sentence, so it is stated rather than left to each implementation. A probe
+that absorbs after contributing is caught.
+
+**The identity that matters is the new one.** The channel identity becomes
+`issued(c) + outstanding(c) = assigned * leg(c)` with nothing moved out, and the
+pool becomes a named portion of `outstanding` rather than a term beside it — the
+same shape the referral channel already uses for the unreferred pool. That alone
+cannot catch a stranded unit, because `outstanding` is one number and a lost
+claim simply leaves it larger. So version seven adds
+`outstanding(c) = claimable(c) + recovery_pool(c)`, **which is the statement that
+100% is assigned**, as an equality: value created without a claimant and a claim
+destroyed without payment are two different failures against an exact figure.
+
+`claimable` is exact rather than a bound, and the reason is worth not
+rediscovering: the accumulation cap is applied at assignment against the same
+mark the walk uses, so a seat over the cap accrues no bit and — because the
+winner derivation filters on the same predicate — wins no bit. No bit can exist
+outside the thirty windows a mint reaches, and the mark advance can never step
+over an uncollected one.
+
+**ADR 0049's premise about the winner set is wrong for the accepted model, and
+checking it in code before acting on it is what made the slice smaller.** The ADR
+says `derive_winner_set` considers only seats inside their own 731 cycles. It
+does not: `derive_assignment` passes every in-scope seat to it, filtered only by
+met-the-cycle and under-the-cap. The contributing set and the eligible set were
+already two sets and the eligible one already included machines past their own
+distribution. So version seven **states and guards** rules 2 and 3 rather than
+implementing them. The rest of ADR 0049's premise holds exactly:
+`split_permission(0)` does put the entire base permission into the carry, every
+leg's remainder does accumulate there, and nothing anywhere released either.
+
+**The recorded schedule was chosen to reach every branch**, and the two that
+matter most are the ones a plausible schedule would miss. Window 3 is won
+outright by a machine past its own distribution, which takes the whole pool and
+accrues nothing. Window 8 has **no contributing seat at all** — every in-scope
+seat is past its span — and still drains the pool, which is the case that would
+strand it forever if the winner set were ever narrowed to the contributing set.
+The others are a cycle nobody wins, a seven-way split leaving dust on all five
+legs, an absorbed pool below its winner count returned whole, a single winner
+draining it, and a residual of one atomic unit surviving to the cycle after. A
+second schedule crosses the accumulation cap in both directions across
+thirty-one windows.
+
+**Seventeen mutation probes ran under `python3 -B` and all seventeen were
+caught.** Absorbing after contributing; moving only the operator leg on a
+zero-winner cycle — the v2-era rule ADR 0033 superseded; filtering the winner set
+by span; keeping version six's subtraction in the outstanding delta; dropping the
+pool share from the mint walk; encoding the pool legs in reverse; reusing entry
+kind 7; recording the share instead of the absorbed amount; removing the
+zero-winner absorption guard; omitting the pool term from `claimable`; keeping
+version six's record width and root label; reverting the manifest binding;
+writing the ten carry entries again; opening the pool nonempty; changing the
+predecessor tree prefix; appending an undeclared constant; and removing the
+out-of-span seat from the recorded fixture — the last turns the three set guards
+**false**, which is what shows the fixture is load-bearing rather than
+incidental.
+
+**Two guards were strengthened after the first candidate because self-review
+found them weaker than they read.** Version two's economy-tree restatement was
+not checked against its accepted file, so its non-collision rested on a
+restatement nothing had shown to be the real one; four of the six were checked
+and it was not among them. And the carryover declaration covered version six's
+public surface and said nothing about version seven's, so a name version seven
+added quietly was classified by nothing. Both are fixed and both were probed.
+
+**The carryover test is the answer to the negative half of the claim.**
+`contract.py` declares four sets — carried, rebound, revised, added — and the
+test requires them to partition both versions' public surfaces exactly, a carried
+name to be identical, a revised name to have moved, and a removed name to be
+gone. Writing it caught one omission, `VERIFIED_USER_COUNTER_ENTRY`, before the
+slice was committed. That is the defect no derivation can reach: a value that
+moved without any vector touching it.
+
+**Nothing executes a transaction.** The model runs the settlement and the
+identities; it does not run a block. The version-seven transaction ledger, its
+execution, and its recorded trace are the next slice, mirroring how version six
+separated M3.10a from M3.10b.
+
+**One property of ADR 0049 is stated and deliberately not encoded.** The pool
+lifecycle — a pool that can receive no further inflow is marked consumed and then
+archived — has no version-seven encoding because the recovery pool can receive
+inflow for as long as any cycle is assigned and therefore never reaches that
+state. Adding a state bit no transition can ever set would be worse than
+recording why it is unreachable.
 
 ### How M3.11a was delivered
 
@@ -1869,9 +1998,21 @@ slices.
   `af153c99adf7c49e5a92563946cf0e60dfd7a58785462530988f661aa68faaa7`. Every
   founder-directed figure is version two's, and its table is derived from
   version two's rather than restated so a moved one could not be written. Both
-  versions coexist and neither loader accepts the other's manifest. **Nothing
-  loads version three yet**: every simulator, transition model, and kernel path
-  still binds version two, which remains correct against it.
+  versions coexist and neither loader accepts the other's manifest.
+  `economy-transition-v7` is the first contract to bind version three; every
+  other simulator, transition model, and kernel path still binds version two,
+  which remains correct against it.
+- The accepted `economy-transition-v7` contract is version six with the
+  per-channel carry deleted from state and replaced by a recovery pool. Its
+  independent Python model runs the respecified settlement — a zero-winner
+  cycle contributing its whole base permission, an indivisible remainder
+  contributing its dust, and the earliest subsequent cycle with any winner
+  taking the pool entire on top of its own reallocation — and checks two
+  conservation identities after every cycle and every mint:
+  `issued(c) + outstanding(c) = assigned * leg(c)` and
+  `outstanding(c) = claimable(c) + recovery_pool(c)`. The second is the
+  statement that 100% of the node distribution is assigned, and it is an
+  equality rather than a bound. It encodes a state and executes no transaction.
 - The `founder-economy-simulator-v2` model executes that contract. It runs seat
   activation, base permission evaluation, unconditional referral accrual, atomic
   exercise, and capped direct issuance with deterministic trace, state, and
@@ -2215,6 +2356,23 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #189 and PR #190 are the M3.11b delivery, merged by rebase across
+  commits `dbc1495` through `01527e5` on `main`. It adds
+  `economy-transition-v7` — the specification, ADR 0054, the sibling model, 395
+  vectors, an independent verifier, and three test modules — indexes the
+  contract and the seven undocumented ADRs behind it in `docs/README.md`, and
+  edits no accepted artifact. Four ctest entries were added,
+  `economy-transition-v7-vectors`, `-carryover`, `-state`, and `-settlement`,
+  taking the suite from 138 to 142 entries in the debug presets and 145 to 149
+  under `clang-sanitizers`. PR run 32287855271 on the final head `0b425936`
+  passed the complete hosted matrix — scope classification `full`, GCC and Clang
+  debug, both sanitizers, and the aggregate required check — and all four new
+  entries were confirmed to run and pass in the job logs. Two earlier candidate
+  runs were cancelled as obsolete when the two strengthened guards were pushed.
+- **No job stalled in that run, which is the first time in three slices.** The
+  four preset jobs took 8m29s to 9m58s against the 20-minute per-job timeout,
+  inside the run-to-run variance M3.7a measured. The slice adds no translation
+  unit, only four Python entries that finish in about a sixth of a second each.
 - Issue #184 and PR #185 are the M3.11a delivery, merged by rebase across
   commits `ad88f0d` through `57d6400` on `main`. It adds
   `founder-economy-manifest-v3` — the specification, ADR 0053, the manifest
@@ -3002,120 +3160,120 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.11b: the settlement respecification and its Python model**,
-which is the second of M3.11a's four sub-slices. Use the `change-protocol`
-skill. The manifest half is done; this is the half that changes behavior.
+Milestone slice **M3.11c: the version-seven ledger and its execution**, which is
+to `economy-transition-v7` what M3.10b was to version six. Use the
+`change-protocol` skill. The contract is accepted; this makes it run.
 
-**Three rules to specify, all recorded in ADR 0049 and now in the
-constitution.**
+**What it is.** A version-seven `Ledger` holding the recovery pool where version
+six's holds ten carries, the assignment prologue writing the extended record, the
+mint walk taking a winner's pool share, ordered block execution, a recorded
+trace, its vectors, and its verifier.
 
-1. **The per-channel carry is deleted from state and replaced by a recovery
-   pool.** A zero-winner cycle contributes its whole base permission; an
-   indivisible remainder contributes its dust; the earliest subsequent cycle
-   with any winner takes 100% of the pool on top of its own reallocation,
-   distributed to that cycle's winner set. It needs no ranking, tie, or
-   remainder rule of its own, because the winner set already splits an exact tie
-   equally and the pool's own dust returns to it.
-2. **The winner rule splits into two sets.** The *contributing set* is the seats
-   inside their own 731 cycles, which generate permissions. The *eligible set*
-   is every operational seat that met the cycle's duty, in span or not, which
-   competes for the daily reallocation, the recovery pool, and the monthly
-   unreferred pool.
-3. **Best-performer ranking is permanent infrastructure.** A machine past its
-   own distribution keeps operating, keeps being ranked, and can win any pool
-   that still holds value. This is what makes the recovery pool unstrandable, so
-   it is a property to state and check rather than a note.
+**What it is not.** It is not a copy of `simulation/economy_transition_v6/`.
+Version seven changes the settlement and the state layout and changes no
+transaction: the envelope, the fourteen kinds and their rejection orders, the six
+HUB messages, the identity registry, the posture predicates, the receipt, and the
+result codes are all version six's. The version-seven model already imports
+version six for every one of those, and the execution half should too. Only
+`mint_node` reads a changed surface — it calls the settlement's `collect` — and
+`apply_assignment` and the conservation checks are the rest. **A duck-typed
+version-seven `Ledger` satisfies every attribute version six's transitions read**,
+which was checked while writing the contract, so importing them is available and
+copying 1,400 lines of execution to change one call is the failure mode M3.10c
+named when it deleted version four's codec.
 
-**Where the code is.** `simulation/economy_transition_v3/winners.py` holds
-`derive_winner_set` and `split_permission`, and `settlement.py` holds
-`derive_assignment`, `outstanding_delta`, and `collect`.
-`simulation/economy_transition_v6/ledger.py` imports `outstanding_delta` from
-it. Those are the sites rules 1 and 2 change.
+**Where the code is.** `simulation/economy_transition_v6/ledger.py` is the shape
+to follow, `value_transitions.py:159` is `mint_node`, and
+`simulation/economy_transition_v7/conservation.py` already holds the two
+identities and the `claimable` walk that a version-seven ledger must state over a
+full state rather than over five channels.
 
-**Rules 2 and 3 are already implemented, and ADR 0049's premise about them is
-wrong for the accepted contract. This was checked in code on 2026-08-19, not
-inferred.** The ADR says "today `derive_winner_set` considers only seats inside
-their own 731 cycles, so a machine past its distribution cannot win anything".
-In `simulation/economy_transition_v3/settlement.py`, `derive_assignment` passes
-*every* in-scope seat to `derive_winner_set`, filtered only by met-the-cycle and
-under-the-cap; `in_span` appears in exactly three places and none of them is the
-winner set — it gates `accrued`, `assigned`, and the referral accrual. So the
-contributing set and the eligible set are **already two different sets**, and
-the eligible one already includes machines past their own distribution.
-
-The same is true of `founder-economy-simulator-v3`, whose in-scope rule states
-it has "deliberately no upper bound" and whose `schedule.is_in_scope` implements
-that. Both accepted models already do what rules 2 and 3 ask for.
-
-**So M3.11b is materially smaller than the ADR implies.** Rules 2 and 3 need a
-stated invariant and a vector that would fail if an `in_span` filter were ever
-added to the winner set — a guard against a regression, not a rewrite. **Rule 1,
-the recovery pool, is the actual work**, and it is the one that changes state
-layout. Do not rewrite `derive_winner_set` on the ADR's premise without first
-reproducing the defect it describes; it could not be reproduced here.
-
-**That ambiguity was resolved on 2026-08-19 and the answer changes the slice's
-shape.** ADR 0049's "whole base permission" is correct: a zero-winner cycle
-sends all five legs — the whole 574.3 units — to the recovery pool, and the dust
-is the remainder of *each* leg's equal split. `economy-transition-v3`'s
-`split_permission` already divides every leg and already does this.
-`simulation/founder_economy_v3/` moves only the `founder_operator` leg because
-it implements the **v2-era rule**, which ADR 0033 superseded on 2026-08-13; it
-is retained evidence about that contract and is not the model to extend.
-
-**So the settlement to respecify is the transition's, not the simulator's.** The
-recorded four-step plan named "the settlement respecification and its Python
-model, with `founder-economy-simulator-v4` or an extension of v3" as a slice
-before `economy-transition-v7`. That separation is artificial: the settlement is
-consensus-visible, it lives in `economy-transition-v*`, and the recovery pool
-changes the state layout — deleting entry kind 7 and adding a pool entry — which
-*is* version seven. **Treat them as one slice.** `founder-economy-simulator-v3`
-needs no version four; it binds manifest v2 and states what the M3.2 through
-M3.6 evidence proves.
+**One thing to decide there rather than here.** Version six's `Ledger` carries
+`assigned_permissions` as a non-entry running count, which the carry identity is
+stated over. Version seven's backing identity needs the same figure and it is
+still derivable by summing every assignment record's contributing count, so the
+same treatment applies; whether the C++ kernel should instead recompute it is a
+kernel question and belongs to the slice that writes one.
 
 **Then, in order, each its own slice:**
 
-* `economy-transition-v7` — entry kind 7 removed, the recovery pool entry added,
-  the carry identity losing its third term, the state root re-versioned, and the
-  contract rebound to `founder-economy-manifest-v3`.
-* only then the C++ settlement and the four seat transitions.
+* the C++ settlement and the four seat transitions, against version seven rather
+  than version six — kinds 2, 3, 4, and 5 are exactly the ones M3.10d left
+  refused, and they were left refused because their contract was the one about to
+  change;
+* `calendar-v1`, which must fix the consensus timestamp's monotonicity rule and
+  acceptance tolerance, the calendar-month boundary derived from it, and the
+  statement of both in a form any consensus adapter can satisfy — the tolerance
+  is consensus-visible and a proposer can move a month boundary within it, so it
+  must be a stated parameter rather than an adapter default;
+* the HUB verification architecture of ADR 0048, which needs its threat model,
+  with the biometric stabilization scheme named as requiring independent
+  cryptographic review before anything rests on it.
 
-**Two further specifications the pivot opened, neither blocking the above.**
-`calendar-v1` must fix the consensus timestamp's monotonicity rule and
-acceptance tolerance, the calendar-month boundary derived from it, and the
-statement of both in a form any consensus adapter can satisfy — the tolerance is
-consensus-visible and a proposer can move a month boundary within it, so it must
-be a stated parameter rather than an adapter default. And the HUB verification
-architecture of ADR 0048 needs its threat model, with the biometric
-stabilization scheme named as requiring independent cryptographic review before
-anything rests on it.
-
-**What M3.10d leaves for the kernel**, once the contract above is settled: the
-four seat transitions, the settlement derivation, the assignment prologue, and
-the `block`, `cycle`, and `ordering` vectors. The prologue derivation is
-recorded and unchanged — the cycle assignment is written *before* a block's
-transactions, because a mint at the boundary otherwise succeeds, collects
-nothing, and forfeits the cycle permanently. Both figures are recorded as
-vectors.
+**What version seven leaves for the kernel**, beyond the above: the recovery pool
+entry's codec, the extended cycle assignment record's codec, and the two
+identities as kernel-side checks. The prologue derivation is recorded and
+unchanged — the cycle assignment is written *before* a block's transactions,
+because a mint at the boundary otherwise succeeds, collects nothing, and forfeits
+the cycle permanently.
 
 **Reusable results worth not rediscovering.** The local C++ harness is a scratch
 `sodium.h` backed by the system OpenSSL, never committed and never part of the
 build; with it the whole kernel and its test units compile and run in about a
 second under both compilers with the project's exact flags and under address and
-undefined-behaviour sanitizers. Its one known limit is that it does not
-reproduce libsodium's rejection of small-order public keys, so
+undefined-behaviour sanitizers. Its one known limit is that it does not reproduce
+libsodium's rejection of small-order public keys, so
 `tests/kernel/primitives_test.cpp` fails under it at that assertion and passes on
 the hosted matrix. **Run Clang locally before pushing**: it caught a
 structured-binding capture GCC accepts and the matrix rejects. **A probe that
 passes must be re-examined before it is trusted** — and on Python sources it must
 be run with `python3 -B`, because M3.11a hit a stale bytecode cache that would
-have made a probe appear to pass without ever compiling the mutation. **A probe
-caught by an earlier stage than the one under test proves nothing about that
-stage**; three of M3.11a's seven were, and are recorded as such.
+have made a probe appear to pass without ever compiling the mutation; every
+M3.11b probe was run that way. **A probe caught by an earlier stage than the one
+under test proves nothing about that stage.** And **a guard is worth re-reading
+after it passes**: M3.11b's self-review found two that were weaker than they read
+— one predecessor restatement unchecked, and a declaration that covered the old
+version's surface and not the new one's — and both were found by asking what the
+guard would fail on rather than by running it.
+
+**One generation detail.** `test-vectors/economy-transition-v7.txt` is produced
+by running the verifier's own check modules in a recording mode rather than by
+hand, so the file and the derivations cannot disagree at birth; the independence
+comes from `Checker.agree` requiring the closed form and the model to match
+before a value is recorded at all. The recorder is a scratch script and is not
+committed. Regenerating means re-running the checks and re-inserting the section
+comments.
 
 ## Blockers
 
-**None for M3.11b.** M3.11a ran the founder-decision gate and **passed** it. It
+**None for M3.11c.** M3.11b ran the founder-decision gate and **passed** it. It
+enumerated sixteen decisions the slice had to settle — whether the carry is
+deleted; what a zero-winner cycle contributes and what an indivisible remainder
+contributes; which cycle takes the pool and how much; who receives it and how a
+tie and a residual are handled; whether a cycle may consume its own dust; the
+contributing and eligible sets; the permanence of ranking past 731 cycles; the
+pool lifecycle; the pool's granularity; the entry number and kind 7's
+retirement; the assignment record's extension; whether the pool sits inside
+`outstanding`; the manifest rebinding; the label and schema bumps; and the
+package, tool, and test layout. **Every one is fixed by ADR 0049, ADR 0033, ADR
+0053, `first-goal.md` requirement 9, or the Founder Constitution, or is
+encoding, mechanism, or layout**, which `founder-constitution.md` names as
+engineering work. None sets or changes supply, allocation, beneficiaries,
+Founder ownership, creator hierarchy, commercial routing, AI institutional
+authority, bridge scope, content permanence, or what a participant must do, own,
+run, or receive: every founder-directed figure is read from the accepted
+manifest rather than restated. No question was asked because none was reserved.
+
+**One recorded ambiguity was resolved by reading rather than by asking, and it
+is recorded so the reading is auditable.** ADR 0049 says a cycle with any winner
+takes the pool and that "its own dust simply returns to the pool for the cycle
+after". That sentence fixes the order — absorb before contributing — and the
+alternative reading is self-consistent, so ADR 0054 states the order, the
+specification states it, and both record that if the owner intended the other
+order the difference is one cycle of latency on dust and is a specification edit
+rather than a redesign.
+
+**M3.11a ran the same gate and passed it.** It
 enumerated eleven decisions the slice had to settle — channel 9's new
 identifier, the ten caps and two subtotals, the maximum supply, the base
 permission legs and total, the referral amount with its destinations and
