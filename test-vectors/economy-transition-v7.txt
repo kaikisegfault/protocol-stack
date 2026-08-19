@@ -46,6 +46,7 @@ version.leg3_matches_the_accepted_manifest_file=true
 version.leg4_matches_the_accepted_manifest_file=true
 
 # Each predecessor tree construction against its own accepted vectors.
+version.v2_empty_economy_root_reproduced=true
 version.v3_empty_economy_root_reproduced=true
 version.v4_empty_economy_root_reproduced=true
 version.v5_empty_economy_root_reproduced=true
