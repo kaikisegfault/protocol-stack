@@ -3026,24 +3026,52 @@ constitution.**
    that still holds value. This is what makes the recovery pool unstrandable, so
    it is a property to state and check rather than a note.
 
-**Where the code is.** `simulation/founder_economy_v3/uptime.py` holds
-`winner_seats` and `reallocate`; `handlers_permissions.py` reads and writes
-`state.performance_carry_atomic`; `operations.py` journals carry movement under
-the `carry:performance` bucket; `engine.py` asserts
-`founder_outstanding + carry_total == FOUNDER_OPERATOR_LEG`. All four change.
-`winner_seats` today ranks only the entries in the cycle record, which is the
-contributing set, and that is precisely the defect rule 2 fixes.
+**Where the code is.** `simulation/economy_transition_v3/winners.py` holds
+`derive_winner_set` and `split_permission`, and `settlement.py` holds
+`derive_assignment`, `outstanding_delta`, and `collect`.
+`simulation/economy_transition_v6/ledger.py` imports `outstanding_delta` from
+it. Those are the sites rules 1 and 2 change.
 
-**One wording ambiguity in ADR 0049 to resolve in the specification, not to
-invent an answer for.** The ADR says a zero-winner cycle contributes "its whole
-base permission" to the pool and describes today's behavior as
-`split_permission(0)` putting "the entire base permission" into `carry`. The
-model in fact moves only the 34,200,000,000-atomic `founder_operator` leg; the
-other four legs settle to their escrows whether or not the seat met the cycle.
-Check the constitution's own statement of what a failed cycle forfeits before
-writing this down. If it turns out the constitution does not settle whether the
-four fixed legs survive a zero-winner cycle, that is a founder-reserved question
-about beneficiaries — ask it rather than choosing.
+**Rules 2 and 3 are already implemented, and ADR 0049's premise about them is
+wrong for the accepted contract. This was checked in code on 2026-08-19, not
+inferred.** The ADR says "today `derive_winner_set` considers only seats inside
+their own 731 cycles, so a machine past its distribution cannot win anything".
+In `simulation/economy_transition_v3/settlement.py`, `derive_assignment` passes
+*every* in-scope seat to `derive_winner_set`, filtered only by met-the-cycle and
+under-the-cap; `in_span` appears in exactly three places and none of them is the
+winner set — it gates `accrued`, `assigned`, and the referral accrual. So the
+contributing set and the eligible set are **already two different sets**, and
+the eligible one already includes machines past their own distribution.
+
+The same is true of `founder-economy-simulator-v3`, whose in-scope rule states
+it has "deliberately no upper bound" and whose `schedule.is_in_scope` implements
+that. Both accepted models already do what rules 2 and 3 ask for.
+
+**So M3.11b is materially smaller than the ADR implies.** Rules 2 and 3 need a
+stated invariant and a vector that would fail if an `in_span` filter were ever
+added to the winner set — a guard against a regression, not a rewrite. **Rule 1,
+the recovery pool, is the actual work**, and it is the one that changes state
+layout. Do not rewrite `derive_winner_set` on the ADR's premise without first
+reproducing the defect it describes; it could not be reproduced here.
+
+**That ambiguity was resolved on 2026-08-19 and the answer changes the slice's
+shape.** ADR 0049's "whole base permission" is correct: a zero-winner cycle
+sends all five legs — the whole 574.3 units — to the recovery pool, and the dust
+is the remainder of *each* leg's equal split. `economy-transition-v3`'s
+`split_permission` already divides every leg and already does this.
+`simulation/founder_economy_v3/` moves only the `founder_operator` leg because
+it implements the **v2-era rule**, which ADR 0033 superseded on 2026-08-13; it
+is retained evidence about that contract and is not the model to extend.
+
+**So the settlement to respecify is the transition's, not the simulator's.** The
+recorded four-step plan named "the settlement respecification and its Python
+model, with `founder-economy-simulator-v4` or an extension of v3" as a slice
+before `economy-transition-v7`. That separation is artificial: the settlement is
+consensus-visible, it lives in `economy-transition-v*`, and the recovery pool
+changes the state layout — deleting entry kind 7 and adding a pool entry — which
+*is* version seven. **Treat them as one slice.** `founder-economy-simulator-v3`
+needs no version four; it binds manifest v2 and states what the M3.2 through
+M3.6 evidence proves.
 
 **Then, in order, each its own slice:**
 
@@ -3103,12 +3131,12 @@ commercial routing, AI institutional authority, bridge scope, content
 permanence, or what a participant must do, own, run, or receive. No question was
 asked because none was reserved.
 
-**One question is named for M3.11b and is not yet blocking**, recorded above
-under the next action: whether a zero-winner cycle forfeits the whole 574.3-unit
-base permission to the recovery pool or only the 342-unit `founder_operator`
-leg. Read the constitution's statement of what a failed cycle forfeits first —
-it may already settle it, in which case this is delegated. If it does not, it
-sets who receives value and is founder-reserved.
+**The question M3.11a's handoff named for M3.11b is answered and was never
+reserved.** A zero-winner cycle forfeits the whole 574.3-unit permission, all
+five legs. ADR 0033 settled it on 2026-08-13 and `economy-transition-v3`
+implements it; the constitution had been left stating the superseded rule, which
+issue #187 repaired. Deciding it required citing an accepted ADR rather than
+choosing, so it was delegated work throughout.
 
 **The 2026-08-19 pivot raised eight founder-reserved questions and the owner
 answered all of them the same day.** Where AI runs; whether a Founder Machine
