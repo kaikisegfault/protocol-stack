@@ -10,6 +10,12 @@ bool accrues(std::uint64_t cycle_window, std::uint64_t mark) {
   return cycle_window <= mark + kMintAccumulationCap;
 }
 
+std::optional<std::uint64_t> last_assigned_window(std::uint64_t height) {
+  const auto window = window_of_height(height);
+  if (window < kAssignmentLagWindows) return std::nullopt;
+  return window - kAssignmentLagWindows;
+}
+
 std::optional<WalkRange> walk_range(std::uint64_t mark,
                                     std::optional<std::uint64_t> last_assigned) {
   // ADR 0045's third derived rule. `NOTHING_TO_MINT` is the *empty range*

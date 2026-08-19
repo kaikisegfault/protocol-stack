@@ -239,6 +239,44 @@ Hash transaction_id(std::span<const std::uint8_t> signed_transaction);
 // records that it is refused at execution instead.
 std::optional<DecodedTransaction> decode_signed(std::span<const std::uint8_t> raw);
 
+// The named fields of a decoded body, one flat record across all fourteen kinds.
+// Which fields a kind defines follows from the kind byte, and a field its kind
+// does not define keeps its default: one record checked field by field against
+// the specification's tables is auditable in a way a variant is not, and every
+// body is fixed-width so nothing is ambiguous about where a field sits.
+//
+// `decode_signed` has already refused a body of the wrong width for its kind, so
+// this is a projection rather than a second admission step; it still refuses a
+// mismatched width, because a reader that trusted its caller would be one place
+// for a bound to go unchecked.
+struct Body {
+  Octets32 recipient_escrow_id{};       // kinds 1, 19
+  std::uint64_t amount_atomic = 0;      // kinds 1, 19, 6
+  Bytes hub_signature;                  // kinds 2, 3, 4, 5, 17, 18, 19
+  std::uint32_t seat_id = 0;            // kinds 2, 3, 4
+  bool has_referrer = false;            // kind 2
+  Octets32 referrer_escrow_id{};        // kind 2
+  Octets32 destination_escrow_id{};     // kinds 4, 5, 18
+  std::uint8_t channel_id = 0;          // kind 6
+  Octets32 decision_id{};               // kind 6
+  Octets32 beneficiary_escrow_id{};     // kind 6
+  Octets32 authorization{};             // kind 6
+  Octets32 hub_identity_hash{};         // kinds 10, 13, 14, 15, 16
+  Octets32 first_signer_public_key{};   // kind 10
+  Bytes verifier_signature;             // kind 10
+  Octets32 fee_escrow_id{};             // kinds 13, 14
+  Octets32 target_escrow_id{};          // kind 14
+  Octets32 escrow_id{};                 // kinds 15, 16
+  Octets32 signer_public_key{};         // kind 15
+  Octets32 signer_id{};                 // kind 16
+  bool requires_confirmation = false;   // kind 17
+  std::uint64_t min_amount_atomic = 0;  // kind 17
+  std::uint32_t exempt_slot_mask = 0;   // kind 17
+};
+
+std::optional<Body> decode_body(std::uint8_t kind, std::span<const std::uint8_t> body);
+Bytes encode_body(std::uint8_t kind, const Body& body);
+
 // The six HUB messages. Five verify against the acting identity's recorded
 // public key; only the registration verifies against the ecosystem verifier
 // key. Every one binds the identity, so a signature by one person's key is
@@ -473,6 +511,12 @@ struct WalkRange {
 
 std::optional<WalkRange> walk_range(std::uint64_t mark,
                                     std::optional<std::uint64_t> last_assigned);
+// `window_of_height(h) - 2`, or nothing while the chain is younger than that.
+// `uptime-measurement-v1` finalises window `w` at the first height of `w + 2`,
+// so that is where `w`'s assignment executes and no earlier. It is arithmetic on
+// the executing height alone, which is what makes it the same for every
+// transaction in a block.
+std::optional<std::uint64_t> last_assigned_window(std::uint64_t height);
 bool accrues(std::uint64_t cycle_window, std::uint64_t mark);
 std::uint64_t window_of_height(std::uint64_t height);
 
