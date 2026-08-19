@@ -34,7 +34,8 @@ values are not project state.
 - SQLite as the replaceable first owning store.
 - Python independent models for economic proof and C++ differential testing.
 - Go only for replaceable non-critical infrastructure and adapters.
-- Company-hosted AI outside consensus and outside Founder Nodes.
+- An open-weight model served by every Founder Machine, outside consensus.
+  Reversed on 2026-08-19 by ADR 0047; the company hosts no AI infrastructure.
 - A deterministic resource meter and fee path even when an application later
   sponsors a user's fee.
 

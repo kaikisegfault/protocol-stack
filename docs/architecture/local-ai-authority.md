@@ -2,17 +2,30 @@
 
 Status: long-term architecture; not part of the current operational goal
 
+> **Reversed on 2026-08-19 by
+> [ADR 0047](../decisions/0047-the-founder-machine-runs-the-ecosystem-ai.md).**
+> This document was written when the ecosystem AI was company-hosted and Founder
+> Nodes ran no models. That direction is withdrawn: every Founder Machine now
+> serves an open-weight model continuously and the company hosts no AI
+> infrastructure at all. The sections below are corrected where they stated the
+> old placement; the containment, envelope, delegation, and availability
+> reasoning is unaffected, because it was always about what a signed decision may
+> authorize rather than about where inference happened.
+
 ## Meaning of local and singular
 
-“Local AI” means self-hosted by the System Creator Company for exclusive use
-by the ecosystem. It does not mean a model runs on each Founder Node. Founder
-Nodes run deterministic blockchain and resource services and contain no AI
-inference requirement.
+“Local AI” means hosted inside the ecosystem for the exclusive use of the
+ecosystem — and as of 2026-08-19 that means **served by the Founder Machines
+themselves**. A model runs on every Founder Machine, alongside its deterministic
+blockchain and resource services. The company hosts none.
 
 There is one logical Ecosystem AI authority. It may use several models,
-specialized workflows, serving replicas, and geographically redundant data
-centers, but users do not face competing AI governments and Founders or
-community members do not vote to replace an AI case decision.
+specialized workflows, and serving replicas across the machine population, but
+users do not face competing AI governments and Founders or community members do
+not vote to replace an AI case decision. Singularity is of framework and policy,
+not of process: **a judgment is made by the machine nearest the requester, after
+reading the reasoning of up to six nearest neighbours — seven models in total.**
+Neighbours advise; the assigned machine decides and signs.
 
 Logical singularity does not imply one process, one unrestricted key, or one
 failure domain. Biometric, moderation, venture, grant, developer, and other
@@ -20,11 +33,18 @@ roles use separately scoped protocol capabilities.
 
 ## Placement
 
-The company operates high-bandwidth, GPU-capable inference infrastructure in
-suitable centralized locations. Model choice, serving, retrieval, tools,
-training, evaluation, and policy execution remain outside blockchain
-consensus. They can improve without forcing every Founder Node to upgrade its
-model or reproduce probabilistic output.
+Inference runs on the Founder Machines, on the unified memory
+[ADR 0052](../decisions/0052-the-founder-machine-specification.md) requires. Model
+choice, serving, retrieval, tools, training, evaluation, and policy execution
+remain outside blockchain consensus, and no machine ever has to reproduce
+another's probabilistic output — which is why moving inference onto the
+machines changes nothing about determinism.
+
+**A founder never chooses the model or the framework.** The company fixes both
+during the initialization stage of roughly one to two years; afterwards the
+ecosystem AI manages model selection, and at the end of initialization a
+self-improving model is deployed and everyone including the company renounces
+total control to it.
 
 The chain receives only small, versioned, signed decision envelopes and
 deterministically decides whether the requested action is authorized.
@@ -33,8 +53,15 @@ deterministically decides whether the requested action is authorized.
 
 ### Founder biometric verification
 
-The AI evaluates camera-verification evidence for enrollment, manager
-addition, sensitive Founder withdrawals, recovery, and legacy claims. The
+**Corrected on 2026-08-19 by
+[ADR 0048](../decisions/0048-hub-verification-runs-locally-with-an-ai-integrity-monitor.md):
+the model never decides identity.** HUB verification runs as a deterministic,
+sandboxed, offline process on the founder's own machine, and the local model is
+that process's *integrity monitor* — it evaluates whether the run was initiated
+fairly and fed genuine inputs, and may dispute it and force re-initialization.
+
+For every other sensitive action — recovery, legacy claims, and sensitive
+withdrawals — the AI evaluates the evidence as described here. The
 decision must bind the seat, biometric identity record, requested action,
 manager address, challenge, policy version, creation point, and expiry.
 

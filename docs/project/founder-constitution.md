@@ -121,15 +121,71 @@ verification, venture evaluation, milestone review, treasury and escrow
 spending, developer programs, code and evidence review, and content
 moderation.
 
-There is one logical ecosystem AI. It is hosted by the company on centralized,
-self-operated AI infrastructure in several suitable geographic locations.
-Founder Nodes do not run AI models. Multiple model processes or serving
-replicas may provide capacity and reliability without becoming community or
-Founder voting.
+**Every Founder Machine runs an open-weight model continuously, and the company
+runs no AI infrastructure of its own.** This reverses the original direction,
+which placed one logical ecosystem AI on company-operated data centres and
+stated that Founder Nodes do not run AI models. The premise of that direction
+expired: open-weight models are now strong enough to carry this work, they keep
+improving, and a unified-memory machine or rented equivalent hosts one
+continuously. [ADR 0047](../decisions/0047-the-founder-machine-runs-the-ecosystem-ai.md)
+records the reversal.
 
-The company controls the AI initially. Authority is delegated to it gradually
-by explicit scope as the system, policies, models, and evidence mature. Human
-operators do not substitute ad hoc funding votes for a delegated AI decision.
+The ecosystem AI is therefore the population of Founder Machines rather than a
+service. It remains one logical authority in the sense that matters — a single
+framework, a single policy set, one decision per matter — while the inference
+that produces a decision happens on whichever machine is assigned.
+
+**A judgment is made by the machine nearest the requester, after its neighbours
+reason.** Before deciding, that machine reads the reasoning of its nearest
+neighbours, up to six, so seven models reason in total. Neighbours produce
+reasoning reports and know the decision is not theirs; the assigned machine
+weighs them with its own and issues one signed, bounded decision. Model
+processes and serving replicas provide capacity and reliability without becoming
+community or Founder voting.
+
+**AI inference still cannot decide consensus.** Two models disagree — different
+weights, quantization, hardware, and sampling — so an AI output is never the
+consensus state. It is a signed, bounded claim that deterministic protocol rules
+verify. Moving inference onto the machines does not change this and cannot.
+
+**Each Founder identity also has one personal assistant.** It carries one name
+the founder assigns, one profile, and one accumulated understanding of that
+person; it reaches them on their phone, connects whatever third-party services
+they attach for context and communication, and can transact in the ecosystem on
+their behalf. **Its concurrency is the seat count**: an identity holding one
+hundred seats still has one assistant and may run one hundred parallel live
+sessions of it. Seats buy capacity, not additional identities, so a founder
+never fragments into several assistants who each know part of them.
+
+The company controls the model, the framework, the protocol, and the update
+schedule during an initialization stage of roughly one to two years. **A founder
+never chooses which model or framework their machine runs, at any point.**
+Authority is delegated gradually by explicit scope as the system, policies,
+models, and evidence mature; at the end of initialization a self-improving model
+is deployed and everyone including the company renounces total control to it,
+while deterministic chain services remain deterministic. Human operators do not
+substitute ad hoc funding votes for a delegated AI decision.
+
+### The company runs no backend
+
+**The Founder Machine is the only infrastructure the ecosystem ever uses.** The
+company operates no server, no hosted service, and no external infrastructure of
+any kind, from the beginning rather than after a migration. Every website,
+frontend, backend, application, and ecosystem service runs on Founder Machines.
+Where the company needs capacity to operate the ecosystem it buys Founder Seats
+and runs Founder Machines like anyone else.
+
+The refusal is absolute because a shrinking backend never shrinks. It accretes
+the features that are awkward to decentralize and becomes the thing the
+ecosystem cannot run without, and the migration is always next quarter's work.
+Not building the first one is the only enforceable version of this rule.
+
+**"Founder Machine" is the preferred term for what this document still mostly
+calls a Founder Node.** A node implies a validator; this is a validator, a
+server, an application host, an AI home, and the ecosystem's only
+infrastructure. Existing text is not renamed, because a rename across
+specifications, vectors, and models would change no behaviour; new text uses
+Founder Machine.
 
 ## One native asset
 
@@ -195,12 +251,12 @@ beneficiaries mint on their own schedule.
 | Impermanent-loss protection | 3,750,030,000 |
 | Founder referral benefit | 2,500,020,000 |
 | HUB-verified-user incentives | 1,250,010,000 |
-| Initial mystery-box incentives | 12,500,100 |
+| Initial mini-gamified incentives | 12,500,100 |
 | **Direct-mint subtotal** | **15,012,620,100** |
 
 The two subtotals add exactly to the maximum supply. The channel caps are
 founder-directed. Eligibility, proof, anti-abuse, timing, and per-participant
-limits for the liquidity-mining, impermanent-loss, and mystery-box channels
+limits for the liquidity-mining, impermanent-loss, and mini-gamified channels
 remain to be specified and stress-tested; the referral channel's eligibility is
 the recorded referrer relationship itself, which the ledger already holds.
 
@@ -290,6 +346,25 @@ After a seat completes its 731 eligible cycles, its issuance period ends. The
 seat remains permanent and may continue receiving active-seat commercial
 revenue and transaction-fee shares.
 
+**The 731 cycles bound the native asset distribution and nothing else.** A
+Founder Machine's operating life is not 731 cycles. The distribution exists so
+that founders have income during the roughly two years before the ecosystem
+generates real revenue; a founder's enduring incentive is the seat itself, which
+is a stakeholder's share of the ecosystem. So a machine whose distribution has
+finished **keeps operating, keeps being ranked, and remains eligible to win any
+pool that still holds value** — the daily reallocation, the recovery pool, and
+the monthly unreferred pool alike. Because activation dates differ, machines
+finish at different times and a contributing population always remains.
+
+Two sets are therefore distinct. The **contributing set** is the seats inside
+their own 731 cycles, which generate base permissions. The **eligible set** is
+every operational seat that met the cycle's duty, in span or not, which competes
+for what is distributed. **The best-performer mechanism never deprecates**: it is
+infrastructure later incentive programmes attach to, not an artifact of this
+distribution. A pool that has been fully consumed and can receive no further
+inflow is marked consumed and then archived, never deleted, so its history stays
+queryable.
+
 ### What counts as an eligible cycle
 
 A Founder Node is a single enclosed all-in-one service. It is not configurable,
@@ -332,10 +407,26 @@ uptime in that same cycle**.
   perfect cycle — they share the 342 units equally.
 - A winner must itself have met the cycle. A failed seat never rewards another
   failed seat.
-- The integer remainder of an equal split is carried forward rather than
-  burned.
-- If no node met the cycle at all, nothing is reallocated and the value is
-  carried forward.
+- The integer remainder of an equal split goes to the **recovery pool** rather
+  than being burned or carried in a channel.
+- If no node met the cycle at all, the whole permission goes to the recovery
+  pool.
+
+**The recovery pool exists so that 100% of the node distribution's mint
+permissions are assigned and nothing is ever stranded.** It accumulates the two
+amounts above across as many cycles as it needs to, and **the earliest
+subsequent cycle that has any winner takes 100% of it**, on top of that cycle's
+own reallocation and distributed to that cycle's winner set. It therefore needs
+no ranking, tie, or remainder rule of its own: the winner set already splits an
+exact tie equally, and the pool's own dust simply returns to it for the cycle
+after. It replaces the per-channel carry, which was only ever added to and so
+accumulated value no participant could reach.
+[ADR 0049](../decisions/0049-the-recovery-pool-and-permanent-best-performer-ranking.md)
+records it.
+
+Whether a founder then mints is their own business — an uncollected permission
+is a choice. A permission that is never *created*, or created and then stranded,
+is a defect, and this is the rule that closes it.
 
 Each failed cycle resolves independently against its own cycle's winners. A
 seat that fails four consecutive cycles produces four separate reallocations,
@@ -350,7 +441,9 @@ units are never created, consistent with the rule that unexercised permissions
 do not exist.
 
 Longer leaderboards over 7, 30, and 90 days and all time are reporting views
-for later incentive programmes. They carry no entitlement under this section.
+for later incentive programmes. They carry no entitlement under this section,
+and they outlive every distribution period, because ranking is permanent
+infrastructure rather than a feature of the initial issuance.
 
 ### How uptime is established
 
@@ -404,9 +497,13 @@ recorded referrer contributes its 34.2 units per cycle to the **unreferred
 performance pool** instead. Nothing is left unissued merely because a buyer
 arrived without a referrer.
 
-The pool is paid to **monthly** best-performing Founder Nodes, ranked by the
+The pool is paid to **monthly** best-performing Founder Machines, ranked by the
 same cumulative fully operational uptime, and only one month's accrual is
-distributed per month. The pool's accrual rate rises as more unreferred seats
+distributed per month. **A month is a real calendar month beginning on the 1st**,
+derived from the consensus timestamp in the block header rather than from a
+count of cycles, so participants read the same boundary the rest of the world
+does. [ADR 0050](../decisions/0050-the-block-timestamp-is-the-ecosystem-clock.md)
+records the construction. The pool's accrual rate rises as more unreferred seats
 are sold and never falls, so a later month never distributes less than the
 seats then sold have earned.
 
@@ -435,8 +532,6 @@ for first, which is the same shape as the daily failed-cycle reallocation.
 These details require a specification and are engineering work rather than
 founder decisions:
 
-- the exact definition of a month in cycles, given that 731 cycles is not a
-  whole number of 30-cycle months;
 - the pool's remainder rule;
 - when a referral benefit begins for a seat that is purchased but never
   activated, since a seat's 731 cycles start at its first activation and an
@@ -657,13 +752,40 @@ ADR 0042; how far the requirement reaches into a native transfer and what turnin
 the confirmation off entirely means for a seat's protection asymmetry are both
 answered above and recorded in ADR 0043.
 
-Biometric capture and evaluation use an ecosystem-owned camera-verification
-system and the company-hosted Ecosystem AI. Raw images, video, and private
-linkage data do not become ordinary public blockchain data. Their encrypted
-storage, unlinkability, retention, decoy strategy, liveness protection,
-coercion limits, false-acceptance targets, and breach behavior require a
-separate threat model and independent review. Recording this requirement does
-not itself establish that face verification is secure.
+**Biometric capture and evaluation run locally, on the founder's own Founder
+Machine, in a fully sandboxed offline environment.** No remote verifier, no
+company service, and no other network participant is in the loop. The verdict is
+produced by deterministic software; sensitive material stays in the machine's
+multisignature vaults and never leaves the sandbox.
+
+**The local model is the process's integrity monitor rather than its verifier.**
+It never decides whether a person is who they claim to be. It evaluates whether
+verification was initiated fairly and whether the inputs supplied to it were
+genuine and unmanipulated, and it holds authority to dispute a run, reject it,
+and force re-initialization with correct inputs. A deterministic verdict
+supervised by a non-deterministic monitor is the right division: "is this the
+enrolled person" is a measurement, and "did this process run honestly" is a
+judgment.
+
+Every identity's uniqueness commitment is replicated to every Founder Machine,
+so uniqueness is compared locally against the whole population with no lookup
+service anywhere. [ADR 0048](../decisions/0048-hub-verification-runs-locally-with-an-ai-integrity-monitor.md)
+records the architecture and names the one open dependency: a biometric cannot
+be hashed, so making a capture produce the same commitment every time requires a
+stabilization scheme that must pass independent cryptographic review before
+anything rests on it.
+
+Raw images, video, and private linkage data do not become ordinary public
+blockchain data. Their encrypted storage, unlinkability, retention, decoy
+strategy, liveness protection, coercion limits, false-acceptance targets, and
+breach behavior require a separate threat model and independent review.
+Recording this requirement does not itself establish that face verification is
+secure — and two residual risks are stated rather than solved. Both the verifier
+and its monitor run on the founder's own machine, so defeating that machine's
+attestation defeats both, which is the strongest argument for the physical
+machine phase. And checking one capture against a whole population is 1:1
+matching applied N times, so false accepts accumulate with population size and
+the parameters must be chosen against a target population.
 
 ### Offline behavior
 
@@ -706,6 +828,9 @@ Every Founder service provider runs one integrated service. It includes:
 - a full blockchain node;
 - validator capability under the deterministic active-set protocol;
 - application compute, storage, caching, and delivery services;
+- an open-weight model served continuously, for both the ecosystem's judgment
+  and the founder's personal assistant;
+- the local HUB verification service and its vaults;
 - workload and health agents; and
 - later, the immutable NodeOS and dedicated physical Founder hardware.
 
@@ -714,10 +839,30 @@ require all 100,000 machines to vote on every block. The protocol must select
 and rotate a bounded live signing set while every eligible Founder Node carries
 the same software capability. AI inference cannot decide consensus.
 
-The operator's responsibility is to run the software on a minimum-spec Linux
-machine or server. The target experience is one executable or one managed
-installation with start, update, health, recovery, and migration workflows;
-later dedicated machines become plug-and-run.
+**The operator's responsibility is to run the software, and nothing else.** The
+Founder Machine is one atomic, sealed, plug-and-play process with no intervention
+surface: founders do not operate, configure, tune, or maintain it. It follows
+that a software defect is not the founder's fault. If the machine was running,
+the infrastructure requirements were met, and no intervention occurred, then a
+failure caused by the software is auto-reported and logged, **the founder is
+still paid for the cycle**, and the fix ships to the whole fleet in the next
+update batch — every machine runs the same software, so a defect observed on one
+is present on all. Intervention voids this.
+
+The machine specification is founder-directed, because it decides who can afford
+to participate. Per machine: an x86_64 Xeon-class server tier of at least 8
+vCPU, 64 GiB memory, 1 TB NVMe storage, and 12.5 Gbps of network for hosting and
+services; and **separately, at least 512 GB of unified memory for the open-weight
+model**. An operator may rent unified-memory capacity rather than own it, which
+is the expected path for early founders.
+[ADR 0052](../decisions/0052-the-founder-machine-specification.md) records the
+figures and their consequences.
+
+**Every seat eventually receives the same machine**, whether it cost USD 100 or
+USD 91,900, funded from pooled sale proceeds rather than from its own seat price.
+Physical production begins once the ecosystem has roughly 10,000 to 12,000 daily
+active founders, and distribution is staged over time in step with growth,
+beginning with the year's best performers.
 
 There is no general public EC2-style rental market. Founder resources serve
 only approved ecosystem applications and system workloads. Deterministic
@@ -781,6 +926,19 @@ failure in moderation cannot authorize a withdrawal and a compromised venture
 workflow cannot change supply.
 
 ## Controlled external bridge and liquidity boundary
+
+**The bridge runs on Founder Machines and depends on nothing outside them.**
+Each participating machine runs the bridge's components and its own **light
+client** for the external chain — headers and Merkle proofs verified against
+that chain's own consensus, never a third-party endpoint or event subscription,
+because an input arriving from a company outside the ecosystem is exactly the
+dependency this architecture refuses, reintroduced where it does the most
+damage. Inbound value is observed independently by a quorum of machines, each
+against its own light client, and the wrapped asset is minted on that quorum.
+Outbound value is the user's own transaction, which the native wallet broadcasts
+alongside the local one. The attesting set is the validator set, so the bridge
+introduces no new class of trusted party.
+[ADR 0051](../decisions/0051-bridges-run-on-founder-machines.md) records it.
 
 The bridge supports BTC, ETH, and explicitly approved mainstream stablecoins,
 including USDT and USDC at launch. It exists only to connect the enclosed
@@ -846,17 +1004,20 @@ The owner has intentionally deferred these value-bearing details until their
 milestone supplies enough evidence and context:
 
 - eligibility and anti-abuse mechanics for the liquidity-mining,
-  impermanent-loss, and mystery-box direct-mint channels;
+  impermanent-loss, and mini-gamified direct-mint channels;
 - exact legacy inactivity bounds and contested-successor behavior;
 - stablecoin allowlist governance and any later bridge-asset change;
-- complete AI funding, moderation, biometric, and succession frameworks; and
+- complete AI funding, moderation, biometric, and succession frameworks;
+- whether the assistant's one-profile-per-identity and seats-as-parallel-sessions
+  entitlement is enforced by the protocol or is application policy; and
 - any new treasury category, participant benefit, or application-content rule.
 
 Resolved on 2026-08-07, and no longer open: the activity definition and its
 grace allowance, performance ranking and tie handling, referral treatment for
 an inactive seat, and referral-channel eligibility. Their remaining detail —
-challenge construction, dispute window length, and the definition of a month in
-cycles — is specification work, not a founder decision.
+challenge construction and dispute window length — is specification work, not a
+founder decision. The definition of a month was open until 2026-08-19 and is now
+decided: a month is a real calendar month beginning on the 1st.
 
 Resolved on 2026-08-13 and 2026-08-14, and recorded in
 [ADR 0033](../decisions/0033-founder-decisions-minting-hub-and-referral-entry.md):

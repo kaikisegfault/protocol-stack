@@ -123,8 +123,18 @@ test evidence, then repair the state document.
 - Never implement cryptographic primitives from scratch.
 - Never run AI inference inside consensus. AI may submit signed, bounded
   decisions that deterministic protocol rules verify.
-- Do not require AI inference on Founder Nodes. The logical Ecosystem AI is a
-  company-hosted control plane with separately bounded capabilities.
+- Every Founder Machine runs an open-weight model continuously, and the company
+  runs no AI infrastructure. Reversed on 2026-08-19 by ADR 0047; the previous
+  rule placed one ecosystem AI on company data centres and forbade AI on Founder
+  Nodes.
+- The company runs no backend, no hosted service, and no infrastructure outside
+  Founder Machines, from the beginning rather than after a migration. Where the
+  company needs capacity it buys seats and runs machines.
+- "Founder Machine" is the preferred term for what older text calls a Founder
+  Node. Do not mass-rename existing text; use it in new text.
+- Nothing deterministic reads a clock, a service, or any other moving value.
+  Real-world inputs — the clock, external chain events, uptime, resource proofs
+  — enter as attested claims consensus agrees on, then are read deterministically.
 - Do not use floating-point arithmetic for monetary or consensus state.
 - Initial consensus and storage integrations must remain replaceable adapters.
 
