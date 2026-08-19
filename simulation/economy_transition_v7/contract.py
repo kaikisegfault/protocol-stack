@@ -183,6 +183,17 @@ SUPERSEDED_MANIFEST_DIGEST_HEX = manifest.SUPERSEDED_DIGEST
 ADDED_IN_V7: tuple[str, ...] = (
     "RECOVERY_POOL_ENTRY",
     "RECOVERY_POOL_LEGS",
+    "SUPERSEDED_MANIFEST_DIGEST_HEX",
+)
+
+# The four declarations are themselves public names, so the carryover test needs
+# a name for them to require that everything else is classified.
+DECLARATIONS: tuple[str, ...] = (
+    "ADDED_IN_V7",
+    "CARRIED_FROM_V6",
+    "DECLARATIONS",
+    "REBOUND",
+    "REVISED_IN_V7",
 )
 
 RECOVERY_POOL_ENTRY = 17
