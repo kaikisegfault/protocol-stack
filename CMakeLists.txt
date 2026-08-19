@@ -153,15 +153,22 @@ set(
   src/v1/execution.cpp
   src/v1/genesis.cpp
   src/v1/ledger.cpp
+  src/v6/economy_block.cpp
+  src/v6/economy_body.cpp
   src/v6/economy_contract.cpp
   src/v6/economy_envelope.cpp
+  src/v6/economy_execution.cpp
   src/v6/economy_genesis.cpp
   src/v6/economy_identity.cpp
+  src/v6/economy_invariants.cpp
+  src/v6/economy_ledger.cpp
   src/v6/economy_messages.cpp
   src/v6/economy_receipt.cpp
   src/v6/economy_settlement.cpp
   src/v6/economy_state.cpp
+  src/v6/economy_transitions.cpp
   src/v6/economy_tree.cpp
+  src/v6/economy_value_transitions.cpp
 )
 add_library(protocol_kernel STATIC ${PROTOCOL_STACK_KERNEL_SOURCES})
 target_include_directories(
@@ -245,6 +252,15 @@ add_executable(
   tests/kernel/economy_v6_state_test.cpp
 )
 target_link_libraries(economy_v6_codec_tests PRIVATE protocol_kernel)
+add_executable(
+  economy_v6_execution_tests
+  tests/kernel/economy_v6_execution_test.cpp
+  tests/kernel/economy_v6_trace.cpp
+  tests/kernel/economy_v6_scenarios_test.cpp
+  tests/kernel/economy_v6_execution_checks.cpp
+  tests/kernel/economy_v6_derived_test.cpp
+)
+target_link_libraries(economy_v6_execution_tests PRIVATE protocol_kernel)
 add_executable(
   kernel_admission_tests
   tests/kernel/admission_test.cpp
@@ -409,6 +425,7 @@ set(
   protocol_application_server
   kernel_primitive_tests
   economy_v6_codec_tests
+  economy_v6_execution_tests
   kernel_admission_tests
   kernel_execution_tests
   kernel_genesis_tests
@@ -614,6 +631,16 @@ add_test(
     "${PROJECT_SOURCE_DIR}/test-vectors/protocol-primitives-v1.txt"
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v3.txt"
     "${PROJECT_SOURCE_DIR}/test-vectors/founder-economy-manifest-v2.txt"
+)
+add_test(
+  NAME economy-transition-v6-execution-cpp
+  COMMAND
+    economy_v6_execution_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v6-execution.txt"
+    "${PROJECT_SOURCE_DIR}/test-vectors/protocol-primitives-v1.txt"
+    "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
+    "${PROJECT_SOURCE_DIR}/test-vectors/founder-economy-manifest-v2.txt"
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v3.txt"
 )
 add_test(
   NAME ledger-transition-cpp
