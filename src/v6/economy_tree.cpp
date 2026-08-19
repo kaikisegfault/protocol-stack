@@ -26,6 +26,11 @@ namespace i = protocol::v6::internal;
 // but a check: `accounts_root` below is required to reproduce the accepted
 // `protocol-primitives-v1` accounts tree root, which the version-one kernel also
 // produces, so a divergence in either fails against the same recorded bytes.
+//
+// Three trees run through it under three prefixes — the economy tree, the
+// accounts tree, and version one's ordered transaction tree — so no caller holds
+// a second opinion about the shape, and each is pinned by a different accepted
+// vector file.
 std::size_t merkle_split(std::size_t count) {
   std::size_t split = 1;
   while (split < count - split) split <<= 1U;
@@ -75,6 +80,14 @@ bool entry_shape_is_valid(const EconomyEntry& entry) {
 }
 
 }  // namespace
+
+namespace internal {
+
+Hash merkle_root(std::span<const Bytes> leaves, std::string_view prefix) {
+  return merkle(leaves, tree_labels(prefix));
+}
+
+}  // namespace internal
 
 std::size_t bitmap_bytes(std::uint32_t bitmap_bits) {
   return (static_cast<std::size_t>(bitmap_bits) + 7) / 8;

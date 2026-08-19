@@ -87,6 +87,12 @@ using protocol::v1::internal::read_u16;
 using protocol::v1::internal::read_u32;
 using protocol::v1::internal::read_u64;
 
+// The accepted RFC 9162 ordered tree, parameterised by domain prefix. One
+// implementation serves the economy tree, the accounts tree, and version one's
+// ordered transaction tree, and each is pinned by a different accepted vector
+// file. Defined in `economy_tree.cpp` beside the roots that need it.
+Hash merkle_root(std::span<const Bytes> leaves, std::string_view prefix);
+
 // Every discriminator octet, as a one-byte prefix on its key.
 inline Bytes key_prefix(Entry entry) {
   return Bytes{static_cast<std::uint8_t>(entry)};
