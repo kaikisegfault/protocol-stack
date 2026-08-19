@@ -1,8 +1,33 @@
 # Current state
 
-Last updated: 2026-08-17
+Last updated: 2026-08-19
 
 ## Phase
+
+**The owner directed a second, larger pivot on 2026-08-19, and it changes the
+architecture rather than the milestone.** The ecosystem AI moves off
+company-operated infrastructure and onto the Founder Machines themselves, which
+reverses a constitutional clause standing since M1 and a `CLAUDE.md` constraint;
+the company runs no backend of any kind, from the beginning; HUB verification
+becomes a local deterministic process supervised by the local model; the
+per-channel carry is replaced by a recovery pool so that 100% of the node
+distribution is assigned; best-performer ranking becomes permanent
+infrastructure rather than an artifact of the 731-cycle distribution; months
+become real calendar months read from a consensus timestamp; bridges run on
+Founder Machines with light clients and a machine quorum; and channel 9 is
+renamed from `initial_mystery_box_incentives` to `mini_gamified_incentives`.
+**Six ADRs — 0047 through 0052 — record it, and the constitution, `CLAUDE.md`,
+and `first-goal.md` now state it.**
+
+**None of it invalidates the C++ kernel delivered so far.** Escrows, signers,
+identities, transfers, admission, and block execution are indifferent to who
+runs AI. What it does change is the settlement — the carry, the winner rule, and
+the in-scope derivation — which is exactly the slice that had not been started,
+so the pivot arrived before its cost rather than after it.
+
+**M3.10d put the version-six ledger and its ten non-seat transitions into the
+C++20 kernel on 2026-08-19.** It is the first time anything in the repository
+executes a version-six transition in C++ rather than encoding one.
 
 M3 — Founder Economy devnet, in progress. Slice M3.1 delivered the revised
 economic contract, M3.2 made it executable, and M3.3 rebound every dependent
@@ -68,6 +93,77 @@ Python model reproduce `test-vectors/economy-transition-v6.txt` — and covers
 nothing about execution. Requirement 13, the four-node adversarial scenarios, has
 not started. **Nothing yet activates a chain**: the codec is a set of pure
 functions and the execution evidence is still Python.
+
+### How M3.10d was delivered
+
+Issue #180 and PR #181 delivered the version-six ledger and the ten transitions
+that read no cycle assignment. It merged by rebase across commits `bb590c1`
+through `13247b2`. PR run 32209825377 on the first head passed the complete
+hosted matrix — scope classification `full`, GCC and Clang debug, both
+sanitizers, and the aggregate required check — and run 32210502470 on the final
+head `4f9561c` passed the same matrix. **One job in that second run hung for
+twenty minutes on the runner's package-install step while its three siblings
+cleared the same step in seconds**; it was cancelled and re-run, and the re-run
+passed in 9m29s. That is runner infrastructure rather than a property of the
+change, and it is recorded so a later session recognises the shape instead of
+suspecting the code. It added `include/protocol/v6/ledger.hpp`, seven
+sources under `src/v6/`, one internal header, and six test translation units,
+and it added the CTest entry `economy-transition-v6-execution-cpp`.
+
+**What executes now**: admission, escrow resolution under both authorization
+schemes, the shared envelope checks in version one's order, ordered block
+execution with failed-transition atomicity, and kinds 1, 6, 10, 13, 14, 15, 16,
+17, 18, and 19.
+
+**What deliberately does not**: kinds 2, 3, 4, and 5 read or write a cycle
+assignment, and the version-three settlement that derives one is not in the
+kernel. Dispatch returns an invariant failure for them rather than a result, so
+a block containing one is rejected whole. An implementation that cannot execute
+a transaction has no result to report, and the loud failure is the honest one;
+no conforming chain can run those four kinds until the settlement lands.
+
+**Evidence is 394 of the 512 vectors** in
+`test-vectors/economy-transition-v6-execution.txt` — every vector in the
+`construction`, `genesis`, `registration`, `millionth`, `recovery`,
+`compatibility`, `posture`, `derived`, and `determinism` sections. The remaining
+118 are `block`, `cycle`, and `ordering`, which are the boundary block and the
+settlement it derives. Nothing derives a second set of expected values.
+
+**Four checks reach a third source** rather than a second opinion of the
+execution file: the ordered transaction tree and the accepted version-one
+transfer against `protocol-primitives-v1.txt`, the block header and block
+identifier against `ledger-transition-v1.txt`, the ten channel caps and five
+base-permission legs against `founder-economy-manifest-v2.txt`, and the referral
+leg against `economy-transition-v3.txt`.
+
+**A coverage guard fails if any vector in a claimed section is never
+consulted**, and it was demonstrated to fail — removing one `fee_pool`
+comparison produces `vector compatibility.fee_pool was never consulted`. It also
+fails if the three deferred sections ever become empty, which makes the slice
+boundary itself checkable rather than a matter of description.
+
+**Nine mutation probes ran and seven were caught. Two were not, and both are
+recorded rather than buried.** One was an *equivalent* mutation that changed no
+behaviour — moving the overflow test after the balance comparison, which still
+returned the same code — which is exactly the failure mode the M3.10b handoff
+warned about; rewritten to make the sum wrap, it was caught. The other genuinely
+**passed**: making `signer_revoke` accept a signer assigned to a different
+escrow changed nothing any recorded vector observes.
+
+**That second one produced a whole test file.** Three kinds — escrow create,
+escrow delete, and direct issue — appear in no recorded scenario at all, and
+four shared envelope conditions are never exercised, so
+`tests/kernel/economy_v6_transitions_test.cpp` checks them directly and derives
+its own expectations because no vector records them. It is a separate
+translation unit precisely so a reader never has to wonder which kind of
+evidence an assertion carries. Every refusal there is additionally checked to
+leave the state root unchanged, and every hand-built fixture is asserted to be a
+conserved state first. The probe was re-run against it and now fails closed.
+
+**Clang caught a portability defect GCC accepted**, in three places: capturing a
+structured binding by reference in a lambda, which C++20 does not permit. It
+would have failed the hosted matrix. Running both compilers locally before
+pushing is what found it, and it is the reason to keep doing so.
 
 ### How M3.10c was delivered
 
@@ -1914,6 +2010,38 @@ slices.
 
 ## Adopted founder direction
 
+- **The ecosystem AI runs on the Founder Machines and the company runs no
+  backend.** Directed 2026-08-19, reversing the original placement of one
+  ecosystem AI on company data centres. Every machine serves an open-weight
+  model continuously; a judgment is made by the machine nearest the requester
+  after reading the reasoning of up to six nearest neighbours, seven models in
+  total; each identity has one personal assistant whose parallel live sessions
+  equal its seat count. The company operates no server or hosted service of any
+  kind, from the beginning, and buys seats where it needs capacity.
+- **HUB verification is local, deterministic, and sandboxed on the founder's own
+  machine**, with the local model as the process's integrity monitor rather than
+  its verifier — it never decides identity, and it may dispute a run and force
+  re-initialization. The single genesis verifier key becomes a registry of
+  per-machine attestation keys.
+- **An initialization stage of roughly one to two years** in which the company
+  fixes the model, framework, protocol, and update schedule, after which a
+  self-improving model is deployed and everyone including the company renounces
+  total control. A founder never chooses the model or framework at any point.
+- **The Founder Machine specification is founder-directed**: an x86_64
+  Xeon-class server tier of 8 vCPU, 64 GiB, 1 TB NVMe, 12.5 Gbps, and
+  **separately 512 GB of unified memory** for the model. Renting is permitted
+  and expected early. Every seat eventually receives the same machine, funded
+  from pooled proceeds, distributed in stages as the ecosystem grows.
+- **A month is a real calendar month beginning on the 1st**, read from the
+  consensus timestamp in the block header rather than counted in cycles.
+- **731 cycles bound the native asset distribution and nothing else.** Machines
+  keep operating, keep being ranked, and remain eligible for every pool after
+  their own distribution ends; the best-performer mechanism never deprecates.
+- **Bridges run on Founder Machines** with their own light clients and a machine
+  quorum attesting inbound value. No third-party endpoint is ever in the path.
+- Channel 9 is `mini_gamified_incentives`; the name "mystery box" is retired
+  everywhere.
+
 - One native asset with an intended fixed maximum of 56,993,950,100 display
   units and no burn, secondary internal currency, or public asset creation. The
   maximum was raised from 55,743,940,100 on 2026-08-07, before any issuance, to
@@ -1926,8 +2054,10 @@ slices.
   6-hour grace allowance is cumulative and fragmentable.
 - A failed cycle's whole 574.3-unit permission goes to the highest cumulative
   uptime in that same cycle, shared equally among exact ties, restricted to
-  seats that met the cycle, with the integer remainder carried forward per
-  channel. It settles at the winner's mint rather than at a mint the failed seat
+  seats that met the cycle, with the integer remainder and any zero-winner
+  cycle's whole permission going to the **recovery pool**, which the earliest
+  subsequent winning cycle takes entirely. Revised on 2026-08-19; the remainder
+  previously carried forward per channel in a carry nothing ever released. It settles at the winner's mint rather than at a mint the failed seat
   may never make, which is the 2026-08-13 revision of the constitution's original
   "when the failed seat next exercises a permission".
 - The Founder referral benefit is 34.2 units per cycle, unconditional, and a
@@ -1962,9 +2092,11 @@ slices.
   derived on-chain, resource provision is proved by challenge-response, and the
   Ecosystem AI holds a bounded dispute window rather than a signature that
   could freeze payment.
-- One company-hosted logical Ecosystem AI outside consensus and outside
-  Founder Nodes, with separately bounded biometric, moderation, project,
-  treasury, and developer-program capabilities.
+- One logical Ecosystem AI outside consensus, with separately bounded
+  biometric, moderation, project, treasury, and developer-program capabilities.
+  It runs on the Founder Machines rather than on company infrastructure as of
+  2026-08-19; a judgment is made by the machine nearest the requester after
+  reading up to six neighbours' reasoning.
 - AI-approved controlled full-stack applications, one project creator plus at
   most one product creator, immutable accepted history, and Founder-only
   resource infrastructure.
@@ -2736,294 +2868,144 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.10d: the fourteen version-six transitions in the C++20
-kernel**, which is the rest of requirement 10. Use the `change-protocol` skill.
+Milestone slice **M3.11a: the revised settlement contract**, which is the
+tokenomics half of the 2026-08-19 pivot. Use the `change-protocol` skill.
 
-**M3.10c delivered the byte and derivation surface and stopped there**, and what
-it could not reach is exactly what this slice is for. A codec has no ledger, so
-it cannot resolve an acting escrow, order the shared envelope checks, or write a
-cycle assignment. `simulation/economy_transition_v6/`'s `ledger.py`,
-`execution.py`, `transitions.py`, `value_transitions.py`, and `block.py` are the
-model to reproduce, and `test-vectors/economy-transition-v6-execution.txt`'s 512
-vectors are what the C++ must satisfy.
+**Do not start the C++ settlement.** The slice that was next before the pivot —
+the version-three settlement, the assignment prologue, and the four seat
+transitions in C++ — would implement rules the pivot has changed. The settlement
+must be respecified first.
 
-**Three of ADR 0045's four derived rules are still unreproduced in C++, and they
-are the class a byte-level check cannot catch.** `DEBIT_OVERFLOW` belongs inside
-envelope check 8 and precedes it, because check 8 tests `amount + fixed_fee` and
-the literal order leaves it undefined on a sum that does not fit `u64` — and
-would make code 7 unreachable in a version whose specification lists exactly
-three unreachable frozen codes and does not list it. An unrequested confirmation
-field is refused at execution with `UNAUTHORIZED`. And the cycle assignment is a
-block's **prologue**: written first, a founder's mint at the boundary collects
-114,860,000,000 atomic; written after, the same mint succeeds, collects zero, and
-forfeits the cycle permanently. Both figures are recorded as vectors.
+**Three changes, all recorded in ADR 0049 and now in the constitution.**
 
-**The fourth is already in the kernel and is the template for the other three.**
-`walk_range` is `NOTHING_TO_MINT` as the empty range, and `economy_settlement.cpp`
-carries the derivation with its rejected alternative in the comment. Do the same
-for each rule this slice reaches rather than leaving the reading only in the ADR.
+1. **The per-channel carry is deleted from state and replaced by a recovery
+   pool.** A zero-winner cycle contributes its whole base permission; an
+   indivisible remainder contributes its dust; the earliest subsequent cycle
+   with any winner takes 100% of the pool on top of its own reallocation,
+   distributed to that cycle's winner set. It needs no ranking, tie, or
+   remainder rule of its own, because the winner set already splits an exact tie
+   equally and the pool's own dust returns to it.
+2. **The winner rule splits into two sets.** The *contributing set* is the seats
+   inside their own 731 cycles, which generate permissions. The *eligible set* is
+   every operational seat that met the cycle's duty, in span or not, which
+   competes. Today `derive_winner_set` sees only the first, so a machine past its
+   distribution cannot win anything — which is what makes the recovery pool
+   strandable and contradicts what the 731 cycles are for.
+3. **Channel 9 is renamed** `initial_mystery_box_incentives` to
+   `mini_gamified_incentives`.
 
-**One consequence of the shared-envelope order is a real divergence from version
-one and must survive into the C++.** `INSUFFICIENT_BALANCE` now precedes
-`ZERO_AMOUNT` for kind 1, so a zero-amount transfer from an escrow that cannot
-pay the fee answers differently under the two versions. The execution vectors
-record it; an implementation that "fixed" it would fail them.
+**The rename is not cosmetic and it sets the shape of the slice.** The channel
+identifier sits inside the manifest JSON, the manifest digest is a hash over
+that JSON, the digest is a genesis field, and the chain ID is a hash of genesis.
+So the rename changes the manifest digest, then genesis bytes, then the chain
+ID, then every recorded vector that embeds any of them. Combined with deleting
+entry kind 7 and adding a recovery-pool entry, this is **a new manifest and a
+new economy contract version, not an edit to `economy-transition-v6`**.
 
-**The codec's own boundary is where to start.** `decode_signed` returns an
-`Envelope` and nothing more — no acting escrow, no posture, no identity. The
-transitions need a state store keyed the way `economy_state.cpp` writes keys, and
-the roots in `economy_tree.cpp` are already what a committed state must produce,
-so the seam is a ledger that owns the entry map and calls the existing encoders
-rather than a second set of them.
+**Suggested order**, each its own slice with its own vectors and verifier:
 
-**Check that any new target is in `PROTOCOL_STACK_TARGETS`.** That list carries
-`-Wall -Wextra -Wpedantic -Werror`, the sanitizer flags, `_GLIBCXX_ASSERTIONS`,
-and the libsodium link. M3.9a declared a target, added its `add_test`, and left
-it off that list; the registration guard does not catch it, because it checks
-that a test is *run* rather than how it is *built*.
+* `founder-economy-manifest-v3` — the rename, with the ten caps still summing to
+  56,993,950,100 display units and every derivation re-proved.
+* the settlement respecification and its Python model — the recovery pool, the
+  two sets, and the permanence rule, with `founder-economy-simulator-v4` or an
+  extension of v3 carrying it.
+* `economy-transition-v7` — entry kind 7 removed, the recovery pool entry added,
+  the carry identity losing its third term, and the state root re-versioned.
+* only then the C++ settlement and the four seat transitions.
 
-**The local C++ harness is the reusable result of M3.9a and M3.10c.** Building
-libsodium locally is the heavy operation `CLAUDE.md` refuses, so a scratch
-`sodium.h` supplies the two entry points the kernel uses and backs SHA-256 with
-the system OpenSSL — an existing audited implementation rather than a second one,
-in a file that is never committed and never part of the build. With it the whole
-codec, its five test units, and the fuzz target compile and run in about a second
-under both compilers with the project's exact flags and under address and
-undefined-behaviour sanitizers. **Its one known limit**: it does not reproduce
-libsodium's rejection of small-order public keys, so
+**Two further specifications the pivot opened, neither blocking the above.**
+`calendar-v1` must fix the consensus timestamp's monotonicity rule and
+acceptance tolerance, the calendar-month boundary derived from it, and the
+statement of both in a form any consensus adapter can satisfy — the tolerance is
+consensus-visible and a proposer can move a month boundary within it, so it must
+be a stated parameter rather than an adapter default. And the HUB verification
+architecture of ADR 0048 needs its threat model, with the biometric
+stabilization scheme named as requiring independent cryptographic review before
+anything rests on it.
+
+**What M3.10d leaves for the kernel**, once the contract above is settled: the
+four seat transitions, the settlement derivation, the assignment prologue, and
+the `block`, `cycle`, and `ordering` vectors. The prologue derivation is
+recorded and unchanged — the cycle assignment is written *before* a block's
+transactions, because a mint at the boundary otherwise succeeds, collects
+nothing, and forfeits the cycle permanently. Both figures are recorded as
+vectors.
+
+**Reusable results from M3.10d worth not rediscovering.** The local harness is a
+scratch `sodium.h` backed by the system OpenSSL, never committed and never part
+of the build; with it the whole kernel and its test units compile and run in
+about a second under both compilers with the project's exact flags and under
+address and undefined-behaviour sanitizers. Its one known limit is that it does
+not reproduce libsodium's rejection of small-order public keys, so
 `tests/kernel/primitives_test.cpp` fails under it at that assertion and passes
-under the hosted matrix. Do not read that failure as a kernel defect.
-
-**A mutation probe must mutate the behaviour rather than an argument's default.**
-M3.10b's assignment-ordering probe passed on its first attempt because the
-fixture passes the flag explicitly, so changing the default changed nothing. The
-probe was measuring the argument. Re-run any probe that passes.
-
-### What M3.10b superseded in this section
-
-The rest of what stood here is delivered. The execution model was written, the
-five things it had to exercise were exercised, and the order it was written in —
-model before kernel — found four things a codec could not have.
-
-**Both things M3.10a was told to re-check were re-checked.** Requirement 12's
-storage bounds moved to per-identity escrow and signer entries and are recorded
-as a per-person figure, and the settlement was imported rather than copied, with
-the two assignment records required to equal the bytes
-`test-vectors/economy-transition-v3.txt` fixes.
-
-**The recorded next action changed at the end of the M3.9c session, and the
-reason is founder direction rather than a defect.** M3.9c closed by asking about
-the recovery path version five encodes. The owner rejected the premise of the
-question and directed a pivot, recorded in
-[ADR 0039](../decisions/0039-hub-verification-is-mandatory-for-everyone.md) and
-in the constitution: **HUB verification is mandatory for anyone who registers
-and for interacting with any part of the ecosystem**, an address is an
-operational tool rather than an identity root, recovery is direct between the
-owner and their recorded biometric data with no third party at any step, and
-biometric confirmation is on by default for every financial transaction and
-every mint with each person free to set a minimum amount, set time windows, or
-turn it off entirely.
-
-**M3.9d — the C++ codec updated to version five — is therefore withdrawn as the
-next action.** It is not wrong work; it is work that would have to be done twice,
-which is the precedent M3.8a set and M3.9b repeated: a kernel written against a
-contract already known to be superseded is wasted. The kernel codec stays at
-version four until a contract exists that the direction does not supersede.
-
-**The account model was answered the same day and is recorded in
-[ADR 0040](../decisions/0040-holder-addresses-and-revocable-signers.md).** A
-verified identity holds as many fund-holding addresses as the person wants;
-those hold no keys and never change; signers are separate, revocable, and
-assigned per holding address; and the identity is the admin that may add,
-remove, revoke, or modify them. Regaining an identity on a new device regains
-the holding addresses directly.
-
-**That answered the fee question for recovery and dissolved the version-five
-dilemma.** Maria never arrives at an empty address, so nothing needs funding and
-no helper is involved; and an address created beneath an identity is never
-relinked, so there is nothing to link and nothing to squat.
-
-**That conflict was resolved the same day, in
-[ADR 0041](../decisions/0041-the-seat-is-tied-to-the-identity-not-an-address.md),
-by naming what the add-only rule was for.** It was never about addresses; it was
-about non-sellability. A seat is now tied permanently to the owner's HUB
-verified data, **so a Founder Seat has no address at all** and there is nothing
-left for an add-only rule to govern. Seat addresses, the 16-manager limit, and
-the mint-to-the-signing-address rule are superseded together with the concept
-they governed. One uniform model covers every participant.
-
-**Every founder-reserved question the pivot itself raised was closed the same
-day**, the last in
-[ADR 0042](../decisions/0042-the-hub-entry-airdrop-and-the-verified-user-rate.md).
-A brand-new person's first action is funded by the protocol from an allocation
-they are already entitled to: on completing HUB verification for the first time
-the chain issues their first day's `hub_verified_user_incentives` portion as an
-entry airdrop, and every later day continues as an ordinary mint permission
-under the thirty-window cap.
-
-**That was not the same as nothing blocking the next slice, and the handoff said
-it was.** Writing the contract reached two decisions the constitution had already
-listed as unresolved and two the ADRs left open, none of which the pivot's own
-three questions covered. All four were answered on 2026-08-15 and are recorded in
-ADR 0043.
-
-**The rate is derived, not chosen, and that is the strongest thing about it.**
-The owner supplied the population and the period — the first 1,000,000 verified
-users, daily, for two years — and those with the founder-directed cap divide
-exactly: 125,001,000,000,000,000 / 1,000,000 / 731 = 171,000,000 atomic, or 1.71
-native units per user per day, with no remainder. 730 cycles leaves 420,000,000,
-so the period is 731, the same as a seat's issuance period. Three supplied
-figures reproducing the accepted cap to the atomic unit is what makes this the
-intended reading rather than a plausible one.
-
-**What version six inherits, and why the pivot is cheaper than it looks.** The
-dilemma version five had to solve — who may link an address to an identity —
-exists only because an address can exist, transact, and hold value with no
-identity behind it. When registration is HUB-first for everyone, an address is
-created under an identity that already exists, so kind 11 in its version-five
-form has nothing left to solve. The envelope, the key space, the settlement, the
-receipt, and the tree constructions are unaffected by any of this, and version
-five's model and vectors are what make a successor's carryover check possible.
-
-**Check that any new target is in `PROTOCOL_STACK_TARGETS`.** That list carries
-`-Wall -Wextra -Wpedantic -Werror`, the sanitizer flags, `_GLIBCXX_ASSERTIONS`,
-and the libsodium link. M3.9a declared a target, added its `add_test`, and left
-it off that list; the registration guard does not catch it, because it checks
-that a test is *run* rather than how it is *built*.
-
-**Keep every accepted artifact in place and passing.**
-`simulation/founder_economy/`, `simulation/founder_economy_v2/`,
-`simulation/founder_economy_v3/`, `simulation/cycle_boundary/`,
-`simulation/uptime_measurement/`, `simulation/economy_transition/`,
-`simulation/economy_transition_v3/`, `simulation/economy_transition_v4/`, and
-`simulation/economy_transition_v5/` stay untouched.
-**`simulation/economy_transition_v4/` is now load-bearing three ways**: version
-five imports it, version five's carryover check reads
-`test-vectors/economy-transition-v4.txt` directly, and version six imports its
-constants and its independent derivation — so editing it would move three
-versions' evidence rather than one. **`simulation/economy_transition_v3/` is
-load-bearing twice**, because versions four and six both import its settlement
-and both require its two recorded assignment records.
-`simulation/escrow_payout/` is shared by three bindings and
-should gain no fourth without a new contract version, and
-`simulation/scenarios/` holds three population generators that must stay
-independent for the same reason.
-
-**Every new test and verifier must be registered in `CMakeLists.txt` and must run
-as `python3 <path>`.** `tests/tools/test_registration_test.py` enforces both.
-
-**`main` is branch-protected.** Even a documentation-only commit needs its own
-branch and pull request.
+on the hosted matrix. **Run Clang locally before pushing**: it caught a
+structured-binding capture GCC accepts and the matrix rejects. And **a probe that
+passes must be re-examined before it is trusted** — of two that passed in
+M3.10d, one was an equivalent mutation measuring nothing and one was a real
+uncovered rule.
 
 ## Blockers
 
-**None for M3.10d.** M3.10c ran the founder-decision gate and **passed** it. It
-enumerated twenty-one decisions the slice had to settle — whether to replace or
-sibling version four's codec, the namespace and file layout, the fourteen kind
-identifiers and their body widths, the five retired numbers and their treatment,
-which admission checks live in the decoder, the two schemes and which kinds
-permit which, the six HUB message constructions, the escrow and signer
-derivations, the posture default and its two predicates, `slot_of` and the grid
-constants, the fourteen entry kinds and their encodings, the two retired entry
-kinds, the tree labels and the root construction, the genesis layout and its new
-zero-account requirement, the receipt version and its issuing sets, the 33 result
-codes and the three frozen unreachables, the verified-user arithmetic, the walk
-range, whether the test derives its own expected values or compares against the
-recorded file, whether to keep the version-four CTest entry, and whether to add a
-fuzz target. **Every one is fixed by an accepted specification or is mechanism,
-naming, or layout**, which `founder-constitution.md` lines 883-886 name as
-engineering work. None sets or changes supply, allocation, beneficiaries, Founder
-ownership, creator hierarchy, commercial routing, AI institutional authority,
-bridge scope, content permanence, or what a participant must do, own, run, or
-receive. No question was asked because none was reserved.
+**None for M3.11a.** M3.10d ran the founder-decision gate and **passed** it. It
+enumerated eighteen decisions the slice had to settle — the ledger's file layout
+and state representation, whether the account map lives inside the registry, the
+resolution order for both schemes, the shared envelope check order, the two
+derived rules of ADR 0045, the registration fee exemption and its envelope
+exemptions, the entry airdrop amount and its bound, the refusal of an
+unregistered recipient, the signer and seat limits, the block constructions and
+their inherited schema version, the signature-verifier seam, the representation
+of a refusal against an invariant failure, the conservation checks, the test
+layout and CTest registration, and whether to add a fuzz target. **Every one is
+fixed by an accepted specification or ADR, or is mechanism, naming, or layout**,
+which `founder-constitution.md` names as engineering work. None sets or changes
+supply, allocation, beneficiaries, Founder ownership, creator hierarchy,
+commercial routing, AI institutional authority, bridge scope, content
+permanence, or what a participant must do, own, run, or receive. No question was
+asked because none was reserved.
 
-**M3.10b ran the same gate and passed it.**
-Every decision the slice had to settle was already decided or delegated:
-where the execution model lives, which vector file records it, the order of the
-shared envelope checks, where the debit-overflow test sits inside them, which
-result code an unrequested confirmation field earns, what `NOTHING_TO_MINT`
-means for a fresh mark, where a cycle assignment lands inside a block, whether
-the block header and transaction tree are re-versioned, what fee the trace runs
-on, and how a signature is modelled without implementing one. **Four of those had
-to be derived rather than looked up**, because the accepted contract admits two
-readings of three of them and is silent on the fourth; every one is a rejection
-order or a code assignment, which `founder-constitution.md` lines 883-886 name
-as mechanism, and each is recorded with its alternative in ADR 0045 rather than
-settled silently. None sets or changes supply, allocation, beneficiaries, Founder
-ownership, creator hierarchy, commercial routing, AI institutional authority,
-bridge scope, content permanence, or what a participant must do, own, run, or
-receive.
+**The 2026-08-19 pivot raised eight founder-reserved questions and the owner
+answered all of them the same day.** Where AI runs; whether a Founder Machine
+must serve a model to be paid; how a node-local AI judgment becomes
+authoritative; whether verification runs on the founder's own machine; what
+forfeits when a referrer is over the accumulation cap; how the node distribution
+reaches 100% assignment; what a month is; and the unified-memory floor. ADRs
+0047 through 0052 record the answers.
 
-**The one founder-reserved question M3.10b raised was answered the same day, and
-the answer is that the accepted rule stands.** The millionth-and-first verified
-person registers successfully, receives no entry airdrop, and holds a
-zero-balance escrow — so until they are funded, every transaction they can sign
-answers `INSUFFICIENT_BALANCE`, including the mint for a verified-user permission
-they do not have. **That is a consequence of two accepted decisions rather than a
-new rule**: ADR 0042 bounds the airdrop at 1,000,000 identities and the
-constitution applies a fixed fee to every accepted state transition.
+**Three of the owner's answers went further than filling in a blank**, which is
+the fourth time the standing invitation has produced that. Separating the
+deterministic verification verdict from a non-deterministic *integrity monitor*
+is a better construction than the one proposed here, which was to verify on
+somebody else's machine. Using the machine's own clock as a consensus input
+removes a drift this handoff would otherwise have had to record forever.
+And the observation that 731 cycles bound only the distribution — so ranking and
+pools outlive it — made a terminal rule for stranded value unnecessary and
+deleted it from the design.
 
-**The owner's answer on 2026-08-16 was to change nothing, and the reasoning
-supplies what the question was missing.** By the time a million people hold HUB
-verification the project has scaled past the point where the native asset exists
-only inside the ecosystem: bridges and external venues make it purchasable, so a
-new participant funds their own escrow from outside, or an existing member sends
-them value. The entry airdrop is a launch incentive with a bound, not the
-permanent funding path, and **the permanent funding path is external liquidity**.
-No specification, model, vector, or ADR rule changes; `economy-transition-v6` and
-ADR 0042 already encode the answer.
+**One recommendation made here was wrong and is recorded as such.** A 128 GB
+unified-memory floor was recommended and the owner raised it to 512 GB. The
+recommendation optimized for entry price against a requirement that exists to
+buy capability, on a machine whose whole purpose is to be an AI home.
 
-**It creates one checkable roadmap dependency, and that is the part worth
-carrying.** External purchasability must exist before the millionth identity
-registers, because the airdrop is the only funding path a newcomer has until it
-does. That is a sequencing constraint on the bridge and liquidity milestones
-rather than a protocol change, and no transition here can enforce it.
+**Two things are open and neither blocks the next slice.** Whether the
+assistant's one-profile-per-identity and seats-as-parallel-sessions entitlement
+is protocol-enforced or application policy is now listed in the constitution's
+unresolved set, and it blocks nothing until an assistant is built. And the
+biometric stabilization scheme requires independent cryptographic review, which
+cannot be performed in-session; nothing may rest on it until it exists.
 
-**The founder-decision gate stopped `economy-transition-v6` on 2026-08-15 with
-four reserved decisions**, the owner answered all four the same day, and the
-contract that encodes them was delivered the same day. ADR 0043 records the
-answers, ADR 0044 records the contract, the constitution states both, and the
-unresolved list is two entries shorter.
-
-**Requirement 10's target is settled at `economy-transition-v6` and half of it is
-built.** It is the first version-six-era contract the direction does not
-supersede, nothing founder-reserved stands in front of the kernel, and as of
-M3.10c the kernel implements its byte and derivation surface. What remains is the
-fourteen transitions.
-
-**One specification correction is owed to a later contract version, and only
-one.** `economy-transition-v6`'s requirement that an unrequested confirmation
-field be 64 zero octets is placed at admission, which cannot read the stored
-posture its predicate needs, and names `MALFORMED_TRANSACTION`, which is an
-admission code and has no counterpart in the result-code space a receipt records.
-M3.10b refuses it at execution with `UNAUTHORIZED` and ADR 0045 records why.
-**No rule in the accepted specification was edited**, and the correction is a
-note for version seven rather than a defect that stops anything.
-
-**How the gate came to stop the slice is worth keeping, because the failure mode
-recurs.** The handoff had said "Blockers: None". The pivot's own three questions
-did all close on 2026-08-15 — the recovery fee by ADR 0040, the seat-permanence
-conflict by ADR 0041, entry funding and the verified-user rate by ADR 0042 — and
-the handoff generalised from those three closures to the milestone. Two items the
-constitution had listed as unresolved since the pivot were filed as "answerable
-alongside" and "blocking nothing on their own", which was true while the
-entry-funding question was the nearest dependency and false the moment it closed.
-**Nothing in the repository changed; the next slice moved toward them.** That is
-what "record a reserved decision and raise it once it becomes the nearest
-dependency" is for, and enumerating the slice rather than assessing it whole is
-what surfaced it — the same failure mode M3.8a's gate caught, in the same place.
-
-**Two of the four answers went further than filling in a blank**, which is the
-third time the standing invitation has produced that. Refusing an unregistered
-recipient withdraws a transfer behavior every version since M1 has carried, and
-generalising the seat's protection asymmetry to every participant deletes a
-per-seat flag rather than adding a policy layer beside it.
+**A business fact the owner has accepted knowingly**, recorded so it is not
+rediscovered: the machine obligation is linear in seats sold and the revenue is
+quadratic, so they cross at seat 54,800 and the promise is underfunded before
+that, worst at about 30,000 seats at roughly −$355M. Staged distribution against
+later proceeds is what makes it work.
 
 ### What remains open in the constitution and is genuinely not this milestone's
 
 Eligibility and anti-abuse for the liquidity-mining, impermanent-loss, and
-mystery-box channels; legacy inactivity bounds; stablecoin allowlist governance;
-the AI frameworks; and verifier key rotation. Kind 6 stays specified and refused
+mini-gamified channels; legacy inactivity bounds; stablecoin allowlist
+governance; the AI frameworks; verifier key rotation; and whether the personal
+assistant's one-profile-per-identity entitlement is protocol-enforced or
+application policy. Kind 6 stays specified and refused
 because of the first, which costs one transaction kind rather than a milestone.
 
 Superseded, and kept for the record: **how a person who holds nothing pays for
