@@ -96,6 +96,27 @@ class DeclarationTest(unittest.TestCase):
     def test_the_revised_set_is_the_specification_table(self) -> None:
         self.assertEqual(set(c.REVISED_IN_V7), DECLARED_DIFFERENCES)
 
+    def test_the_declaration_covers_version_seven_exactly(self) -> None:
+        """Nothing version seven exports may go unclassified.
+
+        Without this the declaration would cover version six's surface and say
+        nothing about a name version seven added quietly, which is the same
+        blind spot in the other direction.
+        """
+        declared = (
+            set(c.CARRIED_FROM_V6)
+            | set(c.REBOUND)
+            | set(c.REVISED_IN_V7)
+            | set(c.ADDED_IN_V7)
+            | set(c.DECLARATIONS)
+        )
+        self.assertEqual(
+            public_names(c),
+            declared,
+            "every name version seven exports must be carried, rebound, "
+            "revised, added, or a declaration",
+        )
+
     def test_every_added_name_exists_and_is_new(self) -> None:
         for name in c.ADDED_IN_V7:
             self.assertTrue(hasattr(c, name), f"{name} is declared added and absent")
