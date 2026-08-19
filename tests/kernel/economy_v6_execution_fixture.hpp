@@ -131,6 +131,7 @@ inline const Octets32 kVerifierKey = repeated(0x55);
 inline const Octets32 kAliceIdentity = repeated(0xA1);
 inline const Octets32 kAliceKey = repeated(0xA2);
 inline const Octets32 kAliceSignerKey = repeated(0xA3);
+inline const Octets32 kAliceSecondSignerKey = repeated(0xA4);
 inline const Octets32 kBobIdentity = repeated(0xB1);
 inline const Octets32 kBobKey = repeated(0xB2);
 inline const Octets32 kBobSignerKey = repeated(0xB3);
@@ -143,6 +144,7 @@ inline const Octets32 kMariaNewSignerKey = repeated(0xC4);
 inline const Octets32 kDaveIdentity = repeated(0xD1);
 inline const Octets32 kDaveKey = repeated(0xD2);
 inline const Octets32 kDaveSignerKey = repeated(0xD3);
+inline const Octets32 kDecisionId = repeated(0x11);
 
 // The accepted version-one transfer, from `test-vectors/protocol-primitives-v1`.
 inline const Octets32 kAcceptedChainId = ascending(0);
@@ -283,6 +285,10 @@ void verify_scenarios(const pv::Values& values, const pv::Values& primitives);
 // three sections it does not claim belong to the boundary block, whose four seat
 // transitions read a cycle assignment this kernel does not yet derive.
 void verify_coverage(const pv::Values& values);
+// The rejection conditions no recorded scenario reaches. These derive their own
+// expectations, because there is no vector to compare against; they are kept in
+// their own translation unit so the two kinds of evidence never blur.
+void verify_transitions();
 void verify_derivations(const pv::Values& values, const pv::Values& primitives,
                         const pv::Values& ledger_vectors,
                         const pv::Values& manifest, const pv::Values& version_three);

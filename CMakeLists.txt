@@ -259,6 +259,7 @@ add_executable(
   tests/kernel/economy_v6_scenarios_test.cpp
   tests/kernel/economy_v6_execution_checks.cpp
   tests/kernel/economy_v6_derived_test.cpp
+  tests/kernel/economy_v6_transitions_test.cpp
 )
 target_link_libraries(economy_v6_execution_tests PRIVATE protocol_kernel)
 add_executable(
