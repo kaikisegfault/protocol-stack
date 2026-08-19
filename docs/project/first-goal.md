@@ -59,7 +59,10 @@ Completion requires all of the following:
    uptime per cycle, with a fragmentable 6-hour grace allowance.
 9. Performance reallocation to the highest uptime in the same cycle, split
    equally among exact ties, restricted to seats that met the cycle, with the
-   integer remainder carried forward.
+   integer remainder and any zero-winner cycle's whole permission going to the
+   recovery pool, which the earliest subsequent winning cycle takes entirely.
+   Revised on 2026-08-19 by ADR 0049; the requirement previously carried the
+   remainder forward in a per-channel carry that nothing ever released.
 10. C++20 implementation of the accepted v2 economy in the deterministic
     ledger kernel, with checked integer arithmetic and no floating point on any
     monetary or consensus path.
@@ -79,8 +82,8 @@ Completion requires all of the following:
 ## Founder-decision gate
 
 The implementation must not invent eligibility or anti-abuse mechanics for the
-liquidity-mining, impermanent-loss, HUB-verified-user, or mystery-box channels,
-nor the AI funding framework. If one is required to satisfy a test, use an
+liquidity-mining, impermanent-loss, HUB-verified-user, or mini-gamified
+channels, nor the AI funding framework. If one is required to satisfy a test, use an
 explicitly research-only bounded input and record the owner decision still
 required.
 

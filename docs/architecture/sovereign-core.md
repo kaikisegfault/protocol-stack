@@ -106,6 +106,7 @@ An offline machine is absent from live participation until it satisfies the
 specified recovery conditions.
 
 Application compute, storage, caching, and delivery scale through separate
-resource protocols and do not enter every block vote. The company-hosted
-Ecosystem AI is a separate control plane; model inference never runs on Founder
-Nodes or inside the deterministic kernel.
+resource protocols and do not enter every block vote. **The Ecosystem AI is
+served by the Founder Machines themselves** as of 2026-08-19 (ADR 0047);
+inference runs on the machine, beside the kernel and never inside it, and no AI
+output is ever consensus state.

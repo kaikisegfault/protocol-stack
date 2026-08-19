@@ -42,8 +42,8 @@
   canonical outputs, and failure boundaries.
 - `architecture/sqlite-ledger.md`: owning persistence boundary, durable
   height-zero creation, and validated reopen behavior.
-- `architecture/local-ai-authority.md`: future company-hosted logical AI
-  authority, capability containment, and delegation stages.
+- `architecture/local-ai-authority.md`: the logical AI authority served by the
+  Founder Machines, capability containment, and delegation stages.
 
 ## Decisions
 

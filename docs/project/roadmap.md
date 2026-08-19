@@ -190,10 +190,15 @@ resource and network behavior.
 
 ## M6 — Ecosystem AI and native program control plane
 
-Implement the company-hosted logical AI authority, policy and model manifests,
-signed bounded decisions, biometric and moderation workflows, venture review,
-milestones, tranche releases, community grants, developer incentives, audit
-evidence, outage behavior, and staged delegation.
+Implement the logical AI authority **served by the Founder Machines**, policy
+and model manifests, signed bounded decisions, biometric and moderation
+workflows, venture review, milestones, tranche releases, community grants,
+developer incentives, audit evidence, outage behavior, and staged delegation.
+Reversed on 2026-08-19 by ADR 0047: the company hosts no AI infrastructure, so
+this milestone builds the framework the machines run rather than a control
+plane they call. It must also deliver the nearest-machine assignment with its
+six-neighbour reasoning, and the local model's integrity-monitor role in HUB
+verification under ADR 0048.
 
 Exit: AI-managed workflows can operate against funded devnet escrows while
 deterministic rules reject excess, stale, replayed, cross-capability, or
