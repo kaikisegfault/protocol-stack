@@ -951,6 +951,20 @@ add_test(
     "${PROJECT_SOURCE_DIR}/tests/simulation/founder_economy_v3_scenario_test.py"
 )
 add_test(
+  NAME founder-economy-manifest-v3-vectors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tools/founder-economy-manifest-v3-vectors/verify.py"
+    --vectors
+    "${PROJECT_SOURCE_DIR}/test-vectors/founder-economy-manifest-v3.txt"
+)
+add_test(
+  NAME founder-economy-manifest-v3
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/founder_economy_manifest_v3_test.py"
+)
+add_test(
   NAME cycle-boundary-vectors
   COMMAND
     "${Python3_EXECUTABLE}"
