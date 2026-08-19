@@ -400,6 +400,36 @@ showed that nothing anywhere would have caught an implementation that refused an
 unrequested confirmation field at admission, which is stricter than the contract
 can be, so the test now requires such a transaction to be admitted.
 
+ADRs 0047 through 0052 record the architecture pivot the owner directed on
+2026-08-19, and it changes where the ecosystem runs rather than what it pays.
+The ecosystem AI moves off company-operated infrastructure onto the Founder
+Machines themselves and the company runs no backend of any kind (0047); HUB
+verification becomes a local deterministic process supervised by a node-local
+model, with the deterministic verdict separated from a non-deterministic
+integrity monitor (0048); the per-channel carry is replaced by a recovery pool
+and best-performer ranking becomes permanent infrastructure rather than an
+artifact of the 731-cycle distribution (0049); months become real calendar
+months read from a consensus block timestamp (0050); bridges run on Founder
+Machines behind light clients and a machine quorum (0051); and the Founder
+Machine gains a specification with a 512 GB unified-memory floor (0052). ADR
+0053 then delivers `founder-economy-manifest-v3`, which renames issuance channel
+9 to `mini_gamified_incentives` and changes nothing else.
+
+ADR 0054 records `economy-transition-v7`, the contract that encodes the recovery
+pool, and the four things ADR 0049 left a contract to settle. One entry carrying
+five legs replaces ten carry entries, because the legs have five beneficiaries
+and five caps and five of the ten were structurally always zero. The cycle
+assignment record grows by what that cycle absorbed, because the pool's balance
+at a window is a function of every earlier cycle and a mint must stay bounded.
+The per-channel identity loses its third term and gains a backing identity that
+names claimable and the pool, which is what turns "100% is assigned" into an
+equality rather than a description. And the settlement reads the pool before it
+writes it, so a cycle never pays itself its own dust. It also records that ADR
+0049's premise about the winner set is wrong for the accepted model — every
+in-scope seat is already ranked, in span or not — so version seven states and
+guards that rule rather than rewriting a correct derivation on a premise that
+could not be reproduced.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
@@ -539,6 +569,18 @@ immutable; compatible changes require a new version.
   requirement 10's C++ kernel implements, `simulation/economy_transition_v6/`
   now both encodes and executes it, and `src/v6/` implements its byte surface
   and its pure derivations while its transitions remain unwritten.
+- `specifications/economy-transition-v7.md`: version six with the per-channel
+  carry deleted from state and replaced by a recovery pool, so the node
+  distribution assigns 100% of the permissions the manifest promises. A
+  zero-winner cycle contributes its whole base permission and an indivisible
+  remainder contributes its dust; the earliest subsequent cycle with any winner
+  takes the pool entire, on top of its own reallocation. Entry kind 7 is retired
+  permanently, one entry carrying five legs replaces its ten, the cycle
+  assignment record grows by what that cycle absorbed, and the per-channel
+  identity loses its third term and gains a backing identity that names
+  claimable and the pool — which is the statement that nothing is stranded. It
+  binds `founder-economy-manifest-v3`. Its model and vectors are recorded; its
+  transaction ledger and C++ implementation are not.
 - `specifications/native-economy-simulation-v1.md`: versioned integer-only
   accounting, authority, event, trace, and metric contract for the independent
   M2 research simulator; it is not a consensus transition.
