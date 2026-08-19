@@ -3,6 +3,9 @@
 These functions enumerate every value the loader must classify, so a field
 added to the manifest schema without a corresponding check cannot be silently
 skipped by the type or range stage.
+
+The inventory names fields rather than values, so it carries no contract table
+and every accepted manifest version shares it unchanged.
 """
 
 from __future__ import annotations
