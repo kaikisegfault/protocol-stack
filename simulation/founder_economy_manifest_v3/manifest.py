@@ -1,0 +1,32 @@
+"""Strict Founder Economy v3 manifest loading with the accepted failure order.
+
+Version three binds the shared ordered loader to its own contract table. Both
+loaders reject the other's manifest: version two's schema string is not version
+three's, and the renamed channel identifier does not match the other version's
+fixed table.
+"""
+
+from __future__ import annotations
+
+from . import contract as c
+from ..founder_economy_manifest.loader import (
+    Manifest,
+    ManifestError,
+    ManifestLoader,
+    parse_json,
+)
+
+_LOADER = ManifestLoader(c)
+
+load_manifest_file = _LOADER.load_file
+load_manifest_text = _LOADER.load_text
+accept_manifest = _LOADER.accept
+
+__all__ = [
+    "Manifest",
+    "ManifestError",
+    "accept_manifest",
+    "load_manifest_file",
+    "load_manifest_text",
+    "parse_json",
+]
