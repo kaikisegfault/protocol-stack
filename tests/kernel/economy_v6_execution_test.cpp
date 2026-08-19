@@ -34,6 +34,7 @@ int main(int argc, char** argv) {
     fixture::verify_derivations(values, primitives, ledger_vectors, manifest,
                                 version_three);
     fixture::verify_coverage(values);
+    fixture::verify_transitions();
 
     std::cout << "C++ economy transition v6 execution: passed\n";
     return 0;
