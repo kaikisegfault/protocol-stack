@@ -407,10 +407,11 @@ uptime in that same cycle**.
   perfect cycle — they share the 342 units equally.
 - A winner must itself have met the cycle. A failed seat never rewards another
   failed seat.
-- The integer remainder of an equal split goes to the **recovery pool** rather
-  than being burned or carried in a channel.
-- If no node met the cycle at all, the whole permission goes to the recovery
-  pool.
+- The integer remainder of **each leg's** equal split goes to the **recovery
+  pool** rather than being burned or carried in a channel. Every leg is divided
+  among the winners, because the whole permission settles at the winner's mint.
+- If no node met the cycle at all, the **whole 574.3-unit permission** goes to
+  the recovery pool — all five legs, not only the Founder portion.
 
 **The recovery pool exists so that 100% of the node distribution's mint
 permissions are assigned and nothing is ever stranded.** It accumulates the two
@@ -432,13 +433,21 @@ Each failed cycle resolves independently against its own cycle's winners. A
 seat that fails four consecutive cycles produces four separate reallocations,
 each to whoever led on that day.
 
-Reallocation is settled when the failed seat next exercises a permission. That
-exercise is one atomic transaction: the escrows and the System Creator receive
-their portions, and the reallocated Founder portion reaches that cycle's
-winners in the same transition. The failed founder can see which seats received
-the value. A seat that never exercises never triggers the reallocation, and the
-units are never created, consistent with the rule that unexercised permissions
-do not exist.
+**Reallocation settles at the winner's mint, decided on 2026-08-13.** The whole
+574.3-unit permission moves to that cycle's winners when the cycle is assigned,
+and each winner collects it when it next mints: the winners take the Founder
+portion into their own balances, and the escrows and the System Creator receive
+their four legs from that same mint. The four institutional legs keep their
+beneficiaries — only the Founder portion changes whose it is — but they no
+longer wait on the seat that failed.
+[ADR 0033](../decisions/0033-founder-decisions-minting-hub-and-referral-entry.md)
+records the direction.
+
+This replaced an earlier rule that settled reallocation at the *failed* seat's
+next exercise, under which a founder who never minted again withheld the
+escrows' and the System Creator's value indefinitely. A seat that never mints
+now forfeits only its own portion. The failed founder can still see which seats
+received the value, and an uncollected permission's units still do not exist.
 
 Longer leaderboards over 7, 30, and 90 days and all time are reporting views
 for later incentive programmes. They carry no entitlement under this section,
