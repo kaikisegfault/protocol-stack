@@ -16,21 +16,43 @@ holds the respecified steps 5 through 7 and the mint walk's added term.
 `conservation.py` holds the two identities over a schedule of cycles and mints,
 which is the evidence this version exists to produce.
 
-**It executes no transaction.** A version-seven transaction ledger, its block
-execution, and its recorded trace are a later slice, exactly as version six
-separated its contract from its execution one slice apart. What is here is the
-settlement and the state it commits to.
+**It executes transactions.** `ledger.py` holds the state a transition runs
+against, `execution.py` and `transitions.py` dispatch the fourteen kinds —
+thirteen of them version six's own function objects — `value_transitions.py`
+rebinds the one transition that reads a moved surface, `block.py` runs ordered
+blocks with the assignment prologue, and `trace.py` records three scenarios that
+carry the recovery pool from an unwon cycle to a mint.
 
 It implements no cryptographic primitive. Every digest is SHA-256 over a
 domain-separated preimage using the accepted construction.
 """
 
-from . import contract, conservation, genesis, settlement, state
+from . import (
+    block,
+    conservation,
+    contract,
+    execution,
+    genesis,
+    ledger,
+    receipt,
+    settlement,
+    state,
+    trace,
+    transitions,
+    value_transitions,
+)
 
 __all__ = [
+    "block",
     "conservation",
     "contract",
+    "execution",
     "genesis",
+    "ledger",
+    "receipt",
     "settlement",
     "state",
+    "trace",
+    "transitions",
+    "value_transitions",
 ]

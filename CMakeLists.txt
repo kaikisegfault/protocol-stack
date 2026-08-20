@@ -1217,6 +1217,24 @@ add_test(
     "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_v7_settlement_test.py"
 )
 add_test(
+  NAME economy-transition-v7-execution
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_v7_execution_test.py"
+)
+add_test(
+  NAME economy-transition-v7-ledger
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_v7_ledger_test.py"
+)
+add_test(
+  NAME economy-transition-v7-block
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_v7_block_test.py"
+)
+add_test(
   NAME founder-seat-vectors
   COMMAND
     "${Python3_EXECUTABLE}"

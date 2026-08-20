@@ -62,6 +62,7 @@ __all__ = [
     "SeatCycle",
     "accrues_in_window",
     "assignment_entry",
+    "claimable",
     "collect",
     "derive_assignment",
     "derive_winner_set",
@@ -268,3 +269,28 @@ def collect(
     return Collection(
         per_channel, last - first + 1, tuple(accrued_windows), tuple(won_windows)
     )
+
+
+def claimable(
+    marks: dict[int, int], records: dict[int, bytes]
+) -> dict[int, int]:
+    """What the recorded assignments still owe every seat from its own mark.
+
+    **It is defined as what a sequence of mints would collect**, by running the
+    same `collect` walk a mint runs, once per seat, against the same records. A
+    second walk written beside the first would be a second implementation of the
+    contract's most load-bearing derivation with nothing keeping the two equal —
+    and the backing identity, which is the whole point of version seven, would
+    then be checking the model against itself rather than against the mint.
+
+    `marks` maps a seat ID to its `minted_through_window`. The last assigned
+    window is the largest window with a record, which is what a mint at any
+    height past that window's boundary would walk to.
+    """
+    owed = {channel: 0 for channel in c.RECOVERY_POOL_LEGS}
+    last_assigned = max(records) if records else None
+    for seat_id, mark in marks.items():
+        collection = collect(seat_id, mark, last_assigned, records)
+        for channel, amount in collection.per_channel.items():
+            owed[channel] += amount
+    return owed
