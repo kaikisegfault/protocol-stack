@@ -61,6 +61,17 @@ assignment ordering ADR 0045 could only reject by argument is
 **unconstructible** under version seven, because the backing identity refuses
 the block whole.
 
+**M3.12a closed a gap M3.11c left, and the way it was found is the point.**
+Attempting the kernel move showed that ADR 0055's reason for not re-recording
+version six's execution scenarios is half wrong: those 512 vectors record
+version-**six** roots and version-**six** receipts, and version seven
+re-versions both, so ten of the fourteen kinds had no version-seven execution
+evidence at all. Under the three scenarios ADR 0055 accepted, **swapping
+version seven's escrow-create and escrow-delete handlers in its own dispatch
+table passes every one of the 412 vectors.** Two scenarios close it, the file
+holds 590 vectors, and all fourteen kinds now execute under version seven where
+version six's file reaches eleven. ADR 0055 carries the correction in place.
+
 M3 — Founder Economy devnet, in progress. Slice M3.1 delivered the revised
 economic contract, M3.2 made it executable, and M3.3 rebound every dependent
 model to it, all on 2026-08-08. M3.4 defined the cycle boundary in chain heights
@@ -130,6 +141,63 @@ for the byte surface — the C++ and the Python model reproduce
 Requirement 13, the four-node adversarial scenarios, has not started. **Nothing
 yet activates a chain**: every recovery-pool result in the repository is
 produced by Python.
+
+### How M3.12a was delivered
+
+Issue #197 and PR #198 gave version seven execution evidence for every
+transaction kind it admits. It merged by rebase across commits `28567d1`
+through `90e13a7` and edits no accepted artifact except ADR 0055, which it
+corrects in place, and the specification's evidence section, which changes no
+rule.
+
+**It exists because the kernel move could not start.** M3.12 was recorded as "the
+version-seven settlement and the four seat transitions in the C++20 kernel".
+The kernel's execution tests reproduce `economy-transition-v6-execution.txt`,
+and a kernel moved to version seven has nothing to reproduce for the ten kinds
+no version-seven trace executes. The recorded decomposition was wrong and is
+repaired below.
+
+**The reasoning it corrects was wrong in a specific and instructive way.** ADR
+0055 declined to re-record version six's scenarios because they are "fixed by
+512 accepted vectors over transactions version seven does not touch". That is
+right about the transactions and wrong about their commitments: version six's
+file records version-six state roots and version-six receipts, and version
+seven re-versions both. A registration under version seven is byte-for-byte a
+registration under version six, lands in a different root, and produces a
+different receipt, and nothing recorded what either is.
+
+**The cost was measured rather than asserted.** Under the three scenarios ADR
+0055 accepted, swapping version seven's escrow-create and escrow-delete
+handlers in its own dispatch table passes all 412 vectors. Under the five now
+recorded it is caught, as are swapping the two signer handlers, routing a
+transfer to the refused direct issue, and routing the referral mint to the
+verified-user mint.
+**None of those four was reachable before**, and the demonstration was performed
+by emitting a three-scenario file to a scratch path and running the mutation
+against it rather than by reasoning about coverage.
+
+**Two scenarios close it and every step builder is version six's.** `carried`
+runs the ten kinds against a version-seven ledger — the unconfirmed transfer
+refused by the opening posture and the confirmed one accepted, a transfer to an
+unregistered recipient, a refused direct issue, an escrow created and deleted,
+a signer assigned and revoked, a posture relaxed without a signature and then
+with one and then tightened and then repeated, and a verified-user collection
+forty windows after enrolment that forfeits ten. `referral` covers kind 5,
+which nothing else reaches: a seat bought naming a referrer, and the leg minted
+in the block the prologue accrued it in. What is version seven's is the ledger
+they run against and the roots they commit; the fixtures are imported.
+
+**All fourteen kinds now execute under version seven.** Version six's execution
+file reaches eleven — it never exercised kind 6, 13, or 14 at all. The vector
+file goes from 412 to 590 and records the coverage as a claim of its own, and a
+test requires every receipt the trace produces to carry version seven's version
+field.
+
+**One cheap gate was learned the expensive way.** The classification job runs
+`git diff --check` between the base and the head, and a trailing blank line an
+edit script left at the end of `trace.py` failed it — after the branch had
+already been pushed. `git diff --check main HEAD` is the same check, runs
+locally in no time, and now belongs beside "run Clang locally before pushing".
 
 ### How M3.11c was delivered
 
@@ -2146,8 +2214,10 @@ slices.
   cycle nobody won to a mint that collects it, run the rejected block ordering
   against the accepted one on identical inputs, and pay a machine past its own 731
   issuance cycles out of a cycle with no contributing seat at all.
-  `test-vectors/economy-transition-v7-execution.txt` fixes 412 vectors over it and
-  eight mutation probes establish that the verifier fails closed. **The pool
+  `test-vectors/economy-transition-v7-execution.txt` fixes 590 vectors over five
+  scenarios that execute **all fourteen transaction kinds** — where version six's
+  execution file reaches eleven — and twelve mutation probes establish that the
+  verifier fails closed. **The pool
   scenario ends with `outstanding` at zero and the pool at zero on every Founder
   Node channel**, which is the first end-to-end demonstration that 100% of what
   the manifest promised for those cycles reached a beneficiary. It is still Python
@@ -2495,6 +2565,29 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #197 and PR #198 are the M3.12a delivery, merged by rebase across commits
+  `28567d1` through `90e13a7` on `main`. It adds two trace scenarios and takes
+  `test-vectors/economy-transition-v7-execution.txt` from 412 vectors to 590, so
+  that all fourteen transaction kinds execute under version seven; it corrects ADR
+  0055 in place, updates the specification's evidence section and
+  `docs/README.md`, and adds three tests. It registers no new ctest entry, so the
+  suite stays at 146 entries in the debug presets and 153 under
+  `clang-sanitizers`. PR run 32393306408 on head `1e36a5b` passed the complete
+  hosted matrix — scope classification `full`, GCC and Clang debug, both
+  sanitizers, and the aggregate required check — in 8m01s to 9m06s per job, and
+  all eight version-seven ctest entries were confirmed to run and pass in the job
+  logs. Push run 32394434657 then passed the same matrix on the merged commit,
+  which is what M3.11c's closeout cancelled by pushing too early.
+  **An earlier candidate run failed the classification job**, on a trailing blank
+  line at the end of `trace.py` that `git diff --check` refuses; the fix is one
+  line and the lesson is recorded in the next-action section.
+- Issue #196 is open and blocked, which is deliberate. It is the kernel move, and
+  it is retitled M3.12b and rewritten to record why it could not start on
+  2026-08-20 and what unblocked it. The exploratory work — the namespace move, the
+  recovery pool entry, the 64-octet record, the settlement derivations, and the
+  two identities — compiled clean under both local syntax checks before it was
+  reset, and it was reset rather than pushed because a half-moved kernel is not a
+  state anything can verify.
 - Issue #192 and PR #193 are the M3.11c delivery, merged by rebase across commits
   `4aacbe6` through `63adcdd` on `main`. It gives `economy-transition-v7`
   its transaction ledger, dispatch, ordered block execution, a recorded
@@ -3145,6 +3238,12 @@ implemented. The Founder issuance schedule, permission transitions, revenue
 routing, and escrow payouts now exist only as independent Python models, not as
 C++ consensus behavior.
 
+**Version seven's Python evidence is now complete in the sense that matters for
+a second implementation.** Every transaction kind it admits has a recorded
+version-seven state root and a recorded version-seven receipt, which is the
+claim a kernel has to reproduce. That was not true before 2026-08-20 and its
+absence is what stopped the kernel move.
+
 **The C++ half is where the gap now sits, and it is precise.** The kernel
 compiles `economy-transition-v6`: its byte and derivation surface, and ten of
 its fourteen transitions. Kinds 2, 3, 4, and 5 — purchase a seat, activate it,
@@ -3344,104 +3443,147 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.12a: the version-seven settlement and the four seat
-transitions in the C++20 kernel**, which is what M3.10c and M3.10d were to
-version six, against the contract nothing supersedes. Use the `change-protocol`
-skill.
+Milestone slice **M3.12b: move the C++20 kernel to `economy-transition-v7`**,
+which is issue #196 and is now unblocked. Use the `change-protocol` skill.
 
-**What it is.** The recovery pool entry's codec, the 64-octet cycle assignment
-record's codec, the settlement's steps 5 through 7 and the mint walk's added
-term, the two conservation identities as kernel-side checks, and kinds 2, 3, 4,
-and 5 — the four transitions M3.10d left returning no outcome.
+**It is one slice, not two, and M3.11c's handoff was wrong to split it.** That
+handoff said M3.12a was "the version-seven settlement and the four seat
+transitions". Attempting it found that the state root, the ledger, the
+settlement, and the four transitions cannot be separated: the recovery pool is
+a state entry, so a version-seven root implies a version-seven ledger; the
+backing identity needs the mint walk; and the mint walk is only reached by kind
+4, which is one of the four unwritten transitions. Splitting it produces an
+intermediate state nothing can verify.
 
-**Decide first whether the kernel replaces version six or sits beside it, and
-ADR 0046 already answers it.** When the kernel's codec moved from version four
-to version six it **replaced** it rather than adding beside it, on the
-reasoning that the kernel should compile exactly one economy contract and that
-a codec is one implementation of a byte surface rather than a record of
-anything. The same reasoning applies here and more strongly: version six's
-execution is now the one whose settlement is superseded. Every Python model and
-vector file is retained either way, because a model plus its vectors is the
-record of what the hosted matrix verified. Expect to move `src/v6/` to
-`src/v7/` and retire version six's kernel path, not to keep two.
+**ADR 0046 already answers the one structural question.** When the kernel's codec
+moved from version four to version six it **replaced** it rather than adding
+beside it, because the kernel should compile exactly one economy contract.
+Expect to move `src/v6/` to `src/v7/` and `include/protocol/v6/` to
+`include/protocol/v7/` and retire version six's kernel path, not to keep two.
+Every Python model and vector file is retained either way.
 
-**What is already settled and must not be re-derived.** Version seven's execution
-rules are recorded in
-[ADR 0055](../decisions/0055-the-version-seven-execution-model.md) and evidenced
-by 412 vectors. Three of them cost the Python slice real time and each has a
-kernel consequence:
+**A working recipe exists and is worth following rather than rediscovering.** The
+mechanical half was done on 2026-08-20 and reset; it compiled clean under GCC's
+`-fsyntax-only` for every translation unit. In order: `git mv` the two
+directories and the thirteen `tests/kernel/economy_v6_*` files and
+`tests/fuzz/economy_v6_fuzz.cpp`; rewrite `protocol::v6` to `protocol::v7`, the
+include paths, and the `v6::` namespace aliases in the tests; then make the
+substantive edits.
 
-* the cycle assignment is written **before** a block's transactions, and under
-  version seven the alternative is not merely expensive — it breaks the backing
-  identity, so a kernel that got it wrong fails an invariant rather than paying
-  a founder short;
-* a seat's collection mark and its recorded referrer are read from the **seat
-  entry**, never from the uptime measurement, which is what makes the
-  accumulation cap exact;
-* `claimable` is the mint's own walk run once per seat. A kernel that wrote a
-  second walk would be checking itself.
+**The substantive edits, in the order they were made:**
 
-**Where the code is.** `src/v6/economy_ledger.cpp` and
-`include/protocol/v6/ledger.hpp` hold the ledger with its ten-entry `carry`;
-`src/v6/economy_settlement.cpp` holds the walk range, the accrual predicate,
-and the verified-user collection; `src/v6/economy_value_transitions.cpp:151` is
-the dispatch whose `default` returns `std::nullopt` for the four kinds. The
-Python side to mirror is `simulation/economy_transition_v7/ledger.py` and
-`settlement.py`, and `tests/kernel/economy_v6_execution_fixture.hpp` is the
-fixture shape.
+* `kReceiptVersion`, `kGenesisSchemaVersion`, and `kStateRootSchemaVersion` go to
+  7, and `kChainIdLabel`, `kStateRootLabel`, and `kEconomyTreePrefix` take
+  version-seven labels. **`kEscrowLabel` stays at `protocol-stack:v6:escrow`** and
+  so do the account label, both transaction signing labels, and the six HUB
+  messages: a label names the artifact it derives and none of those changed.
+* `Entry::carry` leaves the enum and `Entry::recovery_pool = 17` joins it; `7`
+  joins `kRetiredEntryKinds`; both width tables grow to eighteen entries with
+  `kUnassigned` at 7.
+* `carry_key`/`carry_value` become `recovery_pool_key`/`recovery_pool_value` plus
+  a decoder, over a `RecoveryPool = std::array<std::uint64_t, 5>`.
+* `CycleAssignment` gains `pool_absorbed`, its fixed part goes from 24 to 64
+  octets, and **both the encoder and the decoder must refuse a nonzero absorbed
+  amount with a zero winner count** — that record describes value divided by
+  nobody.
+* `Ledger::carry` becomes `Ledger::pool`; `economy_entries` writes one pool entry
+  instead of ten carries; `fits_channel` binds `founder-economy-manifest-v3`.
+* `split_permission`, `collect_node`, and `claimable` are new and belong in
+  `ledger.hpp` beside `base_permission_leg`, because they read the manifest
+  tables. `claimable` must be `collect_node` run once per seat — a second walk
+  makes the backing identity check the kernel against itself.
+* `check_carry_identity` becomes `check_channel_identities` and states both
+  identities. It needs `<map>` and it must not shadow `owed`.
+
+**Then the four seat transitions**, kinds 2, 3, 4, and 5, whose dispatch in
+`src/v6/economy_value_transitions.cpp:151` currently returns `std::nullopt`
+from its `default` arm. Kind 4 is where the pool share is collected, which is
+why it cannot be deferred past the identities.
+
+**And the assignment prologue in `execute_block`**, which the kernel does not have
+at all: version six's C++ block execution never writes a cycle assignment. It
+must be written **before** the block's transactions, it must read the pool from
+the ledger, and it must read each measured seat's collection mark and recorded
+referrer from the seat entry rather than from the uptime record.
+
+**What the kernel must reproduce.** Both version-seven files:
+`test-vectors/economy-transition-v7.txt` for the settlement and the state
+surface, and `test-vectors/economy-transition-v7-execution.txt` for what a
+chain does. The second now covers all fourteen kinds, which is what makes the
+move possible; the existing kernel tests that read
+`economy-transition-v6-execution.txt` are retargeted to it rather than kept,
+because their recorded roots and receipts are version six's.
 
 **Then, in order, each its own slice:**
 
 * `calendar-v1`, which must fix the consensus timestamp's monotonicity rule and
   acceptance tolerance, the calendar-month boundary derived from it, and the
-  statement of both in a form any consensus adapter can satisfy — the tolerance
-  is consensus-visible and a proposer can move a month boundary within it, so it
-  must be a stated parameter rather than an adapter default;
+  statement of both in a form any consensus adapter can satisfy — the tolerance is
+  consensus-visible and a proposer can move a month boundary within it, so it must
+  be a stated parameter rather than an adapter default;
 * the HUB verification architecture of ADR 0048, which needs its threat model,
   with the biometric stabilization scheme named as requiring independent
   cryptographic review before anything rests on it;
 * requirement 13, the four-node adversarial scenarios, which has not started.
 
-**One sequencing rule the slice learned the hard way.** Let the merge's own
-`main` push run finish before pushing the closeout documentation commit. M3.11c
-pushed the closeout while the merge run was still building and the workflow's
+**Local checks worth running, and one worth running first.** `git diff --check
+main HEAD` is exactly the whitespace gate the classification job runs; it costs
+nothing and M3.12a lost a full matrix run to a trailing blank line without it.
+The local C++ harness is a scratch `sodium.h` backed by the system OpenSSL,
+never committed and never part of the build — `crypto_hash_sha256` over
+`EVP_sha256`, `crypto_sign_verify_detached` over `EVP_PKEY_ED25519`, and a
+`sodium_init` that returns zero — and with it every kernel translation unit
+compiles under `g++ -std=c++20 -fsyntax-only -I include -I src -I tests` in
+about a second. Its one known limit is that it does not reproduce libsodium's
+rejection of small-order public keys, so `tests/kernel/primitives_test.cpp`
+fails under it at that assertion and passes on the hosted matrix. **Run Clang
+locally before pushing**: it caught a structured-binding capture GCC accepts
+and the matrix rejects. **On Python sources use `python3 -B`**, because a stale
+bytecode cache can make a mutation probe appear to pass without ever compiling
+the mutation.
+
+**And re-aim a probe that passes.** M3.11c ran a probe that flipped the default of
+`assignment_is_prologue` and it passed uncaught, because the trace passes the
+flag explicitly and the mutation never reached the executed path. M3.12a ran
+one that substituted a line for itself. **A probe that passes has proved
+nothing until you have checked that it changed the code the test runs**, and
+the cheapest way to check is to make it fail on purpose first.
+
+**One sequencing rule the slice learned the hard way.** Let the merge's own `main`
+push run finish before pushing the closeout documentation commit. M3.11c pushed
+the closeout while the merge run was still building and the workflow's
 concurrency group cancelled it, which leaves a cancelled run and a failed
 aggregate check on `main`'s history for a commit whose tree had already passed
-the matrix in full on the pull request. Nothing was wrong and nothing needed
-re-running, but the history now needs a sentence to explain it, and that sentence
-is the cost of not waiting.
+the matrix in full on the pull request.
 
-**Reusable results worth not rediscovering.** The local C++ harness is a scratch
-`sodium.h` backed by the system OpenSSL, never committed and never part of the
-build; with it the whole kernel and its test units compile and run in about a
-second under both compilers with the project's exact flags and under address
-and undefined-behaviour sanitizers. Its one known limit is that it does not
-reproduce libsodium's rejection of small-order public keys, so
-`tests/kernel/primitives_test.cpp` fails under it at that assertion and passes
-on the hosted matrix. **Run Clang locally before pushing**: it caught a
-structured-binding capture GCC accepts and the matrix rejects. **On Python
-sources use `python3 -B`**, because a stale bytecode cache can make a mutation
-probe appear to pass without ever compiling the mutation.
-
-**And re-aim a probe that passes.** M3.11c ran a probe that flipped the default
-of `assignment_is_prologue` and it passed uncaught — not because the guard was
-weak but because the trace passes the flag explicitly, so the mutation never
-reached the executed path. **A probe that passes has proved nothing until you
-have checked that it changed the code the test runs.** That is now the third
-occasion; treat an uncaught probe as a question about the probe first.
-
-**One generation detail.** `test-vectors/economy-transition-v7-execution.txt` is
-produced by `tools/economy-transition-v7-execution-vectors/verify.py --emit`,
-which runs the same derivations through the same agreement gate as the checking
-mode, so the file and the derivations cannot disagree at birth. The section
-comments are emitted with it; regenerating is a single command rather than a
-transcription.
+**Two generation details.** Both version-seven vector files are produced by their
+verifier's `--emit`, which runs the same derivations through the same agreement
+gate as the checking mode, so a file and its derivations cannot disagree at
+birth; the section comments are emitted with them, so regenerating is one
+command rather than a transcription. And **the coverage claim is now a vector
+of its own**: `coverage.every_kind_version_seven_admits_is_executed` fails if a
+later scenario change stops reaching one.
 
 ## Blockers
 
-**None for M3.12a.** M3.11c ran the founder-decision gate and **passed** it. It
-enumerated fourteen decisions the slice had to settle — whether the execution
-half is imported or reimplemented; whether the ledger subclasses version six's
+**None for M3.12b.** M3.12a ran the founder-decision gate and **passed** it. It
+enumerated seven decisions the slice had to settle — which kinds the added
+scenarios must reach; whether the step fixtures are imported from version six
+or restated; the block and nonce ordering each scenario needs; which refusals
+belong in it; whether ADR 0055 is corrected in place or superseded by a new
+record; where the coverage claim is asserted; and the vector layout. **Every
+one is fixed by the accepted version-seven specification, version six's
+rejection orders, or `docs/engineering/verification.md`, or is encoding,
+mechanism, or layout**, which `founder-constitution.md` names as engineering
+work. None sets or changes supply, allocation, beneficiaries, Founder
+ownership, creator hierarchy, commercial routing, AI institutional authority,
+bridge scope, content permanence, or what a participant must do, own, run, or
+receive: every founder-directed figure is read from the accepted manifest
+rather than restated. No question was asked because none was reserved.
+
+**M3.11c ran the same gate and passed it.** It enumerated fourteen decisions the
+slice had to settle — whether the execution half is imported or reimplemented;
+whether the ledger subclasses version six's
 or siblings it; where a seat's collection mark and recorded referrer come from
 at an assignment; what happens to a measurement naming an unsold seat; how
 `claimable` is derived; what the inherited carry map means under version seven;
