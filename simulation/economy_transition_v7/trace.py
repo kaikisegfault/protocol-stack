@@ -686,4 +686,3 @@ def referral_scenario() -> tuple[Scenario, Signatures]:
 
 SCENARIOS = (pool_scenario, boundary_scenario, permanence_scenario,
              carried_scenario, referral_scenario)
-
