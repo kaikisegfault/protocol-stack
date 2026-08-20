@@ -2515,10 +2515,20 @@ behavior.
   the dominant term and a single slow run is not evidence of a regression. The
   merge is a rebase, and the resulting tree on `main` is byte-identical to the
   verified head — both are tree `a1c5087` — so the matrix result transfers
-  exactly. Push run 32385650335 covers the merged commit. Two earlier candidate
-  runs were superseded: one passed the whole matrix and was made obsolete by
-  three self-review fixes, and one was cancelled when the documentation reflow
-  was pushed.
+  exactly, and the PR run is the acceptance evidence rather than a `main` push
+  run. **The `main` push run on the merged code commit, 32385650335, was
+  cancelled** — the closeout documentation commit landed on `main` while it was
+  still building and the workflow's concurrency group cancelled it, which also
+  marks its aggregate check failed. Nothing regressed and nothing needs
+  re-running: the tree it was building is `a1c5087`, the tree PR run 32384372907
+  passed in full, and the commit that superseded it changes Markdown only and
+  correctly took the focused metadata path. **The lesson is about sequencing
+  rather than about evidence** — a documentation closeout pushed to `main` while
+  the merge's own matrix is still running will cancel it, so let the merge run
+  finish before pushing the closeout. Two candidate runs on the branch were also
+  superseded: one passed the whole matrix and was made obsolete by three
+  self-review fixes, and one was cancelled when the documentation reflow was
+  pushed.
 - Issue #189 and PR #190 are the M3.11b delivery, merged by rebase across
   commits `dbc1495` through `01527e5` on `main`. It adds
   `economy-transition-v7` — the specification, ADR 0054, the sibling model, 395
@@ -3391,6 +3401,15 @@ fixture shape.
   with the biometric stabilization scheme named as requiring independent
   cryptographic review before anything rests on it;
 * requirement 13, the four-node adversarial scenarios, which has not started.
+
+**One sequencing rule the slice learned the hard way.** Let the merge's own
+`main` push run finish before pushing the closeout documentation commit. M3.11c
+pushed the closeout while the merge run was still building and the workflow's
+concurrency group cancelled it, which leaves a cancelled run and a failed
+aggregate check on `main`'s history for a commit whose tree had already passed
+the matrix in full on the pull request. Nothing was wrong and nothing needed
+re-running, but the history now needs a sentence to explain it, and that sentence
+is the cost of not waiting.
 
 **Reusable results worth not rediscovering.** The local C++ harness is a scratch
 `sodium.h` backed by the system OpenSSL, never committed and never part of the
