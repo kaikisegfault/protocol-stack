@@ -212,10 +212,9 @@ def _seated_chain(
     ledger = scenario.ledger
 
     _run(scenario, signatures, [
-        Step(f"{label}_registers", _register(
+        Step(f"{_name_of(identity)}_registers", _register(
             signatures, ledger, identity, key, signer_key, valid_until=VALID_UNTIL))
         for identity, key, signer_key, _seat in people
-        for label in [_name_of(identity)]
     ])
     _run(scenario, signatures, [
         Step(f"{_name_of(identity)}_purchases", _purchase(

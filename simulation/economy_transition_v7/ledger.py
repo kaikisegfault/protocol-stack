@@ -84,7 +84,10 @@ class Ledger(LedgerV6):
     can be checked after every block without re-walking the whole history.
     """
 
-    pool: dict[int, int] = field(default_factory=dict)
+    # Exactly one recovery pool entry exists on any chain, so the default is the
+    # empty pool rather than an empty mapping: a ledger with no pool at all is a
+    # state no genesis writes and no transition produces.
+    pool: dict[int, int] = field(default_factory=empty_pool)
 
     # --- construction ---------------------------------------------------
 

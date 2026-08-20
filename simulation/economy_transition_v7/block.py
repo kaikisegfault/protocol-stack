@@ -213,23 +213,18 @@ def _write_due_assignment(
     finalised record — a chain with no seats in scope — writes nothing, which is
     the same fact as a record with every bit clear.
 
-    **The pool and the seat marks are both read from the ledger**, not from the
-    measurement. A `SeatCycle` bundles four fields and only three of them are
-    measured: the seat, its uptime, and whether it is inside its own 731 cycles
-    come from `uptime-measurement-v1`, while `minted_through_window` is chain
-    state the mint will read again. Version six took all four from its caller.
-    Version seven does not, because the backing identity is exact only if the
-    accumulation cap is applied against the same mark the walk uses, and a caller
-    able to supply a stale mark could make a cycle accrue to a seat whose mint can
-    no longer reach that window. `conservation.py` states the same rule by leaving
-    the mark out of `CycleSeat` altogether.
+    **The pool comes from the ledger and so do the two chain-state fields of every
+    measured seat**, which `_in_scope` reads and this function never takes from
+    its caller. Version six took all of them from the caller; version seven does
+    not, because the backing identity is exact only if the accumulation cap is
+    applied against the same mark the mint's walk uses.
     """
     if ledger.height % c.CYCLE_BLOCKS != 0:
         return None
     window = ledger.height // c.CYCLE_BLOCKS
-    if window < 2:
+    if window < c.ASSIGNMENT_LAG_WINDOWS:
         return None
-    due = window - 2
+    due = window - c.ASSIGNMENT_LAG_WINDOWS
     measured = (uptime or {}).get(due)
     if not measured:
         return None
