@@ -1235,6 +1235,14 @@ add_test(
     "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_v7_block_test.py"
 )
 add_test(
+  NAME economy-transition-v7-execution-vectors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tools/economy-transition-v7-execution-vectors/verify.py"
+    --vectors
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7-execution.txt"
+)
+add_test(
   NAME founder-seat-vectors
   COMMAND
     "${Python3_EXECUTABLE}"

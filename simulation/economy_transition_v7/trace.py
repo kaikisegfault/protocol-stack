@@ -243,6 +243,25 @@ def _advance_to_boundary(scenario: Scenario, window: int) -> None:
     scenario.skipped_blocks += scenario.ledger.advance_to(boundary_height(window) - 1)
 
 
+def _version_six_registration(signatures: Signatures, ledger: Ledger) -> bytes:
+    """A registration bound to the version-six chain identity of this genesis.
+
+    Version seven changes no transaction, so these are the bytes a version-six
+    chain admits. Only the chain ID inside them differs, which is the whole
+    compatibility boundary between the two: they are alternative chains rather
+    than a sequence, and no version-six byte sequence executes under version-seven
+    rules.
+    """
+    from .genesis import predecessor_chain_id
+
+    foreign = copy.copy(ledger)
+    foreign.chain_id = predecessor_chain_id(genesis(), 6)
+    return _register(
+        signatures, foreign, CAROL_IDENTITY, CAROL_KEY, CAROL_SIGNER_KEY,
+        valid_until=VALID_UNTIL,
+    )
+
+
 # --- scenario one: the pool fills, drains, and is minted --------------------
 
 POOL_UPTIME: dict[int, list[SeatCycle]] = {
@@ -284,9 +303,30 @@ def pool_scenario() -> tuple[Scenario, Signatures]:
     won = _run(
         scenario,
         signatures,
-        [Step("alice_mints", _mint_node(
-            signatures, ledger, ALICE_IDENTITY, ALICE_KEY, ALICE_SIGNER_KEY,
-            ALICE_SEAT, ALICE_ESCROW, 3))],
+        [
+            # Alice collects both cycles: her own accrual, Bob's reallocated
+            # permission, and the whole pool the dead cycle left behind.
+            Step("alice_mints", _mint_node(
+                signatures, ledger, ALICE_IDENTITY, ALICE_KEY, ALICE_SIGNER_KEY,
+                ALICE_SEAT, ALICE_ESCROW, 3)),
+            # Bob generated two base permissions and met neither cycle, so his
+            # mint succeeds, collects nothing, and pays a fee. The reallocation
+            # is what it says it is.
+            Step("bob_mints_nothing", _mint_node(
+                signatures, ledger, BOB_IDENTITY, BOB_KEY, BOB_SIGNER_KEY,
+                BOB_SEAT, BOB_ESCROW, 3)),
+            # A second mint in the same block. The mark now equals the last
+            # assigned window, so the walk range is empty — which is the rule
+            # ADR 0045 derived rather than the literal equality the text states.
+            Step("alice_mints_again", _mint_node(
+                signatures, ledger, ALICE_IDENTITY, ALICE_KEY, ALICE_SIGNER_KEY,
+                ALICE_SEAT, ALICE_ESCROW, 4)),
+            # The same registration bytes a version-six chain would admit,
+            # refused at admission because every signed message binds a chain ID
+            # derived under a version-seven label.
+            Step("carol_registers_on_the_version_six_chain",
+                 _version_six_registration(signatures, ledger), admits=False),
+        ],
         uptime=POOL_UPTIME,
     )
     scenario.notes["dead_window"] = dead.assigned_window
@@ -343,7 +383,19 @@ def boundary_scenario() -> tuple[Scenario, Signatures]:
     )
     scenario.notes["rejected_ordering_height"] = rejected.height
 
-    accepted = _run(scenario, signatures, [mint], uptime=POOL_UPTIME)
+    accepted = _run(
+        scenario,
+        signatures,
+        [
+            mint,
+            # The same refusal the pool scenario records, kept here so this
+            # scenario's atomicity claim is about a refusal it actually saw.
+            Step("alice_mints_again", _mint_node(
+                signatures, ledger, ALICE_IDENTITY, ALICE_KEY, ALICE_SIGNER_KEY,
+                ALICE_SEAT, ALICE_ESCROW, 4)),
+        ],
+        uptime=POOL_UPTIME,
+    )
     scenario.notes["accepted_ordering_issued"] = accepted.executed[0].outcome.issued_atomic
     scenario.notes["state_root_before_the_boundary_block"] = before_root
     return scenario, signatures
@@ -390,9 +442,14 @@ def permanence_scenario() -> tuple[Scenario, Signatures]:
     drained = _run(
         scenario,
         signatures,
-        [Step("carol_mints", _mint_node(
-            signatures, ledger, CAROL_IDENTITY, CAROL_KEY, CAROL_SIGNER_KEY,
-            CAROL_SEAT, CAROL_ESCROW, 3))],
+        [
+            Step("carol_mints", _mint_node(
+                signatures, ledger, CAROL_IDENTITY, CAROL_KEY, CAROL_SIGNER_KEY,
+                CAROL_SEAT, CAROL_ESCROW, 3)),
+            Step("carol_mints_again", _mint_node(
+                signatures, ledger, CAROL_IDENTITY, CAROL_KEY, CAROL_SIGNER_KEY,
+                CAROL_SEAT, CAROL_ESCROW, 4)),
+        ],
         uptime=PERMANENCE_UPTIME,
     )
     scenario.notes["stranded_window"] = stranded.assigned_window

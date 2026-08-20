@@ -96,8 +96,29 @@ class PrologueTest(unittest.TestCase):
         """One block, and the mint sees a window written moments earlier."""
         boundary = self.scenario.blocks[-1]
         self.assertEqual(boundary.assigned_window, trace.WON_WINDOW)
-        self.assertEqual(boundary.results, ["SUCCESS"])
+        self.assertEqual(boundary.results[0], "SUCCESS")
         self.assertGreater(boundary.executed[0].outcome.issued_atomic, 0)
+
+    def test_the_seat_that_generated_the_permissions_collected_nothing(self) -> None:
+        """The reallocation is what it says it is: Bob's mint succeeds at zero."""
+        boundary = self.scenario.blocks[-1]
+        bob = boundary.executed[1]
+        self.assertEqual(bob.result, "SUCCESS")
+        self.assertEqual(bob.outcome.issued_atomic, 0)
+        self.assertEqual(bob.outcome.fee_charged, trace.FIXED_FEE)
+
+    def test_a_second_mint_in_the_same_block_has_nothing_to_mint(self) -> None:
+        """The mark advance is what makes the walk range empty, not an equality."""
+        boundary = self.scenario.blocks[-1]
+        again = boundary.executed[2]
+        self.assertEqual(again.result, "NOTHING_TO_MINT")
+        self.assertEqual(again.outcome.fee_charged, 0)
+
+    def test_a_version_six_bound_transaction_never_reaches_execution(self) -> None:
+        self.assertEqual(
+            self.scenario.rejected,
+            {"carol_registers_on_the_version_six_chain": 2},
+        )
 
 
 class RejectedOrderingTest(unittest.TestCase):
