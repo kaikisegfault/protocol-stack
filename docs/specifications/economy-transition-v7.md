@@ -421,8 +421,8 @@ pipeline and its threat model.
 
 **Three limits are new and belong to this version.**
 
-**Nothing in *this document* executes a transaction.** It runs the settlement and
-the conservation identities and its vectors record their outcomes, which
+**Nothing in *this document* executes a transaction.** It runs the settlement
+and the conservation identities and its vectors record their outcomes, which
 establishes that the arithmetic is right and the state encodes. That a block
 containing a mint charges a fee and commits a root under version seven is
 established separately, by the version-seven ledger recorded in
@@ -431,11 +431,11 @@ established separately, by the version-seven ledger recorded in
 this document changes as a consequence.**
 
 **The pool lifecycle of ADR 0049 has no encoding here, because it is
-unreachable.** A pool that can receive no further inflow is to be marked consumed
-and then archived. The recovery pool can receive inflow for as long as any cycle
-is assigned, so it never reaches that state, and version seven declines to add a
-state bit that no transition can ever set. The lifecycle is a property of later
-pools.
+unreachable.** A pool that can receive no further inflow is to be marked
+consumed and then archived. The recovery pool can receive inflow for as long as
+any cycle is assigned, so it never reaches that state, and version seven
+declines to add a state bit that no transition can ever set. The lifecycle is a
+property of later pools.
 
 **Assigning 100% of the permissions is not issuing 100% of the supply.** A
 permission nobody collects is still uncollected. The backing identity closes the
@@ -492,25 +492,27 @@ reaching it.
 **A second, separate file records what a chain conforming to this document
 *does*.** `test-vectors/economy-transition-v7-execution.txt` holds 412 normative
 vectors over three recorded scenarios: a cycle nobody wins filling the recovery
-pool and the next cycle absorbing it whole into a real kind-4 mint; the same block
-under the rejected assignment ordering; and a machine past its own 731 issuance
-cycles draining a pool that no seat in that cycle contributed to. It is a separate
-file because this one is the artifact the hosted matrix verified at 395 vectors,
-and an accepted vector file is not edited.
+pool and the next cycle absorbing it whole into a real kind-4 mint; the same
+block under the rejected assignment ordering; and a machine past its own 731
+issuance cycles draining a pool that no seat in that cycle contributed to. It
+is a separate file because this one is the artifact the hosted matrix verified
+at 395 vectors, and an accepted vector file is not edited.
 
-Building the execution model reached one place where this document is silent and
-one where an accepted claim of ADR 0054's needed enforcing rather than assuming;
+Building the execution model reached one place where this document is silent
+and one where an accepted claim of ADR 0054's needed enforcing rather than
+assuming;
 [ADR 0055](../decisions/0055-the-version-seven-execution-model.md) records both.
 **No rule here changes as a consequence.** One is worth repeating where the
-settlement is defined, because it is consensus-visible and this document leaves it
-derived: **at an assignment, a seat's collection mark and its recorded referrer are
-read from the seat entry, not from the uptime measurement.** Steps 3 and 7 both
-name state — the accumulation cap is defined against `minted_through_window`, and
-the referral leg accrues to "the seat's recorded referrer identity" — and only the
-seat entry holds it. A measurement able to supply a different mark could set an
-accrued bit in a window the seat's own mint can no longer reach, which is exactly
-the stranding the backing identity exists to make impossible. A later transition
-version should state it in the settlement steps outright.
+settlement is defined, because it is consensus-visible and this document leaves
+it derived: **at an assignment, a seat's collection mark and its recorded
+referrer are read from the seat entry, not from the uptime measurement.** Steps
+3 and 7 both name state — the accumulation cap is defined against
+`minted_through_window`, and the referral leg accrues to "the seat's recorded
+referrer identity" — and only the seat entry holds it. A measurement able to
+supply a different mark could set an accrued bit in a window the seat's own
+mint can no longer reach, which is exactly the stranding the backing identity
+exists to make impossible. A later transition version should state it in the
+settlement steps outright.
 
 The same file records that **the rejected assignment ordering is not merely
 expensive under version seven, it is unconstructible.**

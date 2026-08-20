@@ -434,8 +434,8 @@ ADR 0055 records the version-seven execution model and the two rules it had to
 derive. Version seven changes no transaction, so thirteen of the fourteen are
 version six's own function objects rather than reimplementations, and a test
 requires object identity so a copy that drifted in an unreached path would fail
-rather than pass. The first derived rule is that a seat's collection mark and its
-recorded referrer are read from the seat entry rather than from the uptime
+rather than pass. The first derived rule is that a seat's collection mark and
+its recorded referrer are read from the seat entry rather than from the uptime
 measurement, because ADR 0054's claim that `claimable` is exact rests on the
 accumulation cap being applied against the same mark the mint's walk uses, and a
 measurement able to supply a different one could set an accrued bit in a window
@@ -597,9 +597,10 @@ immutable; compatible changes require a new version.
   identity loses its third term and gains a backing identity that names
   claimable and the pool — which is the statement that nothing is stranded. It
   binds `founder-economy-manifest-v3`. `simulation/economy_transition_v7/` now
-  both encodes and executes it, and `test-vectors/economy-transition-v7-execution.txt`
-  records a pool filled by an unwon cycle, absorbed whole by the next, and minted
-  — ending with outstanding and the pool both at zero. Its C++ implementation is
+  both encodes and executes it, and
+  `test-vectors/economy-transition-v7-execution.txt` records a pool filled by an
+  unwon cycle, absorbed whole by the next, and minted — ending with outstanding
+  and the pool both at zero. Its C++ implementation is
   not written.
 - `specifications/native-economy-simulation-v1.md`: versioned integer-only
   accounting, authority, event, trace, and metric contract for the independent
