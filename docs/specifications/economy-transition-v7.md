@@ -1,7 +1,7 @@
 # Economy transition v7
 
-Status: Accepted M3 consensus transition contract; model and vectors recorded,
-transaction ledger and C++ implementation not yet updated
+Status: Accepted M3 consensus transition contract; model, execution, and
+vectors recorded, C++ implementation not yet updated
 
 This document defines the version-seven Founder Economy consensus transition. It
 is [`economy-transition-v6`](economy-transition-v6.md) with **the per-channel
@@ -71,8 +71,9 @@ the version-seven chain identity and state root, version-seven genesis, and the
 exact compatibility boundary against versions one through six.
 
 It does not define the version-seven transaction ledger and its block execution,
-which mirror how version six separated its contract from its execution; the C++20
-kernel implementation, which is requirement 10; the four-node adversarial
+which mirror how version six separated its contract from its execution and which
+[ADR 0055](../decisions/0055-the-version-seven-execution-model.md) records; the
+C++20 kernel implementation, which is requirement 10; the four-node adversarial
 scenarios, which are requirement 13; direct-channel eligibility, which remains
 reserved; or anything else version six leaves unestablished, all of which is
 inherited unchanged.
@@ -420,11 +421,14 @@ pipeline and its threat model.
 
 **Three limits are new and belong to this version.**
 
-**Nothing here executes a transaction.** The model runs the settlement and the
-conservation identities and the vectors record their outcomes, which establishes
-that the arithmetic is right and the state encodes. It does not establish that a
-block containing a mint charges a fee and commits a root under version seven;
-that is the version-seven ledger, and it is the next slice.
+**Nothing in *this document* executes a transaction.** It runs the settlement and
+the conservation identities and its vectors record their outcomes, which
+establishes that the arithmetic is right and the state encodes. That a block
+containing a mint charges a fee and commits a root under version seven is
+established separately, by the version-seven ledger recorded in
+`test-vectors/economy-transition-v7-execution.txt` and by
+[ADR 0055](../decisions/0055-the-version-seven-execution-model.md). **No rule in
+this document changes as a consequence.**
 
 **The pool lifecycle of ADR 0049 has no encoding here, because it is
 unreachable.** A pool that can receive no further inflow is to be marked consumed
@@ -484,6 +488,38 @@ to be total, requires a carried constant to be identical and a revised one to
 differ, and fails if the revised set is not exactly what this document lists.
 That catches the defect no derivation can: a value that moved without any vector
 reaching it.
+
+**A second, separate file records what a chain conforming to this document
+*does*.** `test-vectors/economy-transition-v7-execution.txt` holds 412 normative
+vectors over three recorded scenarios: a cycle nobody wins filling the recovery
+pool and the next cycle absorbing it whole into a real kind-4 mint; the same block
+under the rejected assignment ordering; and a machine past its own 731 issuance
+cycles draining a pool that no seat in that cycle contributed to. It is a separate
+file because this one is the artifact the hosted matrix verified at 395 vectors,
+and an accepted vector file is not edited.
+
+Building the execution model reached one place where this document is silent and
+one where an accepted claim of ADR 0054's needed enforcing rather than assuming;
+[ADR 0055](../decisions/0055-the-version-seven-execution-model.md) records both.
+**No rule here changes as a consequence.** One is worth repeating where the
+settlement is defined, because it is consensus-visible and this document leaves it
+derived: **at an assignment, a seat's collection mark and its recorded referrer are
+read from the seat entry, not from the uptime measurement.** Steps 3 and 7 both
+name state — the accumulation cap is defined against `minted_through_window`, and
+the referral leg accrues to "the seat's recorded referrer identity" — and only the
+seat entry holds it. A measurement able to supply a different mark could set an
+accrued bit in a window the seat's own mint can no longer reach, which is exactly
+the stranding the backing identity exists to make impossible. A later transition
+version should state it in the settlement steps outright.
+
+The same file records that **the rejected assignment ordering is not merely
+expensive under version seven, it is unconstructible.**
+[ADR 0045](../decisions/0045-the-version-six-execution-model-and-three-derived-rules.md)
+had to reject it by argument, because under version six a boundary block whose
+mint runs before the assignment produces a state a node accepts and a founder
+loses a day to. Under version seven that block leaves `outstanding` above
+`claimable + recovery_pool` on every Founder Node leg, so the backing identity
+refuses it whole.
 
 Acceptance of the recorded artifacts requires full GitHub-hosted verification on
 the exact commit that adds them.

@@ -430,6 +430,23 @@ in-scope seat is already ranked, in span or not — so version seven states and
 guards that rule rather than rewriting a correct derivation on a premise that
 could not be reproduced.
 
+ADR 0055 records the version-seven execution model and the two rules it had to
+derive. Version seven changes no transaction, so thirteen of the fourteen are
+version six's own function objects rather than reimplementations, and a test
+requires object identity so a copy that drifted in an unreached path would fail
+rather than pass. The first derived rule is that a seat's collection mark and its
+recorded referrer are read from the seat entry rather than from the uptime
+measurement, because ADR 0054's claim that `claimable` is exact rests on the
+accumulation cap being applied against the same mark the mint's walk uses, and a
+measurement able to supply a different one could set an accrued bit in a window
+that seat can no longer reach. The second is that `claimable` is the mint's own
+walk run once per seat, so the identity that says nothing was stranded cannot
+drift from what a mint actually pays. It also records a finding rather than a
+choice: the assignment ordering ADR 0045 had to reject by argument is
+unconstructible under version seven, because a boundary block whose mint runs
+before the assignment leaves `outstanding` above `claimable + recovery_pool` and
+the backing identity refuses the block whole.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
@@ -579,8 +596,11 @@ immutable; compatible changes require a new version.
   assignment record grows by what that cycle absorbed, and the per-channel
   identity loses its third term and gains a backing identity that names
   claimable and the pool — which is the statement that nothing is stranded. It
-  binds `founder-economy-manifest-v3`. Its model and vectors are recorded; its
-  transaction ledger and C++ implementation are not.
+  binds `founder-economy-manifest-v3`. `simulation/economy_transition_v7/` now
+  both encodes and executes it, and `test-vectors/economy-transition-v7-execution.txt`
+  records a pool filled by an unwon cycle, absorbed whole by the next, and minted
+  — ending with outstanding and the pool both at zero. Its C++ implementation is
+  not written.
 - `specifications/native-economy-simulation-v1.md`: versioned integer-only
   accounting, authority, event, trace, and metric contract for the independent
   M2 research simulator; it is not a consensus transition.
