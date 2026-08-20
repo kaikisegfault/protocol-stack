@@ -234,6 +234,41 @@ class MeasurementBindingTest(unittest.TestCase):
         ledger.require_conserved()
 
 
+class KindCoverageTest(unittest.TestCase):
+    """Every kind version seven admits is executed by the recorded trace.
+
+    Version six's execution trace reaches eleven of the fourteen. Version
+    seven's reaches all fourteen, and the reason it must is not tidiness: the
+    version-six vectors record version-six roots and version-six receipts, so a
+    kind version seven never executes has no recorded version-seven commitment
+    for a second implementation to reproduce.
+    """
+
+    def setUp(self) -> None:
+        self.reached = set()
+        for maker in trace.SCENARIOS:
+            scenario, _signatures = maker()
+            for block in scenario.blocks:
+                for entry in block.executed:
+                    self.reached.add(entry.kind)
+
+    def test_every_kind_is_executed(self) -> None:
+        self.assertEqual(self.reached, set(c.TRANSACTION_KINDS))
+
+    def test_no_retired_kind_is_executed(self) -> None:
+        self.assertEqual(self.reached & set(c.RETIRED_KINDS), set())
+
+    def test_every_kind_produced_a_version_seven_receipt(self) -> None:
+        """The claim the version-six vectors cannot make about these bytes."""
+        versions = set()
+        for maker in trace.SCENARIOS:
+            scenario, _signatures = maker()
+            for block in scenario.blocks:
+                for raw in block.receipts:
+                    versions.add(int.from_bytes(raw[4:6], "big"))
+        self.assertEqual(versions, {7})
+
+
 class BlockAtomicityTest(unittest.TestCase):
     """Inherited, and required here because losing it would be silent."""
 

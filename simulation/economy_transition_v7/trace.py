@@ -40,12 +40,17 @@ from dataclasses import replace
 from simulation.cycle_boundary import grid
 from simulation.economy_transition_v3.settlement import SeatCycle
 from simulation.economy_transition_v6 import messages
-from simulation.economy_transition_v6.identity import escrow_id
+from simulation.economy_transition_v6.identity import Posture, escrow_id, signer_id
 from simulation.economy_transition_v6.trace import (
+    ACCEPTED_RECIPIENT,
+    POSTURE_MINIMUM,
     Scenario,
     Signatures,
     Step,
+    _confirmed_transfer,
+    _posture,
     _register,
+    _verified_user_mint,
     build,
 )
 
@@ -92,6 +97,12 @@ DRAINED_WINDOW = STRANDED_WINDOW + 1
 
 MET_UPTIME_SECONDS = 72_000
 FAILED_UPTIME_SECONDS = 7_200
+
+# Thirty windows is the verified-user cap, so a collection at this height forfeits
+# the ten older windows and collects the most recent thirty.
+COLLECTION_HEIGHT = 40 * c.CYCLE_BLOCKS
+TRANSFER_AMOUNT = 1_000_000
+FRESH_SIGNER_KEY = bytes.fromhex("a4" * 32)
 
 
 def boundary_height(window: int) -> int:
@@ -145,15 +156,17 @@ def _run(
 
 def _purchase(
     signatures: Signatures, ledger: Ledger, identity: bytes, key: bytes,
-    signer_key: bytes, seat_id: int, nonce: int,
+    signer_key: bytes, seat_id: int, nonce: int, referrer: bytes | None = None,
 ) -> bytes:
+    """The referrer is named by escrow — the shareable thing — and recorded as an
+    identity, so referral earnings follow the person rather than the address."""
     message = messages.purchase_message(ledger.chain_id, identity, seat_id, VALID_UNTIL)
     return build(
         signatures, ledger, c.PURCHASE_SEAT, signer_key, nonce,
         {
             "seat_id": seat_id,
-            "has_referrer": False,
-            "referrer_escrow_id": bytes(32),
+            "has_referrer": referrer is not None,
+            "referrer_escrow_id": referrer or bytes(32),
             "hub_signature": signatures.sign(key, message),
         },
         valid_until=VALID_UNTIL,
@@ -462,4 +475,215 @@ def permanence_scenario() -> tuple[Scenario, Signatures]:
     return scenario, signatures
 
 
-SCENARIOS = (pool_scenario, boundary_scenario, permanence_scenario)
+# --- scenario four: the ten kinds version seven does not change -------------
+
+
+def carried_scenario() -> tuple[Scenario, Signatures]:
+    """Every transaction version seven leaves alone, executed under version seven.
+
+    **The bytes are version six's and the commitments are not.** A registration
+    under version seven is byte-for-byte a registration under version six, and it
+    lands in a version-seven state and produces a version-seven receipt. Version
+    six's 512 execution vectors record neither of those, because they record
+    version-six roots and version-six receipts, so nothing anywhere fixed what
+    these ten kinds commit to under version seven until this scenario did.
+
+    Every step builder is version six's, imported rather than restated: what is
+    version seven's here is the ledger they run against and the roots they commit.
+    """
+    signatures = Signatures()
+    scenario = Scenario(name="carried", ledger=Ledger.from_genesis(genesis()))
+    ledger = scenario.ledger
+
+    _run(scenario, signatures, [
+        Step("alice_registers", _register(
+            signatures, ledger, ALICE_IDENTITY, ALICE_KEY, ALICE_SIGNER_KEY,
+            valid_until=VALID_UNTIL)),
+        Step("bob_registers", _register(
+            signatures, ledger, BOB_IDENTITY, BOB_KEY, BOB_SIGNER_KEY,
+            valid_until=VALID_UNTIL)),
+    ])
+
+    # Kinds 1, 19, and 6. The default posture requires a confirmation at every
+    # amount, so the unconfirmed transfer is refused and the confirmed one is not;
+    # a refusal advances no nonce, which is why the confirmed transfer reuses 1.
+    _run(scenario, signatures, [
+        Step("alice_transfers_unconfirmed", build(
+            signatures, ledger, c.TRANSFER, ALICE_SIGNER_KEY, 1,
+            {"recipient_escrow_id": BOB_ESCROW, "amount_atomic": TRANSFER_AMOUNT},
+            valid_until=VALID_UNTIL)),
+        Step("alice_transfers_confirmed", _confirmed_transfer(
+            signatures, ledger, 1, BOB_ESCROW, TRANSFER_AMOUNT)),
+        Step("alice_transfers_to_an_unregistered_recipient", _confirmed_transfer(
+            signatures, ledger, 2, ACCEPTED_RECIPIENT, TRANSFER_AMOUNT)),
+        Step("alice_attempts_a_direct_issue", build(
+            signatures, ledger, c.DIRECT_ISSUE, ALICE_SIGNER_KEY, 2,
+            {
+                "channel_id": 5,
+                "decision_id": bytes(32),
+                "beneficiary_escrow_id": ALICE_ESCROW,
+                "amount_atomic": 1,
+                "authorization": bytes(32),
+            },
+            valid_until=VALID_UNTIL)),
+    ])
+
+    # Kinds 13, 14, 15, and 16 — the four an identity performs with no signer at
+    # all, which is the recovery architecture ADR 0040 exists for.
+    second_escrow = escrow_id(ALICE_IDENTITY, 1)
+    _run(scenario, signatures, [
+        Step("alice_creates_a_second_escrow", build(
+            signatures, ledger, c.ESCROW_CREATE, ALICE_KEY, 2,
+            {"hub_identity_hash": ALICE_IDENTITY, "fee_escrow_id": ALICE_ESCROW},
+            valid_until=VALID_UNTIL)),
+        Step("alice_deletes_the_second_escrow", build(
+            signatures, ledger, c.ESCROW_DELETE, ALICE_KEY, 3,
+            {
+                "hub_identity_hash": ALICE_IDENTITY,
+                "fee_escrow_id": ALICE_ESCROW,
+                "target_escrow_id": second_escrow,
+            },
+            valid_until=VALID_UNTIL)),
+        Step("alice_assigns_a_fresh_signer", build(
+            signatures, ledger, c.SIGNER_ADD, ALICE_KEY, 4,
+            {
+                "hub_identity_hash": ALICE_IDENTITY,
+                "escrow_id": ALICE_ESCROW,
+                "signer_public_key": FRESH_SIGNER_KEY,
+            },
+            valid_until=VALID_UNTIL)),
+        Step("alice_revokes_the_fresh_signer", build(
+            signatures, ledger, c.SIGNER_REVOKE, ALICE_KEY, 5,
+            {
+                "hub_identity_hash": ALICE_IDENTITY,
+                "escrow_id": ALICE_ESCROW,
+                "signer_id": signer_id(FRESH_SIGNER_KEY),
+            },
+            valid_until=VALID_UNTIL)),
+    ])
+
+    # Kind 17, in both directions. The opening posture is the strictest one the
+    # contract admits, so the first change can only be a relaxation — and a
+    # relaxation is exactly what the HUB signature is required for.
+    relaxed = Posture(requires_confirmation=True, min_amount_atomic=POSTURE_MINIMUM)
+    tightened = Posture(requires_confirmation=True, min_amount_atomic=0)
+    _run(scenario, signatures, [
+        Step("alice_relaxes_without_a_signature",
+             _posture(signatures, ledger, 6, relaxed, signed=False)),
+        Step("alice_relaxes_her_posture",
+             _posture(signatures, ledger, 6, relaxed, signed=True)),
+        Step("alice_tightens_her_posture",
+             _posture(signatures, ledger, 7, tightened, signed=False)),
+        Step("alice_repeats_the_posture_she_holds",
+             _posture(signatures, ledger, 8, tightened, signed=False)),
+    ])
+
+    # Kind 18, forty windows after enrolment: thirty are collectable and the ten
+    # older ones are forfeited, which is the cap doing what it is for.
+    scenario.skipped_blocks += ledger.advance_to(COLLECTION_HEIGHT - 1)
+    _run(scenario, signatures, [
+        Step("alice_collects_thirty_windows", _verified_user_mint(
+            signatures, ledger, ALICE_IDENTITY, 8, ALICE_ESCROW)),
+        Step("alice_collects_again_immediately", _verified_user_mint(
+            signatures, ledger, ALICE_IDENTITY, 9, ALICE_ESCROW)),
+    ])
+    scenario.notes["collection_height"] = COLLECTION_HEIGHT
+    scenario.notes["alice_balance"] = ledger.balance(ALICE_ESCROW)
+    scenario.notes["bob_balance"] = ledger.balance(BOB_ESCROW)
+    scenario.notes["verified_user_issued"] = ledger.channel_issued[
+        c.VERIFIED_USER_CHANNEL
+    ]
+    return scenario, signatures
+
+
+# --- scenario five: the referral leg ----------------------------------------
+
+REFERRED_WINDOW = 400
+
+REFERRAL_UPTIME: dict[int, list[SeatCycle]] = {
+    REFERRED_WINDOW: [SeatCycle(BOB_SEAT, MET_UPTIME_SECONDS, True, 0)],
+}
+
+
+def _mint_referral(
+    signatures: Signatures, ledger: Ledger, identity: bytes, key: bytes,
+    signer_key: bytes, destination: bytes, nonce: int,
+) -> bytes:
+    message = messages.mint_message(
+        ledger.chain_id, identity, c.MINT_REFERRAL, 0, destination, VALID_UNTIL
+    )
+    return build(
+        signatures, ledger, c.MINT_REFERRAL, signer_key, nonce,
+        {
+            "destination_escrow_id": destination,
+            "hub_signature": signatures.sign(key, message),
+        },
+        valid_until=VALID_UNTIL,
+    )
+
+
+def referral_scenario() -> tuple[Scenario, Signatures]:
+    """Kind 5, the last kind version seven admits that nothing else here reaches.
+
+    Bob buys a seat naming Alice's escrow as his referrer. The assignment prologue
+    accrues the referral leg to Alice's **identity**, and Alice mints it in the
+    same block the prologue wrote it in. The referral channel keeps version six's
+    identity unchanged, including the unreferred pool term, because the referral
+    leg has no winner split and therefore no remainder — which is why the recovery
+    pool has five legs rather than six.
+    """
+    signatures = Signatures()
+    scenario = Scenario(name="referral", ledger=Ledger.from_genesis(genesis()))
+    ledger = scenario.ledger
+
+    _run(scenario, signatures, [
+        Step("alice_registers", _register(
+            signatures, ledger, ALICE_IDENTITY, ALICE_KEY, ALICE_SIGNER_KEY,
+            valid_until=VALID_UNTIL)),
+        Step("bob_registers", _register(
+            signatures, ledger, BOB_IDENTITY, BOB_KEY, BOB_SIGNER_KEY,
+            valid_until=VALID_UNTIL)),
+    ])
+    _run(scenario, signatures, [
+        Step("bob_purchases_a_seat_referring_alice", _purchase(
+            signatures, ledger, BOB_IDENTITY, BOB_KEY, BOB_SIGNER_KEY,
+            BOB_SEAT, 1, referrer=ALICE_ESCROW)),
+    ])
+    scenario.skipped_blocks = ledger.advance_to(
+        activation_height(REFERRED_WINDOW) - 1
+    )
+    _run(scenario, signatures, [
+        Step("bob_activates", _activate(
+            signatures, ledger, BOB_IDENTITY, BOB_KEY, BOB_SIGNER_KEY, BOB_SEAT, 2)),
+    ])
+
+    _advance_to_boundary(scenario, REFERRED_WINDOW)
+    assigned = _run(
+        scenario,
+        signatures,
+        [
+            Step("alice_mints_her_referral", _mint_referral(
+                signatures, ledger, ALICE_IDENTITY, ALICE_KEY, ALICE_SIGNER_KEY,
+                ALICE_ESCROW, 1)),
+            Step("alice_mints_it_again", _mint_referral(
+                signatures, ledger, ALICE_IDENTITY, ALICE_KEY, ALICE_SIGNER_KEY,
+                ALICE_ESCROW, 2)),
+            Step("bob_mints_a_referral_he_has_never_earned", _mint_referral(
+                signatures, ledger, BOB_IDENTITY, BOB_KEY, BOB_SIGNER_KEY,
+                BOB_ESCROW, 3)),
+        ],
+        uptime=REFERRAL_UPTIME,
+    )
+    scenario.notes["referred_window"] = assigned.assigned_window
+    scenario.notes["referral_issued"] = ledger.channel_issued[c.REFERRAL_CHANNEL]
+    scenario.notes["referral_outstanding"] = ledger.channel_outstanding[
+        c.REFERRAL_CHANNEL
+    ]
+    scenario.notes["unreferred_pool_accrued"] = ledger.pool_accrued
+    scenario.notes["alice_balance"] = ledger.balance(ALICE_ESCROW)
+    return scenario, signatures
+
+
+SCENARIOS = (pool_scenario, boundary_scenario, permanence_scenario,
+             carried_scenario, referral_scenario)
+

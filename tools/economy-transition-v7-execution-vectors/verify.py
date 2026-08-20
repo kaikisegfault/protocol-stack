@@ -36,8 +36,10 @@ import expected as e
 from checker import Checker, read_vectors
 from settlement_checks import (
     check_boundary_scenario,
+    check_carried_scenario,
     check_permanence_scenario,
     check_pool_scenario,
+    check_referral_scenario,
 )
 from trace_checks import check_constructions, check_genesis, check_receipt, check_scenario
 
@@ -53,14 +55,26 @@ SHAPES = {
                      assignments=2, custody=4),
     "permanence": dict(identities=2, escrows=2, signers=2, enrollments=2, seats=2,
                        assignments=2, custody=4),
+    # A created escrow was deleted and an assigned signer was revoked, so both
+    # counts are back where they started — which is the point of recording them.
+    "carried": dict(identities=2, escrows=2, signers=2, enrollments=2),
+    "referral": dict(identities=2, escrows=2, signers=2, enrollments=2, seats=1,
+                     assignments=1, referral_balances=1),
 }
 
 # Registration is fee-exempt, so the fee-charging successes are the purchases,
-# the activations, and each mint that was not refused.
-FEE_CHARGING_SUCCESSES = {"pool": 6, "boundary": 5, "permanence": 5}
+# the activations, the escrow and signer transactions, the accepted posture
+# changes, and each mint that was not refused.
+FEE_CHARGING_SUCCESSES = {
+    "pool": 6, "boundary": 5, "permanence": 5, "carried": 8, "referral": 3,
+}
 
 
 def _totals(name: str) -> dict[str, object]:
+    if name == "carried":
+        return e.carried_scenario_totals()
+    if name == "referral":
+        return e.referral_scenario_totals()
     airdrops = 2 * e.VERIFIED_USER_DAILY_ATOMIC
     minted = (
         e.pool_scenario_totals()["minted_total_atomic"]
@@ -82,8 +96,10 @@ def run(check: Checker, accepted: Path) -> None:
     pool = built["pool_scenario"]
     boundary = built["boundary_scenario"]
     permanence = built["permanence_scenario"]
+    carried = built["carried_scenario"]
+    referral = built["referral_scenario"]
 
-    for scenario in (pool, boundary, permanence):
+    for scenario in (pool, boundary, permanence, carried, referral):
         check.section(f"Scenario {scenario.name}: every block's commitments.")
         check_scenario(
             check,
@@ -95,7 +111,30 @@ def run(check: Checker, accepted: Path) -> None:
     check_pool_scenario(check, pool)
     check_boundary_scenario(check, boundary)
     check_permanence_scenario(check, permanence)
+    check_carried_scenario(check, carried)
+    check_referral_scenario(check, referral)
+    check_kind_coverage(check, list(built.values()))
     check_determinism(check, list(built.values()))
+
+
+def check_kind_coverage(check: Checker, scenarios: list) -> None:
+    """Every kind version seven admits is executed somewhere in this file.
+
+    Version six's execution vectors reach eleven of the fourteen. This one reaches
+    all fourteen, which is what makes it a complete statement about what a
+    version-seven chain does rather than a partial one.
+    """
+    check.section("Coverage: every transaction kind version seven admits.")
+    reached = set()
+    for scenario in scenarios:
+        for block in scenario.blocks:
+            for entry in block.executed:
+                reached.add(entry.kind)
+    check.equal("coverage.kinds_executed", len(reached))
+    check.equal(
+        "coverage.every_kind_version_seven_admits_is_executed",
+        reached == set(e.KIND_NUMBERS),
+    )
 
 
 def check_determinism(check: Checker, scenarios: list) -> None:
