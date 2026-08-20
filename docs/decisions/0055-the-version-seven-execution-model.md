@@ -165,16 +165,36 @@ with the first and says nothing about the recovery pool. The three recorded
 scenarios are the pool's round trip, the two block orderings, and a machine
 past its own 731 cycles.
 
+> **This alternative was rejected for a reason that is half wrong, and it was
+> corrected on 2026-08-20.** It is right about the transactions and wrong about
+> their commitments. `economy-transition-v6-execution.txt` records
+> version-**six** state roots and version-**six** receipts. Version seven
+> re-versions both, so a registration under version seven is byte-for-byte a
+> registration under version six, lands in a different state root, and produces
+> a different receipt — and nothing recorded what either is. Ten of the
+> fourteen kinds had no version-seven execution evidence at all.
+>
+> The consequence was not theoretical. Under the three scenarios this record
+> accepted, swapping version seven's escrow-create and escrow-delete handlers
+> in its own dispatch table **passes every vector**. Issue #197 adds a
+> `carried` scenario over the ten kinds and a `referral` scenario over kind 5,
+> taking the file from 412 vectors to 590 and reaching all fourteen kinds; that
+> mutation and three more like it are then caught. **A kind a trace never
+> executes has no recorded commitment, whatever an earlier version's file says
+> about its bytes.**
+
 **Leaving the measurement's mark alone for symmetry with version six.** It would
 preserve a hole the backing identity was added to close, in the one input a
 chain does not derive.
 
 ## Consequences
 
-`test-vectors/economy-transition-v7-execution.txt` holds 412 normative vectors
-over three recorded scenarios. `test-vectors/economy-transition-v7.txt` is not
-edited: it is the artifact the hosted matrix verified at 395 vectors, and an
-accepted vector file is not edited.
+`test-vectors/economy-transition-v7-execution.txt` holds 590 normative vectors
+over five recorded scenarios — three recorded here and two added by issue #197,
+which the quoted correction above explains.
+`test-vectors/economy-transition-v7.txt` is not edited: it is the artifact the
+hosted matrix verified at 395 vectors, and an accepted vector file is not
+edited.
 
 The pool scenario ends with `outstanding` at zero and the recovery pool at zero
 on every Founder Node channel, with `issued` equal to `assigned_permissions *

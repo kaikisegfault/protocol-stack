@@ -490,13 +490,19 @@ That catches the defect no derivation can: a value that moved without any vector
 reaching it.
 
 **A second, separate file records what a chain conforming to this document
-*does*.** `test-vectors/economy-transition-v7-execution.txt` holds 412 normative
-vectors over three recorded scenarios: a cycle nobody wins filling the recovery
-pool and the next cycle absorbing it whole into a real kind-4 mint; the same
-block under the rejected assignment ordering; and a machine past its own 731
-issuance cycles draining a pool that no seat in that cycle contributed to. It
-is a separate file because this one is the artifact the hosted matrix verified
-at 395 vectors, and an accepted vector file is not edited.
+*does*.** `test-vectors/economy-transition-v7-execution.txt` holds 590
+normative vectors over five recorded scenarios: a cycle nobody wins filling the
+recovery pool and the next cycle absorbing it whole into a real kind-4 mint;
+the same block under the rejected assignment ordering; a machine past its own
+731 issuance cycles draining a pool that no seat in that cycle contributed to;
+every kind this version leaves unchanged, executed against a version-seven
+ledger; and the referral leg accrued to an identity and minted. **All fourteen
+transaction kinds are executed**, which version six's execution file does not
+manage — it reaches eleven. That matters because a kind no trace executes has
+no recorded version-seven state root and no recorded version-seven receipt,
+whatever version six's file fixes about its bytes. It is a separate file
+because this one is the artifact the hosted matrix verified at 395 vectors, and
+an accepted vector file is not edited.
 
 Building the execution model reached one place where this document is silent
 and one where an accepted claim of ADR 0054's needed enforcing rather than
