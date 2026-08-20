@@ -43,14 +43,13 @@ from .settlement import (
     Collection,
     InvalidSettlement,
     assignment_entry,
+    claimable,
     collect,
     derive_assignment,
     empty_pool,
     outstanding_delta,
-    split_permission,
     walk_range,
 )
-from .state import bit_is_set, decode_cycle_assignment_value
 
 
 class SettlementFailure(ValueError):
@@ -143,32 +142,11 @@ class SettlementLedger:
     def claimable(self) -> dict[int, int]:
         """What the recorded assignments still owe every seat from its own mark.
 
-        A window is read for a seat exactly when the walk would read it, so this
-        derives the same figure a sequence of mints would collect, without
-        performing them.
+        The walk is the settlement's, which is the walk a mint runs, so this
+        derives the figure a sequence of mints would collect without performing
+        them — and cannot drift from what the mint actually pays.
         """
-        owed = {channel: 0 for channel in c.RECOVERY_POOL_LEGS}
-        last_assigned = max(self.assignments) if self.assignments else None
-        for seat_id, mark in self.marks.items():
-            span = walk_range(mark, last_assigned)
-            if span is None:
-                continue
-            first, last = span
-            for window in range(first, last + 1):
-                raw = self.assignments.get(window)
-                if raw is None:
-                    continue
-                record = decode_cycle_assignment_value(raw)
-                if bit_is_set(record["accrued_bitmap"], seat_id):
-                    for channel, amount in c.BASE_PERMISSION_LEGS:
-                        owed[channel] += amount
-                if bit_is_set(record["winner_bitmap"], seat_id):
-                    winners = record["winner_count"]
-                    shares, _ = split_permission(winners)
-                    for channel, _amount in c.BASE_PERMISSION_LEGS:
-                        owed[channel] += record["reallocated_count"] * shares[channel]
-                        owed[channel] += record["pool_absorbed"][channel] // winners
-        return owed
+        return claimable(self.marks, self.assignments)
 
     def identity_failures(self) -> list[str]:
         """Both identities, as equalities, over every Founder Node channel."""
