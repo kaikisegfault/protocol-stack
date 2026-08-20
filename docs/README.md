@@ -445,7 +445,15 @@ drift from what a mint actually pays. It also records a finding rather than a
 choice: the assignment ordering ADR 0045 had to reject by argument is
 unconstructible under version seven, because a boundary block whose mint runs
 before the assignment leaves `outstanding` above `claimable + recovery_pool` and
-the backing identity refuses the block whole.
+the backing identity refuses the block whole. **One of its rejected alternatives
+was corrected on 2026-08-20 and the record says so in place.** It declined to
+re-record version six's execution scenarios on the ground that they are fixed by
+512 accepted vectors over transactions version seven does not touch — right
+about the transactions and wrong about their commitments, because those vectors
+record version-six roots and version-six receipts and version seven re-versions
+both. Ten of the fourteen kinds had no version-seven execution evidence, and
+swapping two handlers in version seven's own dispatch table passed every vector
+until the two scenarios that close the gap were added.
 
 ## Engineering
 
@@ -600,8 +608,9 @@ immutable; compatible changes require a new version.
   both encodes and executes it, and
   `test-vectors/economy-transition-v7-execution.txt` records a pool filled by an
   unwon cycle, absorbed whole by the next, and minted — ending with outstanding
-  and the pool both at zero. Its C++ implementation is
-  not written.
+  and the pool both at zero — over five scenarios that execute **all fourteen**
+  transaction kinds, where version six's execution file reaches eleven. Its C++
+  implementation is not written.
 - `specifications/native-economy-simulation-v1.md`: versioned integer-only
   accounting, authority, event, trace, and metric contract for the independent
   M2 research simulator; it is not a consensus transition.
