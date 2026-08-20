@@ -68,6 +68,9 @@ CYCLE_BLOCKS = _v6x.CYCLE_BLOCKS
 ASSIGNMENT_LAG_WINDOWS = _v6x.ASSIGNMENT_LAG_WINDOWS
 MINT_ACCUMULATION_CAP = _v6x.MINT_ACCUMULATION_CAP
 RESULT_CODES = _v6x.RESULT_CODES
+# The fourteen kind numbers version seven admits, from version six's table, which
+# version seven carries unchanged.
+KIND_NUMBERS = frozenset(_v7.KIND_NAMES)
 CODE_NUMBER = _v6x.CODE_NUMBER
 FIXED_FEE = _v6x.FIXED_FEE
 
@@ -107,6 +110,7 @@ RECEIPT_BYTES = sum(RECEIPT_FIELD_WIDTHS)
 NETWORK_ID = 7
 SUPPLY_LIMIT = 5_699_395_010_000_000_000
 VERIFIED_USER_DAILY_ATOMIC = _v6x.verified_user_daily_atomic()
+TRANSFER_AMOUNT = 1_000_000
 GENESIS_ECONOMY_ENTRIES = 14
 
 
@@ -272,6 +276,88 @@ EXPECTED_RESULTS: dict[str, tuple[str, str]] = {
         "NOTHING_TO_MINT",
         "the mark now equals the last assigned window, so the walk range is empty",
     ),
+    # Scenario carried. Version six's rejection orders, unchanged, over a
+    # version-seven state: what these entries fix is which condition fires, and
+    # the vectors then fix what each one commits to.
+    "alice_transfers_unconfirmed": (
+        "BIOMETRIC_REQUIRED",
+        "the opening posture requires a confirmation at every amount and kind 1 "
+        "carries none",
+    ),
+    "alice_transfers_confirmed": (
+        "SUCCESS",
+        "kind 19 carries the HUB signature the posture requires",
+    ),
+    "alice_transfers_to_an_unregistered_recipient": (
+        "RECIPIENT_NOT_REGISTERED",
+        "the recipient check precedes the debit, and version six withdrew "
+        "version one's recipient-creating transfer",
+    ),
+    "alice_attempts_a_direct_issue": (
+        "UNAUTHORIZED",
+        "kind 6 is refused for every acting key while the eligibility predicate "
+        "is founder-reserved, so its own six conditions are unreachable",
+    ),
+    "alice_creates_a_second_escrow": (
+        "SUCCESS",
+        "the identity is the admin, so no signer is involved",
+    ),
+    "alice_deletes_the_second_escrow": (
+        "SUCCESS",
+        "the target is empty and is not the escrow paying the fee",
+    ),
+    "alice_assigns_a_fresh_signer": (
+        "SUCCESS",
+        "the recovery path: an identity assigns a signer to an escrow that "
+        "already holds value, and that escrow pays",
+    ),
+    "alice_revokes_the_fresh_signer": (
+        "SUCCESS",
+        "the signer is assigned to the escrow the transaction names",
+    ),
+    "alice_relaxes_without_a_signature": (
+        "UNAUTHORIZED",
+        "raising the minimum shrinks the set of operations needing a proof, so "
+        "it is a relaxation and the HUB signature is required",
+    ),
+    "alice_relaxes_her_posture": ("SUCCESS", "the same change, signed"),
+    "alice_tightens_her_posture": (
+        "SUCCESS",
+        "a tightening needs no proof, and its confirmation field must be zero",
+    ),
+    "alice_repeats_the_posture_she_holds": (
+        "REPLAY",
+        "an unchanged posture is refused before the direction is derived",
+    ),
+    "alice_collects_thirty_windows": (
+        "SUCCESS",
+        "forty windows after enrolment, thirty are collectable and the ten "
+        "older ones are forfeited",
+    ),
+    "alice_collects_again_immediately": (
+        "NOTHING_TO_MINT",
+        "the mark advanced to the collectable end, so the count is zero",
+    ),
+    # Scenario referral.
+    "bob_purchases_a_seat_referring_alice": (
+        "SUCCESS",
+        "the referrer is named by escrow and recorded as an identity, and it is "
+        "not the purchaser's own",
+    ),
+    "bob_activates": ("SUCCESS", "a purchased seat, activated once"),
+    "alice_mints_her_referral": (
+        "SUCCESS",
+        "the prologue wrote her accrual before this block's transactions ran",
+    ),
+    "alice_mints_it_again": (
+        "NOTHING_TO_MINT",
+        "the balance is settled and the collection mark equals the last "
+        "assigned window",
+    ),
+    "bob_mints_a_referral_he_has_never_earned": (
+        "NOTHING_TO_MINT",
+        "no referral balance entry exists for his identity at all",
+    ),
     "carol_mints_again": (
         "NOTHING_TO_MINT",
         "the same empty walk range, one block after the mark advanced",
@@ -308,6 +394,12 @@ def issued_by_label(scenario: str) -> dict[str, int]:
         issued["bob_mints_nothing"] = 0
     if scenario == "permanence":
         issued["carol_mints"] = base_permission_total()
+    if scenario == "carried":
+        issued["alice_collects_thirty_windows"] = (
+            MINT_ACCUMULATION_CAP * VERIFIED_USER_DAILY_ATOMIC
+        )
+    if scenario == "referral":
+        issued["alice_mints_her_referral"] = REFERRAL_LEG_ATOMIC
     return issued
 
 
@@ -341,3 +433,37 @@ def economy_entry_count(
         + referral_balances
         + custody
     )
+
+
+def carried_scenario_totals() -> dict[str, int]:
+    """Two airdrops, one transfer between them, and thirty collected windows.
+
+    Eight successes charge the fixed fee: the confirmed transfer, both escrow
+    transactions, both signer transactions, both accepted posture changes, and the
+    verified-user mint. Registration is the one success in any version that
+    charges none.
+    """
+    airdrop = VERIFIED_USER_DAILY_ATOMIC
+    collected = MINT_ACCUMULATION_CAP * airdrop
+    return {
+        "total_supply": 2 * airdrop + collected,
+        "fee_pool": fee_pool_atomic(8),
+        "alice_balance": airdrop - TRANSFER_AMOUNT - 8 * FIXED_FEE + collected,
+        "bob_balance": airdrop + TRANSFER_AMOUNT,
+        "collected_atomic": collected,
+        "collected_windows": MINT_ACCUMULATION_CAP,
+    }
+
+
+def referral_scenario_totals() -> dict[str, int]:
+    """One contributing seat with a referrer, so one referral leg accrues and is
+    minted, and the unreferred pool takes nothing."""
+    airdrop = VERIFIED_USER_DAILY_ATOMIC
+    return {
+        "total_supply": 2 * airdrop + REFERRAL_LEG_ATOMIC,
+        "fee_pool": fee_pool_atomic(3),
+        "referral_issued": REFERRAL_LEG_ATOMIC,
+        "referral_outstanding": 0,
+        "unreferred_pool_accrued": 0,
+        "alice_balance": airdrop - FIXED_FEE + REFERRAL_LEG_ATOMIC,
+    }

@@ -277,3 +277,62 @@ def _won_outside_the_contributing_set(ledger, uptime, window: int) -> bool:
 def _legs(check: Checker, key: str, closed_form: dict, live: dict) -> None:
     for channel in e.RECOVERY_POOL_LEGS:
         check.agree(f"{key}.channel{channel}", closed_form[channel], live[channel])
+
+
+def check_carried_scenario(check: Checker, scenario) -> None:
+    """The ten kinds version seven does not change, under version seven.
+
+    Nothing here is about the recovery pool. What it fixes is that a transaction
+    version seven leaves alone still lands in a version-seven state and produces a
+    version-seven receipt — the claim `trace_checks.py` records the roots and
+    receipts for, and the one version six's file cannot make.
+    """
+    check.section(
+        "Scenario carried: every kind version seven leaves alone, executed "
+        "under version seven."
+    )
+    totals = e.carried_scenario_totals()
+    ledger = scenario.ledger
+    notes = scenario.notes
+
+    check.agree("carried.alice_balance", totals["alice_balance"],
+                notes["alice_balance"])
+    check.agree("carried.bob_balance", totals["bob_balance"], notes["bob_balance"])
+    check.agree("carried.verified_user_issued", totals["total_supply"],
+                notes["verified_user_issued"])
+    check.agree("carried.collected_atomic", totals["collected_atomic"],
+                notes["verified_user_issued"] - 2 * e.VERIFIED_USER_DAILY_ATOMIC)
+    check.equal("carried.collected_windows", totals["collected_windows"])
+    check.equal("carried.collection_height", notes["collection_height"])
+    check.equal(
+        "carried.a_created_escrow_and_a_revoked_signer_leave_no_entry_behind",
+        len(ledger.registry.escrows) == 2 and len(ledger.registry.signers) == 2,
+    )
+    check.equal(
+        "carried.the_recovery_pool_is_untouched_by_a_chain_with_no_seat",
+        all(amount == 0 for amount in ledger.pool.values())
+        and ledger.assigned_permissions == 0,
+    )
+
+
+def check_referral_scenario(check: Checker, scenario) -> None:
+    """Kind 5, and the channel version seven deliberately did not give a pool."""
+    check.section(
+        "Scenario referral: the referral leg accrues to an identity and is minted."
+    )
+    totals = e.referral_scenario_totals()
+    notes = scenario.notes
+
+    check.equal("referral.referred_window", notes["referred_window"])
+    check.agree("referral.referral_issued", totals["referral_issued"],
+                notes["referral_issued"])
+    check.agree("referral.referral_outstanding", totals["referral_outstanding"],
+                notes["referral_outstanding"])
+    check.agree("referral.unreferred_pool_accrued",
+                totals["unreferred_pool_accrued"], notes["unreferred_pool_accrued"])
+    check.agree("referral.alice_balance", totals["alice_balance"],
+                notes["alice_balance"])
+    check.equal(
+        "referral.the_referral_channel_has_no_recovery_pool_term",
+        e.REFERRAL_CHANNEL not in e.RECOVERY_POOL_LEGS,
+    )
