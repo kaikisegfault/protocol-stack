@@ -78,7 +78,7 @@ namespace {
 // writes nothing, which is the same fact as a record with every bit clear.
 // `false` is a whole-block rejection rather than an absent assignment.
 bool write_due_assignment(Ledger& ledger, const UptimeSchedule* uptime,
-                          std::optional<std::uint64_t>& assigned) {
+                          BlockOutcome& outcome) {
   if (ledger.height % kCycleBlocks != 0) return true;
   const auto window = ledger.height / kCycleBlocks;
   if (window < kAssignmentLagWindows) return true;
@@ -90,7 +90,8 @@ bool write_due_assignment(Ledger& ledger, const UptimeSchedule* uptime,
   const auto assignment = derive_assignment(ledger, due, measured->second);
   if (!assignment) return false;
   if (!apply_assignment(ledger, *assignment)) return false;
-  assigned = due;
+  outcome.assigned_window = due;
+  outcome.assignment = *assignment;
   return true;
 }
 
@@ -115,8 +116,7 @@ std::optional<BlockOutcome> execute_block(Ledger& ledger,
   outcome.previous_state_root = *previous_root;
   ledger.height = outcome.height;
 
-  if (assignment_is_prologue &&
-      !write_due_assignment(ledger, uptime, outcome.assigned_window)) {
+  if (assignment_is_prologue && !write_due_assignment(ledger, uptime, outcome)) {
     ledger = snapshot;
     return std::nullopt;
   }
@@ -160,8 +160,7 @@ std::optional<BlockOutcome> execute_block(Ledger& ledger,
     return std::nullopt;
   }
 
-  if (!assignment_is_prologue &&
-      !write_due_assignment(ledger, uptime, outcome.assigned_window)) {
+  if (!assignment_is_prologue && !write_due_assignment(ledger, uptime, outcome)) {
     ledger = snapshot;
     return std::nullopt;
   }

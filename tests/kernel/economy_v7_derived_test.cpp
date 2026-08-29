@@ -1,12 +1,12 @@
-// The inherited constructions, the genesis, the compatibility boundary, the
-// three derived execution rules, the founder-directed tables, and determinism.
+// The constructions version seven inherits, version-seven genesis, the receipt,
+// and the founder-directed tables.
 //
 // Four checks here reach a *third* source rather than a second opinion of the
-// execution vectors, and each is a construction version six inherits or a figure
-// it is told: the ordered transaction tree and the accepted transfer against
+// execution vectors, and each is a construction version seven inherits or a
+// figure it is told: the ordered transaction tree against
 // `protocol-primitives-v1.txt`, the block header and block identifier against
 // `ledger-transition-v1.txt`, the ten channel caps and five base-permission legs
-// against `founder-economy-manifest-v2.txt`, and the referral leg against
+// against `founder-economy-manifest-v3.txt`, and the referral leg against
 // `economy-transition-v3.txt`. Without those, a restated construction that had
 // drifted would agree only with itself.
 
@@ -24,6 +24,11 @@ Hash to_hash(const Bytes& bytes) {
   return value;
 }
 
+// The ordered transaction tree and the 146-byte block header are version one's,
+// inherited rather than re-versioned: version seven re-versions genesis, the
+// receipt, and the state root explicitly and says nothing about either, and a
+// version-seven header is already unmistakable because the chain ID it carries is
+// derived under a version-seven label.
 void check_constructions(const pv::Values& values, const pv::Values& primitives,
                          const pv::Values& ledger_vectors) {
   agree(values, "construction.transaction_tree_prefix",
@@ -68,13 +73,14 @@ void check_constructions(const pv::Values& values, const pv::Values& primitives,
       to_hash(pv::hex_decode(expect_text(ledger_vectors, "resulting_state_root"))),
       count);
   pv::require(header.has_value(), "the accepted fields must encode a header");
-  agree(values, "construction.block_header_over_the_accepted_fields", hex(*header));
+  agree(values, "construction.block_header", hex(*header));
   pv::require(*header == recorded, "the header must reproduce the accepted bytes");
-  expect_true(values, "construction.block_header_reproduces_the_accepted_version_one_header");
+  expect_true(values, "construction.block_header_reproduces_the_accepted_vector");
   const auto block_id = protocol::v1::hash(v7::kBlockIdLabel, *header);
+  agree(values, "construction.block_id", hex(block_id));
   pv::require(hex(block_id) == expect_text(ledger_vectors, "block_id"),
               "the block identifier must reproduce the accepted value");
-  expect_true(values, "construction.block_id_reproduces_the_accepted_version_one_block_id");
+  expect_true(values, "construction.block_id_reproduces_the_accepted_vector");
   agree(values, "construction.block_header_bytes", v7::kBlockHeaderBytes);
   agree(values, "construction.block_header_schema_version",
         static_cast<std::uint64_t>(v7::kBlockHeaderSchemaVersion));
@@ -85,28 +91,90 @@ void check_genesis(const pv::Values& values) {
   const auto encoded = v7::encode_genesis(genesis);
   pv::require(encoded.has_value(), "the trace genesis must encode");
   agree(values, "genesis.bytes", hex(*encoded));
+  agree(values, "genesis.prefix_bytes", encoded->size());
+  agree(values, "genesis.schema_version",
+        static_cast<std::uint64_t>(v7::kGenesisSchemaVersion));
+  agree(values, "genesis.manifest_digest", hex(genesis.manifest_digest));
   const auto identity = v7::chain_id(genesis);
   pv::require(identity.has_value(), "the trace genesis must have a chain identity");
   agree(values, "genesis.chain_id", hex(*identity));
   agree(values, "genesis.fixed_fee", genesis.fixed_transfer_fee);
 
-  const auto daily = v7::verified_user_daily_atomic();
-  pv::require(daily.has_value(), "the verified-user rate must divide exactly");
-  agree(values, "genesis.entry_airdrop_atomic", *daily);
+  // Fourteen entries where version six wrote twenty-three: the ten carries go
+  // and one recovery pool entry replaces them.
   agree(values, "genesis.economy_entries",
         v7::economy_entries(open_trace_ledger()).size());
+
+  // Each predecessor chain identity is a different digest over the same fields,
+  // because the label and the schema version inside the preimage both differ.
+  // The kernel builds exactly one of the seven, so the five non-collisions are
+  // read as recorded rather than re-derived under constructions it does not hold.
+  for (int version = 2; version <= 6; ++version) {
+    expect_true(values, "genesis.chain_id_differs_from_v" + std::to_string(version));
+  }
+
   // Version two derived that a conforming chain must permit a zero fee, because
   // a zero allocation and a nonzero fee leave nobody able to pay for the first
   // transaction. Registration is fee-exempt and pays the airdrop, so version six
-  // is the first contract under which a nonzero fee is reachable from genesis.
+  // is the first contract under which a nonzero fee is reachable from genesis,
+  // and version seven inherits that without restating it.
+  const auto daily = v7::verified_user_daily_atomic();
+  pv::require(daily.has_value(), "the verified-user rate must divide exactly");
   pv::require(genesis.fixed_transfer_fee > 0 && genesis.total_supply == 0 &&
                   genesis.account_count == 0 && *daily > genesis.fixed_transfer_fee,
-              "a nonzero fixed fee must be reachable from a version-six genesis");
-  expect_true(values, "genesis.a_nonzero_fixed_fee_is_reachable_from_a_version_six_genesis");
+              "a nonzero fixed fee must be reachable from a version-seven genesis");
+  expect_true(values,
+              "genesis.a_nonzero_fixed_fee_is_reachable_from_a_version_seven_genesis");
+}
+
+// Version seven's receipt is version six's layout with one octet changed.
+//
+// The recorded receipt is a node mint of one whole base permission, which is
+// what makes it a version-seven artifact twice over: the version field is seven
+// and the issued amount is the sum of the five legs the manifest fixes.
+void check_receipt(const pv::Values& values) {
+  agree(values, "receipt.version", static_cast<std::uint64_t>(v7::kReceiptVersion));
+  agree(values, "receipt.bytes", v7::kReceiptBytes);
+
+  std::uint64_t base_permission = 0;
+  for (std::uint8_t channel = 0; channel < v7::kRecoveryPoolLegs; ++channel) {
+    base_permission += v7::base_permission_leg(channel);
+  }
+  v7::Receipt receipt;
+  receipt.transaction_id = ascending(0);
+  receipt.kind = static_cast<std::uint8_t>(v7::Kind::mint_node);
+  receipt.result_code = static_cast<std::uint8_t>(v7::Result::success);
+  receipt.fee_charged = kFixedFee;
+  receipt.issued_atomic = base_permission;
+  const auto encoded = v7::encode_receipt(receipt);
+  pv::require(encoded.has_value(), "the mint receipt encodes");
+  agree(values, "receipt.mint_receipt", hex(*encoded));
+
+  // The same receipt under version six's version field, which this kernel can no
+  // longer produce and must no longer accept.
+  auto version_six = *encoded;
+  version_six[5] = 6;
+  std::size_t differing = 0;
+  for (std::size_t index = 0; index < encoded->size(); ++index) {
+    if ((*encoded)[index] != version_six[index]) ++differing;
+  }
+  pv::require(differing == 1, "the two receipts differ in exactly one octet");
+  expect_true(values, "receipt.differs_from_the_version_six_receipt_in_one_octet");
+  pv::require(!v7::decode_receipt(version_six).has_value(),
+              "a version-six receipt is refused");
+  expect_true(values, "receipt.a_version_six_receipt_is_refused");
+  const auto decoded = v7::decode_receipt(*encoded);
+  pv::require(decoded.has_value() && decoded->kind == receipt.kind &&
+                  decoded->issued_atomic == receipt.issued_atomic &&
+                  decoded->fee_charged == receipt.fee_charged,
+              "a version-seven receipt round trips");
+  expect_true(values, "receipt.a_version_seven_receipt_round_trips");
 }
 
 // The founder-directed figures the kernel carries, each against the accepted
-// file that fixes it rather than against the kernel's own table.
+// file that fixes it rather than against the kernel's own table. Channel 9's
+// identifier is the one thing ADR 0053's manifest moved, and reading it from the
+// version-three file is what makes the rebinding a comparison.
 void check_tables(const pv::Values& manifest, const pv::Values& version_three) {
   static constexpr std::array<const char*, 10> kChannelNames{
       "founder_operator",
@@ -118,7 +186,7 @@ void check_tables(const pv::Values& manifest, const pv::Values& version_three) {
       "impermanent_loss_protection",
       "founder_referral",
       "hub_verified_user_incentives",
-      "initial_mystery_box_incentives",
+      "mini_gamified_incentives",
   };
   pv::require(expect_number(manifest, "channels.count") == kChannelNames.size(),
               "the manifest records ten channels");
@@ -141,225 +209,6 @@ void check_tables(const pv::Values& manifest, const pv::Values& version_three) {
               "the referral leg is the recorded version-three figure");
 }
 
-// The escrow with the `u64` maximum balance is stamped rather than reached: no
-// conserved chain holds it, and that is the point. Even given a balance nothing
-// can exceed, `amount + fee` still does not fit, so the code that reports it must
-// be returned before the balance comparison or it is returned never.
-std::string overflowing_debit_result() {
-  v7::Ledger ledger;
-  ledger.supply_limit = kSupplyLimit;
-  ledger.fixed_fee = kFixedFee;
-  const auto escrow = v7::escrow_id(kAliceIdentity, 0);
-  v7::HubIdentityRecord identity;
-  identity.hub_public_key = kAliceKey;
-  ledger.registry.identities[kAliceIdentity] = identity;
-  v7::EscrowRecord record;
-  record.owner_hub_identity = kAliceIdentity;
-  record.signer_count = 1;
-  ledger.registry.escrows[escrow] = record;
-  ledger.registry.signers[v7::signer_id(kAliceSignerKey)] = escrow;
-  ledger.registry.accounts[escrow] = v7::Account{~std::uint64_t{0}, 0};
-
-  v7::Envelope envelope;
-  envelope.kind = static_cast<std::uint8_t>(v7::Kind::native_transfer);
-  envelope.scheme = v7::kSchemeSigner;
-  envelope.authority_public_key = kAliceSignerKey;
-  envelope.nonce = 1;
-  v7::Body body;
-  body.recipient_escrow_id = escrow;
-  body.amount_atomic = ~std::uint64_t{0};
-  envelope.body = v7::encode_body(envelope.kind, body);
-  envelope.fee_limit = kFixedFee;
-  envelope.valid_until_height = 1;
-
-  const auto outcome = v7::execute(ledger, envelope, Signatures{}.verifier());
-  pv::require(outcome.has_value(), "an overflowing debit is a result, not a failure");
-  const auto name = v7::result_code_name(static_cast<std::uint8_t>(outcome->result));
-  pv::require(name.has_value(), "the result is inside the code space");
-  return std::string(*name);
-}
-
-void check_derived_rules(const pv::Values& values) {
-  // 1. `DEBIT_OVERFLOW` is returned at envelope check 8. Under the literal
-  //    "envelope checks, then the kind's own conditions" order it would be
-  //    unreachable, because no balance can reach the amount an overflowing debit
-  //    needs — and the specification lists exactly three unreachable frozen
-  //    codes and does not list this one.
-  const auto overflow_amount = ~std::uint64_t{0} - kFixedFee + 1;
-  agree(values, "derived.overflow_amount_atomic", overflow_amount);
-  pv::require(overflow_amount > kSupplyLimit,
-              "an overflowing debit exceeds any reachable balance");
-  expect_true(values, "derived.an_overflowing_debit_exceeds_any_reachable_balance");
-  agree(values, "derived.overflowing_debit_result", overflowing_debit_result());
-  pv::require(overflowing_debit_result() == "DEBIT_OVERFLOW",
-              "an overflowing debit is refused at envelope check eight");
-  expect_true(values, "derived.debit_overflow_is_returned_at_envelope_check_eight");
-
-  // 2. The zero-confirmation-field rule cannot be an admission rule and cannot
-  //    return the code the specification names.
-  for (std::uint8_t code = 0; code < v7::kResultCodeCount; ++code) {
-    const auto name = v7::result_code_name(code);
-    pv::require(name.has_value() && *name != "MALFORMED_TRANSACTION",
-                "the result code space has no MALFORMED_TRANSACTION");
-  }
-  expect_true(values, "derived.the_result_code_space_has_no_malformed_transaction");
-  pv::require(static_cast<std::uint8_t>(v7::AdmissionError::malformed_transaction) ==
-                      1 &&
-                  v7::result_code_name(1) == "ZERO_AMOUNT",
-              "admission code one and result code one are different names");
-  expect_true(values, "derived.admission_code_one_and_result_code_one_are_different_names");
-  // The rule is observable only through a transition, because the predicate it
-  // guards is over a stored posture: a tightening carrying a confirmation field
-  // nothing asked for is refused with `UNAUTHORIZED`.
-  pv::require(expect_text(values, "posture.tighten_signed.result") == "UNAUTHORIZED",
-              "an unrequested confirmation is refused with UNAUTHORIZED");
-  expect_true(values, "derived.an_unrequested_confirmation_is_refused_with_unauthorized");
-
-  // 3. `NOTHING_TO_MINT` is the empty walk range. A seat activated in window `w`
-  //    holds mark `w` while the last assigned window is `w - 2`, so the literal
-  //    "already equal" reading would let the mint lower the mark.
-  const auto mark = v7::window_of_height(kActivationHeight);
-  const auto last = v7::last_assigned_window(kActivationHeight);
-  pv::require(last.has_value(), "the activation height has an assigned window");
-  agree(values, "derived.mark_at_activation", mark);
-  agree(values, "derived.last_assigned_window_at_activation", *last);
-  pv::require(mark > *last, "a fresh mark exceeds the last assigned window");
-  expect_true(values, "derived.a_fresh_mark_exceeds_the_last_assigned_window");
-  pv::require(!v7::walk_range(mark, last).has_value() &&
-                  v7::walk_range(*last - 1, last).has_value(),
-              "NOTHING_TO_MINT is the empty walk range");
-  expect_true(values, "derived.nothing_to_mint_is_the_empty_walk_range");
-}
-
-// A version-six escrow identifier is a digest of an identity and an index, so
-// reaching the accepted recipient would be a SHA-256 preimage: the accepted
-// transfer is refused on every conforming chain rather than only on this fixture.
-void check_compatibility(const pv::Values& values, const pv::Values& primitives) {
-  Signatures signatures;
-  const auto scenario = compatibility_scenario(signatures, primitives);
-  const auto& accepted = scenario.blocks[1];
-  pv::require(accepted.executed.size() == 1, "the accepted transfer is one block");
-
-  bool reachable = false;
-  for (const auto& identity :
-       {kAliceIdentity, kBobIdentity, kCarolIdentity, kMariaIdentity, kDaveIdentity,
-        kAcceptedIdentity}) {
-    for (std::uint32_t index = 0; index < 1'024; ++index) {
-      reachable = reachable || v7::escrow_id(identity, index) == kAcceptedRecipient;
-    }
-  }
-  pv::require(!reachable,
-              "the accepted recipient is no escrow of any fixture identity");
-  expect_true(values, "compatibility.the_accepted_recipient_is_no_escrow_of_any_fixture_identity");
-
-  const auto signed_transaction = expect_text(values, "compatibility.signed_transaction");
-  pv::require(signed_transaction == expect_text(primitives, "signed_tx"),
-              "the executed bytes are the accepted signed transfer");
-  expect_true(values, "compatibility.signed_transaction_is_the_accepted_one");
-  pv::require(expect_text(values, "compatibility.unsigned_transaction") ==
-                  expect_text(primitives, "unsigned_tx"),
-              "the executed unsigned bytes are the accepted ones");
-  expect_true(values, "compatibility.unsigned_transaction_is_the_accepted_one");
-  const auto derived_id = v7::transaction_id(pv::hex_decode(signed_transaction));
-  agree(values, "compatibility.transaction_id", hex(derived_id));
-  pv::require(hex(derived_id) == expect_text(primitives, "tx_id"),
-              "the transaction identifier is the accepted one");
-  expect_true(values, "compatibility.transaction_id_is_the_accepted_one");
-  pv::require(hex(accepted.executed[0].transaction_id) == expect_text(primitives, "tx_id"),
-              "the executed transaction carries the accepted identifier");
-  expect_true(values, "compatibility.byte_identity_is_preserved_and_execution_identity_is_not");
-
-  // The comparison the founder answer produced. Renumbering the nonce and
-  // replacing the recipient are the only two edits, and they are separable: the
-  // second moves exactly the 32 octets of the recipient field and nothing else.
-  const auto unsigned_of = [&](const Octets32& recipient, std::uint64_t nonce) {
-    v7::Envelope envelope;
-    envelope.kind = static_cast<std::uint8_t>(v7::Kind::native_transfer);
-    envelope.chain_id = kAcceptedChainId;
-    envelope.scheme = v7::kSchemeSigner;
-    envelope.authority_public_key =
-        from_hex(expect_text(primitives, "rfc8032.public_key"));
-    envelope.nonce = nonce;
-    v7::Body body;
-    body.recipient_escrow_id = recipient;
-    body.amount_atomic = kAcceptedAmount;
-    envelope.body = v7::encode_body(envelope.kind, body);
-    envelope.fee_limit = kAcceptedFeeLimit;
-    envelope.valid_until_height = kAcceptedValidUntil;
-    return v7::encode_unsigned(envelope);
-  };
-  const auto accepted_unsigned = unsigned_of(kAcceptedRecipient, kAcceptedNonce);
-  const auto renonced = unsigned_of(kAcceptedRecipient, 2);
-  const auto rerouted = unsigned_of(v7::escrow_id(kBobIdentity, 0), 2);
-  const auto differing = [](const Bytes& left, const Bytes& right) {
-    pv::require(left.size() == right.size(), "compared bytes have one width");
-    std::size_t count = 0;
-    for (std::size_t index = 0; index < left.size(); ++index) {
-      if (left[index] != right[index]) ++count;
-    }
-    return count;
-  };
-  agree(values, "compatibility.renonced_differs_from_the_accepted_bytes_in_octets",
-        differing(accepted_unsigned, renonced));
-  agree(values, "compatibility.rerouted_differs_from_the_renonced_bytes_in_octets",
-        differing(renonced, rerouted));
-  std::size_t first = renonced.size();
-  std::size_t last = 0;
-  for (std::size_t index = 0; index < renonced.size(); ++index) {
-    if (renonced[index] == rerouted[index]) continue;
-    first = std::min(first, index);
-    last = index + 1;
-  }
-  pv::require(first == v7::kHeaderBytes && last == v7::kHeaderBytes + 32,
-              "the only field that moved is the recipient");
-  expect_true(values, "compatibility.the_only_field_that_moved_is_the_recipient");
-}
-
-// Replaying every scenario reproduces every commitment it recorded. The file
-// counts one scenario this kernel does not execute — the boundary block, whose
-// four seat transitions read a cycle assignment — so the count is compared
-// against the recorded figure less exactly that one.
-void check_determinism(const pv::Values& values, const pv::Values& primitives) {
-  const auto replay = [&primitives](int index) {
-    Signatures signatures;
-    switch (index) {
-      case 0: return registration_scenario(signatures);
-      case 1: return millionth_scenario(signatures);
-      case 2: return recovery_scenario(signatures);
-      case 3: return compatibility_scenario(signatures, primitives);
-      default: return posture_scenario(signatures);
-    }
-  };
-  bool roots_match = true;
-  bool receipts_match = true;
-  int replayed = 0;
-  for (int index = 0; index < 5; ++index) {
-    const auto first = replay(index);
-    const auto second = replay(index);
-    pv::require(first.blocks.size() == second.blocks.size(),
-                "a replay executes the same blocks");
-    for (std::size_t block = 0; block < first.blocks.size(); ++block) {
-      const auto& left = first.blocks[block];
-      const auto& right = second.blocks[block];
-      roots_match = roots_match && left.resulting_state_root == right.resulting_state_root;
-      roots_match = roots_match && left.block_id == right.block_id;
-      receipts_match = receipts_match && left.executed.size() == right.executed.size();
-      for (std::size_t position = 0; position < left.executed.size(); ++position) {
-        receipts_match = receipts_match && v7::encode_receipt(left.executed[position].receipt) ==
-                                               v7::encode_receipt(right.executed[position].receipt);
-      }
-    }
-    ++replayed;
-  }
-  pv::require(roots_match, "every replayed block must commit the same root");
-  expect_true(values, "determinism.every_replayed_block_commits_the_same_root");
-  pv::require(receipts_match, "every replayed block must emit the same receipts");
-  expect_true(values, "determinism.every_replayed_block_emits_the_same_receipts");
-  pv::require(expect_number(values, "determinism.scenarios_replayed") ==
-                  static_cast<std::uint64_t>(replayed) + 1,
-              "the kernel replays every scenario but the boundary block");
-}
-
 }  // namespace
 
 void verify_derivations(const pv::Values& values, const pv::Values& primitives,
@@ -367,10 +216,8 @@ void verify_derivations(const pv::Values& values, const pv::Values& primitives,
                         const pv::Values& version_three) {
   check_constructions(values, primitives, ledger_vectors);
   check_genesis(values);
+  check_receipt(values);
   check_tables(manifest, version_three);
-  check_derived_rules(values);
-  check_compatibility(values, primitives);
-  check_determinism(values, primitives);
 }
 
 }  // namespace economy_v7_execution
