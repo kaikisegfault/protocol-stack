@@ -334,6 +334,11 @@ Bytes referral_mint_input(Signatures& signatures, const v7::Ledger& ledger,
 
 // Execute one block of steps and record what the vectors compare against.
 //
+// The result is a reference into the scenario's own block list, which a later
+// `run` may reallocate, so **a caller that keeps it past the next block must
+// take a copy**. GCC 13's `-Wdangling-reference` says so at every call site and
+// it is right to: the scenarios bind by value for exactly that reason.
+//
 // `assignment_is_prologue` is false only where the boundary scenario runs the
 // ordering version six rejected by argument. It is not a configuration option a
 // chain has.

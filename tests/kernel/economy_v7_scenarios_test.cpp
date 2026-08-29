@@ -213,7 +213,7 @@ Scenario pool_scenario(Signatures& signatures) {
   const auto uptime = pool_uptime();
 
   advance_to_boundary(scenario, kDeadWindow);
-  const auto& dead = run(scenario, signatures, {}, &uptime);
+  const auto dead = run(scenario, signatures, {}, &uptime);
   pv::require(dead.assigned_window == kDeadWindow, "the dead cycle is assigned");
   note(scenario, "dead_window", *dead.assigned_window);
   note_window(scenario, dead);
@@ -231,7 +231,7 @@ Scenario pool_scenario(Signatures& signatures) {
             is_zero(owed_after_dead));
 
   advance_to_boundary(scenario, kWonWindow);
-  const auto& won = run(
+  const auto won = run(
       scenario, signatures,
       {// Alice collects both cycles: her own accrual, Bob's reallocated
        // permission, and the whole pool the dead cycle left behind.
@@ -353,7 +353,7 @@ Scenario boundary_scenario(Signatures& signatures) {
                   shown.channel_outstanding[channel]);
   }
 
-  const auto& accepted = run(
+  const auto accepted = run(
       scenario, signatures,
       {mint,
        // The same refusal the pool scenario records, kept here so this
@@ -385,7 +385,7 @@ Scenario permanence_scenario(Signatures& signatures) {
   const auto uptime = permanence_uptime();
 
   advance_to_boundary(scenario, kStrandedWindow);
-  const auto& stranded = run(scenario, signatures, {}, &uptime);
+  const auto stranded = run(scenario, signatures, {}, &uptime);
   pv::require(stranded.assigned_window == kStrandedWindow,
               "the stranded cycle is assigned");
   note(scenario, "stranded_window", *stranded.assigned_window);
@@ -393,7 +393,7 @@ Scenario permanence_scenario(Signatures& signatures) {
   note_legs(scenario, "pool_after_stranded_cycle", ledger.pool);
 
   advance_to_boundary(scenario, kDrainedWindow);
-  const auto& drained = run(
+  const auto drained = run(
       scenario, signatures,
       {{"carol_mints",
         node_mint_input(signatures, ledger, kCarolIdentity, kCarolKey,
@@ -538,7 +538,7 @@ Scenario carried_scenario(Signatures& signatures) {
   // Kind 18, forty windows after enrolment: thirty are collectable and the ten
   // older ones are forfeited, which is the cap doing what it is for.
   advance_to(scenario, kCollectionHeight - 1);
-  const auto& collection = run(
+  const auto collection = run(
       scenario, signatures,
       {{"alice_collects_thirty_windows",
         verified_user_mint_input(signatures, ledger, kAliceIdentity, 8,
@@ -595,7 +595,7 @@ Scenario referral_scenario(Signatures& signatures) {
   uptime[kReferredWindow] = {{kBobSeat, kMetUptimeSeconds, true}};
 
   advance_to_boundary(scenario, kReferredWindow);
-  const auto& assigned = run(
+  const auto assigned = run(
       scenario, signatures,
       {{"alice_mints_her_referral",
         referral_mint_input(signatures, ledger, kAliceIdentity, kAliceKey,

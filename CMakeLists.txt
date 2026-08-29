@@ -1147,7 +1147,7 @@ add_test(
     "${Python3_EXECUTABLE}"
     "${PROJECT_SOURCE_DIR}/tools/economy-transition-v6-vectors/verify.py"
     --vectors
-    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7.txt"
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v6.txt"
 )
 add_test(
   NAME economy-transition-v6-envelope
@@ -1179,7 +1179,7 @@ add_test(
     "${Python3_EXECUTABLE}"
     "${PROJECT_SOURCE_DIR}/tools/economy-transition-v6-execution-vectors/verify.py"
     --vectors
-    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7-execution.txt"
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v6-execution.txt"
 )
 add_test(
   NAME economy-transition-v6-execution
@@ -1647,7 +1647,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       -len_control=0
   )
   add_test(
-    NAME economy-transition-v6-fuzz-smoke
+    NAME economy-transition-v7-fuzz-smoke
     COMMAND
       economy_v7_fuzz
       -seed=824311
@@ -1686,7 +1686,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     kernel-admission-fuzz-smoke
     kernel-address-fuzz-smoke
     kernel-genesis-fuzz-smoke
-    economy-transition-v6-fuzz-smoke
+    economy-transition-v7-fuzz-smoke
     storage-snapshot-fuzz-smoke
     storage-archive-fuzz-smoke
     application-wire-fuzz-smoke

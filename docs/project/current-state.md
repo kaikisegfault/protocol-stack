@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-08-20
+Last updated: 2026-08-29
 
 ## Phase
 
@@ -72,6 +72,16 @@ table passes every one of the 412 vectors.** Two scenarios close it, the file
 holds 590 vectors, and all fourteen kinds now execute under version seven where
 version six's file reaches eleven. ADR 0055 carries the correction in place.
 
+**M3.12b moved the C++20 kernel to version seven on 2026-08-29, and it is the
+first time a chain in this repository can run the recovery pool in C++.** The
+kernel compiled `economy-transition-v6`: its byte surface, its ledger, and ten
+of its fourteen transitions. It now compiles `economy-transition-v7` — the byte
+surface, the settlement, **all fourteen** transitions, and the assignment
+prologue it never had at any version. Following ADR 0046, version seven
+*replaces* version six rather than sitting beside it; version six's Python model
+and both of its accepted vector files remain in place, passing, and unedited.
+**Requirement 10 is met.**
+
 M3 — Founder Economy devnet, in progress. Slice M3.1 delivered the revised
 economic contract, M3.2 made it executable, and M3.3 rebound every dependent
 model to it, all on 2026-08-08. M3.4 defined the cycle boundary in chain heights
@@ -117,11 +127,13 @@ and derivation surface into the C++20 kernel on 2026-08-17**, replacing version
 four's codec rather than adding beside it, and gave the decoders the fuzz target
 the codec should always have had. ADR 0046 records both decisions.
 
-**Requirement 10 is now partly satisfied and the remainder is named.** For the
-first time the kernel compiles a contract nothing supersedes; before M3.10c it
-compiled `economy-transition-v4`, which is the one economy contract already known
-to have no conforming implementation. What executes is a codec plus the pure
-derivations, and it performs no state transition, so no chain runs on it.
+**Requirement 10 is satisfied.** The kernel compiles `economy-transition-v7` in
+full: the byte and derivation surface, the ledger, all fourteen transitions,
+ordered block execution with the cycle-assignment prologue, and both
+conservation identities. Before M3.10c it compiled `economy-transition-v4`,
+which is the one economy contract already known to have no conforming
+implementation; before M3.12b it compiled a contract the pivot had superseded
+and executed ten of fourteen kinds.
 
 Requirements 3, 4, 5, 6, 7, and 12 of `first-goal.md` are satisfied;
 requirements 8 and 9 moved from specified to enforced; and requirement 14 is met
@@ -129,18 +141,119 @@ against the v3 contract at the standard the M2 suite set.
 M2 completed on 2026-08-05 with all sixteen requirements of
 `goals/m2-founder-economy-proof.md` passing.
 
-**The remaining M3 work is the rest of the C++ half, and it is now a named
-list.** Requirement 10 is mostly met against version six: the byte and
-derivation surface is in the kernel and so are ten of the fourteen transitions.
-The four that are not are kinds 2, 3, 4, and 5 — purchase a seat, activate it,
-mint the node channels, mint the referral balance — which M3.10d left returning
-no outcome because their contract was the one about to change. It has since
-changed and settled, so they belong to version seven now. Requirement 11 is met
-for the byte surface — the C++ and the Python model reproduce
-`test-vectors/economy-transition-v6.txt` — and says nothing about version seven.
-Requirement 13, the four-node adversarial scenarios, has not started. **Nothing
-yet activates a chain**: every recovery-pool result in the repository is
-produced by Python.
+**The remaining M3 work is no longer the C++ half.** Requirements 10 and 11 are
+met against version seven: the kernel executes the contract, and the C++ and the
+Python model reproduce both `test-vectors/economy-transition-v7.txt` and
+`test-vectors/economy-transition-v7-execution.txt`. What remains is
+`calendar-v1`, the HUB verification architecture of ADR 0048, and requirement
+13 — the four-node adversarial scenarios, which has not started. **A chain still
+does not run**: the kernel executes blocks against an in-memory ledger, and
+wiring it to the storage and consensus adapters is requirement 13's work rather
+than this slice's.
+
+### How M3.12b was delivered
+
+**It was one slice and the recorded decomposition was right to say so.** The
+state root, the ledger, the settlement, and the four seat transitions could not
+be separated: the recovery pool is a state entry, so a version-seven root
+implies a version-seven ledger; the backing identity needs the mint walk; and
+the mint walk is only reached by kind 4. Splitting it would have produced an
+intermediate state nothing could verify.
+
+**The mechanical half followed the recipe M3.12a wrote down, and it was worth
+having.** `git mv` of the two directories, the thirteen kernel test files and
+the fuzz target; then `protocol::v6` to `protocol::v7`, the include paths, and
+the namespace aliases. Every translation unit compiled clean under
+`-fsyntax-only` on the first attempt, which is what a reset attempt buys.
+
+**The substantive half is four changes and their consequences.** The receipt,
+genesis, and state-root schema versions go to 7 and the chain ID, state root,
+and economy tree take version-seven labels; every other label keeps the version
+that accepted it. Entry kind 7 is retired and entry kind 17 joins the space as
+one entry of five `u64` legs. The cycle assignment record's fixed part goes from
+24 octets to 64, and **both the encoder and the decoder refuse a nonzero
+absorbed amount at a zero winner count**. `check_carry_identity` becomes
+`check_channel_identities` and states both identities.
+
+`split_permission`, `collect_node`, and `claimable` are new and sit in
+`ledger.hpp` beside `base_permission_leg`, because they read the manifest
+tables. `claimable` is `collect_node` run once per seat, which is ADR 0055's
+second derived rule: a second walk written beside the first would make the
+backing identity check the kernel against itself rather than against the mint.
+
+**The prologue is genuinely new rather than moved.** Version six's C++ block
+execution never wrote a cycle assignment at all. `execute_block` now writes the
+due record before the block's transactions, reading the pool from the ledger and
+each measured seat's collection mark and recorded referrer from the seat entry.
+`SeatCycle` carries three fields, not five, so the kernel's type makes ADR 0055's
+first derived rule unstateable rather than merely stated.
+
+**The tests split along the line the contract splits.** Version seven records
+only what version seven changes, so the codec tests read two files:
+`economy-transition-v7.txt` for the re-versioned constructions, the state
+surface, genesis, the settlement, and both identities, and
+`economy-transition-v6.txt` for the surface version seven carries unchanged.
+Re-recording that surface under a version-seven name would produce a second file
+agreeing with the first and saying nothing. `economy_v7_version_test.cpp` is new
+and checks the non-collision against version six's own accepted empty economy
+root rather than a restatement of it.
+
+**The execution tests reproduce all five recorded scenarios and consult every
+vector in the file.** Version six's checks named three deferred sections because
+the seat transitions and the settlement were unwritten; there is nothing left to
+defer, so the coverage check now requires every key to have been reached.
+`coverage.kinds_executed` is derived by counting what the scenarios actually
+executed and requiring it to be every kind the codec admits.
+
+**Thirteen mutation probes were run and all thirteen are caught**, each made to
+fail on purpose first. Seven against the codec and settlement: dropping the pool
+share from the mint walk, filtering the winner derivation by span, absorbing the
+dust the cycle just produced, zeroing the five absorbed fields, accepting a
+decoded absorption with no winner, un-retiring entry kind 7, and removing the
+backing identity from the invariant. Six against execution: running the
+assignment after the transactions, applying the cap against a supplied mark,
+keeping version six's receipt version, committing the pool the cycle found,
+omitting the recovery pool from the projection, and swapping the escrow-create
+and escrow-delete handlers.
+
+**Two of the thirteen are worth recording for what they found rather than what
+they confirmed.**
+
+The escrow-create and escrow-delete swap is the mutation ADR 0055's own
+correction says passed uncaught under the three scenarios that record accepted.
+It is caught here by the `carried` scenario, which is exactly what issue #197
+added it for — the first time that correction has been shown to work rather than
+argued.
+
+Removing the backing identity from `conservation_failures` **passed at first**,
+and that was a real gap rather than a bad probe. Both identities were checked by
+the settlement test's own arithmetic and nowhere else, so the kernel's invariant
+could have stopped stating either one silently. Each is now broken on purpose
+and the invariant is required to report it by name.
+
+**One probe of the seven was written wrong first and is worth naming.** An
+attempt at "absorb after contributing" added the dust to the pool before
+subtracting what was taken and dropped the later addition — which cancels
+exactly, because a cycle absorbs either the whole pool or nothing. It passed,
+and it proved nothing. The rule the handoff records held: a probe that passes
+has proved nothing until you have checked that it changed the code the test
+runs.
+
+**The fixture detail that cost the most is a two-constant one.** Three builders
+are version six's, imported rather than restated — the confirmed transfer, the
+verified-user mint, and the posture change — and they carry version six's own
+expiry default of 10,000,000 rather than version seven's 10,000,000,000. The
+bytes a transaction commits to include the height it expires at, so unifying the
+two constants produced identical state roots and different transaction roots.
+The failure was legible only because the state root matched: everything the
+transactions *did* was right and only their identity was wrong.
+
+**A bounded local harness made the iteration possible.** The kernel plus one
+test target compiles directly against a scratch `sodium.h` over the system
+OpenSSL in about eleven seconds, which is what allowed thirteen probes to be run
+and re-run without a hosted job. It is never committed and never part of the
+build; `docs/project/current-state.md`'s next-action section describes how to
+rebuild it.
 
 ### How M3.12a was delivered
 
@@ -2420,19 +2533,33 @@ slices.
   kind-1 byte identity, the shared envelope, the admission order, the genesis
   field table, the receipt layout, result codes 0 through 23, and the whole
   settlement carry over. Kind 6 is still specified and refused.
-- **The C++20 kernel implements the version-six byte and derivation surface**,
-  and it is the only economy contract the kernel compiles. `protocol::v6`
-  encodes and decodes all fourteen transaction kinds and refuses the five
-  retired numbers, enforces the scheme a kind permits, builds all six HUB
-  messages, derives an escrow identifier and a signer identifier, evaluates the
-  posture's two predicates, derives every state key and value, computes the
-  economy tree and the version-six state root, encodes genesis and derives the
-  chain identifier, encodes and decodes the receipt, and computes the bounded
-  mint walk and the verified-user collection. It reproduces
-  `test-vectors/economy-transition-v6.txt`, and reaches three third sources: the
-  kind-1 identity, the signer derivation, and the accounts tree against the
-  accepted M1 file, and the two cycle-assignment records against version three's.
-  **It runs no transition and reads no ledger**, so no chain runs on it.
+- **The C++20 kernel implements `economy-transition-v7` in full**, and it is the
+  only economy contract the kernel compiles. `protocol::v7` encodes and decodes
+  all fourteen transaction kinds and refuses the five retired numbers, builds all
+  six HUB messages, derives escrow and signer identifiers, evaluates the posture's
+  two predicates, derives every state key and value including the recovery pool
+  and the extended cycle assignment record, computes the economy tree and the
+  version-seven state root, encodes genesis and derives the chain identifier, and
+  encodes and decodes the receipt.
+  **It also runs the contract.** All fourteen transitions execute in their
+  accepted rejection orders; `execute_block` writes the due cycle assignment as a
+  prologue, reading the pool and each measured seat's mark and recorded referrer
+  from the chain rather than from the measurement; and every accepted state
+  satisfies both the channel identity and the backing identity. It reproduces
+  `test-vectors/economy-transition-v7.txt` and
+  `test-vectors/economy-transition-v7-execution.txt` in full, consulting every
+  vector in the second, and reaches four third sources: the kind-1 identity, the
+  signer derivation, and the accounts tree against the accepted M1 file; the
+  ordered transaction tree, the block header, and the block identifier against
+  `ledger-transition-v1.txt`; the ten channel caps and five base permission legs
+  against `founder-economy-manifest-v3.txt`; and the referral leg against version
+  three's. **What it still does not do is persist or gossip**: it executes blocks
+  against an in-memory ledger, so no chain runs on it yet.
+- **Version six's codec is gone from the kernel and its Python evidence is
+  intact.** `src/v6/` and `include/protocol/v6/` are removed under ADR 0046's
+  rule that the kernel compiles exactly one economy contract;
+  `simulation/economy_transition_v6/` and both accepted version-six vector files
+  remain in place, passing, and unedited.
 - **Version four's codec is gone from the kernel and its Python evidence is
   intact.** `src/v4/` is removed, because it implemented the one economy
   contract already known to have no conforming implementation;
@@ -3231,12 +3358,15 @@ behavior.
 
 ## Remaining gap
 
-No executable Founder Seat, revenue distribution, production escrow, biometric
-verifier, packaged Founder Node, AI service, controlled application runtime,
-resource cloud, bridge, liquidity system, wallet, public testnet, or mainnet is
-implemented. The Founder issuance schedule, permission transitions, revenue
-routing, and escrow payouts now exist only as independent Python models, not as
-C++ consensus behavior.
+No production escrow, biometric verifier, packaged Founder Node, AI service,
+controlled application runtime, resource cloud, bridge, liquidity system,
+wallet, public testnet, or mainnet is implemented. Revenue routing and escrow
+payouts exist only as independent Python models, not as C++ consensus behaviour.
+
+**The Founder Seat and the issuance schedule are no longer in that list.** As of
+2026-08-29 the C++20 kernel executes the seat purchase, the activation, the node
+mint, the referral mint, and the cycle assignment that drives them, against
+`economy-transition-v7`.
 
 **Version seven's Python evidence is now complete in the sense that matters for
 a second implementation.** Every transaction kind it admits has a recorded
@@ -3244,16 +3374,26 @@ version-seven state root and a recorded version-seven receipt, which is the
 claim a kernel has to reproduce. That was not true before 2026-08-20 and its
 absence is what stopped the kernel move.
 
-**The C++ half is where the gap now sits, and it is precise.** The kernel
-compiles `economy-transition-v6`: its byte and derivation surface, and ten of
-its fourteen transitions. Kinds 2, 3, 4, and 5 — purchase a seat, activate it,
-mint the node channels, mint the referral balance — return no outcome at all,
-and they were left that way in M3.10d because their contract was the one about
-to change. That contract has now changed twice and settled: version seven is
-accepted, modelled, executed, and evidenced at 807 vectors across two files.
-**Every transition the kernel is missing is a transition version seven
-redefines**, so there is no longer any reason to write them against version
-six.
+**The C++ half is closed and the gap has moved.** The kernel compiles
+`economy-transition-v7` in full — the byte and derivation surface, the ledger,
+all fourteen transitions, the assignment prologue, and both conservation
+identities — and reproduces both version-seven vector files. Requirements 10 and
+11 are met.
+
+**What is missing now is everything between a block and a network.** The kernel
+executes blocks against an in-memory ledger. It is not wired to the SQLite
+owning store, to the archive, or to the CometBFT adapter, so no state it
+produces survives a restart and no two nodes agree on one. That wiring is
+requirement 13's four-node adversarial scenarios, which have not started, and it
+is the largest single remaining piece of `first-goal.md`.
+
+**Two contracts are also still owed before requirement 13 can be honest.**
+`calendar-v1` has to fix the consensus timestamp's monotonicity rule and
+acceptance tolerance and the calendar-month boundary derived from it, because
+the tolerance is consensus-visible and a proposer can move a month boundary
+within it. The HUB verification architecture of ADR 0048 needs its threat model,
+with the biometric stabilisation scheme named as requiring independent
+cryptographic review before anything rests on it.
 
 **One of those absences now carries a dependency rather than only a roadmap
 position.** The founder answer of 2026-08-16 makes external purchasability the
@@ -3443,126 +3583,113 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.12b: move the C++20 kernel to `economy-transition-v7`**,
-which is issue #196 and is now unblocked. Use the `change-protocol` skill.
+Milestone slice **M3.13a: `calendar-v1`**, the consensus timestamp and the
+calendar-month boundary derived from it. Use the `change-protocol` skill.
 
-**It is one slice, not two, and M3.11c's handoff was wrong to split it.** That
-handoff said M3.12a was "the version-seven settlement and the four seat
-transitions". Attempting it found that the state root, the ledger, the
-settlement, and the four transitions cannot be separated: the recovery pool is
-a state entry, so a version-seven root implies a version-seven ledger; the
-backing identity needs the mint walk; and the mint walk is only reached by kind
-4, which is one of the four unwritten transitions. Splitting it produces an
-intermediate state nothing can verify.
+**It is the last contract the pivot left unwritten and the only one requirement
+13 depends on.** ADR 0050 made the block timestamp the ecosystem clock and ADR
+0049 made months real calendar months read from it, and neither fixed the two
+figures a second implementer needs. **The tolerance is consensus-visible**: a
+proposer can move a month boundary within it, so it must be a stated parameter
+rather than an adapter default, and the monotonicity rule must say what a
+non-increasing timestamp does to a block rather than leaving it to the adapter.
 
-**ADR 0046 already answers the one structural question.** When the kernel's codec
-moved from version four to version six it **replaced** it rather than adding
-beside it, because the kernel should compile exactly one economy contract.
-Expect to move `src/v6/` to `src/v7/` and `include/protocol/v6/` to
-`include/protocol/v7/` and retire version six's kernel path, not to keep two.
-Every Python model and vector file is retained either way.
-
-**A working recipe exists and is worth following rather than rediscovering.** The
-mechanical half was done on 2026-08-20 and reset; it compiled clean under GCC's
-`-fsyntax-only` for every translation unit. In order: `git mv` the two
-directories and the thirteen `tests/kernel/economy_v6_*` files and
-`tests/fuzz/economy_v6_fuzz.cpp`; rewrite `protocol::v6` to `protocol::v7`, the
-include paths, and the `v6::` namespace aliases in the tests; then make the
-substantive edits.
-
-**The substantive edits, in the order they were made:**
-
-* `kReceiptVersion`, `kGenesisSchemaVersion`, and `kStateRootSchemaVersion` go to
-  7, and `kChainIdLabel`, `kStateRootLabel`, and `kEconomyTreePrefix` take
-  version-seven labels. **`kEscrowLabel` stays at `protocol-stack:v6:escrow`** and
-  so do the account label, both transaction signing labels, and the six HUB
-  messages: a label names the artifact it derives and none of those changed.
-* `Entry::carry` leaves the enum and `Entry::recovery_pool = 17` joins it; `7`
-  joins `kRetiredEntryKinds`; both width tables grow to eighteen entries with
-  `kUnassigned` at 7.
-* `carry_key`/`carry_value` become `recovery_pool_key`/`recovery_pool_value` plus
-  a decoder, over a `RecoveryPool = std::array<std::uint64_t, 5>`.
-* `CycleAssignment` gains `pool_absorbed`, its fixed part goes from 24 to 64
-  octets, and **both the encoder and the decoder must refuse a nonzero absorbed
-  amount with a zero winner count** — that record describes value divided by
-  nobody.
-* `Ledger::carry` becomes `Ledger::pool`; `economy_entries` writes one pool entry
-  instead of ten carries; `fits_channel` binds `founder-economy-manifest-v3`.
-* `split_permission`, `collect_node`, and `claimable` are new and belong in
-  `ledger.hpp` beside `base_permission_leg`, because they read the manifest
-  tables. `claimable` must be `collect_node` run once per seat — a second walk
-  makes the backing identity check the kernel against itself.
-* `check_carry_identity` becomes `check_channel_identities` and states both
-  identities. It needs `<map>` and it must not shadow `owed`.
-
-**Then the four seat transitions**, kinds 2, 3, 4, and 5, whose dispatch in
-`src/v6/economy_value_transitions.cpp:151` currently returns `std::nullopt`
-from its `default` arm. Kind 4 is where the pool share is collected, which is
-why it cannot be deferred past the identities.
-
-**And the assignment prologue in `execute_block`**, which the kernel does not have
-at all: version six's C++ block execution never writes a cycle assignment. It
-must be written **before** the block's transactions, it must read the pool from
-the ledger, and it must read each measured seat's collection mark and recorded
-referrer from the seat entry rather than from the uptime record.
-
-**What the kernel must reproduce.** Both version-seven files:
-`test-vectors/economy-transition-v7.txt` for the settlement and the state
-surface, and `test-vectors/economy-transition-v7-execution.txt` for what a
-chain does. The second now covers all fourteen kinds, which is what makes the
-move possible; the existing kernel tests that read
-`economy-transition-v6-execution.txt` are retargeted to it rather than kept,
-because their recorded roots and receipts are version six's.
+The slice owes: the monotonicity rule and the acceptance tolerance, both as
+consensus parameters; the calendar-month boundary derived from a timestamp,
+including what happens at a month with no such day; a statement of both in a
+form any consensus adapter can satisfy, because CometBFT's own time is a median
+of validator clocks and the contract must say what it requires of that rather
+than assume it; the state entry a chain keeps to make the derivation `O(1)`; and
+the negative vectors — a backwards timestamp, a timestamp beyond tolerance, and
+a month boundary a proposer tried to move.
 
 **Then, in order, each its own slice:**
 
-* `calendar-v1`, which must fix the consensus timestamp's monotonicity rule and
-  acceptance tolerance, the calendar-month boundary derived from it, and the
-  statement of both in a form any consensus adapter can satisfy — the tolerance is
-  consensus-visible and a proposer can move a month boundary within it, so it must
-  be a stated parameter rather than an adapter default;
 * the HUB verification architecture of ADR 0048, which needs its threat model,
   with the biometric stabilization scheme named as requiring independent
   cryptographic review before anything rests on it;
-* requirement 13, the four-node adversarial scenarios, which has not started.
+* requirement 13, the four-node adversarial scenarios, which has not started and
+  is the largest single remaining piece. It is where the kernel meets the SQLite
+  owning store, the archive, and the CometBFT adapter for the first time: the
+  kernel executes blocks against an in-memory ledger today, so nothing it
+  produces survives a restart and no two nodes agree on one.
+
+**What the kernel looks like now, so a later session does not rediscover it.**
+`src/v7/` holds seventeen sources and `include/protocol/v7/` two headers.
+`economy_assignment.cpp` is the newest and is the only one with no version-six
+ancestor: it derives a cycle and applies it, and `execute_block` calls it as a
+prologue. `Assignment` and `SeatCycle` live in `ledger.hpp`; `SeatCycle` carries
+**three** fields on purpose, because the mark and the recorded referrer are
+chain state and a four-field version would make ADR 0055's first derived rule
+optional.
 
 **Local checks worth running, and one worth running first.** `git diff --check
 main HEAD` is exactly the whitespace gate the classification job runs; it costs
 nothing and M3.12a lost a full matrix run to a trailing blank line without it.
-The local C++ harness is a scratch `sodium.h` backed by the system OpenSSL,
-never committed and never part of the build — `crypto_hash_sha256` over
-`EVP_sha256`, `crypto_sign_verify_detached` over `EVP_PKEY_ED25519`, and a
-`sodium_init` that returns zero — and with it every kernel translation unit
-compiles under `g++ -std=c++20 -fsyntax-only -I include -I src -I tests` in
-about a second. Its one known limit is that it does not reproduce libsodium's
-rejection of small-order public keys, so `tests/kernel/primitives_test.cpp`
-fails under it at that assertion and passes on the hosted matrix. **Run Clang
-locally before pushing**: it caught a structured-binding capture GCC accepts
-and the matrix rejects. **On Python sources use `python3 -B`**, because a stale
-bytecode cache can make a mutation probe appear to pass without ever compiling
-the mutation.
 
-**And re-aim a probe that passes.** M3.11c ran a probe that flipped the default of
-`assignment_is_prologue` and it passed uncaught, because the trace passes the
-flag explicitly and the mutation never reached the executed path. M3.12a ran
-one that substituted a line for itself. **A probe that passes has proved
-nothing until you have checked that it changed the code the test runs**, and
-the cheapest way to check is to make it fail on purpose first.
+**The scratch C++ harness is worth rebuilding rather than rediscovering.** It is
+a `sodium.h` backed by the system OpenSSL — `crypto_hash_sha256` over
+`EVP_sha256`, `crypto_sign_verify_detached` over `EVP_PKEY_ED25519`, a
+`sodium_init` returning zero, and `sodium_memcmp`/`sodium_memzero` — never
+committed and never part of the build. With it,
 
-**One sequencing rule the slice learned the hard way.** Let the merge's own `main`
-push run finish before pushing the closeout documentation commit. M3.11c pushed
-the closeout while the merge run was still building and the workflow's
-concurrency group cancelled it, which leaves a cancelled run and a failed
-aggregate check on `main`'s history for a commit whose tree had already passed
-the matrix in full on the pull request.
+```
+g++ -std=c++20 -O0 -I include -I src -I tests -I <shim> \
+  src/v7/*.cpp src/v1/*.cpp tests/kernel/economy_v7_<target>*.cpp \
+  -lcrypto -o <binary>
+```
+
+links either kernel test target in about eleven seconds, and the binary takes
+the same vector-file arguments CMake passes it. **That is what made thirteen
+mutation probes affordable in M3.12b**; without it each probe is a hosted run.
+Its one known limit is that it does not reproduce libsodium's rejection of
+small-order public keys, so `tests/kernel/primitives_test.cpp` fails under it at
+that assertion and passes on the hosted matrix. **Run Clang locally before
+pushing**: it caught a structured-binding capture GCC accepts and the matrix
+rejects. **On Python sources use `python3 -B`**, because a stale bytecode cache
+can make a mutation probe appear to pass without ever compiling the mutation.
+
+**And re-aim a probe that passes.** M3.11c ran a probe that flipped the default
+of `assignment_is_prologue` and it passed uncaught, because the trace passes the
+flag explicitly and the mutation never reached the executed path. M3.12a ran one
+that substituted a line for itself. **M3.12b ran a third**: an "absorb after
+contributing" probe that added the dust before subtracting what was taken and
+dropped the later addition, which cancels exactly because a cycle absorbs either
+the whole pool or nothing. **A probe that passes has proved nothing until you
+have checked that it changed the code the test runs**, and the cheapest way to
+check is to make it fail on purpose first.
+
+**One probe in M3.12b passed for a better reason and it is the pattern to
+repeat.** Removing the backing identity from `conservation_failures` passed,
+because both identities were checked by the settlement test's own arithmetic and
+nowhere else. The fix was not a better probe but a better test: each identity is
+now broken on purpose and the kernel's invariant is required to report it by
+name. A probe that passes is a question about the tests, not only about itself.
+
+**One fixture rule the kernel tests now depend on.** Three builders in
+`economy_v7_trace.cpp` are version six's, imported rather than restated — the
+confirmed transfer, the verified-user mint, and the posture change — and they
+carry `kInheritedValidUntil` (10,000,000) rather than `kValidUntil`
+(10,000,000,000). The bytes a transaction commits to include the height it
+expires at, so unifying the two constants produces identical state roots and
+different transaction roots. Do not tidy them into one.
+
+**One sequencing rule an earlier slice learned the hard way.** Let the merge's
+own `main` push run finish before pushing the closeout documentation commit.
+M3.11c pushed the closeout while the merge run was still building and the
+workflow's concurrency group cancelled it, which leaves a cancelled run and a
+failed aggregate check on `main`'s history for a commit whose tree had already
+passed the matrix in full on the pull request.
 
 **Two generation details.** Both version-seven vector files are produced by their
 verifier's `--emit`, which runs the same derivations through the same agreement
 gate as the checking mode, so a file and its derivations cannot disagree at
 birth; the section comments are emitted with them, so regenerating is one
-command rather than a transcription. And **the coverage claim is now a vector
-of its own**: `coverage.every_kind_version_seven_admits_is_executed` fails if a
-later scenario change stops reaching one.
+command rather than a transcription. And **the coverage claim is a vector of its
+own**: `coverage.every_kind_version_seven_admits_is_executed` fails if a later
+scenario change stops reaching one, and the C++ execution checks now derive the
+same count rather than reading it back.
+
 
 ## Blockers
 
