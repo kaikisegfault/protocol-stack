@@ -1,6 +1,6 @@
 #pragma once
 
-// The canonical byte and derivation surface of `economy-transition-v6`.
+// The canonical byte and derivation surface of `economy-transition-v7`.
 //
 // This header declares the codec: the transaction envelope with its two
 // authorization schemes, the fourteen bodies and the five retired kind numbers,
@@ -43,9 +43,9 @@ inline constexpr std::size_t kHeaderBytes = 80;
 inline constexpr std::size_t kTrailerBytes = 16;
 inline constexpr std::size_t kSignatureBytes = 64;
 inline constexpr std::uint16_t kEnvelopeSchemaVersion = 1;
-inline constexpr std::uint16_t kReceiptVersion = 6;
-inline constexpr std::uint16_t kGenesisSchemaVersion = 6;
-inline constexpr std::uint16_t kStateRootSchemaVersion = 6;
+inline constexpr std::uint16_t kReceiptVersion = 7;
+inline constexpr std::uint16_t kGenesisSchemaVersion = 7;
+inline constexpr std::uint16_t kStateRootSchemaVersion = 7;
 inline constexpr std::size_t kReceiptBytes = 56;
 inline constexpr std::size_t kGenesisPrefixBytes = 110;
 inline constexpr std::size_t kAccountEntryBytes = 48;
@@ -140,16 +140,25 @@ inline constexpr std::array<std::uint8_t, 3> kFrozenUnreachableCodes{4, 23, 25};
 // contiguity checkable rather than asserted.
 std::optional<std::string_view> result_code_name(std::uint8_t code);
 
-// The version-one labels, deliberately not re-versioned: re-versioning would
-// destroy the kind-1 byte identity for separation the preimage already carries.
+// **Every label keeps the version that accepted it.** A label names the artifact
+// it derives, and version seven changes four things — the state key space, one
+// record, the settlement, and the conservation identity — none of which is an
+// account, an escrow, a signed transaction, or a HUB message. Re-versioning the
+// two signing labels would additionally destroy the kind-1 byte identity, which
+// every version since two has declined to do.
+//
+// A version-six signature is nonetheless not replayable here, because every
+// signed message binds `chain_id` and the chain identity is derived over genesis
+// bytes whose schema version and label both differ.
 inline constexpr std::string_view kSignLabel = "protocol-stack:v1:tx-sign";
 inline constexpr std::string_view kTransactionIdLabel = "protocol-stack:v1:tx-id";
 inline constexpr std::string_view kAccountLabel = "protocol-stack:v1:account";
 inline constexpr std::string_view kAccountsTreePrefix = "protocol-stack:v1:state";
 inline constexpr std::string_view kEscrowLabel = "protocol-stack:v6:escrow";
-inline constexpr std::string_view kChainIdLabel = "protocol-stack:v6:chain-id";
-inline constexpr std::string_view kStateRootLabel = "protocol-stack:v6:state-root";
-inline constexpr std::string_view kEconomyTreePrefix = "protocol-stack:v6:economy";
+// The four constructions version seven re-versions, and the only four.
+inline constexpr std::string_view kChainIdLabel = "protocol-stack:v7:chain-id";
+inline constexpr std::string_view kStateRootLabel = "protocol-stack:v7:state-root";
+inline constexpr std::string_view kEconomyTreePrefix = "protocol-stack:v7:economy";
 
 enum class Kind : std::uint8_t {
   native_transfer = 1,
@@ -175,7 +184,6 @@ enum class Entry : std::uint8_t {
   referral_balance = 4,
   direct_decision = 5,
   typed_custody = 6,
-  carry = 7,
   verifier_key = 8,
   hub_identity = 10,
   unreferred_pool = 12,
@@ -183,12 +191,14 @@ enum class Entry : std::uint8_t {
   signer = 14,
   verified_user_enrollment = 15,
   verified_user_counter = 16,
+  recovery_pool = 17,
 };
 
-// Kinds 7, 8, 9, 11, and 12 and entry kinds 9 and 11 are retired and
+// Kinds 7, 8, 9, 11, and 12 and entry kinds 7, 9, and 11 are retired and
 // permanently unassigned: each lost its subject, and assigning a new meaning to
 // a number a reader associates with an accepted contract is the cheapest way to
-// create an auditing mistake.
+// create an auditing mistake. Entry kind 7 held the ten per-channel carries and
+// is version seven's own retirement.
 bool is_transaction_kind(std::uint8_t kind);
 bool is_retired_kind(std::uint8_t kind);
 bool is_entry_kind(std::uint8_t entry_kind);
@@ -352,7 +362,7 @@ Bytes referral_balance_key(std::span<const std::uint8_t> hub_identity_hash);
 Bytes direct_decision_key(std::span<const std::uint8_t> decision_id);
 Bytes typed_custody_key(std::uint8_t beneficiary_kind,
                         std::span<const std::uint8_t> beneficiary_id);
-Bytes carry_key(std::uint8_t channel_index);
+Bytes recovery_pool_key();
 Bytes verifier_key_key();
 Bytes hub_identity_key(std::span<const std::uint8_t> hub_identity_hash);
 Bytes unreferred_pool_key();
@@ -401,18 +411,47 @@ struct EnrollmentRecord {
   std::uint64_t issued_atomic = 0;
 };
 
-// The record the chain writes when a cycle is finalised, unchanged from version
-// three. The two bitmaps are indexed by seat identifier, most significant bit
-// first, and carry no length prefixes: both widths follow from `bitmap_bits`.
+// The recovery pool's five legs, in the accepted manifest's channel order 0
+// through 4. **Exactly one such entry exists on any chain**, written at genesis
+// with all five legs zero and updated by the assignment prologue.
+//
+// The five are separate because they have five different destinations — the
+// Founder operator's own escrow and four typed custody kinds — and five
+// different channel caps and identities. A single total could not say which
+// channel a recovered unit belongs to. The ten channels that are not Founder
+// Node legs have no pool term, because they have no base permission and
+// therefore no remainder.
+inline constexpr std::size_t kRecoveryPoolLegs = 5;
+using RecoveryPool = std::array<std::uint64_t, kRecoveryPoolLegs>;
+
+// The record the chain writes when a cycle is finalised: version three's, with
+// the five amounts that cycle absorbed from the recovery pool appended to its
+// fixed part. The two bitmaps are indexed by seat identifier, most significant
+// bit first, and carry no length prefixes: both widths follow from
+// `bitmap_bits`.
+//
+// **The record states what the cycle took from the pool, not what a winner
+// receives.** A winner's pool share is `pool_absorbed[c] / winner_count`,
+// integer division, derived at the mint exactly as the reallocation share is
+// derived from `reallocated_count` and `winner_count`. Recording the absorbed
+// amount rather than the share is forced: the residual a cycle returns to the
+// pool is `absorbed - winner_count * (absorbed / winner_count)`, and a share
+// alone cannot express it.
 struct CycleAssignment {
   std::uint64_t share_per_winner_atomic = 0;
   std::uint32_t reallocated_count = 0;
   std::uint32_t winner_count = 0;
   std::uint32_t in_scope_count = 0;
   std::uint32_t bitmap_bits = 0;
+  RecoveryPool pool_absorbed{};
   Bytes accrued_bitmap;
   Bytes winner_bitmap;
 };
+
+// The fixed part is 64 octets rather than version three's 24, and the five new
+// fields sit after `bitmap_bits` so that every fixed-width field stays
+// contiguous ahead of the variable-length tail.
+inline constexpr std::size_t kCycleAssignmentFixedBytes = 64;
 
 Bytes seat_value(const SeatRecord& seat);
 Bytes channel_value(std::uint64_t issued_atomic, std::uint64_t outstanding_atomic);
@@ -421,7 +460,9 @@ Bytes referral_balance_value(std::uint64_t accrued_atomic,
                              std::uint64_t collected_through_window);
 Bytes unreferred_pool_value(std::uint64_t accrued_atomic, std::uint64_t minted_atomic);
 Bytes typed_custody_value(std::uint64_t amount_atomic);
-Bytes carry_value(std::uint64_t carry_atomic);
+Bytes recovery_pool_value(const RecoveryPool& legs);
+std::optional<RecoveryPool> decode_recovery_pool_value(
+    std::span<const std::uint8_t> raw);
 Bytes verifier_key_value(std::span<const std::uint8_t> public_key);
 Bytes hub_identity_value(const HubIdentityRecord& identity);
 Bytes escrow_value(const EscrowRecord& escrow);

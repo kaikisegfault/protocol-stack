@@ -43,15 +43,14 @@ std::optional<Outcome> charged(Ledger& ledger, const Octets32& escrow);
 std::optional<std::uint8_t> leg_beneficiary_kind(std::uint8_t channel_index);
 inline constexpr Octets32 kSingletonBeneficiaryId{};
 
-// Kinds 1, 6, 10, 13, 14, 15, 16, 17, 18, and 19. The four seat transitions —
-// purchase, activate, and the two mints that read a cycle assignment — are the
-// next slice, and dispatch refuses a kind it does not yet run rather than
-// silently succeeding.
+// All fourteen kinds. Six write authority and identity; the other eight move or
+// issue value.
 std::optional<Outcome> dispatch(Ledger& ledger, const Envelope& envelope,
                                 const Body& body, const Octets32* escrow,
                                 const SignatureVerifier& verify);
-// The four kinds that move or issue value: the two transfers, the verified-user
-// mint, and the refused direct issue.
+// The eight kinds that move or issue value: the two transfers, the four seat
+// transitions, the referral mint, the verified-user mint, and the refused direct
+// issue.
 std::optional<Outcome> dispatch_value(Ledger& ledger, const Envelope& envelope,
                                       const Body& body, const Octets32& escrow,
                                       const SignatureVerifier& verify);

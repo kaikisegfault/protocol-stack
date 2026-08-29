@@ -1,4 +1,5 @@
-// Ordered version-six block execution: the transactions, the roots, the header.
+// Ordered version-seven block execution: the prologue, the transactions, the
+// roots, the header.
 //
 // `ledger-transition-v1` governs, unchanged: the only valid next height is
 // `h + 1`, admission failures are omitted from application execution and from
@@ -7,15 +8,20 @@
 // while ordinary transaction results never reject it.
 //
 // **Two constructions are inherited rather than re-versioned, and both follow
-// from the same clause.** The version-six specification extends
+// from the same clause.** The version-seven specification extends
 // `protocol-primitives-v1` and states that definitions there govern unless it
 // imposes a narrower rule. It re-versions genesis, the receipt, and the state
 // root explicitly and says nothing about the ordered transaction tree or the
 // 146-byte application block header, so both stay exactly as version one defines
-// them — including the header's schema version field of `1`. A version-six
+// them — including the header's schema version field of `1`. A version-seven
 // header is already unmistakable without a new number, because the chain ID it
-// carries is derived under a version-six label and both state roots it carries
-// are version-six constructions.
+// carries is derived under a version-seven label and both state roots it carries
+// are version-seven constructions.
+//
+// **The assignment is a prologue.** `uptime-measurement-v1` finalises window `w`
+// at the first height of `w + 2`, so that is where `w`'s record is written and
+// no earlier — before the block's transactions, so a mint in the boundary block
+// can reach the window it just closed.
 
 #include "economy_internal.hpp"
 #include "economy_ledger_internal.hpp"
@@ -64,9 +70,37 @@ std::optional<Bytes> block_header(const Octets32& chain_id, std::uint64_t height
   return raw;
 }
 
+namespace {
+
+// Write window `h / kCycleBlocks - 2`'s record when `h` opens a window.
+//
+// A window with no finalised measurement — a chain with no seats in scope —
+// writes nothing, which is the same fact as a record with every bit clear.
+// `false` is a whole-block rejection rather than an absent assignment.
+bool write_due_assignment(Ledger& ledger, const UptimeSchedule* uptime,
+                          std::optional<std::uint64_t>& assigned) {
+  if (ledger.height % kCycleBlocks != 0) return true;
+  const auto window = ledger.height / kCycleBlocks;
+  if (window < kAssignmentLagWindows) return true;
+  const auto due = window - kAssignmentLagWindows;
+  if (uptime == nullptr) return true;
+  const auto measured = uptime->find(due);
+  if (measured == uptime->end() || measured->second.empty()) return true;
+
+  const auto assignment = derive_assignment(ledger, due, measured->second);
+  if (!assignment) return false;
+  if (!apply_assignment(ledger, *assignment)) return false;
+  assigned = due;
+  return true;
+}
+
+}  // namespace
+
 std::optional<BlockOutcome> execute_block(Ledger& ledger,
                                           std::span<const Bytes> raw_inputs,
-                                          const SignatureVerifier& verify) {
+                                          const SignatureVerifier& verify,
+                                          const UptimeSchedule* uptime,
+                                          bool assignment_is_prologue) {
   if (raw_inputs.size() > kMaxRawInputs) return std::nullopt;
   const auto previous_root = ledger_state_root(ledger);
   if (!previous_root || ledger.height == kMaxU64) return std::nullopt;
@@ -80,6 +114,12 @@ std::optional<BlockOutcome> execute_block(Ledger& ledger,
   outcome.height = ledger.height + 1;
   outcome.previous_state_root = *previous_root;
   ledger.height = outcome.height;
+
+  if (assignment_is_prologue &&
+      !write_due_assignment(ledger, uptime, outcome.assigned_window)) {
+    ledger = snapshot;
+    return std::nullopt;
+  }
 
   std::vector<Hash> admitted_ids;
   for (const auto& raw : raw_inputs) {
@@ -116,6 +156,12 @@ std::optional<BlockOutcome> execute_block(Ledger& ledger,
     outcome.admissions.push_back(std::move(admission));
   }
   if (outcome.executed.size() > kMaxAdmitted) {
+    ledger = snapshot;
+    return std::nullopt;
+  }
+
+  if (!assignment_is_prologue &&
+      !write_due_assignment(ledger, uptime, outcome.assigned_window)) {
     ledger = snapshot;
     return std::nullopt;
   }

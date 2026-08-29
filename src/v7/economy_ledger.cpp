@@ -1,5 +1,5 @@
-// The version-six ledger: opening it, moving value inside it, and projecting it
-// into the canonical entries the roots are taken over.
+// The version-seven ledger: opening it, moving value inside it, and projecting
+// it into the canonical entries the roots are taken over.
 //
 // The conservation checks are here rather than in the transitions because they
 // are properties of a state rather than of a step. Every one is an equality: a
@@ -16,7 +16,9 @@ namespace {
 
 // The accepted manifest's ten channel caps, in channel-identifier order. They
 // are founder-directed figures rather than derived ones, and the kernel tests
-// check every entry against `test-vectors/founder-economy-manifest-v2.txt`.
+// check every entry against `test-vectors/founder-economy-manifest-v3.txt`.
+// ADR 0053's manifest renames channel 9 and moves no figure, so every cap below
+// is version two's and the binding is what moved.
 constexpr std::array<std::uint64_t, kChannelCount> kChannelCaps{
     2'500'020'000'000'000'000,  // 0 founder_operator
     1'250'010'000'000'000'000,  // 1 venture_escrow
@@ -27,13 +29,14 @@ constexpr std::array<std::uint64_t, kChannelCount> kChannelCaps{
     375'003'000'000'000'000,    // 6 impermanent_loss_protection
     250'002'000'000'000'000,    // 7 founder_referral
     125'001'000'000'000'000,    // 8 hub_verified_user_incentives
-    1'250'010'000'000'000,      // 9 initial_mystery_box_incentives
+    1'250'010'000'000'000,      // 9 mini_gamified_incentives
 };
 
 // The five base-permission legs one assigned cycle permission is split into.
 // Channels 5 through 9 take no leg, so their entry is zero rather than absent:
-// the carry identity is stated over every channel and holds trivially where the
-// leg is zero.
+// the channel identity is stated over every channel and holds trivially where
+// the leg is zero. The five that are nonzero are exactly the recovery pool's
+// five, which is why one pool entry replaces ten carry entries.
 constexpr std::array<std::uint64_t, kChannelCount> kBasePermissionLegs{
     34'200'000'000, 17'100'000'000, 3'420'000'000, 1'710'000'000,
     1'000'000'000,  0,              0,             0,
@@ -43,6 +46,15 @@ constexpr std::array<std::uint64_t, kChannelCount> kBasePermissionLegs{
 bool add_checked(std::uint64_t& target, std::uint64_t amount) {
   if (amount > kMaxU64 - target) return false;
   target += amount;
+  return true;
+}
+
+// A product that leaves `u64` is a failure rather than a wrapped value, so no
+// collection is ever compared against a truncated expectation.
+bool product_checked(std::uint64_t left, std::uint64_t right,
+                     std::uint64_t& result) {
+  if (left != 0 && right > kMaxU64 / left) return false;
+  result = left * right;
   return true;
 }
 
@@ -58,6 +70,104 @@ std::uint64_t channel_cap(std::uint8_t channel_index) {
 
 std::uint64_t base_permission_leg(std::uint8_t channel_index) {
   return channel_index < kChannelCount ? kBasePermissionLegs[channel_index] : 0;
+}
+
+PermissionSplit split_permission(std::uint32_t winner_count) {
+  PermissionSplit split;
+  for (std::size_t channel = 0; channel < kRecoveryPoolLegs; ++channel) {
+    const auto leg = kBasePermissionLegs[channel];
+    if (winner_count == 0) {
+      // No winner divides nothing: the share is zero and the whole leg is the
+      // remainder, which is what sends a cycle nobody wins into the pool entire.
+      split.share[channel] = 0;
+      split.remainder[channel] = leg;
+      continue;
+    }
+    const auto share = leg / winner_count;
+    split.share[channel] = share;
+    split.remainder[channel] = leg - share * winner_count;
+  }
+  return split;
+}
+
+std::uint64_t Collection::total_atomic() const {
+  std::uint64_t total = 0;
+  for (const auto amount : per_channel) total += amount;
+  return total;
+}
+
+std::optional<Collection> collect_node(const Ledger& ledger,
+                                       std::uint32_t seat_id, std::uint64_t mark,
+                                       std::optional<std::uint64_t> last_assigned) {
+  Collection collection;
+  const auto span = walk_range(mark, last_assigned);
+  if (!span) return collection;
+  collection.windows_walked = span->last_window - span->first_window + 1;
+
+  for (auto window = span->first_window; window <= span->last_window; ++window) {
+    const auto found = ledger.assignments.find(window);
+    // An absent record and a record with both bits clear are the same fact.
+    if (found == ledger.assignments.end()) continue;
+    const auto record = decode_cycle_assignment_value(found->second);
+    // A recorded assignment that will not decode is an invariant failure rather
+    // than an empty window: the projection wrote it and the root committed it.
+    if (!record) return std::nullopt;
+
+    if (bit_is_set(record->accrued_bitmap, seat_id)) {
+      collection.accrued_windows.push_back(window);
+      for (std::size_t channel = 0; channel < kRecoveryPoolLegs; ++channel) {
+        if (!add_checked(collection.per_channel[channel],
+                         kBasePermissionLegs[channel])) {
+          return std::nullopt;
+        }
+      }
+    }
+    if (bit_is_set(record->winner_bitmap, seat_id)) {
+      collection.won_windows.push_back(window);
+      // A winner bit with a zero winner count is unrepresentable — the decoder
+      // above refuses the record that would carry it — so the division is safe.
+      if (record->winner_count == 0) return std::nullopt;
+      const auto split = split_permission(record->winner_count);
+      for (std::size_t channel = 0; channel < kRecoveryPoolLegs; ++channel) {
+        std::uint64_t reallocated = 0;
+        if (!product_checked(record->reallocated_count, split.share[channel],
+                             reallocated)) {
+          return std::nullopt;
+        }
+        if (!add_checked(collection.per_channel[channel], reallocated)) {
+          return std::nullopt;
+        }
+        // Version seven's added term, and the only change to the walk: a winner
+        // also takes this cycle's share of what it absorbed from the pool.
+        const auto pool_share =
+            record->pool_absorbed[channel] / record->winner_count;
+        if (!add_checked(collection.per_channel[channel], pool_share)) {
+          return std::nullopt;
+        }
+      }
+    }
+  }
+  return collection;
+}
+
+std::optional<RecoveryPool> claimable(const Ledger& ledger) {
+  RecoveryPool owed{};
+  // The largest window with a record, which is what a mint at any height past
+  // that window's boundary would walk to.
+  std::optional<std::uint64_t> last_assigned;
+  if (!ledger.assignments.empty()) last_assigned = ledger.assignments.rbegin()->first;
+
+  for (const auto& [seat_id, seat] : ledger.seats) {
+    const auto collection =
+        collect_node(ledger, seat_id, seat.minted_through_window, last_assigned);
+    if (!collection) return std::nullopt;
+    for (std::size_t channel = 0; channel < kRecoveryPoolLegs; ++channel) {
+      if (!add_checked(owed[channel], collection->per_channel[channel])) {
+        return std::nullopt;
+      }
+    }
+  }
+  return owed;
 }
 
 std::optional<Ledger> open_ledger(const Genesis& genesis) {
@@ -80,8 +190,13 @@ std::vector<EconomyEntry> economy_entries(const Ledger& ledger) {
     push(entries, channel_key(index),
          channel_value(ledger.channel_issued[index],
                        ledger.channel_outstanding[index]));
-    push(entries, carry_key(index), carry_value(ledger.carry[index]));
   }
+  // One recovery pool entry where version six wrote ten carries, five of which
+  // were structurally always zero. Entry kind 7 is never written here and the
+  // root's shape rules refuse it, so a projection that regressed to version
+  // six's carry would fail at the root rather than produce a root nothing else
+  // would ever match.
+  push(entries, recovery_pool_key(), recovery_pool_value(ledger.pool));
   push(entries, verifier_key_key(), verifier_key_value(ledger.verifier_key));
   push(entries, unreferred_pool_key(),
        unreferred_pool_value(ledger.pool_accrued, ledger.pool_minted));

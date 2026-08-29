@@ -1,4 +1,4 @@
-// The economy tree, the version-six state root, and the one variable-width
+// The economy tree, the version-seven state root, and the one variable-width
 // value the tree has to size for itself.
 //
 // The roots are fallible because an entry no transition could have written is
@@ -109,19 +109,38 @@ bool bit_is_set(std::span<const std::uint8_t> packed, std::uint32_t seat_id) {
   return (packed[index] & static_cast<std::uint8_t>(0x80U >> (seat_id % 8))) != 0;
 }
 
+// A cycle with no winner absorbs nothing, so a record carrying a nonzero
+// absorbed amount at a zero winner count describes value divided by nobody.
+// **Both directions refuse it**, and that is deliberate rather than duplicated:
+// the encoder refuses to write a state entry no settlement could produce, and
+// the decoder refuses to read one off a wire the encoder does not control.
+bool absorbed_is_representable(std::uint32_t winner_count,
+                               const RecoveryPool& absorbed) {
+  if (winner_count != 0) return true;
+  for (const auto amount : absorbed) {
+    if (amount != 0) return false;
+  }
+  return true;
+}
+
 std::optional<Bytes> cycle_assignment_value(const CycleAssignment& assignment) {
   const auto width = bitmap_bytes(assignment.bitmap_bits);
   if (assignment.accrued_bitmap.size() != width ||
       assignment.winner_bitmap.size() != width) {
     return std::nullopt;
   }
+  if (!absorbed_is_representable(assignment.winner_count,
+                                 assignment.pool_absorbed)) {
+    return std::nullopt;
+  }
   Bytes value;
-  value.reserve(24 + 2 * width);
+  value.reserve(kCycleAssignmentFixedBytes + 2 * width);
   i::append_u64(value, assignment.share_per_winner_atomic);
   i::append_u32(value, assignment.reallocated_count);
   i::append_u32(value, assignment.winner_count);
   i::append_u32(value, assignment.in_scope_count);
   i::append_u32(value, assignment.bitmap_bits);
+  for (const auto amount : assignment.pool_absorbed) i::append_u64(value, amount);
   i::append(value, assignment.accrued_bitmap);
   i::append(value, assignment.winner_bitmap);
   return value;
@@ -129,7 +148,7 @@ std::optional<Bytes> cycle_assignment_value(const CycleAssignment& assignment) {
 
 std::optional<CycleAssignment> decode_cycle_assignment_value(
     std::span<const std::uint8_t> raw) {
-  constexpr std::size_t kFixed = 24;
+  constexpr std::size_t kFixed = kCycleAssignmentFixedBytes;
   if (raw.size() < kFixed) return std::nullopt;
   CycleAssignment assignment;
   const auto share = i::read_u64(raw, 0);
@@ -138,6 +157,13 @@ std::optional<CycleAssignment> decode_cycle_assignment_value(
   const auto in_scope = i::read_u32(raw, 16);
   const auto bits = i::read_u32(raw, 20);
   if (!share || !reallocated || !winners || !in_scope || !bits) return std::nullopt;
+  RecoveryPool absorbed{};
+  for (std::size_t index = 0; index < kRecoveryPoolLegs; ++index) {
+    const auto amount = i::read_u64(raw, 24 + 8 * index);
+    if (!amount) return std::nullopt;
+    absorbed[index] = *amount;
+  }
+  if (!absorbed_is_representable(*winners, absorbed)) return std::nullopt;
   const auto width = bitmap_bytes(*bits);
   if (raw.size() != kFixed + 2 * width) return std::nullopt;
   assignment.share_per_winner_atomic = *share;
@@ -145,6 +171,7 @@ std::optional<CycleAssignment> decode_cycle_assignment_value(
   assignment.winner_count = *winners;
   assignment.in_scope_count = *in_scope;
   assignment.bitmap_bits = *bits;
+  assignment.pool_absorbed = absorbed;
   const auto accrued = raw.subspan(kFixed, width);
   const auto winner = raw.subspan(kFixed + width, width);
   assignment.accrued_bitmap.assign(accrued.begin(), accrued.end());

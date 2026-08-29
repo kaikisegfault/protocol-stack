@@ -199,19 +199,16 @@ std::optional<Outcome> dispatch(Ledger& ledger, const Envelope& envelope,
       return set_security_posture(ledger, envelope, body, *escrow, verify);
     case Kind::native_transfer:
     case Kind::native_transfer_verified:
-    case Kind::mint_verified_user:
-    case Kind::direct_issue:
-      return dispatch_value(ledger, envelope, body, *escrow, verify);
     case Kind::purchase_seat:
     case Kind::activate_seat:
     case Kind::mint_node:
     case Kind::mint_referral:
-      // The four seat transitions read or write a cycle assignment, which this
-      // kernel does not yet derive. An implementation that cannot execute a
-      // transaction has no result to report, so it fails the whole block rather
-      // than inventing one — the loud failure rather than the silent refusal.
-      return std::nullopt;
+    case Kind::mint_verified_user:
+    case Kind::direct_issue:
+      return dispatch_value(ledger, envelope, body, *escrow, verify);
   }
+  // A kind outside the enumeration never reaches here: admission refused it as
+  // `MALFORMED_TRANSACTION` before any state was read.
   return std::nullopt;
 }
 
