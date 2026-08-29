@@ -27,6 +27,7 @@
 #include "economy_ledger_internal.hpp"
 
 #include <algorithm>
+#include <set>
 
 namespace protocol::v7 {
 namespace {
@@ -89,8 +90,10 @@ std::optional<Assignment> derive_assignment(const Ledger& ledger,
   // the stranding the backing identity exists to make impossible.
   std::vector<bool> eligible(measured.size(), false);
   std::vector<const SeatRecord*> entries(measured.size(), nullptr);
-  std::vector<std::uint32_t> seen;
-  seen.reserve(measured.size());
+  // A set rather than a linear scan: the in-scope seat set reaches the 100,000
+  // seat capacity, and a quadratic duplicate check there is 5e9 comparisons in
+  // a block prologue.
+  std::set<std::uint32_t> seen;
   for (std::size_t index = 0; index < measured.size(); ++index) {
     const auto& seat = measured[index];
     // A measurement naming a seat no transaction ever purchased describes a
@@ -98,10 +101,8 @@ std::optional<Assignment> derive_assignment(const Ledger& ledger,
     // rejects the whole block rather than assigning against an invented zero.
     const auto entry = ledger.seats.find(seat.seat_id);
     if (entry == ledger.seats.end()) return std::nullopt;
-    if (std::find(seen.begin(), seen.end(), seat.seat_id) != seen.end()) {
-      return std::nullopt;
-    }
-    seen.push_back(seat.seat_id);
+    // A seat measured twice would contribute twice and be counted once.
+    if (!seen.insert(seat.seat_id).second) return std::nullopt;
     entries[index] = &entry->second;
     eligible[index] = met_cycle(seat.uptime_seconds) &&
                       accrues(cycle_window, entry->second.minted_through_window);
