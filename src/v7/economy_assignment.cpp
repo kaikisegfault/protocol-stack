@@ -111,6 +111,9 @@ std::optional<Assignment> derive_assignment(const Ledger& ledger,
   }
 
   // Step 3. Every measured seat is a candidate, in span or not.
+  for (const auto flag : eligible) {
+    if (flag) ++assignment.eligible_count;
+  }
   assignment.winners = derive_winner_set(measured, eligible);
   const auto winner_count = static_cast<std::uint32_t>(assignment.winners.size());
 

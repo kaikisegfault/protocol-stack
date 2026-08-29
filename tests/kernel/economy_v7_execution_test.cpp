@@ -1,11 +1,11 @@
-// The version-six ledger and its transitions, checked against the recorded
+// The version-seven ledger and its transitions, checked against the recorded
 // execution vectors.
 //
 // This is requirement 11 for execution: the C++ implementation and the
 // independent Python model must reproduce one fixed file. Nothing here derives a
 // second set of expected values — the kernel runs the recorded scenarios and
 // every assertion compares against
-// `test-vectors/economy-transition-v6-execution.txt`, with the deliberate
+// `test-vectors/economy-transition-v7-execution.txt`, with the deliberate
 // exceptions the derived checks name, and each of those reaches a *third* source
 // rather than a second opinion of that file.
 //
@@ -30,16 +30,16 @@ int main(int argc, char** argv) {
     const auto manifest = pv::load_values(argv[4]);
     const auto version_three = pv::load_values(argv[5]);
 
-    fixture::verify_scenarios(values, primitives);
+    fixture::verify_scenarios(values);
     fixture::verify_derivations(values, primitives, ledger_vectors, manifest,
                                 version_three);
     fixture::verify_coverage(values);
     fixture::verify_transitions();
 
-    std::cout << "C++ economy transition v6 execution: passed\n";
+    std::cout << "C++ economy transition v7 execution: passed\n";
     return 0;
   } catch (const std::exception& error) {
-    std::cerr << "C++ economy transition v6 execution: failed: " << error.what()
+    std::cerr << "C++ economy transition v7 execution: failed: " << error.what()
               << '\n';
     return 1;
   }

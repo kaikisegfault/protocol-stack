@@ -16,13 +16,13 @@ namespace economy_v7_execution {
 v7::Genesis trace_genesis() {
   // A Founder Economy genesis: no allocation, no accounts, a nonzero fee.
   // Version six is the first contract under which that combination is
-  // reachable, because registration is fee-exempt and pays the entry airdrop.
+  // reachable, because registration is fee-exempt and pays the entry airdrop,
+  // and version seven inherits it without restating it.
   v7::Genesis genesis;
   genesis.network_id = kNetworkId;
   genesis.supply_limit = kSupplyLimit;
   genesis.fixed_transfer_fee = kFixedFee;
-  genesis.manifest_digest =
-      from_hex("84cca09865b6c62bf09d3f6bc3821a2527c7a4835652cffdc0ebefa34b314ce5");
+  genesis.manifest_digest = from_hex(std::string(kManifestDigestHex));
   genesis.verifier_key = kVerifierKey;
   return genesis;
 }
@@ -89,24 +89,90 @@ Bytes confirmed_transfer_input(Signatures& signatures, const v7::Ledger& ledger,
                                std::uint64_t amount, const Octets32& identity,
                                const Octets32& hub_key,
                                const Octets32& signer_key,
-                               const Octets32& escrow) {
+                               const Octets32& escrow,
+                               std::uint64_t valid_until) {
   const auto message = v7::transfer_confirm_message(
-      ledger.chain_id, identity, escrow, recipient, amount, kValidUntil);
+      ledger.chain_id, identity, escrow, recipient, amount, valid_until);
   v7::Body body;
   body.recipient_escrow_id = recipient;
   body.amount_atomic = amount;
   body.hub_signature = signatures.sign(hub_key, message);
   return build(signatures, ledger,
                static_cast<std::uint8_t>(v7::Kind::native_transfer_verified),
-               signer_key, nonce, body);
+               signer_key, nonce, body, valid_until);
 }
 
 Bytes verified_user_mint_input(Signatures& signatures, const v7::Ledger& ledger,
                                const Octets32& identity, std::uint64_t nonce,
                                const Octets32& destination,
                                const Octets32& hub_key,
-                               const Octets32& signer_key) {
+                               const Octets32& signer_key,
+                               std::uint64_t valid_until) {
   const auto kind = static_cast<std::uint8_t>(v7::Kind::mint_verified_user);
+  const auto message = v7::mint_message(ledger.chain_id, identity, kind, 0,
+                                        destination, valid_until);
+  v7::Body body;
+  body.destination_escrow_id = destination;
+  body.hub_signature = signatures.sign(hub_key, message);
+  return build(signatures, ledger, kind, signer_key, nonce, body, valid_until);
+}
+
+// Kind 2. The referrer is named by escrow — the shareable thing — and recorded
+// as an identity, so referral earnings follow the person rather than the address.
+Bytes purchase_input(Signatures& signatures, const v7::Ledger& ledger,
+                     const Octets32& identity, const Octets32& hub_key,
+                     const Octets32& signer_key, std::uint32_t seat_id,
+                     std::uint64_t nonce, const Octets32* referrer) {
+  const auto message =
+      v7::purchase_message(ledger.chain_id, identity, seat_id, kValidUntil);
+  v7::Body body;
+  body.seat_id = seat_id;
+  body.has_referrer = referrer != nullptr;
+  if (referrer != nullptr) body.referrer_escrow_id = *referrer;
+  body.hub_signature = signatures.sign(hub_key, message);
+  return build(signatures, ledger,
+               static_cast<std::uint8_t>(v7::Kind::purchase_seat), signer_key,
+               nonce, body);
+}
+
+// Kind 3.
+Bytes activate_input(Signatures& signatures, const v7::Ledger& ledger,
+                     const Octets32& identity, const Octets32& hub_key,
+                     const Octets32& signer_key, std::uint32_t seat_id,
+                     std::uint64_t nonce) {
+  const auto message =
+      v7::activation_message(ledger.chain_id, identity, seat_id, kValidUntil);
+  v7::Body body;
+  body.seat_id = seat_id;
+  body.hub_signature = signatures.sign(hub_key, message);
+  return build(signatures, ledger,
+               static_cast<std::uint8_t>(v7::Kind::activate_seat), signer_key,
+               nonce, body);
+}
+
+// Kind 4. The default posture requires a confirmation at every amount, so every
+// node mint in this trace carries a real HUB signature over the mint message.
+Bytes node_mint_input(Signatures& signatures, const v7::Ledger& ledger,
+                      const Octets32& identity, const Octets32& hub_key,
+                      const Octets32& signer_key, std::uint32_t seat_id,
+                      const Octets32& destination, std::uint64_t nonce) {
+  const auto kind = static_cast<std::uint8_t>(v7::Kind::mint_node);
+  const auto message = v7::mint_message(ledger.chain_id, identity, kind, seat_id,
+                                        destination, kValidUntil);
+  v7::Body body;
+  body.seat_id = seat_id;
+  body.destination_escrow_id = destination;
+  body.hub_signature = signatures.sign(hub_key, message);
+  return build(signatures, ledger, kind, signer_key, nonce, body);
+}
+
+// Kind 5. Any escrow of the person may receive it, because the balance is the
+// identity's rather than an address's.
+Bytes referral_mint_input(Signatures& signatures, const v7::Ledger& ledger,
+                          const Octets32& identity, const Octets32& hub_key,
+                          const Octets32& signer_key,
+                          const Octets32& destination, std::uint64_t nonce) {
+  const auto kind = static_cast<std::uint8_t>(v7::Kind::mint_referral);
   const auto message = v7::mint_message(ledger.chain_id, identity, kind, 0,
                                         destination, kValidUntil);
   v7::Body body;
@@ -136,13 +202,16 @@ Bytes posture_input(Signatures& signatures, const v7::Ledger& ledger,
 }
 
 const v7::BlockOutcome& run(Scenario& scenario, const Signatures& signatures,
-                            const std::vector<Step>& steps) {
+                            const std::vector<Step>& steps,
+                            const v7::UptimeSchedule* uptime,
+                            bool assignment_is_prologue) {
   std::vector<Bytes> raw_inputs;
   raw_inputs.reserve(steps.size());
   for (const auto& step : steps) raw_inputs.push_back(step.raw);
 
-  auto outcome =
-      v7::execute_block(scenario.ledger, raw_inputs, signatures.verifier());
+  auto outcome = v7::execute_block(scenario.ledger, raw_inputs,
+                                   signatures.verifier(), uptime,
+                                   assignment_is_prologue);
   pv::require(outcome.has_value(),
               scenario.name + ": the whole block was rejected");
   scenario.blocks.push_back(std::move(*outcome));
@@ -172,8 +241,14 @@ const v7::BlockOutcome& run(Scenario& scenario, const Signatures& signatures,
 
 void advance_to(Scenario& scenario, std::uint64_t height) {
   pv::require(height >= scenario.ledger.height, "height never decreases");
-  scenario.skipped_blocks = height - scenario.ledger.height;
+  // Accumulated rather than assigned: a scenario that skips twice has skipped
+  // the sum, and the vectors record one figure per scenario.
+  scenario.skipped_blocks += height - scenario.ledger.height;
   scenario.ledger.height = height;
+}
+
+void advance_to_boundary(Scenario& scenario, std::uint64_t window) {
+  advance_to(scenario, boundary_height(window) - 1);
 }
 
 }  // namespace economy_v7_execution

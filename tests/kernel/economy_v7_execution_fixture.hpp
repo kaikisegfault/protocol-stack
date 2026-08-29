@@ -1,13 +1,13 @@
 #pragma once
 
-// The shared fixture behind the version-six execution checks.
+// The shared fixture behind the version-seven execution checks.
 //
-// The kernel must reproduce `test-vectors/economy-transition-v6-execution.txt`,
-// which records six scenarios executed against a real state. Reproducing a
+// The kernel must reproduce `test-vectors/economy-transition-v7-execution.txt`,
+// which records five scenarios executed against a real state. Reproducing a
 // recorded outcome means rebuilding the exact transactions that produced it, so
 // this header holds the trace's constants, its recorded signature table, and the
 // builders the scenarios share — the C++ counterpart of
-// `simulation/economy_transition_v6/trace.py`.
+// `simulation/economy_transition_v7/trace.py`.
 //
 // **No signature is computed anywhere.** A stand-in is an eight-octet counter
 // padded to 64 octets, recorded against the exact key and message it authorizes,
@@ -118,43 +118,85 @@ inline void agree(const pv::Values& values, const std::string& key,
 
 inline constexpr std::uint64_t kSupplyLimit = 5'699'395'010'000'000'000;
 inline constexpr std::uint64_t kFixedFee = 1'000;
-inline constexpr std::uint32_t kNetworkId = 6;
-inline constexpr std::uint64_t kValidUntil = 10'000'000;
+inline constexpr std::uint32_t kNetworkId = 7;
+// Version seven's own builders bind this expiry height.
+inline constexpr std::uint64_t kValidUntil = 10'000'000'000;
+// **Three builders are version six's, imported rather than restated**, and they
+// carry version six's own expiry default rather than version seven's: a fixture
+// that constructs an unchanged envelope is not a place to keep a second copy of
+// one, and the bytes a transaction commits to include the height it expires at.
+inline constexpr std::uint64_t kInheritedValidUntil = 10'000'000;
 inline constexpr std::uint64_t kPostureMinimum = 1'000'000;
 inline constexpr std::uint64_t kTransferAmount = 1'000'000;
-inline constexpr std::uint64_t kCollectionHeight = 40 * v7::kCycleBlocks;
-inline constexpr std::uint64_t kAssignedWindow = 200;
-inline constexpr std::uint64_t kActivationHeight =
-    (kAssignedWindow - 1) * v7::kCycleBlocks + 10;
+
+// The version-three manifest version seven binds, whose digest is inside every
+// chain identity these scenarios derive.
+inline constexpr std::string_view kManifestDigestHex =
+    "af153c99adf7c49e5a92563946cf0e60dfd7a58785462530988f661aa68faaa7";
 
 inline const Octets32 kVerifierKey = repeated(0x55);
 inline const Octets32 kAliceIdentity = repeated(0xA1);
 inline const Octets32 kAliceKey = repeated(0xA2);
 inline const Octets32 kAliceSignerKey = repeated(0xA3);
-inline const Octets32 kAliceSecondSignerKey = repeated(0xA4);
+inline const Octets32 kFreshSignerKey = repeated(0xA4);
 inline const Octets32 kBobIdentity = repeated(0xB1);
 inline const Octets32 kBobKey = repeated(0xB2);
 inline const Octets32 kBobSignerKey = repeated(0xB3);
 inline const Octets32 kCarolIdentity = repeated(0xE1);
 inline const Octets32 kCarolKey = repeated(0xE2);
+inline const Octets32 kCarolSignerKey = repeated(0xE3);
+
+// Values only the transition checks use. Those derive their own expectations,
+// because they reach rejection conditions no recorded scenario does and there is
+// no vector to compare against.
+inline const Octets32 kAliceSecondSignerKey = repeated(0xA5);
 inline const Octets32 kMariaIdentity = repeated(0xC1);
 inline const Octets32 kMariaKey = repeated(0xC2);
-inline const Octets32 kMariaLostSignerKey = repeated(0xC3);
 inline const Octets32 kMariaNewSignerKey = repeated(0xC4);
-inline const Octets32 kDaveIdentity = repeated(0xD1);
-inline const Octets32 kDaveKey = repeated(0xD2);
-inline const Octets32 kDaveSignerKey = repeated(0xD3);
 inline const Octets32 kDecisionId = repeated(0x11);
 
-// The accepted version-one transfer, from `test-vectors/protocol-primitives-v1`.
-inline const Octets32 kAcceptedChainId = ascending(0);
+inline const Hash kAliceEscrow = v7::escrow_id(kAliceIdentity, 0);
+inline const Hash kAliceSecondEscrow = v7::escrow_id(kAliceIdentity, 1);
+inline const Hash kBobEscrow = v7::escrow_id(kBobIdentity, 0);
+inline const Hash kCarolEscrow = v7::escrow_id(kCarolIdentity, 0);
+
+// The accepted version-one transfer's recipient, which is deliberately not a
+// registered escrow in any of these scenarios.
 inline const Octets32 kAcceptedRecipient = ascending(0x20);
-inline const Octets32 kAcceptedIdentity = repeated(0xF1);
-inline const Octets32 kAcceptedHubKey = repeated(0xF2);
-inline constexpr std::uint64_t kAcceptedNonce = 1;
-inline constexpr std::uint64_t kAcceptedAmount = 1'000'000;
-inline constexpr std::uint64_t kAcceptedFeeLimit = 1'000;
-inline constexpr std::uint64_t kAcceptedValidUntil = 42;
+
+inline constexpr std::uint32_t kAliceSeat = 0;
+inline constexpr std::uint32_t kBobSeat = 1;
+inline constexpr std::uint32_t kCarolSeat = 2;
+
+// Scenarios one and two. Window 200 is the cycle nobody wins and window 201 is
+// the cycle that absorbs what window 200 left behind.
+inline constexpr std::uint64_t kDeadWindow = 200;
+inline constexpr std::uint64_t kWonWindow = kDeadWindow + 1;
+// Scenario three, on its own chain, far enough from the first two that a reader
+// cannot mistake one schedule for the other.
+inline constexpr std::uint64_t kStrandedWindow = 300;
+inline constexpr std::uint64_t kDrainedWindow = kStrandedWindow + 1;
+// Scenario five.
+inline constexpr std::uint64_t kReferredWindow = 400;
+
+inline constexpr std::uint64_t kMetUptimeSeconds = 72'000;
+inline constexpr std::uint64_t kFailedUptimeSeconds = 7'200;
+
+// Thirty windows is the verified-user cap, so a collection at this height
+// forfeits the ten older windows and collects the most recent thirty.
+inline constexpr std::uint64_t kCollectionHeight = 40 * v7::kCycleBlocks;
+
+// The height at which `window`'s assignment is due: the first of `w + 2`.
+inline constexpr std::uint64_t boundary_height(std::uint64_t window) {
+  return (window + v7::kAssignmentLagWindows) * v7::kCycleBlocks;
+}
+
+// A height inside the window before `first_window`, so the mark a seat's
+// activation writes is that one and its first collectable cycle is
+// `first_window`.
+inline constexpr std::uint64_t activation_height(std::uint64_t first_window) {
+  return (first_window - 1) * v7::kCycleBlocks + 10;
+}
 
 // A recorded signature table. Verification is exact-match lookup on
 // `(public key, message)`, which is the property every message-binding claim in
@@ -229,6 +271,11 @@ struct Scenario {
   std::map<std::string, std::uint8_t> rejected;
   std::vector<std::size_t> raw_inputs;
   std::uint64_t skipped_blocks = 0;
+  // The figures the vectors record at named points of a scenario, keyed by the
+  // vector's own name without its scenario prefix. Every one is compared, so a
+  // note this fixture stops recording fails the coverage check rather than
+  // disappearing quietly.
+  std::map<std::string, std::string> notes;
 };
 
 v7::Genesis trace_genesis();
@@ -254,36 +301,63 @@ Bytes confirmed_transfer_input(Signatures& signatures, const v7::Ledger& ledger,
                               std::uint64_t amount, const Octets32& identity,
                               const Octets32& hub_key,
                               const Octets32& signer_key,
-                              const Octets32& escrow);
+                              const Octets32& escrow,
+                              std::uint64_t valid_until = kInheritedValidUntil);
 Bytes verified_user_mint_input(Signatures& signatures, const v7::Ledger& ledger,
                                const Octets32& identity, std::uint64_t nonce,
                                const Octets32& destination,
                                const Octets32& hub_key,
-                               const Octets32& signer_key);
+                               const Octets32& signer_key,
+                               std::uint64_t valid_until = kInheritedValidUntil);
 Bytes posture_input(Signatures& signatures, const v7::Ledger& ledger,
                     std::uint64_t nonce, const v7::Posture& posture, bool signed_,
                     const Octets32& identity, const Octets32& hub_key,
                     const Octets32& signer_key, const Octets32& escrow,
-                    std::uint64_t valid_until = kValidUntil);
+                    std::uint64_t valid_until = kInheritedValidUntil);
+// The four seat transactions, which version seven is the first kernel to run.
+Bytes purchase_input(Signatures& signatures, const v7::Ledger& ledger,
+                     const Octets32& identity, const Octets32& hub_key,
+                     const Octets32& signer_key, std::uint32_t seat_id,
+                     std::uint64_t nonce, const Octets32* referrer = nullptr);
+Bytes activate_input(Signatures& signatures, const v7::Ledger& ledger,
+                     const Octets32& identity, const Octets32& hub_key,
+                     const Octets32& signer_key, std::uint32_t seat_id,
+                     std::uint64_t nonce);
+Bytes node_mint_input(Signatures& signatures, const v7::Ledger& ledger,
+                      const Octets32& identity, const Octets32& hub_key,
+                      const Octets32& signer_key, std::uint32_t seat_id,
+                      const Octets32& destination, std::uint64_t nonce);
+Bytes referral_mint_input(Signatures& signatures, const v7::Ledger& ledger,
+                          const Octets32& identity, const Octets32& hub_key,
+                          const Octets32& signer_key,
+                          const Octets32& destination, std::uint64_t nonce);
 
 // Execute one block of steps and record what the vectors compare against.
+//
+// `assignment_is_prologue` is false only where the boundary scenario runs the
+// ordering version six rejected by argument. It is not a configuration option a
+// chain has.
 const v7::BlockOutcome& run(Scenario& scenario, const Signatures& signatures,
-                            const std::vector<Step>& steps);
+                            const std::vector<Step>& steps,
+                            const v7::UptimeSchedule* uptime = nullptr,
+                            bool assignment_is_prologue = true);
 // Stand in for a run of empty blocks between two segments of a trace: an empty
 // block advances height and commits the empty transaction root, so a run of them
 // changes height and nothing else.
 void advance_to(Scenario& scenario, std::uint64_t height);
+// Advance to the block before the one at which `window`'s assignment is due.
+void advance_to_boundary(Scenario& scenario, std::uint64_t window);
 
-Scenario registration_scenario(Signatures& signatures);
-Scenario millionth_scenario(Signatures& signatures);
-Scenario recovery_scenario(Signatures& signatures);
-Scenario compatibility_scenario(Signatures& signatures, const pv::Values& primitives);
-Scenario posture_scenario(Signatures& signatures);
+Scenario pool_scenario(Signatures& signatures);
+Scenario boundary_scenario(Signatures& signatures);
+Scenario permanence_scenario(Signatures& signatures);
+Scenario carried_scenario(Signatures& signatures);
+Scenario referral_scenario(Signatures& signatures);
 
-void verify_scenarios(const pv::Values& values, const pv::Values& primitives);
-// Every vector whose section this kernel claims must have been consulted. The
-// three sections it does not claim belong to the boundary block, whose four seat
-// transitions read a cycle assignment this kernel does not yet derive.
+void verify_scenarios(const pv::Values& values);
+// Every recorded vector must have been consulted. Version six's execution checks
+// named three exempt sections because the four seat transitions and the
+// settlement were unwritten; this slice wrote them, so nothing is exempt.
 void verify_coverage(const pv::Values& values);
 // The rejection conditions no recorded scenario reaches. These derive their own
 // expectations, because there is no vector to compare against; they are kept in

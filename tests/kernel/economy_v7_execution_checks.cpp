@@ -3,13 +3,19 @@
 //
 // Nothing here derives a second set of expected values. The kernel runs the
 // scenarios and every assertion compares its result against
-// `test-vectors/economy-transition-v6-execution.txt`, which is requirement 11
+// `test-vectors/economy-transition-v7-execution.txt`, which is requirement 11
 // for execution: the C++ implementation and the independent Python model must
 // reproduce one fixed file. A missing key is a failure rather than a skip.
+//
+// **This kernel now claims every section of that file.** Version six's execution
+// checks deferred three — the boundary block and the settlement it derives — and
+// there is nothing left to defer, so the coverage check requires every recorded
+// vector to have been consulted rather than allowing a named exemption.
 
 #include "economy_v7_execution_fixture.hpp"
 
 #include <array>
+#include <set>
 #include <string_view>
 
 namespace economy_v7_execution {
@@ -38,6 +44,18 @@ void check_blocks(const pv::Values& values, const Scenario& scenario) {
       admitted_ids.push_back(executed.transaction_id);
     }
     agree(values, prefix + ".transaction_root", hex(v7::transaction_root(admitted_ids)));
+
+    if (!block.assigned_window) continue;
+    agree(values, prefix + ".assigned_window", *block.assigned_window);
+    // `uptime-measurement-v1` finalises window `w` at the first height of
+    // `w + 2`, so that is where `w`'s record is written and no earlier. Checking
+    // the height against the window rather than reading the recorded number back
+    // is what makes the prologue's placement a derivation.
+    pv::require(block.height == (*block.assigned_window + v7::kAssignmentLagWindows) *
+                                    v7::kCycleBlocks,
+                name + ": a record was written away from its own boundary");
+    expect_true(values,
+                prefix + ".the_record_is_written_at_the_first_height_of_w_plus_two");
   }
 }
 
@@ -85,7 +103,6 @@ void check_chaining(const pv::Values& values, const Scenario& scenario) {
   pv::require(chained, name + ": a block did not open on its predecessor's root");
   expect_true(values, name + ".every_consecutive_block_opens_on_its_predecessor_root");
   pv::require(increasing, name + ": heights must never decrease");
-  expect_true(values, name + ".heights_never_decrease");
 }
 
 void check_state(const pv::Values& values, const Scenario& scenario) {
@@ -106,7 +123,6 @@ void check_state(const pv::Values& values, const Scenario& scenario) {
     matched = matched && registry.escrows.contains(escrow);
   }
   pv::require(matched, name + ": every account must be an escrow");
-  expect_true(values, name + ".every_account_is_an_escrow");
 
   std::uint64_t failures = 0;
   for (const auto& block : scenario.blocks) failures += block.atomic_failures;
@@ -138,13 +154,36 @@ void check_admissions(const pv::Values& values, const Scenario& scenario) {
   expect_true(values, name + ".admission_failures_produce_no_receipt");
 }
 
-void check_balance(const pv::Values& values, const Scenario& scenario,
-                   const std::string& label, const Octets32& identity) {
-  const auto escrow = v7::escrow_id(identity, 0);
-  const auto found = scenario.ledger.registry.accounts.find(escrow);
-  pv::require(found != scenario.ledger.registry.accounts.end(),
-              scenario.name + ": " + label + " holds no escrow");
-  agree(values, scenario.name + "." + label, found->second.balance);
+// Every figure the scenario recorded at a named point, compared against the
+// vector of the same name. A note the fixture stops recording fails the coverage
+// check rather than disappearing quietly, and a note nothing records fails here.
+void check_notes(const pv::Values& values, const Scenario& scenario) {
+  for (const auto& [name, value] : scenario.notes) {
+    agree(values, scenario.name + "." + name, value);
+  }
+}
+
+// The same inputs, executed twice from the same genesis, commit to the same
+// block identifiers and the same final root. Determinism is the sixth
+// constitutional invariant and it is checked by re-running rather than asserted.
+void check_determinism(const pv::Values& values, const Scenario& first,
+                       const Scenario& second) {
+  pv::require(first.blocks.size() == second.blocks.size(),
+              first.name + ": a re-run produced a different block count");
+  bool identical = true;
+  for (std::size_t index = 0; index < first.blocks.size(); ++index) {
+    identical = identical && first.blocks[index].block_id ==
+                                 second.blocks[index].block_id;
+  }
+  pv::require(identical, first.name + ": a re-run produced a different block ID");
+  expect_true(values, "determinism." + first.name + "_reproduces_every_block_id");
+
+  const auto left = v7::ledger_state_root(first.ledger);
+  const auto right = v7::ledger_state_root(second.ledger);
+  pv::require(left.has_value() && right.has_value() && *left == *right,
+              first.name + ": a re-run produced a different final root");
+  expect_true(values,
+              "determinism." + first.name + "_reproduces_the_final_state_root");
 }
 
 void check_scenario(const pv::Values& values, const Scenario& scenario) {
@@ -153,24 +192,20 @@ void check_scenario(const pv::Values& values, const Scenario& scenario) {
   check_steps(values, scenario);
   check_chaining(values, scenario);
   check_state(values, scenario);
+  check_notes(values, scenario);
 }
 
-// The sections whose every vector this kernel must reproduce. The three it omits
-// — `block`, `cycle`, and `ordering` — are the boundary block and the settlement
-// it derives, which is the next slice; naming them here rather than skipping
-// silently is what makes the boundary itself checkable.
-constexpr std::array<std::string_view, 9> kClaimedSections{
-    "construction.", "genesis.",       "registration.",
-    "millionth.",    "recovery.",      "compatibility.",
-    "posture.",      "derived.",       "determinism.",
+// Every section of the file, all of them claimed. There is no deferred set:
+// version six's execution checks had one because the four seat transitions and
+// the settlement were unwritten, and this slice wrote them.
+constexpr std::array<std::string_view, 10> kClaimedSections{
+    "construction.", "genesis.",     "receipt.",  "pool.",     "boundary.",
+    "permanence.",   "carried.",     "referral.", "coverage.", "determinism.",
 };
-constexpr std::array<std::string_view, 3> kDeferredSections{"block.", "cycle.",
-                                                            "ordering."};
 
 }  // namespace
 
 void verify_coverage(const pv::Values& values) {
-  std::size_t deferred = 0;
   for (const auto& [key, value] : values) {
     (void)value;
     // Copied out of the structured binding because C++20 does not permit a
@@ -179,55 +214,52 @@ void verify_coverage(const pv::Values& values) {
     const auto matches = [&name](std::string_view prefix) {
       return name.rfind(prefix, 0) == 0;
     };
-    if (std::any_of(kDeferredSections.begin(), kDeferredSections.end(), matches)) {
-      ++deferred;
-      continue;
-    }
     pv::require(std::any_of(kClaimedSections.begin(), kClaimedSections.end(), matches),
                 "vector " + key + " is in no known section");
     pv::require(consulted().contains(key), "vector " + key + " was never consulted");
   }
-  // An empty deferred set would mean the boundary block's vectors had vanished
-  // rather than that this kernel had grown to reproduce them.
-  pv::require(deferred > 0, "the deferred sections must still record vectors");
 }
 
-void verify_scenarios(const pv::Values& values, const pv::Values& primitives) {
-  {
-    Signatures signatures;
-    const auto scenario = registration_scenario(signatures);
-    check_scenario(values, scenario);
-    check_balance(values, scenario, "alice_balance", kAliceIdentity);
-    check_balance(values, scenario, "bob_balance", kBobIdentity);
+void verify_scenarios(const pv::Values& values) {
+  // Every kind any scenario executed. A kind a trace never executes has no
+  // recorded version-seven state root and no recorded version-seven receipt,
+  // whatever an earlier version's file fixes about its bytes — which is exactly
+  // the gap that stopped this slice the first time it was attempted.
+  std::set<std::uint8_t> executed_kinds;
+
+  // Each scenario is run twice from the same genesis, and the second run is the
+  // determinism evidence rather than a second opinion: identical ordered inputs
+  // must produce identical block identifiers and an identical final root.
+  const auto run_twice = [&](Scenario (*build)(Signatures&)) {
+    Signatures first_signatures;
+    const auto first = build(first_signatures);
+    check_scenario(values, first);
+    for (const auto& block : first.blocks) {
+      for (const auto& executed : block.executed) executed_kinds.insert(executed.kind);
+    }
+    Signatures second_signatures;
+    const auto second = build(second_signatures);
+    check_determinism(values, first, second);
+  };
+
+  run_twice(pool_scenario);
+  run_twice(boundary_scenario);
+  run_twice(permanence_scenario);
+  run_twice(carried_scenario);
+  run_twice(referral_scenario);
+
+  agree(values, "coverage.kinds_executed", executed_kinds.size());
+  std::size_t admitted_kinds = 0;
+  for (std::uint16_t kind = 0; kind <= 0xFF; ++kind) {
+    const auto number = static_cast<std::uint8_t>(kind);
+    if (!v7::is_transaction_kind(number)) continue;
+    ++admitted_kinds;
+    pv::require(executed_kinds.contains(number),
+                "kind " + std::to_string(kind) + " is never executed");
   }
-  {
-    Signatures signatures;
-    const auto scenario = millionth_scenario(signatures);
-    check_scenario(values, scenario);
-    check_balance(values, scenario, "alice_balance", kAliceIdentity);
-    check_balance(values, scenario, "dave_balance", kDaveIdentity);
-  }
-  {
-    Signatures signatures;
-    const auto scenario = recovery_scenario(signatures);
-    check_scenario(values, scenario);
-    check_balance(values, scenario, "maria_balance", kMariaIdentity);
-    check_balance(values, scenario, "bob_balance", kBobIdentity);
-  }
-  {
-    Signatures signatures;
-    const auto scenario = compatibility_scenario(signatures, primitives);
-    check_scenario(values, scenario);
-    check_balance(values, scenario, "sender_balance", kAcceptedIdentity);
-    check_balance(values, scenario, "bob_balance", kBobIdentity);
-  }
-  {
-    Signatures signatures;
-    const auto scenario = posture_scenario(signatures);
-    check_scenario(values, scenario);
-    check_balance(values, scenario, "alice_balance", kAliceIdentity);
-    check_balance(values, scenario, "bob_balance", kBobIdentity);
-  }
+  pv::require(executed_kinds.size() == admitted_kinds,
+              "every kind version seven admits is executed and no other");
+  expect_true(values, "coverage.every_kind_version_seven_admits_is_executed");
 }
 
 }  // namespace economy_v7_execution

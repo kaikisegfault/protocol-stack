@@ -142,6 +142,11 @@ struct Assignment {
   // The contributing count: the in-span seats, which is what the channel
   // identity's `assigned_cycle_permissions` accumulates.
   std::uint32_t contributing_count = 0;
+  // The eligible count: every measured seat that met the cycle and is under the
+  // accumulation cap, in span or not. It is the candidate set the winner
+  // derivation ranks, and it is carried because the record does not commit to
+  // it — the two sets are only distinguishable before the record is written.
+  std::uint32_t eligible_count = 0;
   std::uint32_t in_scope_count = 0;
   std::uint32_t bitmap_bits = 0;
   std::uint64_t share_per_winner_atomic = 0;
@@ -313,8 +318,12 @@ struct BlockOutcome {
   Bytes header;
   Hash block_id{};
   std::uint32_t atomic_failures = 0;
-  // The window this block's prologue assigned, when it opened one.
+  // The window this block's prologue assigned, when it opened one, and the
+  // outcome it derived. The record commits to what a cycle absorbed rather than
+  // to what it left behind, so the derivation is carried out of the block for a
+  // caller that needs the two seat sets or the pool the cycle leaves.
   std::optional<std::uint64_t> assigned_window;
+  std::optional<Assignment> assignment;
 };
 
 // Execute one block against `ledger`, advancing it to `h + 1`.
