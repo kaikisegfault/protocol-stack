@@ -3409,13 +3409,17 @@ produces survives a restart and no two nodes agree on one. That wiring is
 requirement 13's four-node adversarial scenarios, which have not started, and it
 is the largest single remaining piece of `first-goal.md`.
 
-**Two contracts are also still owed before requirement 13 can be honest.**
+**Two contracts are also still owed, and neither blocks requirement 13.**
 `calendar-v1` has to fix the consensus timestamp's monotonicity rule and
 acceptance tolerance and the calendar-month boundary derived from it, because
 the tolerance is consensus-visible and a proposer can move a month boundary
-within it. The HUB verification architecture of ADR 0048 needs its threat model,
-with the biometric stabilisation scheme named as requiring independent
-cryptographic review before anything rests on it.
+within it. **Nothing executable uses a month yet**: version seven mentions one
+in a single descriptive sentence, and the unreferred pool's payout — the month,
+the ranking snapshot, and the payout transition — is unestablished in version
+six and version seven alike, so the calendar and that payout belong together
+rather than apart. The HUB verification architecture of ADR 0048 needs its
+threat model, with the biometric stabilisation scheme named as requiring
+independent cryptographic review before anything rests on it.
 
 **One of those absences now carries a dependency rather than only a roadmap
 position.** The founder answer of 2026-08-16 makes external purchasability the
@@ -3605,25 +3609,64 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.13a: `calendar-v1`**, the consensus timestamp and the
-calendar-month boundary derived from it. Use the `change-protocol` skill.
+Milestone slice **M3.13a: the version-seven state snapshot and restore**, which
+is issue #202. Storage artifacts follow ADR 0007's precedent — an ADR and
+implementation with vectors, not a transition specification — because a
+snapshot is node-local and consensus-visible only through the root it must
+reproduce.
 
-**It is the last contract the pivot left unwritten and the only one requirement
-13 depends on.** ADR 0050 made the block timestamp the ecosystem clock and ADR
-0049 made months real calendar months read from it, and neither fixed the two
-figures a second implementer needs. **The tolerance is consensus-visible**: a
-proposer can move a month boundary within it, so it must be a stated parameter
-rather than an adapter default, and the monotonicity rule must say what a
-non-increasing timestamp does to a block rather than leaving it to the adapter.
+**This corrects the next action M3.12b's own closeout recorded, and the
+correction is the useful part.** That closeout named `calendar-v1` and called it
+"the last contract the pivot left unwritten and the only one requirement 13
+depends on". **The second half is wrong.** Version seven mentions a month in one
+descriptive sentence and executes nothing against one; the unreferred pool's
+payout — "the month, the ranking snapshot, and the payout transition" — is
+explicitly unestablished in version six and version seven alike. A calendar
+written before the payout that needs it is machinery with no caller, which
+`CLAUDE.md` names as the thing to defer. `calendar-v1` is still owed. It is not
+what requirement 13 is waiting for.
 
-The slice owes: the monotonicity rule and the acceptance tolerance, both as
-consensus parameters; the calendar-month boundary derived from a timestamp,
-including what happens at a month with no such day; a statement of both in a
-form any consensus adapter can satisfy, because CometBFT's own time is a median
-of validator clocks and the contract must say what it requires of that rather
-than assume it; the state entry a chain keeps to make the derivation `O(1)`; and
-the negative vectors — a backwards timestamp, a timestamp beyond tolerance, and
-a month boundary a proposer tried to move.
+**What requirement 13 is waiting for is that the kernel's state cannot be
+written down.** It executes blocks against an in-memory ledger, so nothing it
+produces
+survives a restart and no two nodes can be shown to agree on one. "Adversarial
+four-node economic scenarios through restart and recovery, proving deterministic
+replica agreement on state roots" cannot begin until a state can be snapshotted
+and restored.
+
+The slice owes: a canonical snapshot payload over what the state root already
+commits to — the summary, the ordered account map, and the ordered economy
+map; the value decoders each entry kind needs, every one the exact inverse of
+the encoder version six accepted and version seven carries unchanged; a restore
+that
+rebuilds a `Ledger` and re-derives `assigned_permissions` from the assignment
+records rather than trusting an encoded copy; an integrity check that recomputes
+the version-seven state root; a fuzz target over the snapshot decoder; and the
+ADR.
+
+**Its evidence is already available and is a third source rather than a second
+opinion of the encoder.** For each of the five scenarios in
+`test-vectors/economy-transition-v7-execution.txt`: snapshot the final ledger,
+restore it, and require the restored ledger to reproduce that scenario's
+**recorded** `final_state_root` — a figure the kernel does not choose.
+
+**An exploratory pass was written and discarded** when the session concluded,
+because this is the next slice rather than the one in progress. It compiled
+clean under both compilers with `-Wall -Wextra -Wpedantic -Werror` and had no
+tests. Issue #202 carries what it settled, including the one move to make first:
+`kChannelCount` belongs in `economy.hpp` rather than `ledger.hpp`, because it
+bounds a channel key before it bounds a channel balance, and everything else
+depends on that compiling.
+
+**`calendar-v1` remains owed** and is the slice after, unless the unreferred
+pool's payout is specified first, in which case it becomes that slice's
+dependency rather than a free-standing one. It must fix the consensus
+timestamp's monotonicity rule and acceptance tolerance and the calendar-month
+boundary derived from them. **The tolerance is consensus-visible**: a proposer
+can move a month boundary within it, so it must be a stated parameter rather
+than an adapter default, and the rule must be statable in a form any consensus
+adapter can satisfy, because CometBFT's own time is a median of validator
+clocks.
 
 **Then, in order, each its own slice:**
 
