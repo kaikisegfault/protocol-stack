@@ -153,22 +153,22 @@ set(
   src/v1/execution.cpp
   src/v1/genesis.cpp
   src/v1/ledger.cpp
-  src/v6/economy_block.cpp
-  src/v6/economy_body.cpp
-  src/v6/economy_contract.cpp
-  src/v6/economy_envelope.cpp
-  src/v6/economy_execution.cpp
-  src/v6/economy_genesis.cpp
-  src/v6/economy_identity.cpp
-  src/v6/economy_invariants.cpp
-  src/v6/economy_ledger.cpp
-  src/v6/economy_messages.cpp
-  src/v6/economy_receipt.cpp
-  src/v6/economy_settlement.cpp
-  src/v6/economy_state.cpp
-  src/v6/economy_transitions.cpp
-  src/v6/economy_tree.cpp
-  src/v6/economy_value_transitions.cpp
+  src/v7/economy_block.cpp
+  src/v7/economy_body.cpp
+  src/v7/economy_contract.cpp
+  src/v7/economy_envelope.cpp
+  src/v7/economy_execution.cpp
+  src/v7/economy_genesis.cpp
+  src/v7/economy_identity.cpp
+  src/v7/economy_invariants.cpp
+  src/v7/economy_ledger.cpp
+  src/v7/economy_messages.cpp
+  src/v7/economy_receipt.cpp
+  src/v7/economy_settlement.cpp
+  src/v7/economy_state.cpp
+  src/v7/economy_transitions.cpp
+  src/v7/economy_tree.cpp
+  src/v7/economy_value_transitions.cpp
 )
 add_library(protocol_kernel STATIC ${PROTOCOL_STACK_KERNEL_SOURCES})
 target_include_directories(
@@ -244,24 +244,24 @@ add_executable(
 )
 target_link_libraries(kernel_primitive_tests PRIVATE protocol_kernel)
 add_executable(
-  economy_v6_codec_tests
-  tests/kernel/economy_v6_test.cpp
-  tests/kernel/economy_v6_encoding_test.cpp
-  tests/kernel/economy_v6_identity_test.cpp
-  tests/kernel/economy_v6_settlement_test.cpp
-  tests/kernel/economy_v6_state_test.cpp
+  economy_v7_codec_tests
+  tests/kernel/economy_v7_test.cpp
+  tests/kernel/economy_v7_encoding_test.cpp
+  tests/kernel/economy_v7_identity_test.cpp
+  tests/kernel/economy_v7_settlement_test.cpp
+  tests/kernel/economy_v7_state_test.cpp
 )
-target_link_libraries(economy_v6_codec_tests PRIVATE protocol_kernel)
+target_link_libraries(economy_v7_codec_tests PRIVATE protocol_kernel)
 add_executable(
-  economy_v6_execution_tests
-  tests/kernel/economy_v6_execution_test.cpp
-  tests/kernel/economy_v6_trace.cpp
-  tests/kernel/economy_v6_scenarios_test.cpp
-  tests/kernel/economy_v6_execution_checks.cpp
-  tests/kernel/economy_v6_derived_test.cpp
-  tests/kernel/economy_v6_transitions_test.cpp
+  economy_v7_execution_tests
+  tests/kernel/economy_v7_execution_test.cpp
+  tests/kernel/economy_v7_trace.cpp
+  tests/kernel/economy_v7_scenarios_test.cpp
+  tests/kernel/economy_v7_execution_checks.cpp
+  tests/kernel/economy_v7_derived_test.cpp
+  tests/kernel/economy_v7_transitions_test.cpp
 )
-target_link_libraries(economy_v6_execution_tests PRIVATE protocol_kernel)
+target_link_libraries(economy_v7_execution_tests PRIVATE protocol_kernel)
 add_executable(
   kernel_admission_tests
   tests/kernel/admission_test.cpp
@@ -425,8 +425,8 @@ set(
   protocol_application
   protocol_application_server
   kernel_primitive_tests
-  economy_v6_codec_tests
-  economy_v6_execution_tests
+  economy_v7_codec_tests
+  economy_v7_execution_tests
   kernel_admission_tests
   kernel_execution_tests
   kernel_genesis_tests
@@ -470,10 +470,10 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
   )
   target_link_libraries(kernel_address_fuzz PRIVATE protocol_kernel_fuzz)
   add_executable(
-    economy_v6_fuzz
-    tests/fuzz/economy_v6_fuzz.cpp
+    economy_v7_fuzz
+    tests/fuzz/economy_v7_fuzz.cpp
   )
-  target_link_libraries(economy_v6_fuzz PRIVATE protocol_kernel_fuzz)
+  target_link_libraries(economy_v7_fuzz PRIVATE protocol_kernel_fuzz)
   add_executable(
     kernel_genesis_fuzz
     tests/fuzz/genesis_fuzz.cpp
@@ -539,7 +539,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     kernel_admission_fuzz
     kernel_address_fuzz
     kernel_genesis_fuzz
-    economy_v6_fuzz
+    economy_v7_fuzz
     protocol_storage_fuzz
     storage_snapshot_fuzz
     storage_archive_fuzz
@@ -579,7 +579,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       kernel_admission_fuzz
       kernel_address_fuzz
       kernel_genesis_fuzz
-      economy_v6_fuzz
+      economy_v7_fuzz
       protocol_storage_fuzz
       storage_snapshot_fuzz
       storage_archive_fuzz
@@ -598,7 +598,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       kernel_admission_fuzz
       kernel_address_fuzz
       kernel_genesis_fuzz
-      economy_v6_fuzz
+      economy_v7_fuzz
       storage_snapshot_fuzz
       storage_archive_fuzz
       application_wire_fuzz
@@ -625,22 +625,22 @@ add_test(
     "${PROJECT_SOURCE_DIR}/test-vectors/protocol-primitives-v1.txt"
 )
 add_test(
-  NAME economy-transition-v6-cpp
+  NAME economy-transition-v7-cpp
   COMMAND
-    economy_v6_codec_tests
-    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v6.txt"
+    economy_v7_codec_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7.txt"
     "${PROJECT_SOURCE_DIR}/test-vectors/protocol-primitives-v1.txt"
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v3.txt"
-    "${PROJECT_SOURCE_DIR}/test-vectors/founder-economy-manifest-v2.txt"
+    "${PROJECT_SOURCE_DIR}/test-vectors/founder-economy-manifest-v3.txt"
 )
 add_test(
-  NAME economy-transition-v6-execution-cpp
+  NAME economy-transition-v7-execution-cpp
   COMMAND
-    economy_v6_execution_tests
-    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v6-execution.txt"
+    economy_v7_execution_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7-execution.txt"
     "${PROJECT_SOURCE_DIR}/test-vectors/protocol-primitives-v1.txt"
     "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
-    "${PROJECT_SOURCE_DIR}/test-vectors/founder-economy-manifest-v2.txt"
+    "${PROJECT_SOURCE_DIR}/test-vectors/founder-economy-manifest-v3.txt"
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v3.txt"
 )
 add_test(
@@ -1144,7 +1144,7 @@ add_test(
     "${Python3_EXECUTABLE}"
     "${PROJECT_SOURCE_DIR}/tools/economy-transition-v6-vectors/verify.py"
     --vectors
-    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v6.txt"
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7.txt"
 )
 add_test(
   NAME economy-transition-v6-envelope
@@ -1176,7 +1176,7 @@ add_test(
     "${Python3_EXECUTABLE}"
     "${PROJECT_SOURCE_DIR}/tools/economy-transition-v6-execution-vectors/verify.py"
     --vectors
-    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v6-execution.txt"
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7-execution.txt"
 )
 add_test(
   NAME economy-transition-v6-execution
@@ -1646,7 +1646,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
   add_test(
     NAME economy-transition-v6-fuzz-smoke
     COMMAND
-      economy_v6_fuzz
+      economy_v7_fuzz
       -seed=824311
       -runs=512
       -max_len=512
