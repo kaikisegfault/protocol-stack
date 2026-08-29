@@ -251,6 +251,7 @@ add_executable(
   tests/kernel/economy_v7_identity_test.cpp
   tests/kernel/economy_v7_settlement_test.cpp
   tests/kernel/economy_v7_state_test.cpp
+  tests/kernel/economy_v7_version_test.cpp
 )
 target_link_libraries(economy_v7_codec_tests PRIVATE protocol_kernel)
 add_executable(
@@ -633,6 +634,7 @@ add_test(
     "${PROJECT_SOURCE_DIR}/test-vectors/protocol-primitives-v1.txt"
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v3.txt"
     "${PROJECT_SOURCE_DIR}/test-vectors/founder-economy-manifest-v3.txt"
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v6.txt"
 )
 add_test(
   NAME economy-transition-v7-execution-cpp

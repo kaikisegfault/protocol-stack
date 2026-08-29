@@ -1,224 +1,201 @@
-// The economy state key space, the two trees, the version-six state root,
-// genesis and chain identity, and the storage bounds.
+// The version-seven economy state surface: one entry kind retired, one added,
+// one record extended, and the storage those three changes cost.
 //
-// The accounts tree is checked against `test-vectors/protocol-primitives-v1.txt`
-// rather than only against this version's own file, because it is version one's
-// construction entry for entry and a lookalike would agree only with itself.
+// Every width here is compared against `test-vectors/economy-transition-v7.txt`,
+// which derives its own side from the specification's field tables rather than
+// from the model's encoders, so a width that moved in the kernel alone fails.
 
 #include "economy_v7_fixture.hpp"
 
 namespace economy_v7_fixture {
 namespace {
 
-void verify_state_widths(const pv::Values& values) {
-  const std::uint8_t assigned[] = {1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 13, 14, 15, 16};
-  for (const auto kind : assigned) {
-    const auto prefix = "state.entry" + std::to_string(kind) + ".";
+// The fourteen assigned entry kinds, and the three that are permanently not.
+constexpr std::uint8_t kAssigned[] = {1, 2, 3, 4, 5, 6, 8, 10, 12, 13, 14, 15, 16, 17};
+constexpr std::uint8_t kRetired[] = {7, 9, 11};
+
+void verify_entry_kinds(const pv::Values& values) {
+  pv::require(std::size(kAssigned) == expect_size(values, "state.entry_kind_count"),
+              "fourteen assigned entry kinds");
+  pv::require(expect_text(values, "state.retired_entry_kinds") == "7,9,11",
+              "the three retired entry kinds");
+
+  for (const auto kind : kAssigned) {
+    const auto prefix = "state.kind" + std::to_string(kind) + ".";
     const auto key_width = v7::entry_key_bytes(kind);
-    pv::require(key_width.has_value(), "entry kind is assigned");
+    pv::require(key_width.has_value(), "an assigned entry kind has a key width");
     pv::require(*key_width == expect_size(values, prefix + "key_bytes"),
                 "entry key width");
     const auto value_width = v7::entry_value_bytes(kind);
     if (kind == static_cast<std::uint8_t>(v7::Entry::cycle_assignment)) {
+      // The one variable-width value: its width follows from its own recorded
+      // bit count rather than from a table, so the table declines to answer.
       pv::require(!value_width.has_value(),
                   "the cycle assignment is the one variable-width value");
-      pv::require(expect_size(values, prefix + "fixed_value_bytes") == 24,
-                  "its fixed part");
       continue;
     }
     pv::require(value_width.has_value(), "a fixed-width value");
     pv::require(*value_width == expect_size(values, prefix + "value_bytes"),
                 "entry value width");
-    pv::require(*key_width + *value_width == expect_size(values, prefix + "total_bytes"),
-                "entry total width");
   }
-  pv::require(std::size(assigned) == expect_size(values, "state.entry_kind_count"),
-              "fourteen assigned entry kinds");
 
-  const std::uint8_t retired[] = {9, 11};
-  pv::require(std::size(retired) ==
-                  expect_size(values, "state.retired_entry_kind_count"),
-              "two retired entry kinds");
-  for (const auto kind : retired) {
+  for (const auto kind : kRetired) {
     pv::require(v7::is_retired_entry_kind(kind) && !v7::is_entry_kind(kind),
                 "a retired entry kind is not an entry kind");
-    expect_true(values, "state.retired_entry" + std::to_string(kind) + "_is_refused");
-    // A retired entry cannot be hashed into the tree, which is what makes the
-    // retirement a property of state rather than a note.
-    v7::Bytes key{kind};
-    key.insert(key.end(), 32, 0);
-    pv::require(!v7::economy_root({{key, {}}}).has_value(),
-                "a retired entry is refused by the tree");
   }
-  pv::require(!v7::is_entry_kind(0) && !v7::is_entry_kind(17),
+  // Entry kind 7 is version seven's own retirement, and it is the one a reader
+  // most plausibly associates with a live meaning: it held the ten per-channel
+  // carries in every version from two through six.
+  expect_true(values, "state.carry_entry_is_retired");
+  expect_true(values, "state.carry_entry_is_not_assigned");
+  expect_true(values, "state.retired_kinds_are_never_reused");
+  pv::require(!v7::is_entry_kind(0) && !v7::is_entry_kind(18),
               "the assigned entry range is closed at both ends");
+}
 
+void verify_recovery_pool(const pv::Values& values) {
+  pv::require(expect_number(values, "state.recovery_pool.kind") ==
+                  static_cast<std::uint8_t>(v7::Entry::recovery_pool),
+              "the recovery pool's entry kind");
+  pv::require(expect_text(values, "state.recovery_pool.legs") == "0,1,2,3,4",
+              "the five Founder Node legs, in the accepted manifest's order");
+
+  const auto key = v7::recovery_pool_key();
+  pv::require(key.size() == expect_size(values, "state.recovery_pool.key_bytes"),
+              "the recovery pool key width");
+  pv::require(hex(key) == expect_text(values, "state.recovery_pool.key_hex"),
+              "the recovery pool key");
+  const auto empty = v7::recovery_pool_value({});
+  pv::require(empty.size() == expect_size(values, "state.recovery_pool.value_bytes"),
+              "the recovery pool value width");
+  pv::require(key.size() + empty.size() ==
+                  expect_size(values, "state.recovery_pool.entry_bytes"),
+              "the recovery pool entry width");
+
+  // The five legs are distinguishable in the bytes, so a transposition is a
+  // different value rather than one that happens to encode the same.
+  v7::RecoveryPool distinct{};
+  for (std::size_t index = 0; index < v7::kRecoveryPoolLegs; ++index) {
+    distinct[index] = std::uint64_t{1} << (8 * index);
+  }
+  const auto ordered = v7::recovery_pool_value(distinct);
+  pv::require(hex(ordered) ==
+                  expect_text(values, "state.recovery_pool.ordered_value_hex"),
+              "the ordered recovery pool value");
+  const auto decoded = v7::decode_recovery_pool_value(ordered);
+  pv::require(decoded.has_value() && *decoded == distinct,
+              "the recovery pool value round trips");
+  expect_true(values, "state.recovery_pool.value_round_trips");
+
+  auto swapped = distinct;
+  std::swap(swapped[0], swapped[1]);
+  pv::require(v7::recovery_pool_value(swapped) != ordered,
+              "two transposed legs encode differently");
+  expect_true(values, "state.recovery_pool.transposed_legs_encode_differently");
+
+  pv::require(!v7::decode_recovery_pool_value(
+                   std::span<const std::uint8_t>(ordered.data(), ordered.size() - 1))
+                   .has_value(),
+              "a short recovery pool value is refused");
+  expect_true(values, "state.recovery_pool.a_short_value_is_refused");
+}
+
+// A record with one bit of bitmap, carrying the tool's own fixture figures, so
+// the recorded value_hex is a constraint on every field offset at once.
+v7::CycleAssignment fixture_record(std::uint32_t winner_count,
+                                   const v7::RecoveryPool& absorbed) {
+  v7::CycleAssignment record;
+  record.share_per_winner_atomic = winner_count == 0 ? 0 : 11;
+  record.reallocated_count = 2;
+  record.winner_count = winner_count;
+  record.in_scope_count = 4;
+  record.bitmap_bits = 8;
+  record.pool_absorbed = absorbed;
+  record.accrued_bitmap = winner_count == 0 ? v7::Bytes{0x00} : v7::Bytes{0x81};
+  record.winner_bitmap = winner_count == 0 ? v7::Bytes{0x00} : v7::Bytes{0x41};
+  return record;
+}
+
+void verify_cycle_assignment(const pv::Values& values) {
+  pv::require(v7::kCycleAssignmentFixedBytes ==
+                  expect_size(values, "state.cycle_assignment.fixed_value_bytes"),
+              "the extended fixed part");
+  pv::require(v7::kCycleAssignmentFixedBytes == 24 + 8 * v7::kRecoveryPoolLegs,
+              "which is version three's twenty-four plus the five legs");
+  expect_true(values, "state.cycle_assignment.fixed_value_bytes_grew_by_five_legs");
+
+  v7::RecoveryPool absorbed{};
+  for (std::size_t index = 0; index < v7::kRecoveryPoolLegs; ++index) {
+    absorbed[index] = 100 + index;
+  }
+  const auto value = v7::cycle_assignment_value(fixture_record(3, absorbed));
+  pv::require(value.has_value(), "the extended record encodes");
+  pv::require(value->size() ==
+                  expect_size(values, "state.cycle_assignment.value_bytes_at_eight_bits"),
+              "the record width at eight bits");
+  pv::require(hex(*value) == expect_text(values, "state.cycle_assignment.value_hex"),
+              "the extended record's bytes");
+
+  // The five new fields sit after `bitmap_bits`, so every fixed-width field
+  // stays contiguous ahead of the variable-length tail. Reading each recorded
+  // offset out of the encoded bytes is what checks that rather than asserting it.
+  for (std::size_t index = 0; index < v7::kRecoveryPoolLegs; ++index) {
+    const auto offset = expect_size(
+        values, "state.cycle_assignment.offset.pool_absorbed_atomic_" +
+                    std::to_string(index));
+    pv::require(offset == 24 + 8 * index, "the absorbed field offsets");
+    std::uint64_t read = 0;
+    for (std::size_t octet = 0; octet < 8; ++octet) {
+      read = (read << 8U) | (*value)[offset + octet];
+    }
+    pv::require(read == absorbed[index], "each absorbed amount sits at its offset");
+  }
+
+  const auto decoded = v7::decode_cycle_assignment_value(*value);
+  pv::require(decoded.has_value() && decoded->pool_absorbed == absorbed,
+              "the extended record round trips");
+  expect_true(values, "state.cycle_assignment.round_trips");
+
+  // A cycle with no winner absorbs nothing, so a record carrying a nonzero
+  // absorbed amount at a zero winner count describes value divided by nobody.
+  // Both directions refuse it: the encoder refuses to write a state entry no
+  // settlement could produce, and the decoder refuses to read one off a wire the
+  // encoder does not control.
+  pv::require(!v7::cycle_assignment_value(fixture_record(0, absorbed)).has_value(),
+              "an absorbed amount with no winner is refused by the encoder");
+  expect_true(values, "state.cycle_assignment.absorbed_without_a_winner_is_refused");
+  const auto zeroed = v7::cycle_assignment_value(fixture_record(0, {}));
+  pv::require(zeroed.has_value() &&
+                  zeroed->size() == v7::kCycleAssignmentFixedBytes + 2,
+              "no winner and no absorption is accepted");
+  expect_true(values, "state.cycle_assignment.no_winner_and_no_absorption_is_accepted");
+
+  auto mutated = *value;
+  for (std::size_t octet = 0; octet < 4; ++octet) mutated[12 + octet] = 0;
+  pv::require(!v7::decode_cycle_assignment_value(mutated).has_value(),
+              "a decoded absorption with no winner is refused");
+  expect_true(values,
+              "state.cycle_assignment.a_decoded_absorption_without_a_winner_is_refused");
+}
+
+void verify_entry_shapes(const pv::Values& values) {
   // Shapes no transition could have written, each refused rather than hashed,
   // because a root cannot signal any of them.
-  pv::require(!v7::economy_root({{{200}, {}}}).has_value(), "an unknown entry kind");
-  pv::require(!v7::economy_root({{v7::carry_key(0), {}}}).has_value(),
-              "a value of the wrong width");
-  pv::require(!v7::economy_root({{{7}, v7::carry_value(0)}}).has_value(),
-              "a key of the wrong width");
-  const v7::EconomyEntry carry{v7::carry_key(0), v7::carry_value(0)};
-  pv::require(v7::economy_root({carry}).has_value(), "a well-formed entry hashes");
-  pv::require(!v7::economy_root({carry, carry}).has_value(), "a duplicated key");
-  expect_true(values, "state.every_key_is_shape_checked");
-  expect_true(values, "state.unknown_entry_kind_is_refused");
-}
+  v7::Bytes carry_key{7, 0};
+  pv::require(!v7::economy_root({{carry_key, v7::Bytes(8, 0)}}).has_value(),
+              "a retired kind in the map is refused");
+  expect_true(values, "state.a_retired_kind_in_the_map_is_refused");
+  pv::require(!v7::economy_root({{{200}, {}}}).has_value(),
+              "an unassigned kind in the map is refused");
+  expect_true(values, "state.an_unassigned_kind_in_the_map_is_refused");
+  pv::require(!v7::economy_root({{v7::recovery_pool_key(), v7::Bytes(39, 0)}})
+                   .has_value(),
+              "a pool value of the wrong width is refused");
+  expect_true(values, "state.a_pool_value_of_the_wrong_width_is_refused");
 
-void verify_trees(const pv::Values& values, const pv::Values& version_three) {
-  const auto empty = v7::economy_root({});
-  pv::require(empty.has_value(), "the empty economy root derives");
-  pv::require(hex(*empty) == expect_text(values, "tree.empty_root_hex"),
-              "the empty economy root");
-
-  const auto initial = genesis_economy();
-  pv::require(initial.size() == expect_size(values, "tree.genesis_entry_count"),
-              "the genesis entry count");
-  const auto genesis_root = v7::economy_root(initial);
-  pv::require(genesis_root.has_value(), "the genesis economy root derives");
-  pv::require(hex(*genesis_root) == expect_text(values, "tree.genesis_root_hex"),
-              "the genesis economy root");
-  for (const auto& entry : initial) {
-    const auto kind = entry.key.front();
-    pv::require(kind != static_cast<std::uint8_t>(v7::Entry::seat) &&
-                    kind != static_cast<std::uint8_t>(v7::Entry::hub_identity) &&
-                    kind != static_cast<std::uint8_t>(v7::Entry::escrow) &&
-                    kind != static_cast<std::uint8_t>(v7::Entry::signer),
-                "genesis writes no seat, identity, escrow, or signer");
-  }
-  expect_true(values, "tree.genesis_writes_every_singleton_entry");
-  expect_true(values, "tree.genesis_writes_no_seat_identity_escrow_or_signer");
-
-  const auto populated = populated_economy(version_three);
-  pv::require(populated.size() == expect_size(values, "tree.populated_entry_count"),
-              "the populated entry count");
-  const auto populated_root = v7::economy_root(populated);
-  pv::require(populated_root.has_value(), "the populated economy root derives");
-  pv::require(hex(*populated_root) == expect_text(values, "tree.populated_root_hex"),
-              "the populated economy root");
-
-  // The populated set covers every assigned entry kind, which is what makes one
-  // recorded root a constraint on all fourteen value encodings rather than on
-  // the five genesis writes.
-  std::vector<std::uint8_t> covered;
-  for (const auto& entry : populated) covered.push_back(entry.key.front());
-  std::sort(covered.begin(), covered.end());
-  covered.erase(std::unique(covered.begin(), covered.end()), covered.end());
-  pv::require(covered.size() == expect_size(values, "state.entry_kind_count"),
-              "every assigned entry kind appears");
-  expect_true(values, "tree.populated_set_covers_every_assigned_entry_kind");
-  expect_true(values,
-              "settlement.the_cycle_record_is_byte_identical_to_version_three");
-  expect_true(values,
-              "settlement.the_outage_record_is_byte_identical_to_version_three");
-}
-
-void verify_roots(const pv::Values& values, const pv::Values& primitives,
-                  const pv::Values& version_three) {
-  const auto accounts = accepted_accounts(primitives);
-  pv::require(hex(v7::accounts_root(accounts)) ==
-                  primitives.at("state.accounts_tree_root"),
-              "the accounts tree reproduces the accepted root");
-  pv::require(hex(v7::accounts_root(accounts)) ==
-                  expect_text(values, "root.accounts_tree_hex"),
-              "and the recorded version-six vector");
-  expect_true(values, "root.v1_accounts_tree_restatement_reproduces_its_accepted_root");
-
-  pv::require(expect_text(values, "root.label") == v7::kStateRootLabel,
-              "the state-root domain label");
-  pv::require(expect_number(values, "root.schema_version") ==
-                  v7::kStateRootSchemaVersion,
-              "the state-root schema version");
-
-  v7::StateSummary summary;
-  summary.chain_id = kChainId;
-  summary.height = 9;
-  summary.supply_limit = kMaximumSupplyAtomic;
-  summary.total_supply = 1'000;
-  summary.fee_pool_balance = 7;
-
-  const auto empty = v7::state_root(summary, accounts, {});
-  pv::require(empty.has_value(), "the state root over an empty economy derives");
-  pv::require(hex(*empty) ==
-                  expect_text(values, "root.version_six_over_an_empty_economy"),
-              "the version-six state root over an empty economy");
-
-  const auto populated =
-      v7::state_root(summary, accounts, populated_economy(version_three));
-  pv::require(populated.has_value(), "the populated state root derives");
-  pv::require(hex(*populated) ==
-                  expect_text(values, "root.version_six_over_the_populated_economy"),
-              "the version-six state root over the populated economy");
-  pv::require(*populated != *empty, "the economy changes the root");
-  expect_true(values, "root.the_economy_changes_the_root");
-  expect_true(values, "root.all_six_differ_over_identical_inputs");
-
-  const v7::EconomyEntry carry{v7::carry_key(0), v7::carry_value(0)};
-  pv::require(!v7::state_root(summary, accounts, {carry, carry}).has_value(),
-              "a state root over a duplicated economy key is refused");
-}
-
-void verify_genesis(const pv::Values& values, const pv::Values& manifest) {
-  v7::Genesis genesis;
-  genesis.network_id = 6;
-  genesis.supply_limit = kMaximumSupplyAtomic;
-  genesis.fixed_transfer_fee = 0;
-  genesis.manifest_digest = from_hex(manifest.at("manifest_digest"));
-  genesis.verifier_key = kVerifierKey;
-
-  const auto encoded = v7::encode_genesis(genesis);
-  pv::require(encoded.has_value(), "the founder genesis encodes");
-  pv::require(hex(*encoded) == expect_text(values, "genesis.bytes_hex"),
-              "genesis bytes");
-  pv::require(encoded->size() == expect_size(values, "genesis.prefix_bytes"),
-              "the genesis prefix width");
-  pv::require(expect_number(values, "genesis.schema_version") ==
-                  v7::kGenesisSchemaVersion,
-              "the genesis schema version");
-  pv::require(expect_text(values, "genesis.chain_id_label") == v7::kChainIdLabel,
-              "the chain-ID domain label");
-  const auto identifier = v7::chain_id(genesis);
-  pv::require(identifier.has_value(), "the chain identifier derives");
-  pv::require(hex(*identifier) == expect_text(values, "genesis.chain_id_hex"),
-              "the chain identifier");
-  expect_true(values, "genesis.permits_a_zero_fee");
-
-  // The inherited object bound, recorded and unreachable: no version-six
-  // genesis can carry an account at all.
-  pv::require(v7::kMaxGenesisAccounts ==
-                  expect_size(values, "genesis.object_bound_admits_entries"),
-              "the inherited account bound");
-  pv::require(v7::kGenesisPrefixBytes +
-                      v7::kAccountEntryBytes * v7::kMaxGenesisAccounts ==
-                  expect_size(values, "genesis.object_bound_within_bytes"),
-              "the bound stays within the canonical object limit");
-  pv::require(v7::kGenesisPrefixBytes +
-                      v7::kAccountEntryBytes * (v7::kMaxGenesisAccounts + 1) >
-                  v7::kMaxObjectBytes,
-              "and one entry beyond it does not");
-  expect_true(values, "genesis.object_bound_within_the_limit");
-  expect_true(values, "genesis.object_bound_beyond_the_limit");
-
-  auto rejected = genesis;
-  rejected.supply_limit = 0;
-  pv::require(!v7::encode_genesis(rejected).has_value(), "a zero supply limit");
-  rejected = genesis;
-  rejected.total_supply = 1;
-  pv::require(!v7::encode_genesis(rejected).has_value(), "a nonzero total supply");
-  rejected = genesis;
-  rejected.initial_fee_pool = 1;
-  pv::require(!v7::encode_genesis(rejected).has_value(), "a nonzero fee pool");
-  rejected = genesis;
-  rejected.account_count = 1;
-  pv::require(!v7::encode_genesis(rejected).has_value(), "any account entry");
-  for (const auto* key : {"genesis.refuses_any_account_entry",
-                          "genesis.refuses_a_nonzero_total_supply",
-                          "genesis.refuses_a_nonzero_initial_fee_pool",
-                          "genesis.opens_with_zero_supply"}) {
-    expect_true(values, key);
-  }
+  const v7::EconomyEntry pool{v7::recovery_pool_key(), v7::recovery_pool_value({})};
+  pv::require(v7::economy_root({pool}).has_value(), "a well-formed entry hashes");
+  pv::require(!v7::economy_root({pool, pool}).has_value(), "a duplicated key");
 }
 
 void verify_storage(const pv::Values& values) {
@@ -226,74 +203,42 @@ void verify_storage(const pv::Values& values) {
     const auto number = static_cast<std::uint8_t>(kind);
     return *v7::entry_key_bytes(number) + *v7::entry_value_bytes(number);
   };
-  const auto identity = entry(v7::Entry::hub_identity);
-  const auto escrow = entry(v7::Entry::escrow) + v7::kAccountEntryBytes;
-  const auto signer = entry(v7::Entry::signer);
+  // Ten entries of two key octets and eight value octets leave; one entry of one
+  // key octet and forty value octets arrives.
+  const std::size_t removed = 10 * (2 + 8);
+  const auto added = entry(v7::Entry::recovery_pool);
+  pv::require(removed == expect_size(values, "storage.carry_bytes_removed"),
+              "the carry entries removed");
+  pv::require(added == expect_size(values, "storage.recovery_pool_bytes_added"),
+              "the recovery pool entry added");
+  pv::require(removed - added ==
+                  expect_size(values, "storage.fixed_entry_bytes_saved"),
+              "the fixed entry bytes saved");
 
-  pv::require(entry(v7::Entry::seat) * v7::kFounderSeatCapacity ==
-                  expect_size(values, "storage.seats_at_capacity_bytes"),
-              "seats at capacity");
-  pv::require(identity == expect_size(values, "storage.identity_bytes"),
-              "an identity");
-  pv::require(escrow == expect_size(values, "storage.escrow_bytes"), "an escrow");
-  pv::require(signer == expect_size(values, "storage.signer_bytes"), "a signer");
-  pv::require(signer * v7::kMaxSignersPerEscrow ==
-                  expect_size(values, "storage.signers_at_the_bound_bytes"),
-              "signers at the bound");
-  pv::require(entry(v7::Entry::verified_user_enrollment) * v7::kVerifiedUserPopulation ==
-                  expect_size(
-                      values,
-                      "storage.verified_user_enrollments_at_the_population_bytes"),
-              "enrolments at the population");
-  pv::require(entry(v7::Entry::channel) * 10 ==
-                  expect_size(values, "storage.channels_bytes"),
-              "the channels");
-  pv::require(entry(v7::Entry::carry) * 10 ==
-                  expect_size(values, "storage.carries_bytes"),
-              "the carries");
-  pv::require(entry(v7::Entry::typed_custody) * 4 ==
-                  expect_size(values, "storage.typed_custody_bytes"),
-              "the typed custody entries");
-  pv::require(entry(v7::Entry::referral_balance) ==
-                  expect_size(values, "storage.referral_balance_bytes"),
-              "a referral balance");
-  pv::require(entry(v7::Entry::verifier_key) ==
-                  expect_size(values, "storage.verifier_key_bytes"),
-              "the verifier key");
-  pv::require(entry(v7::Entry::unreferred_pool) ==
-                  expect_size(values, "storage.unreferred_pool_bytes"),
-              "the unreferred pool");
-  pv::require(entry(v7::Entry::verified_user_counter) ==
-                  expect_size(values, "storage.verified_user_counter_bytes"),
-              "the verified-user counter");
-
-  // A cycle assignment at the seat capacity: the key, the fixed part, and two
-  // bitmaps of one bit per seat, with no length prefixes because both widths
-  // follow from the recorded bit count.
-  pv::require(*v7::entry_key_bytes(
-                  static_cast<std::uint8_t>(v7::Entry::cycle_assignment)) +
-                      24 + 2 * v7::bitmap_bytes(v7::kFounderSeatCapacity) ==
-                  expect_size(values, "storage.cycle_assignment_bytes_per_cycle"),
+  const auto record =
+      *v7::entry_key_bytes(static_cast<std::uint8_t>(v7::Entry::cycle_assignment)) +
+      v7::kCycleAssignmentFixedBytes +
+      2 * v7::bitmap_bytes(v7::kFounderSeatCapacity);
+  pv::require(record ==
+                  expect_size(values, "storage.cycle_assignment_bytes_at_capacity"),
               "a cycle assignment at the seat capacity");
-
-  // A person's own footprint, which is the per-person figure requirement 12 now
-  // needs: escrows are bounded economically rather than by rule, and signers are
-  // bounded at 16 as a resource limit rather than a statement about people.
-  pv::require(identity + 3 * escrow + 5 * signer ==
-                  expect_size(
-                      values,
-                      "storage.one_person_with_three_escrows_and_five_signers_bytes"),
-              "one person with three escrows and five signers");
+  const auto growth = 8 * v7::kRecoveryPoolLegs;
+  pv::require(growth ==
+                  expect_size(values, "storage.cycle_assignment_growth_at_capacity"),
+              "what the five absorbed amounts add to every record");
+  pv::require(growth * 500 < record - growth,
+              "the growth is under one part in five hundred");
+  expect_true(values,
+              "storage.cycle_assignment_growth_is_under_one_part_in_five_hundred");
 }
 
 }  // namespace
 
-void verify_state(const pv::Values& values, const pv::Values& primitives,
-                  const pv::Values& version_three, const pv::Values& manifest) {
-  verify_state_widths(values);
-  verify_trees(values, version_three);
-  verify_roots(values, primitives, version_three);
-  verify_genesis(values, manifest);
+void verify_state(const pv::Values& values) {
+  verify_entry_kinds(values);
+  verify_recovery_pool(values);
+  verify_cycle_assignment(values);
+  verify_entry_shapes(values);
   verify_storage(values);
 }
 

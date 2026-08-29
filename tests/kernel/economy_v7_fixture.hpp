@@ -9,7 +9,7 @@
 // that make a missing vector key a failure rather than a default, and the two
 // economy sets whose roots the vectors fix.
 
-#include "protocol/v7/economy.hpp"
+#include "protocol/v7/ledger.hpp"
 
 #include "../../tools/protocol-vectors/vector_common.hpp"
 
@@ -163,16 +163,18 @@ inline v7::Envelope body_envelope(v7::Kind kind, std::uint8_t fill = 0) {
   return envelope;
 }
 
-// The ten channels, the ten carries, and the three singletons genesis writes.
-// Writing the fixed tables explicitly is what keeps an absent entry unambiguous
-// rather than making absence an implicit zero default.
-inline std::vector<v7::EconomyEntry> genesis_economy() {
+// The ten channels, the empty recovery pool, and the three singletons genesis
+// writes: fourteen entries where version six wrote twenty-three. Writing the
+// fixed tables explicitly is what keeps an absent entry unambiguous rather than
+// making absence an implicit zero default.
+inline std::vector<v7::EconomyEntry> genesis_economy(
+    const v7::Octets32& verifier_key = kVerifierKey) {
   std::vector<v7::EconomyEntry> entries;
   for (std::uint8_t channel = 0; channel < 10; ++channel) {
     entries.push_back({v7::channel_key(channel), v7::channel_value(0, 0)});
-    entries.push_back({v7::carry_key(channel), v7::carry_value(0)});
   }
-  entries.push_back({v7::verifier_key_key(), v7::verifier_key_value(kVerifierKey)});
+  entries.push_back({v7::recovery_pool_key(), v7::recovery_pool_value({})});
+  entries.push_back({v7::verifier_key_key(), v7::verifier_key_value(verifier_key)});
   entries.push_back({v7::unreferred_pool_key(), v7::unreferred_pool_value(0, 0)});
   entries.push_back(
       {v7::verified_user_counter_key(), v7::verified_user_counter_value(0)});
@@ -300,11 +302,23 @@ inline std::vector<v7::AccountEntry> accepted_accounts(const pv::Values& primiti
   return accounts;
 }
 
-// The four check groups, one per translation unit.
-void verify_encoding(const pv::Values& values, const pv::Values& primitives);
-void verify_identity(const pv::Values& values, const pv::Values& primitives);
-void verify_state(const pv::Values& values, const pv::Values& primitives,
-                  const pv::Values& version_three, const pv::Values& manifest);
-void verify_settlement(const pv::Values& values, const pv::Values& version_three);
+// The version-identity fixture, which is the tool's own: a version-seven
+// genesis whose every field is fixed so that a chain identity and a state root
+// are comparable across seven constructions over identical inputs.
+inline constexpr std::uint32_t kIdentityNetworkId = 7;
+inline constexpr std::uint64_t kIdentityFixedFee = 100'000;
+inline const v7::Octets32 kIdentityVerifierKey = ascending(0);
+
+// The five check groups, one per translation unit. `values` is always version
+// seven's own file and `carried` is version six's: version seven's file records
+// what version seven changes, and the surface it carries stays fixed by the file
+// that accepted it rather than being re-recorded under a new name.
+void verify_encoding(const pv::Values& carried, const pv::Values& primitives);
+void verify_identity(const pv::Values& carried, const pv::Values& primitives);
+void verify_version(const pv::Values& values, const pv::Values& carried,
+                    const pv::Values& manifest);
+void verify_state(const pv::Values& values);
+void verify_settlement(const pv::Values& values, const pv::Values& version_three,
+                       const pv::Values& manifest);
 
 }  // namespace economy_v7_fixture

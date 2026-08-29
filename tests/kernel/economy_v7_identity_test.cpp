@@ -160,10 +160,13 @@ void verify_result_codes(const pv::Values& values) {
   }
 }
 
+// The receipt's **layout** is version six's and is checked here; its **version
+// field** is version seven's and is checked in two other places, because a
+// recorded receipt's bytes carry it. `version.receipt_version` fixes the number
+// and `receipt.mint_receipt` in the execution file fixes a real version-seven
+// receipt's bytes, so nothing here compares against version six's recorded hex —
+// which this kernel can no longer produce and should not be able to.
 void verify_receipt(const pv::Values& values) {
-  pv::require(v7::kReceiptVersion == expect_number(values, "receipt.version"),
-              "the receipt version");
-
   // A successful transfer: it charges the fixed fee and issues nothing, because
   // a transfer moves units that already exist.
   v7::Receipt receipt;
@@ -172,10 +175,22 @@ void verify_receipt(const pv::Values& values) {
   receipt.fee_charged = 7;
   const auto encoded = v7::encode_receipt(receipt);
   pv::require(encoded.has_value(), "the receipt encodes");
-  pv::require(hex(*encoded) == expect_text(values, "receipt.success_hex"),
-              "receipt bytes");
   pv::require(encoded->size() == expect_size(values, "receipt.bytes"),
-              "receipt width");
+              "the receipt width is unchanged at fifty-six octets");
+  // The layout is version six's entry for entry, and exactly two octets differ:
+  // the version field. Checking that against version six's own recorded bytes is
+  // what makes "the layout did not move" a comparison rather than a claim.
+  const auto carried_bytes = pv::hex_decode(expect_text(values, "receipt.success_hex"));
+  pv::require(carried_bytes.size() == encoded->size(),
+              "version six's recorded receipt is the same width");
+  std::size_t differing = 0;
+  for (std::size_t index = 0; index < carried_bytes.size(); ++index) {
+    if (carried_bytes[index] != (*encoded)[index]) ++differing;
+  }
+  pv::require(differing == 1,
+              "a version-seven receipt differs from version six's in one octet");
+  pv::require(!v7::decode_receipt(carried_bytes).has_value(),
+              "a version-six receipt is refused");
   const auto decoded = v7::decode_receipt(*encoded);
   pv::require(decoded.has_value() && decoded->kind == receipt.kind &&
                   decoded->result_code == receipt.result_code &&

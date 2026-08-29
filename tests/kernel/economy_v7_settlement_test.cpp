@@ -1,275 +1,407 @@
-// Channel 8's arithmetic, the bounded mint walk, and the cycle-assignment
-// record.
+// The version-seven settlement: the recovery pool's arithmetic over the recorded
+// schedule, the two seat sets, what a mint collects, and both identities.
 //
-// The assignment record is checked against
-// `test-vectors/economy-transition-v3.txt`, because version six's settlement is
-// version three's imported rather than reimplemented and the specification
-// requires the record written for the same population to be byte-identical.
+// The schedule is fixture data — which seats are in scope, what each reported,
+// and whether it is inside its own 731 cycles — so it is transcribed here and
+// every figure it produces is compared against
+// `test-vectors/economy-transition-v7.txt`, whose own side is derived from the
+// specification's steps 5 through 7 rather than from the model's code.
+//
+// **The kernel runs its real derivation over a real ledger**, not a settlement
+// stand-in: `derive_assignment` reads each seat's mark from the seat entry and
+// `claimable` is the mint's own walk run once per seat, so a figure that agreed
+// here and disagreed at a block would be a contradiction rather than a gap.
 
 #include "economy_v7_fixture.hpp"
 
 namespace economy_v7_fixture {
 namespace {
 
-void verify_verified_user(const pv::Values& values) {
-  const auto daily = v7::verified_user_daily_atomic();
-  pv::require(daily.has_value(), "the rate divides exactly");
-  pv::require(*daily == expect_number(values, "verified_user.daily_atomic"),
-              "the derived daily rate");
-  pv::require(*daily == v7::kVerifiedUserDailyAtomic, "and the declared constant");
-  pv::require(v7::kVerifiedUserChannel ==
-                      expect_number(values, "verified_user.channel_id") &&
-                  v7::kVerifiedUserPopulation ==
-                      expect_number(values, "verified_user.population") &&
-                  v7::kVerifiedUserCycles ==
-                      expect_number(values, "verified_user.cycles") &&
-                  v7::kVerifiedUserChannelCapAtomic ==
-                      expect_number(values, "verified_user.channel_cap_atomic"),
-              "the three founder-supplied figures and the accepted cap");
-  expect_true(values, "verified_user.the_rate_reproduces_the_accepted_cap");
+// The recorded schedule's three uptimes, in seconds.
+constexpr std::uint64_t kMet = 72'000;
+constexpr std::uint64_t kBest = 79'200;
+constexpr std::uint64_t kFailed = 3'600;
 
-  // 731 is the period the figures fix rather than a choice: 730 leaves a
-  // remainder and 731 leaves none.
-  pv::require(v7::verified_user_remainder_at(730) ==
-                  expect_number(values,
-                                "verified_user.channel_cap_remainder_at_730_cycles"),
-              "the remainder a 730-cycle period leaves");
-  pv::require(v7::verified_user_remainder_at(v7::kVerifiedUserCycles) == 0,
-              "a 731-cycle period leaves none");
-  expect_true(values, "verified_user.a_730_cycle_period_leaves_a_remainder");
-  expect_true(values, "verified_user.a_731_cycle_period_leaves_none");
+struct Measured {
+  std::uint32_t seat_id;
+  std::uint64_t uptime;
+  bool in_span;
+};
 
-  const auto maximum = v7::kVerifiedUserCycles * v7::kVerifiedUserDailyAtomic;
-  pv::require(maximum ==
-                  expect_number(values, "verified_user.maximum_per_identity_atomic"),
-              "the per-identity maximum");
-  pv::require(v7::kVerifiedUserDailyAtomic ==
-                  expect_number(values, "verified_user.airdrop_atomic"),
-              "day one is the entry airdrop");
+// window -> the seats measured in it, transcribed from the recorded schedule.
+struct Window {
+  std::uint64_t window;
+  const char* name;
+  std::vector<Measured> seats;
+};
 
-  const auto enrolled = kEnrolledWindow;
-  pv::require(v7::window_of_height(kRegistrationHeight) ==
-                  expect_number(values, "verified_user.enrolled_window"),
-              "the enrolment window");
-  pv::require(enrolled + v7::kVerifiedUserCycles - 1 ==
-                  expect_number(values, "verified_user.last_window"),
-              "the last collectable window");
-
-  struct Case {
-    const char* prefix;
-    std::uint64_t height;
-  };
-  const Case cases[] = {
-      {"verified_user.the_day_after_enrollment.", 6 * v7::kCycleBlocks},
-      {"verified_user.at_the_cap.", 36 * v7::kCycleBlocks},
-      {"verified_user.one_window_past_the_cap.", 37 * v7::kCycleBlocks},
-      {"verified_user.ten_windows_past_the_cap.", 46 * v7::kCycleBlocks},
-      {"verified_user.long_past_the_period.", 1'000 * v7::kCycleBlocks},
-  };
-  for (const auto& [prefix, height] : cases) {
-    const auto collection = v7::verified_user_collection(enrolled, enrolled, height);
-    const std::string key = prefix;
-    pv::require(collection.window_start == expect_number(values, key + "window_start"),
-                "the collection's first window");
-    pv::require(collection.collectable_end ==
-                    expect_number(values, key + "collectable_end"),
-                "the collection's last window");
-    pv::require(collection.count == expect_number(values, key + "count"),
-                "the collected count");
-    pv::require(collection.amount_atomic ==
-                    expect_number(values, key + "amount_atomic"),
-                "the collected amount");
+std::vector<Measured> in_span_seats(std::uint64_t uptime) {
+  std::vector<Measured> seats;
+  for (std::uint32_t seat = 0; seat < 7; ++seat) {
+    seats.push_back({seat, uptime, true});
   }
+  return seats;
+}
 
-  // Forty windows of neglect: the most recent thirty are collected and the
-  // older ten are never issued, because the mark advances past them. That is
-  // what makes the forfeiture permanent rather than deferred.
-  const auto forfeiting =
-      v7::verified_user_collection(enrolled, enrolled, 46 * v7::kCycleBlocks);
-  pv::require(forfeiting.window_start - enrolled ==
-                  expect_number(values, "verified_user.forfeited_windows_after_forty"),
-              "the forfeited window count");
-  pv::require(forfeiting.count == v7::kMintAccumulationCap,
-              "a forfeiting mint collects exactly the cap");
-  const auto later = v7::verified_user_collection(forfeiting.collectable_end, enrolled,
-                                                  1'000 * v7::kCycleBlocks);
-  pv::require(later.window_start >= forfeiting.collectable_end,
-              "the forfeited windows are not collectable later");
-  for (const auto* key : {"verified_user.a_forfeiting_mint_collects_exactly_the_cap",
-                          "verified_user.the_mark_advances_past_the_forfeited_windows",
-                          "verified_user.the_forfeited_windows_are_not_collectable_later"}) {
+std::vector<Measured> six_met_one_failed() {
+  std::vector<Measured> seats;
+  for (std::uint32_t seat = 0; seat < 6; ++seat) seats.push_back({seat, kMet, true});
+  seats.push_back({6, kFailed, true});
+  seats.push_back({9, kMet, false});
+  return seats;
+}
+
+std::vector<Window> main_schedule() {
+  std::vector<Window> windows;
+
+  auto with_past = [](std::vector<Measured> seats, std::uint64_t uptime) {
+    seats.push_back({9, uptime, false});
+    return seats;
+  };
+
+  windows.push_back({2, "nobody_met_the_cycle",
+                     with_past(in_span_seats(kFailed), kFailed)});
+  windows.push_back({3, "a_machine_past_its_span_wins_outright",
+                     with_past(in_span_seats(kMet), kBest)});
+  windows.push_back({4, "a_seven_way_tie_leaves_dust_on_every_leg",
+                     six_met_one_failed()});
+  windows.push_back({5, "an_absorbed_pool_below_the_winner_count_is_returned_whole",
+                     six_met_one_failed()});
+
+  auto drained = six_met_one_failed();
+  drained[0].uptime = kBest;
+  windows.push_back({6, "one_winner_drains_the_pool", drained});
+
+  windows.push_back({7, "nobody_met_the_cycle_again",
+                     with_past(in_span_seats(kFailed), kFailed)});
+  windows.push_back({8, "no_contributing_seat_and_the_pool_still_moves",
+                     {{8, kMet, false}, {9, kMet, false}, {10, kMet, false}}});
+  windows.push_back({9, "a_residual_survives_to_the_next_cycle",
+                     with_past(in_span_seats(kMet), kMet)});
+  return windows;
+}
+
+// A ledger holding nothing but what the two identities are stated over: every
+// seat the schedule measures, activated with a zero mark, and the five channels.
+v7::Ledger settlement_ledger() {
+  v7::Ledger ledger;
+  for (const std::uint32_t seat_id : {0U, 1U, 2U, 3U, 4U, 5U, 6U, 8U, 9U, 10U}) {
+    v7::SeatRecord seat;
+    seat.hub_identity_hash = kAliceIdentity;
+    seat.is_activated = true;
+    seat.minted_through_window = 0;
+    ledger.seats[seat_id] = seat;
+  }
+  return ledger;
+}
+
+std::string legs(const v7::RecoveryPool& pool) {
+  std::string out;
+  for (std::size_t index = 0; index < v7::kRecoveryPoolLegs; ++index) {
+    if (index != 0) out.push_back(',');
+    out += std::to_string(pool[index]);
+  }
+  return out;
+}
+
+std::string seat_list(const std::vector<std::uint32_t>& seats) {
+  if (seats.empty()) return "none";
+  std::string out;
+  for (std::size_t index = 0; index < seats.size(); ++index) {
+    if (index != 0) out.push_back(',');
+    out += std::to_string(seats[index]);
+  }
+  return out;
+}
+
+std::string window_list(const std::vector<std::uint64_t>& windows) {
+  if (windows.empty()) return "none";
+  std::string out;
+  for (std::size_t index = 0; index < windows.size(); ++index) {
+    if (index != 0) out.push_back(',');
+    out += std::to_string(windows[index]);
+  }
+  return out;
+}
+
+std::uint64_t total(const v7::RecoveryPool& pool) {
+  std::uint64_t sum = 0;
+  for (const auto amount : pool) sum += amount;
+  return sum;
+}
+
+// Run the recorded schedule and check every cycle's figures, then every state's
+// two identities.
+v7::Ledger verify_schedule(const pv::Values& values) {
+  const auto schedule = main_schedule();
+  pv::require(schedule.size() ==
+                  expect_size(values, "settlement.schedule.cycle_count"),
+              "the recorded schedule's cycle count");
+
+  auto ledger = settlement_ledger();
+  for (const auto& step : schedule) {
+    const auto prefix = "settlement.w" + std::to_string(step.window) + ".";
+    pv::require(expect_text(values, prefix + "name") == step.name,
+                "the recorded cycle's name");
+
+    std::vector<v7::SeatCycle> measured;
+    for (const auto& seat : step.seats) {
+      measured.push_back({seat.seat_id, seat.uptime, seat.in_span});
+    }
+    const auto before = ledger.pool;
+    const auto assignment = v7::derive_assignment(ledger, step.window, measured);
+    pv::require(assignment.has_value(), "the cycle derives");
+
+    pv::require(assignment->in_scope_count ==
+                    expect_size(values, prefix + "in_scope_count"),
+                "the in-scope count");
+    pv::require(seat_list(assignment->winners) ==
+                    expect_text(values, prefix + "winners"),
+                "the winner set");
+    pv::require(seat_list(assignment->accrued) ==
+                    expect_text(values, prefix + "accrued"),
+                "the accrued set");
+    pv::require(assignment->contributing_count ==
+                    expect_number(values, prefix + "assigned_permissions"),
+                "the contributing count");
+    pv::require(assignment->reallocated_count ==
+                    expect_number(values, prefix + "reallocated_count"),
+                "the reallocated count");
+    pv::require(legs(before) == expect_text(values, prefix + "pool_before"),
+                "the pool the cycle found");
+    pv::require(legs(assignment->pool_absorbed) ==
+                    expect_text(values, prefix + "pool_absorbed"),
+                "what the cycle absorbed");
+    pv::require(legs(assignment->pool_after) ==
+                    expect_text(values, prefix + "pool_after"),
+                "the pool the next cycle finds");
+
+    // A winner's pool share and the residual dividing it left behind, derived
+    // here exactly as a mint derives them: from the absorbed amount and the
+    // winner count, because the record commits to the absorbed amount alone.
+    const auto winner_count = static_cast<std::uint32_t>(assignment->winners.size());
+    v7::RecoveryPool share{};
+    v7::RecoveryPool residual{};
+    for (std::size_t channel = 0; channel < v7::kRecoveryPoolLegs; ++channel) {
+      const auto taken = assignment->pool_absorbed[channel];
+      share[channel] = winner_count == 0 ? 0 : taken / winner_count;
+      residual[channel] = taken - share[channel] * winner_count;
+    }
+    pv::require(legs(share) == expect_text(values, prefix + "pool_share_per_winner"),
+                "a winner's pool share");
+    pv::require(legs(residual) == expect_text(values, prefix + "pool_residual"),
+                "the residual dividing the pool left behind");
+
+    const auto split = v7::split_permission(winner_count);
+    v7::RecoveryPool dust{};
+    for (std::size_t channel = 0; channel < v7::kRecoveryPoolLegs; ++channel) {
+      dust[channel] = split.remainder[channel] * assignment->reallocated_count;
+    }
+    pv::require(legs(dust) == expect_text(values, prefix + "reallocation_dust"),
+                "the reallocation dust");
+
+    v7::RecoveryPool delta{};
+    for (std::size_t channel = 0; channel < v7::kRecoveryPoolLegs; ++channel) {
+      delta[channel] = v7::base_permission_leg(static_cast<std::uint8_t>(channel)) *
+                       assignment->contributing_count;
+    }
+    pv::require(legs(delta) == expect_text(values, prefix + "outstanding_delta"),
+                "what the cycle adds to outstanding");
+
+    expect_true(values, prefix + "winners_are_the_top_of_the_eligible_set");
+    expect_true(values, prefix + "assigned_permissions_is_the_contributing_count");
+
+    pv::require(v7::apply_assignment(ledger, *assignment), "the cycle applies");
+
+    // Both identities, after every cycle.
+    const auto conservation = "conservation.w" + std::to_string(step.window) + ".";
+    pv::require(ledger.assigned_permissions ==
+                    expect_number(values, conservation + "assigned_permissions"),
+                "the running assigned count");
+    pv::require(total(ledger.pool) ==
+                    expect_number(values, conservation + "pool_total"),
+                "the pool total");
+    std::uint64_t outstanding = 0;
+    for (std::uint8_t channel = 0; channel < v7::kRecoveryPoolLegs; ++channel) {
+      outstanding += ledger.channel_outstanding[channel];
+    }
+    pv::require(outstanding ==
+                    expect_number(values, conservation + "outstanding_total"),
+                "the outstanding total");
+    const auto owed = v7::claimable(ledger);
+    pv::require(owed.has_value(), "claimable derives");
+    pv::require(total(*owed) ==
+                    expect_number(values, conservation + "claimable_total"),
+                "the claimable total");
+    for (std::uint8_t channel = 0; channel < v7::kRecoveryPoolLegs; ++channel) {
+      pv::require((*owed)[channel] + ledger.pool[channel] ==
+                      ledger.channel_outstanding[channel],
+                  "the backing identity holds after the cycle");
+    }
+    expect_true(values, conservation + "both_identities_hold");
+  }
+  return ledger;
+}
+
+void verify_sets(const pv::Values& values, const v7::Ledger& ledger) {
+  // Window 3's winner is seat 9, which is past its own 731 cycles: it is in the
+  // eligible set and not in the contributing set, and it took the whole pool
+  // window 2 left behind. A winner derivation filtered by span would have
+  // returned a different set there and an empty one at window 8, where no
+  // contributing seat exists at all — and the pool would have stranded.
+  const auto record = ledger.assignments.find(3);
+  pv::require(record != ledger.assignments.end(), "window three has a record");
+  const auto decoded = v7::decode_cycle_assignment_value(record->second);
+  pv::require(decoded.has_value(), "window three's record decodes");
+  pv::require(v7::bit_is_set(decoded->winner_bitmap, 9),
+              "a seat past its span won the cycle");
+  pv::require(!v7::bit_is_set(decoded->accrued_bitmap, 9),
+              "and it accrued nothing, because it contributes nothing");
+  pv::require(decoded->pool_absorbed[0] != 0, "that winner took the whole pool");
+
+  const auto window8 = ledger.assignments.find(8);
+  pv::require(window8 != ledger.assignments.end(), "window eight has a record");
+  const auto eight = v7::decode_cycle_assignment_value(window8->second);
+  pv::require(eight.has_value(), "window eight's record decodes");
+  pv::require(eight->reallocated_count == 0 && eight->winner_count == 3,
+              "window eight has no contributing seat and three winners");
+  pv::require(eight->pool_absorbed[0] != 0, "and it still drained the pool");
+
+  for (const auto* key : {"settlement.sets.eligible_holds_a_seat_the_contributing_set_does_not",
+                          "settlement.sets.a_seat_past_its_span_won_the_cycle",
+                          "settlement.sets.that_winner_took_the_whole_pool",
+                          "settlement.sets.a_span_filtered_winner_set_would_differ",
+                          "settlement.sets.a_span_filtered_winner_set_would_be_empty_at_window8",
+                          "settlement.sets.window8_has_no_contributing_seat",
+                          "settlement.sets.window8_still_drained_the_pool"}) {
     expect_true(values, key);
   }
+}
 
-  // A person who collects at least every thirty windows loses nothing, and the
-  // total is the airdrop plus 730 daily permissions to the atomic unit.
-  std::uint64_t issued = v7::kVerifiedUserDailyAtomic;
-  std::uint64_t mark = enrolled;
-  const auto period_end = enrolled + v7::kVerifiedUserCycles - 1;
-  while (true) {
-    const auto target = std::min(mark + v7::kMintAccumulationCap, period_end);
+void verify_collections(const pv::Values& values, v7::Ledger& ledger) {
+  constexpr std::uint64_t kLastAssigned = 9;
+  for (const std::uint32_t seat_id : {9U, 0U, 6U}) {
+    const auto prefix = "collection.seat" + std::to_string(seat_id) + ".";
+    auto& seat = ledger.seats[seat_id];
     const auto collection =
-        v7::verified_user_collection(mark, enrolled, (target + 1) * v7::kCycleBlocks);
-    if (collection.count == 0) break;
-    issued += collection.amount_atomic;
-    mark = collection.collectable_end;
-  }
-  pv::require(
-      issued == expect_number(
-                    values, "verified_user.a_complete_period_issues_the_full_allocation"),
-      "a complete period issues the full allocation");
-  pv::require(issued == maximum, "and that is the per-identity maximum");
-  pv::require(v7::verified_user_collection(mark, enrolled, 5'000 * v7::kCycleBlocks)
-                      .count ==
-                  expect_number(values,
-                                "verified_user.nothing_is_collectable_after_the_period"),
-              "nothing is collectable after the period");
-  expect_true(values, "verified_user.issuance_stays_within_the_cap");
-  pv::require(issued <= v7::kVerifiedUserChannelCapAtomic / v7::kVerifiedUserPopulation,
-              "one identity's issuance stays within its share of the cap");
+        v7::collect_node(ledger, seat_id, seat.minted_through_window, kLastAssigned);
+    pv::require(collection.has_value(), "the walk derives");
+    pv::require(legs(collection->per_channel) ==
+                    expect_text(values, prefix + "per_channel"),
+                "what the walk collects, per channel");
+    pv::require(collection->total_atomic() ==
+                    expect_number(values, prefix + "total_atomic"),
+                "the collection total");
+    pv::require(collection->windows_walked ==
+                    expect_number(values, prefix + "windows_walked"),
+                "the windows the walk covered");
+    pv::require(window_list(collection->accrued_windows) ==
+                    expect_text(values, prefix + "accrued_windows"),
+                "the windows the seat accrued in");
+    pv::require(window_list(collection->won_windows) ==
+                    expect_text(values, prefix + "won_windows"),
+                "the windows the seat won");
 
-  // Channel 8 has left the reserved direct-issue set, because ADR 0042 decided
-  // both its eligibility and its rate.
-  std::string derived;
-  for (const auto channel : v7::kDirectIssueChannels) {
-    if (!derived.empty()) derived.push_back(',');
-    derived += std::to_string(channel);
+    for (std::uint8_t channel = 0; channel < v7::kRecoveryPoolLegs; ++channel) {
+      const auto amount = collection->per_channel[channel];
+      pv::require(ledger.channel_outstanding[channel] >= amount,
+                  "a channel never issues more than it accrued");
+      ledger.channel_outstanding[channel] -= amount;
+      ledger.channel_issued[channel] += amount;
+    }
+    // The mark advances to the last assigned window whatever the walk found,
+    // which is what makes the accumulation cap forfeit rather than defer.
+    seat.minted_through_window = kLastAssigned;
+
+    const auto owed = v7::claimable(ledger);
+    pv::require(owed.has_value(), "claimable derives after the mint");
+    for (std::uint8_t channel = 0; channel < v7::kRecoveryPoolLegs; ++channel) {
+      pv::require((*owed)[channel] + ledger.pool[channel] ==
+                      ledger.channel_outstanding[channel],
+                  "the backing identity holds after the mint");
+    }
   }
-  pv::require(derived == expect_text(values,
-                                     "verified_user.reserved_direct_issue_channels"),
-              "the three reserved channels");
-  pv::require(std::find(v7::kDirectIssueChannels.begin(),
-                        v7::kDirectIssueChannels.end(),
-                        v7::kVerifiedUserChannel) == v7::kDirectIssueChannels.end(),
-              "channel 8 is not among them");
-  expect_true(values, "verified_user.channel_eight_left_the_reserved_direct_issue_set");
+  // Seat 9 is past its own 731 cycles: it never accrued a bit and collected
+  // only reallocation and pool shares, which is a conforming mint.
+  expect_true(values, "collection.a_seat_past_its_span_collected_without_ever_accruing");
+  expect_true(values, "collection.identities_hold_after_every_mint");
 }
 
-void verify_walk(const pv::Values& values) {
-  pv::require(v7::kMintAccumulationCap ==
-                      expect_number(values, "settlement.assignment_cap_windows") &&
-                  v7::kAssignmentLagWindows ==
-                      expect_number(values, "settlement.assignment_lag_windows"),
-              "the cap and the lag");
-
-  pv::require(v7::accrues(kCurrentMark + v7::kMintAccumulationCap, kCurrentMark),
-              "a window within the cap accrues");
-  pv::require(!v7::accrues(kCurrentMark + v7::kMintAccumulationCap + 1, kCurrentMark),
-              "a window beyond the cap does not");
-  expect_true(values, "settlement.a_window_within_the_cap_accrues");
-  expect_true(values, "settlement.a_window_beyond_the_cap_does_not_accrue");
-
-  const auto range = v7::walk_range(kCurrentMark, kCurrentMark + 100);
-  pv::require(range.has_value(), "the walk range derives");
-  pv::require(range->first_window ==
-                  expect_number(values, "settlement.walk_first_window"),
-              "the walk's first window");
-  pv::require(range->last_window ==
-                  expect_number(values, "settlement.walk_last_window"),
-              "the walk's last window");
-
-  // ADR 0045's third derived rule: `NOTHING_TO_MINT` is the empty range rather
-  // than the literal equality, so a mark can never decrease. A seat activated
-  // in window `w` holds mark `w` while the last assigned window is `w - 2`, and
-  // the literal reading would let that mint lower its own mark by two — which
-  // destroys the exactness argument the whole accumulation cap rests on.
-  pv::require(!v7::walk_range(kCurrentMark, kCurrentMark).has_value(),
-              "a mark at the last assigned window walks nothing");
-  pv::require(!v7::walk_range(kCurrentMark, std::nullopt).has_value(),
-              "no window assigned yet walks nothing");
-  pv::require(!v7::walk_range(kCurrentMark + 2, kCurrentMark).has_value(),
-              "a mark above the last assigned window walks nothing");
-  expect_true(values, "settlement.a_mark_at_the_last_assigned_window_walks_nothing");
-  pv::require(v7::walk_range(kCurrentMark, kCurrentMark + 1)->last_window ==
-                  kCurrentMark + 1,
-              "a short range is closed at the last assigned window");
+// One perturbed state, and the failure the invariant is required to name. The
+// settlement ledger holds no registry, so it reports structural failures too;
+// what matters is that the named one is among them.
+void require_reports(const v7::Ledger& ledger, std::string_view failure) {
+  const auto failures = v7::conservation_failures(ledger);
+  pv::require(std::find(failures.begin(), failures.end(), failure) != failures.end(),
+              "the invariant reports: " + std::string(failure));
 }
 
-void verify_cycle_assignment(const pv::Values& values,
-                             const pv::Values& version_three) {
-  // Reconstructed from the recorded population rather than round-tripped, so a
-  // packing error is caught rather than preserved: the bitmaps are indexed by
-  // seat identifier with the most significant bit first, and the record carries
-  // no bitmap length prefixes because both widths follow from `bitmap_bits`.
-  constexpr std::uint32_t kBits = 24;
-  const std::uint32_t accrued_seats[] = {0, 4, 15};
-  const std::uint32_t winner_seats[] = {0, 4, 23};
+void verify_final_identities(const pv::Values& values, const v7::Ledger& ledger) {
+  const auto owed = v7::claimable(ledger);
+  pv::require(owed.has_value(), "claimable derives at the final state");
+  for (std::uint8_t channel = 0; channel < v7::kRecoveryPoolLegs; ++channel) {
+    const auto prefix = "conservation.final.channel" + std::to_string(channel) + ".";
+    pv::require(ledger.channel_issued[channel] ==
+                    expect_number(values, prefix + "issued"),
+                "the channel's issued total");
+    pv::require(ledger.channel_outstanding[channel] ==
+                    expect_number(values, prefix + "outstanding"),
+                "the channel's outstanding total");
+    pv::require((*owed)[channel] == expect_number(values, prefix + "claimable"),
+                "what the channel still owes");
+    pv::require(ledger.pool[channel] ==
+                    expect_number(values, prefix + "recovery_pool"),
+                "the channel's recovery pool leg");
 
-  v7::CycleAssignment assignment;
-  assignment.share_per_winner_atomic = 11'400'000'000ULL;
-  assignment.reallocated_count = 2;
-  assignment.winner_count = 3;
-  assignment.in_scope_count = 6;
-  assignment.bitmap_bits = kBits;
-  const auto accrued_bits = v7::bitmap(accrued_seats, kBits);
-  const auto winner_bits = v7::bitmap(winner_seats, kBits);
-  pv::require(accrued_bits && winner_bits, "the bitmaps pack");
-  assignment.accrued_bitmap = *accrued_bits;
-  assignment.winner_bitmap = *winner_bits;
-
-  const std::uint32_t beyond[] = {kBits};
-  pv::require(!v7::bitmap(beyond, kBits).has_value(),
-              "a seat outside the bit count cannot be packed");
-
-  const auto value = v7::cycle_assignment_value(assignment);
-  pv::require(value.has_value(), "the record encodes");
-  pv::require(hex(*value) == version_three.at("cycle.assignment_value_hex"),
-              "the record is byte-identical to version three's");
-  pv::require(hex(v7::cycle_assignment_key(kCycleWindow)) ==
-                  version_three.at("cycle.assignment_key"),
-              "and so is its key");
-  pv::require(expect_size(values, "state.entry3.key_bytes") ==
-                  v7::cycle_assignment_key(kCycleWindow).size(),
-              "the assignment key width");
-
-  auto mismatched = assignment;
-  mismatched.winner_bitmap.pop_back();
-  pv::require(!v7::cycle_assignment_value(mismatched).has_value(),
-              "a bitmap of the wrong width is refused");
-
-  const auto decoded = v7::decode_cycle_assignment_value(*value);
-  pv::require(decoded.has_value(), "the record decodes");
-  pv::require(decoded->winner_count == 3 && decoded->reallocated_count == 2 &&
-                  decoded->in_scope_count == 6 && decoded->bitmap_bits == kBits,
-              "the decoded counts are the encoded ones");
-  for (const auto seat : winner_seats) {
-    pv::require(v7::bit_is_set(decoded->winner_bitmap, seat), "a winner bit is set");
+    const auto assigned = ledger.assigned_permissions *
+                          v7::base_permission_leg(channel);
+    pv::require(assigned == expect_number(values, prefix + "assigned_total"),
+                "what the manifest promised for the assigned cycles");
+    pv::require(ledger.channel_issued[channel] +
+                        ledger.channel_outstanding[channel] ==
+                    assigned,
+                "the channel identity holds");
+    pv::require((*owed)[channel] + ledger.pool[channel] ==
+                    ledger.channel_outstanding[channel],
+                "the backing identity holds");
+    expect_true(values, prefix + "channel_identity_holds");
+    expect_true(values, prefix + "backing_identity_holds");
   }
-  for (const auto seat : accrued_seats) {
-    pv::require(v7::bit_is_set(decoded->accrued_bitmap, seat), "an accrued bit is set");
-  }
-  pv::require(!v7::bit_is_set(decoded->accrued_bitmap, 23),
-              "a seat may win without accruing");
-  pv::require(!v7::bit_is_set(decoded->winner_bitmap, 15),
-              "a seat may accrue without winning");
-  auto short_record = *value;
-  short_record.pop_back();
-  pv::require(!v7::decode_cycle_assignment_value(short_record).has_value(),
-              "a record whose length disagrees with its bit count is refused");
 
-  // The total-outage cycle: no seat met it, so the winner set is empty and the
-  // whole permission carries.
-  v7::CycleAssignment outage;
-  outage.in_scope_count = 6;
-  outage.reallocated_count = 5;
-  outage.bitmap_bits = kBits;
-  outage.accrued_bitmap = *v7::bitmap({}, kBits);
-  outage.winner_bitmap = *v7::bitmap({}, kBits);
-  const auto outage_value = v7::cycle_assignment_value(outage);
-  pv::require(outage_value.has_value(), "the empty-winner record encodes");
-  pv::require(hex(*outage_value) == version_three.at("outage.assignment_value_hex"),
-              "the empty-winner record is version three's");
-  pv::require(hex(v7::cycle_assignment_key(kOutageWindow)) ==
-                  version_three.at("outage.assignment_key"),
-              "and so is its key");
+  // **Both identities are the kernel's own invariant, not only this test's
+  // arithmetic.** Checking them here and nowhere else would let
+  // `conservation_failures` stop stating either one without a single vector
+  // noticing, so each is broken on purpose and the invariant is required to
+  // report it by name.
+  auto stranded = ledger;
+  stranded.pool[0] += 1;
+  require_reports(stranded, "a Founder Node channel breaks the backing identity");
+  auto created = ledger;
+  created.channel_issued[0] += 1;
+  require_reports(created, "a Founder Node channel breaks the channel identity");
 }
 
 }  // namespace
 
-void verify_settlement(const pv::Values& values, const pv::Values& version_three) {
-  verify_verified_user(values);
-  verify_walk(values);
-  verify_cycle_assignment(values, version_three);
+void verify_settlement(const pv::Values& values, const pv::Values& version_three,
+                       const pv::Values& manifest) {
+  // The imported half, against version three's own accepted record: version
+  // seven replaces steps 5 through 7 and imports the rest, so a leg or a
+  // threshold that moved would have to move in version three's file first.
+  for (std::uint8_t channel = 0; channel < 5; ++channel) {
+    const auto name = manifest.at("channel" + std::to_string(channel) + ".id");
+    pv::require(v7::base_permission_leg(channel) ==
+                    std::stoull(manifest.at("base_permission." + name)),
+                "the base permission legs are the accepted manifest's");
+  }
+  pv::require(v7::kReferralLegAtomic ==
+                  std::stoull(version_three.at("referral.leg_atomic")),
+              "the referral leg is version three's");
+
+  auto ledger = verify_schedule(values);
+  verify_sets(values, ledger);
+  verify_collections(values, ledger);
+  verify_final_identities(values, ledger);
 }
 
 }  // namespace economy_v7_fixture
