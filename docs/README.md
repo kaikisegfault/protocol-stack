@@ -590,10 +590,11 @@ immutable; compatible changes require a new version.
   refuses an unregistered recipient, which withdraws `ledger-transition-v1`'s
   recipient-creating transfer and makes "every account is an escrow" a structural
   invariant. The signature-scheme byte carries a second authorization mode so
-  that identity administration works with no key at all. It is the contract
-  requirement 10's C++ kernel implements, `simulation/economy_transition_v6/`
-  now both encodes and executes it, and `src/v6/` implements its byte surface
-  and its pure derivations while its transitions remain unwritten.
+  that identity administration works with no key at all.
+  `simulation/economy_transition_v6/` both encodes and executes it. **Its C++
+  kernel was replaced by version seven's**, under ADR 0046's rule that the
+  kernel compiles exactly one economy contract; its Python model and both
+  accepted vector files remain in place, passing, and unedited.
 - `specifications/economy-transition-v7.md`: version six with the per-channel
   carry deleted from state and replaced by a recovery pool, so the node
   distribution assigns 100% of the permissions the manifest promises. A
@@ -609,8 +610,11 @@ immutable; compatible changes require a new version.
   `test-vectors/economy-transition-v7-execution.txt` records a pool filled by an
   unwon cycle, absorbed whole by the next, and minted — ending with outstanding
   and the pool both at zero — over five scenarios that execute **all fourteen**
-  transaction kinds, where version six's execution file reaches eleven. Its C++
-  implementation is not written.
+  transaction kinds, where version six's execution file reaches eleven. **It is
+  the contract requirement 10's C++ kernel implements**: `src/v7/` and
+  `include/protocol/v7/` hold the byte surface, the settlement, all fourteen
+  transitions, and the assignment prologue, and reproduce both version-seven
+  vector files.
 - `specifications/native-economy-simulation-v1.md`: versioned integer-only
   accounting, authority, event, trace, and metric contract for the independent
   M2 research simulator; it is not a consensus transition.
