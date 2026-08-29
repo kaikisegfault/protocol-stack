@@ -2692,6 +2692,22 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #196 and PR #200 are the M3.12b delivery. It moves the C++20 kernel from
+  `economy-transition-v6` to `economy-transition-v7`: `src/v6/` becomes
+  `src/v7/` and gains `economy_assignment.cpp`, `include/protocol/v6/` becomes
+  `include/protocol/v7/`, and the thirteen kernel test files and the fuzz target
+  take version seven's names. `tests/kernel/economy_v7_version_test.cpp` is new.
+  Version six's C++ kernel is **removed** under ADR 0046; its Python model and
+  both of its accepted vector files remain in place, passing, and unedited.
+  The codec target now takes a fifth argument — version six's own vector file,
+  for the surface version seven carries unchanged — and both kernel targets
+  bind `founder-economy-manifest-v3`. No ctest entry is added or removed; two
+  are renamed to version seven, and the fuzz smoke entry with them.
+  **The first candidate failed the matrix for two independent reasons and both
+  are recorded in the next-action section**: a blanket rename reached version
+  six's own Python verifier registrations, which `test-registration` caught as a
+  vector file no registered verifier reads; and GCC 13's `-Wdangling-reference`
+  rejected seven call sites that compile clean under the GCC 12 on this machine.
 - Issue #197 and PR #198 are the M3.12a delivery, merged by rebase across commits
   `28567d1` through `90e13a7` on `main`. It adds two trace scenarios and takes
   `test-vectors/economy-transition-v7-execution.txt` from 412 vectors to 590, so
@@ -2708,13 +2724,6 @@ behavior.
   **An earlier candidate run failed the classification job**, on a trailing blank
   line at the end of `trace.py` that `git diff --check` refuses; the fix is one
   line and the lesson is recorded in the next-action section.
-- Issue #196 is open and blocked, which is deliberate. It is the kernel move, and
-  it is retitled M3.12b and rewritten to record why it could not start on
-  2026-08-20 and what unblocked it. The exploratory work — the namespace move, the
-  recovery pool entry, the 64-octet record, the settlement derivations, and the
-  two identities — compiled clean under both local syntax checks before it was
-  reset, and it was reset rather than pushed because a half-moved kernel is not a
-  state anything can verify.
 - Issue #192 and PR #193 are the M3.11c delivery, merged by rebase across commits
   `4aacbe6` through `63adcdd` on `main`. It gives `economy-transition-v7`
   its transaction ledger, dispatch, ordered block execution, a recorded
@@ -3614,6 +3623,19 @@ a month boundary a proposer tried to move.
   kernel executes blocks against an in-memory ledger today, so nothing it
   produces survives a restart and no two nodes agree on one.
 
+**One cost requirement 13 will hit, recorded now rather than discovered then.**
+`conservation_failures` calls `claimable`, which is the mint's walk run once per
+seat over up to thirty assignment records each. That is ADR 0055's decision and
+it is right — a second walk would make the backing identity check the kernel
+against itself — but it is `O(seats x 30)` per block, and a cycle assignment
+record at the 100,000-seat capacity is about 25 KB. At capacity the invariant
+would decode on the order of gigabytes per block. **Nothing about that is
+consensus-visible**: the identity either holds or it does not, so a node may
+cache or incrementalise the walk without changing a single accepted state. It is
+an implementation cost rather than a contract defect, and it has not been paid
+because no fixture yet runs at capacity. Do not "fix" it by writing a second
+walk.
+
 **What the kernel looks like now, so a later session does not rediscover it.**
 `src/v7/` holds seventeen sources and `include/protocol/v7/` two headers.
 `economy_assignment.cpp` is the newest and is the only one with no version-six
@@ -3626,6 +3648,30 @@ optional.
 **Local checks worth running, and one worth running first.** `git diff --check
 main HEAD` is exactly the whitespace gate the classification job runs; it costs
 nothing and M3.12a lost a full matrix run to a trailing blank line without it.
+
+**`python3 -B tests/tools/test_registration_test.py` is the second, and M3.12b
+lost a matrix run to skipping it.** It runs in nine milliseconds and it checks
+things no compiler can: that every accepted vector file is read by some
+registered ctest entry, that every verifier has an `add_test`, and that no two
+entries share a write path. Retargeting the kernel's ctest arguments left
+`economy-transition-v6-execution.txt` read by nothing, and its message is the
+rule — *a recorded vector file no registered verifier reads is not evidence*.
+Run it after **any** CMake edit.
+
+**A blanket `sed` over `CMakeLists.txt` is how that happened, and the shape of
+the mistake generalises.** Rewriting `economy-transition-v6*.txt` to version
+seven's also rewrote the arguments of version six's *own* Python verifiers,
+which are registered in the same file and are not the kernel's. After a
+rename, read `git diff main -- CMakeLists.txt | grep test-vectors` and check
+every changed line is one you meant.
+
+**Local `-Wall -Wextra -Wpedantic -Werror` is not the matrix's gate.** This
+machine has GCC 12; the matrix runs a newer GCC whose `-Wdangling-reference`
+rejected seven call sites that compile clean here, and the warning does not
+exist locally at all. It was pointing at something real — `run` returns a
+reference into a vector a later `run` may reallocate — but no local invocation
+could have found it. Push a candidate and let the matrix answer; the local pass
+is still worth running, because it is the cheap half.
 
 **The scratch C++ harness is worth rebuilding rather than rediscovering.** It is
 a `sodium.h` backed by the system OpenSSL — `crypto_hash_sha256` over
@@ -3693,7 +3739,31 @@ same count rather than reading it back.
 
 ## Blockers
 
-**None for M3.12b.** M3.12a ran the founder-decision gate and **passed** it. It
+**None for M3.13a.** M3.12b ran the founder-decision gate and **passed** it. It
+enumerated eighteen decisions the slice had to settle — whether version seven
+replaces version six in the kernel or sits beside it; which constructions
+re-version and which keep the version that accepted them; the retirement of
+entry kind 7 and the widths of entry kind 17; the cycle assignment record's
+layout and its 64-octet fixed part; whether the encoder, the decoder, or both
+refuse a nonzero absorbed amount at a zero winner count; the order of steps 6
+and 7; whether the winner derivation may filter by span; how `claimable` is
+derived; where the assignment reads a seat's mark and recorded referrer; whether
+the assignment is a prologue or an epilogue; what a measurement naming an unsold
+seat does to a block; the manifest binding; the three schema versions; whether
+the block header and transaction tree re-version; which vector files each test
+target reads; whether version six's execution tests are retargeted or kept; the
+module layout and file names; and the fate of the inherited carry field.
+**Every one is fixed by the accepted `economy-transition-v7` specification, ADR
+0045, ADR 0046, ADR 0049, ADR 0053, ADR 0054, ADR 0055, or
+`docs/engineering/verification.md`, or is encoding, mechanism, or layout**,
+which `founder-constitution.md` names as engineering work. None sets or changes
+supply, allocation, beneficiaries, Founder ownership, creator hierarchy,
+commercial routing, AI institutional authority, bridge scope, content
+permanence, or what a participant must do, own, run, or receive: every
+founder-directed figure is read from the accepted manifest rather than restated.
+No question was asked because none was reserved.
+
+**M3.12a ran the same gate and passed it.** It
 enumerated seven decisions the slice had to settle — which kinds the added
 scenarios must reach; whether the step fixtures are imported from version six
 or restated; the block and nonce ordering each scenario needs; which refusals
@@ -3857,6 +3927,11 @@ the contract that encodes the direction. **That is a change of target, not lost
 work**: the envelope, the key space, the settlement, the receipt, and the tree
 constructions are unaffected, and version five's model and vectors are what make
 a successor's carryover check possible.
+
+> **Settled on 2026-08-29.** The target moved twice more — to
+> `economy-transition-v6` on 2026-08-15 and to `economy-transition-v7` on
+> 2026-08-19 — and M3.12b implemented version seven in the kernel.
+> Requirement 10 is met and the kernel waits for nothing.
 
 **The evidence debt M3.9b took on is repaid.** `economy-transition-v5` has a
 model, 550 vectors, and a verifier as of M3.9c. It is a fully evidenced contract
