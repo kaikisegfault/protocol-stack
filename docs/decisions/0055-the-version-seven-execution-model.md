@@ -210,9 +210,15 @@ the backing identity from the invariants; committing the pool the cycle found
 rather than the one it left; omitting the recovery pool entry from the
 projection; and filtering the winner derivation by span.
 
-Nothing in C++ executes a version-seven transition. The kernel holds version
-six's codec and its ten non-seat transitions, and the settlement and four seat
-transitions against version seven are the next slice.
+Nothing in C++ executed a version-seven transition when this record was
+accepted. The kernel held version six's codec and its ten non-seat transitions.
+**That was closed on 2026-08-29**: the C++20 kernel moved to version seven and
+now holds the settlement, the four seat transitions, the assignment prologue,
+and both conservation identities, and reproduces both version-seven vector
+files.
+Every mutation probe listed above is caught by the kernel as well as by the
+model, including the escrow-create and escrow-delete swap the correction above
+records — the `carried` scenario is what catches it.
 
 ## Compatibility and independent review
 

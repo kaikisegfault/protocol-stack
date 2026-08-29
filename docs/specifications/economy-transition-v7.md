@@ -1,7 +1,7 @@
 # Economy transition v7
 
-Status: Accepted M3 consensus transition contract; model, execution, and
-vectors recorded, C++ implementation not yet updated
+Status: Accepted M3 consensus transition contract; model, execution, vectors,
+and C++20 kernel implementation recorded
 
 This document defines the version-seven Founder Economy consensus transition. It
 is [`economy-transition-v6`](economy-transition-v6.md) with **the per-channel
@@ -73,10 +73,16 @@ exact compatibility boundary against versions one through six.
 It does not define the version-seven transaction ledger and its block execution,
 which mirror how version six separated its contract from its execution and which
 [ADR 0055](../decisions/0055-the-version-seven-execution-model.md) records; the
-C++20 kernel implementation, which is requirement 10; the four-node adversarial
-scenarios, which are requirement 13; direct-channel eligibility, which remains
-reserved; or anything else version six leaves unestablished, all of which is
-inherited unchanged.
+four-node adversarial scenarios, which are requirement 13; direct-channel
+eligibility, which remains reserved; or anything else version six leaves
+unestablished, all of which is inherited unchanged.
+
+**The C++20 kernel implements this contract**, which is requirement 10.
+`src/v7/` and `include/protocol/v7/` replaced version six's kernel rather than
+sitting beside it, under
+[ADR 0046](../decisions/0046-the-version-six-kernel-codec-replaces-version-four.md),
+whose rule is that the kernel compiles exactly one economy contract. They
+reproduce both vector files this document requires.
 
 ## Bindings
 
