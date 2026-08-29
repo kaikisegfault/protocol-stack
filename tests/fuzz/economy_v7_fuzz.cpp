@@ -1,9 +1,9 @@
-// The version-six decoders over arbitrary bytes.
+// The version-seven decoders over arbitrary bytes.
 //
-// Three entry points take untrusted input — the signed transaction, the
-// receipt, and the one variable-width state value — and all three are total:
-// they answer `nullopt` rather than throwing, reading out of bounds, or
-// depending on how the bytes were produced.
+// Four entry points take untrusted input — the signed transaction, the receipt,
+// the one variable-width state value, and the recovery pool record — and all
+// four are total: they answer `nullopt` rather than throwing, reading out of
+// bounds, or depending on how the bytes were produced.
 //
 // What this asserts beyond "does not crash" is the two properties consensus
 // rests on. **Decoding is deterministic**, so two nodes handed identical bytes
@@ -102,6 +102,20 @@ void fuzz_cycle_assignment(std::span<const std::uint8_t> input) {
   require(std::equal(reencoded->begin(), reencoded->end(), input.begin()));
 }
 
+// Version seven's own state value. It is fixed-width, so the interesting
+// property is not the width check but that a decoder handed forty arbitrary
+// octets always produces five legs that re-encode to exactly those octets —
+// a leg read at the wrong offset would round-trip to different bytes.
+void fuzz_recovery_pool(std::span<const std::uint8_t> input) {
+  const auto decoded = v7::decode_recovery_pool_value(input);
+  require(decoded.has_value() ==
+          v7::decode_recovery_pool_value(input).has_value());
+  if (!decoded) return;
+  const auto reencoded = v7::recovery_pool_value(*decoded);
+  require(reencoded.size() == input.size());
+  require(std::equal(reencoded.begin(), reencoded.end(), input.begin()));
+}
+
 }  // namespace
 
 extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data,
@@ -110,5 +124,6 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data,
   fuzz_transaction(input);
   fuzz_receipt(input);
   fuzz_cycle_assignment(input);
+  fuzz_recovery_pool(input);
   return 0;
 }
