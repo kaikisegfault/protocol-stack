@@ -153,6 +153,7 @@ set(
   src/v1/execution.cpp
   src/v1/genesis.cpp
   src/v1/ledger.cpp
+  src/v7/economy_assignment.cpp
   src/v7/economy_block.cpp
   src/v7/economy_body.cpp
   src/v7/economy_contract.cpp

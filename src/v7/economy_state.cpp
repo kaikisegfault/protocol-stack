@@ -55,11 +55,7 @@ Bytes typed_custody_key(std::uint8_t beneficiary_kind,
   return key;
 }
 
-Bytes carry_key(std::uint8_t channel_index) {
-  auto key = i::key_prefix(Entry::carry);
-  i::append_u8(key, channel_index);
-  return key;
-}
+Bytes recovery_pool_key() { return i::key_prefix(Entry::recovery_pool); }
 
 Bytes verifier_key_key() { return i::key_prefix(Entry::verifier_key); }
 
@@ -132,10 +128,23 @@ Bytes typed_custody_value(std::uint64_t amount_atomic) {
   return value;
 }
 
-Bytes carry_value(std::uint64_t carry_atomic) {
+Bytes recovery_pool_value(const RecoveryPool& legs) {
   Bytes value;
-  i::append_u64(value, carry_atomic);
+  value.reserve(8 * kRecoveryPoolLegs);
+  for (const auto amount : legs) i::append_u64(value, amount);
   return value;
+}
+
+std::optional<RecoveryPool> decode_recovery_pool_value(
+    std::span<const std::uint8_t> raw) {
+  if (raw.size() != 8 * kRecoveryPoolLegs) return std::nullopt;
+  RecoveryPool legs{};
+  for (std::size_t index = 0; index < kRecoveryPoolLegs; ++index) {
+    const auto leg = i::read_u64(raw, 8 * index);
+    if (!leg) return std::nullopt;
+    legs[index] = *leg;
+  }
+  return legs;
 }
 
 Bytes verifier_key_value(std::span<const std::uint8_t> public_key) {

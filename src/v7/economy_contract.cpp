@@ -108,9 +108,12 @@ constexpr std::array<std::uint8_t, 20> kKindScheme{
 };
 
 constexpr std::array<std::uint8_t, 5> kRetiredKinds{7, 8, 9, 11, 12};
-constexpr std::array<std::uint8_t, 2> kRetiredEntryKinds{9, 11};
+// Entry kind 7 held the ten per-channel carries and is version seven's own
+// retirement; 9 and 11 held the seat manager set and the HUB address set and
+// were version six's. A retired number is never reused.
+constexpr std::array<std::uint8_t, 3> kRetiredEntryKinds{7, 9, 11};
 
-constexpr std::array<std::size_t, 17> kEntryKeyBytes{
+constexpr std::array<std::size_t, 18> kEntryKeyBytes{
     kUnassigned,  // 0, never an entry kind
     5,            // 1  seat                        u32 seat id
     2,            // 2  channel                     u8 channel id
@@ -118,7 +121,7 @@ constexpr std::array<std::size_t, 17> kEntryKeyBytes{
     33,           // 4  referral_balance            identity hash
     33,           // 5  direct_decision             decision id
     34,           // 6  typed_custody               kind, beneficiary id
-    2,            // 7  carry                       u8 channel id
+    kUnassigned,  // 7  retired: carry
     1,            // 8  verifier_key
     kUnassigned,  // 9  retired: seat_manager
     33,           // 10 hub_identity                identity hash
@@ -128,13 +131,14 @@ constexpr std::array<std::size_t, 17> kEntryKeyBytes{
     33,           // 14 signer                      signer id
     33,           // 15 verified_user_enrollment    identity hash
     1,            // 16 verified_user_counter
+    1,            // 17 recovery_pool
 };
 
 // A second sentinel, for the one variable-width value: the cycle assignment,
 // whose width follows from a recorded bit count rather than from a table.
 constexpr std::size_t kVariableValue = static_cast<std::size_t>(-2);
 
-constexpr std::array<std::size_t, 17> kEntryValueBytes{
+constexpr std::array<std::size_t, 18> kEntryValueBytes{
     kUnassigned,     // 0
     82,              // 1  seat
     16,              // 2  channel
@@ -142,7 +146,7 @@ constexpr std::array<std::size_t, 17> kEntryValueBytes{
     24,              // 4  referral_balance
     0,               // 5  direct_decision
     8,               // 6  typed_custody
-    8,               // 7  carry
+    kUnassigned,     // 7  retired: carry
     32,              // 8  verifier_key
     kUnassigned,     // 9
     52,              // 10 hub_identity
@@ -152,6 +156,7 @@ constexpr std::array<std::size_t, 17> kEntryValueBytes{
     32,              // 14 signer
     24,              // 15 verified_user_enrollment
     8,               // 16 verified_user_counter
+    40,              // 17 recovery_pool             five u64 legs
 };
 
 template <std::size_t Size>

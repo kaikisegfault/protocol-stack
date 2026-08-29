@@ -1,4 +1,4 @@
-// Every conservation and structural equality a version-six state must satisfy.
+// Every conservation and structural equality a version-seven state must satisfy.
 //
 // All of them are equalities or exact bounds rather than loose ones, because a
 // bound would admit a defect that lost a count. The first structural one is what
@@ -49,20 +49,50 @@ void check_supply(const Ledger& ledger, std::vector<std::string_view>& failures)
   }
 }
 
-void check_carry_identity(const Ledger& ledger,
-                          std::vector<std::string_view>& failures) {
+// The two identities version seven states where version six stated one.
+//
+// **The channel identity** has two terms rather than three, because nothing is
+// moved out of `outstanding` any more:
+//
+//     issued(c) + outstanding(c) = assigned_permissions * leg(c)
+//
+// **The backing identity** is the one that makes "100% is assigned" checkable:
+//
+//     outstanding(c) = claimable(c) + recovery_pool(c)
+//
+// The channel identity alone cannot catch a stranded unit, because `outstanding`
+// is one number and a lost claim simply leaves it larger. Naming both halves
+// makes value created without a claimant and a claim destroyed without payment
+// two different failures, each an inequality against an exact figure.
+//
+// Version seven has no carry map to require empty. ADR 0055's Python model
+// subclasses version six's ledger and inherits one; this kernel *replaces*
+// version six under ADR 0046, so the field is gone rather than dead, and the
+// root's shape rules refuse entry kind 7 outright.
+void check_channel_identities(const Ledger& ledger,
+                              std::vector<std::string_view>& failures) {
+  const auto owed_per_channel = claimable(ledger);
+  if (!owed_per_channel) {
+    failures.push_back("a recorded cycle assignment does not decode");
+  }
   for (std::uint8_t channel = 0; channel < kChannelCount; ++channel) {
     const auto leg = base_permission_leg(channel);
     if (leg == 0) continue;
     std::uint64_t expected = 0;
     std::uint64_t actual = ledger.channel_issued[channel];
     const bool fits = product(ledger.assigned_permissions, leg, expected) &&
-                      sum_into(actual, ledger.channel_outstanding[channel]) &&
-                      sum_into(actual, ledger.carry[channel]);
+                      sum_into(actual, ledger.channel_outstanding[channel]);
     if (!fits || actual != expected) {
-      failures.push_back("a Founder Node channel breaks the carry identity");
+      failures.push_back("a Founder Node channel breaks the channel identity");
+    }
+    if (!owed_per_channel) continue;
+    std::uint64_t backing = (*owed_per_channel)[channel];
+    if (!sum_into(backing, ledger.pool[channel]) ||
+        backing != ledger.channel_outstanding[channel]) {
+      failures.push_back("a Founder Node channel breaks the backing identity");
     }
   }
+
   std::uint64_t expected = 0;
   std::uint64_t actual = ledger.channel_issued[kReferralChannel];
   const bool fits =
@@ -72,20 +102,25 @@ void check_carry_identity(const Ledger& ledger,
     failures.push_back("the referral channel breaks its identity");
   }
 
-  std::uint64_t owed = 0;
-  bool owed_fits = true;
+  // The referral channel keeps version six's identity unchanged, including the
+  // unreferred pool term: the referral leg has no winner split and therefore no
+  // remainder, so the recovery pool never touches it.
+  std::uint64_t referral_owed = 0;
+  bool referral_fits = true;
   for (const auto& [identity, balance] : ledger.referral) {
     (void)identity;
     if (balance.minted_atomic > balance.accrued_atomic) {
-      owed_fits = false;
+      referral_fits = false;
       break;
     }
-    owed_fits = sum_into(owed, balance.accrued_atomic - balance.minted_atomic);
-    if (!owed_fits) break;
+    referral_fits =
+        sum_into(referral_owed, balance.accrued_atomic - balance.minted_atomic);
+    if (!referral_fits) break;
   }
-  owed_fits = owed_fits && ledger.pool_minted <= ledger.pool_accrued &&
-              sum_into(owed, ledger.pool_accrued - ledger.pool_minted);
-  if (!owed_fits || owed != ledger.channel_outstanding[kReferralChannel]) {
+  referral_fits = referral_fits && ledger.pool_minted <= ledger.pool_accrued &&
+                  sum_into(referral_owed, ledger.pool_accrued - ledger.pool_minted);
+  if (!referral_fits ||
+      referral_owed != ledger.channel_outstanding[kReferralChannel]) {
     failures.push_back("referral outstanding is not what the balances owe");
   }
 }
@@ -184,7 +219,7 @@ void check_structure(const Ledger& ledger,
 std::vector<std::string_view> conservation_failures(const Ledger& ledger) {
   std::vector<std::string_view> failures;
   check_supply(ledger, failures);
-  check_carry_identity(ledger, failures);
+  check_channel_identities(ledger, failures);
   check_verified_user(ledger, failures);
   check_structure(ledger, failures);
   std::sort(failures.begin(), failures.end());
