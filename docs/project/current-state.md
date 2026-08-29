@@ -2692,7 +2692,8 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
-- Issue #196 and PR #200 are the M3.12b delivery. It moves the C++20 kernel from
+- Issue #196 and PR #200 are the M3.12b delivery, merged by rebase across
+  commits `ad4c59a` through `9538174` on `main`. It moves the C++20 kernel from
   `economy-transition-v6` to `economy-transition-v7`: `src/v6/` becomes
   `src/v7/` and gains `economy_assignment.cpp`, `include/protocol/v6/` becomes
   `include/protocol/v7/`, and the thirteen kernel test files and the fuzz target
@@ -2703,11 +2704,23 @@ behavior.
   for the surface version seven carries unchanged — and both kernel targets
   bind `founder-economy-manifest-v3`. No ctest entry is added or removed; two
   are renamed to version seven, and the fuzz smoke entry with them.
+  PR run 33269693064 on head `7774df5` passed the complete hosted matrix —
+  scope classification `full`, GCC and Clang debug, both sanitizers, and the
+  aggregate required check — in 10m02s, with **153 of 153 ctest entries
+  passing**. The job
+  logs confirm `economy-transition-v7-cpp`,
+  `economy-transition-v7-execution-cpp`, `economy-transition-v7-fuzz-smoke`,
+  `test-registration`, and all seven version-six entries running and passing,
+  which is what makes "version six's evidence is intact" a checked claim rather
+  than an assertion.
   **The first candidate failed the matrix for two independent reasons and both
   are recorded in the next-action section**: a blanket rename reached version
   six's own Python verifier registrations, which `test-registration` caught as a
   vector file no registered verifier reads; and GCC 13's `-Wdangling-reference`
   rejected seven call sites that compile clean under the GCC 12 on this machine.
+  Run 33269243050 then passed the full matrix on the repaired tree before the
+  last three commits were pushed, so the slice has two green matrices rather
+  than one.
 - Issue #197 and PR #198 are the M3.12a delivery, merged by rebase across commits
   `28567d1` through `90e13a7` on `main`. It adds two trace scenarios and takes
   `test-vectors/economy-transition-v7-execution.txt` from 412 vectors to 590, so
