@@ -508,6 +508,8 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     STATIC
       src/storage/archive_v1.cpp
       src/storage/snapshot_v1.cpp
+      src/storage/snapshot_v7.cpp
+      src/storage/snapshot_v7_entries.cpp
   )
   add_library(
     protocol_application_wire_fuzz
@@ -534,6 +536,10 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     tests/fuzz/snapshot_fuzz.cpp
   )
   add_executable(
+    storage_snapshot_v7_fuzz
+    tests/fuzz/snapshot_v7_fuzz.cpp
+  )
+  add_executable(
     storage_archive_fuzz
     tests/fuzz/archive_fuzz.cpp
   )
@@ -548,6 +554,11 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
   )
   target_link_libraries(
     storage_snapshot_fuzz
+    PRIVATE
+      protocol_storage_fuzz
+  )
+  target_link_libraries(
+    storage_snapshot_v7_fuzz
     PRIVATE
       protocol_storage_fuzz
   )
@@ -567,6 +578,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     economy_v7_fuzz
     protocol_storage_fuzz
     storage_snapshot_fuzz
+    storage_snapshot_v7_fuzz
     storage_archive_fuzz
     protocol_application_wire_fuzz
     application_wire_fuzz
@@ -607,6 +619,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       economy_v7_fuzz
       protocol_storage_fuzz
       storage_snapshot_fuzz
+      storage_snapshot_v7_fuzz
       storage_archive_fuzz
       protocol_application_wire_fuzz
       application_wire_fuzz
@@ -625,6 +638,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       kernel_genesis_fuzz
       economy_v7_fuzz
       storage_snapshot_fuzz
+      storage_snapshot_v7_fuzz
       storage_archive_fuzz
       application_wire_fuzz
   )
@@ -1688,6 +1702,15 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     NAME storage-snapshot-fuzz-smoke
     COMMAND
       storage_snapshot_fuzz
+      -seed=824311
+      -runs=512
+      -max_len=4096
+      -len_control=0
+  )
+  add_test(
+    NAME storage-snapshot-v7-fuzz-smoke
+    COMMAND
+      storage_snapshot_v7_fuzz
       -seed=824311
       -runs=512
       -max_len=4096
