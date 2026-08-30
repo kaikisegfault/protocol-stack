@@ -336,6 +336,20 @@ add_executable(
   storage_snapshot_v1_tests
   tests/storage/snapshot_v1_test.cpp
 )
+# The two scenario translation units are the kernel execution suite's own, reused
+# rather than restated: the recorded scenarios are what a snapshot is checked
+# against, and a second copy of them would be a second opinion about the states
+# whose roots the vectors fix.
+add_executable(
+  storage_snapshot_v7_tests
+  tests/storage/snapshot_v7_test.cpp
+  tests/storage/snapshot_v7_fixture.cpp
+  tests/storage/snapshot_v7_round_trip.cpp
+  tests/storage/snapshot_v7_refusals.cpp
+  tests/storage/snapshot_v7_entry_refusals.cpp
+  tests/kernel/economy_v7_trace.cpp
+  tests/kernel/economy_v7_scenarios_test.cpp
+)
 add_executable(
   storage_archive_v1_tests
   tests/storage/archive_v1_test.cpp
@@ -388,6 +402,12 @@ target_link_libraries(
 )
 target_link_libraries(
   storage_snapshot_v1_tests
+  PRIVATE
+    protocol_storage
+    protocol_stack_sqlite
+)
+target_link_libraries(
+  storage_snapshot_v7_tests
   PRIVATE
     protocol_storage
     protocol_stack_sqlite
@@ -446,6 +466,7 @@ set(
   storage_sqlite_sequence_tests
   storage_sqlite_vfs_failure_tests
   storage_snapshot_v1_tests
+  storage_snapshot_v7_tests
   storage_archive_v1_tests
   application_v1_tests
   application_wire_v1_tests
@@ -647,6 +668,12 @@ add_test(
     "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
     "${PROJECT_SOURCE_DIR}/test-vectors/founder-economy-manifest-v3.txt"
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v3.txt"
+)
+add_test(
+  NAME version-seven-snapshot
+  COMMAND
+    storage_snapshot_v7_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7-execution.txt"
 )
 add_test(
   NAME ledger-transition-cpp
