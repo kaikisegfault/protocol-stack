@@ -192,6 +192,7 @@ add_library(
     src/storage/sqlite_snapshot_v1.cpp
     src/storage/snapshot_v1.cpp
     src/storage/snapshot_v7.cpp
+    src/storage/snapshot_v7_assignments.cpp
     src/storage/snapshot_v7_entries.cpp
 )
 add_library(
@@ -509,6 +510,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       src/storage/archive_v1.cpp
       src/storage/snapshot_v1.cpp
       src/storage/snapshot_v7.cpp
+      src/storage/snapshot_v7_assignments.cpp
       src/storage/snapshot_v7_entries.cpp
   )
   add_library(

@@ -46,10 +46,12 @@ void check_still_executes(const v7::Ledger& original, const v7::Ledger& restored
               name + ": the next state root differs after a restore");
 }
 
-// The property that makes the payload-root gate unreachable through today's
-// decoders: the rebuild is lossless, so the payload's entry list and the
-// restored ledger's own projection are the same bytes. Asserting it is what
-// turns "the gate never fires" into a checked fact rather than an assumption.
+// The property that keeps the payload-root gate quiet: the rebuild is lossless,
+// so the payload's entry list and the restored ledger's own projection are the
+// same bytes. Asserting it turns "the gate never fires" into a checked fact
+// rather than an assumption — and the gate itself is not decoration, because a
+// probe that removes the channel-index bound admits an entry the ledger cannot
+// hold and that gate is the one that refuses it.
 void check_projection_is_lossless(const v7::Ledger& restored,
                                   const Payload& payload,
                                   const std::string& name) {

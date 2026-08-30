@@ -205,6 +205,11 @@ SnapshotV7EncodeResult encode_snapshot_v7(const v7::Ledger& ledger) {
   append(payload, std::span<const std::uint8_t>(ledger.verifier_key));
   append_u64(payload, static_cast<std::uint64_t>(accounts.size()));
   append_u64(payload, static_cast<std::uint64_t>(economy.size()));
+  // The decoder reads every prefix field at a literal offset, so a field added
+  // or removed above would leave those offsets reading the wrong octets while
+  // the total-size check below still passed. `encode_genesis` guards its own
+  // prefix the same way and for the same reason.
+  if (payload.size() != kPrefixSize) return SnapshotV7Error::size_overflow;
   for (const auto& account : accounts) {
     append(payload, std::span<const std::uint8_t>(account.account_id));
     append_u64(payload, account.balance);
