@@ -455,6 +455,23 @@ both. Ten of the fourteen kinds had no version-seven execution evidence, and
 swapping two handlers in version seven's own dispatch table passed every vector
 until the two scenarios that close the gap were added.
 
+ADR 0056 records the version-seven state snapshot, which is the first artifact
+that lets a version-seven state leave memory and the first dependency
+requirement 13 was actually waiting for. The payload is the state root's own
+inputs and nothing else, so the root cannot end up checking the snapshot against
+itself, and `assigned_permissions` is re-derived from the assignment records
+rather than encoded, because nothing in the root commits to it and the channel
+identity is stated over exactly that figure. Its two findings are worth more than
+the format. **The conservation gate is the only one an adversary cannot defeat**:
+an edited state can have its root recomputed and its digest resealed, so both
+root gates pass by construction, and only an identity that must still hold
+refuses it — which is why the permission count must be derived rather than read.
+And the kernel's cycle-assignment decoder does not require the bitmap pad bits to
+be clear, while the mint's own walk would read a set pad bit as an accrued seat;
+it is unreachable on-chain and reachable through a file, the accepted
+specification fixes the bitmap width without stating the rule, so the snapshot
+refuses it and a later transition version should state it outright.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
