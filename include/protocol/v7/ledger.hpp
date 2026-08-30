@@ -42,7 +42,6 @@ using Account = protocol::v1::Account;
 // `MALFORMED_TRANSACTION` and result `1` is `ZERO_AMOUNT`.
 using AdmissionError = protocol::v1::AdmissionError;
 
-inline constexpr std::size_t kChannelCount = 10;
 inline constexpr std::uint64_t kMaxU64 = ~std::uint64_t{0};
 
 // The two settlement derivations below read a whole state, and the state is

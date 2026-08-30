@@ -75,6 +75,13 @@ inline constexpr std::uint32_t kMaxExemptSlotMask = (1U << kSlotsPerWindow) - 1U
 inline constexpr std::uint64_t kMintAccumulationCap = 30;
 inline constexpr std::uint64_t kAssignmentLagWindows = 2;
 
+// The accepted manifest's ten issuance channels. It sits with the codec rather
+// than with the ledger that holds ten balances, because it bounds a channel
+// *key* before it bounds a channel *balance*: a reader handed an economy entry
+// has to refuse a channel index no manifest defines before anything downstream
+// can hold a figure for it.
+inline constexpr std::size_t kChannelCount = 10;
+
 // Channel 8. The population and the period are founder-directed and the rate
 // follows from them and the accepted cap with no remainder.
 inline constexpr std::uint8_t kVerifiedUserChannel = 8;
