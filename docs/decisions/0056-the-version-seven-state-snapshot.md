@@ -126,9 +126,15 @@ the conservation gate is only as good as the figure it is stated over.
 **The second gate is unreachable through today's decoders and is kept anyway.**
 The rebuild is lossless, so the payload's entry list and the restored ledger's
 projection are the same bytes — a property the tests assert rather than assume,
-for each of the five recorded scenarios. The gate fires the day a `Ledger` field
-or an entry kind is added on one side and forgotten on the other, which is
-exactly the failure a reader would otherwise diagnose as a corrupted file.
+for each of the five recorded scenarios.
+
+It fires the moment a decoder admits an entry the projection will not write back,
+which is a real failure rather than a hypothetical one: a mutation probe that
+removes the channel-index bound admits an eleventh channel, the rebuilt ledger
+has nowhere to keep it, and **this gate is what refuses the payload**. That is
+the shape every future divergence will have — a `Ledger` field or an entry kind
+added on one side and forgotten on the other — and without the gate a reader
+would diagnose it as a corrupted file.
 
 ### Evidence is the recorded execution scenarios
 

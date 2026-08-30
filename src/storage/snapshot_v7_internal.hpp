@@ -8,7 +8,8 @@
 // two ordered sections, the digest, and the three restore gates.
 // `snapshot_v7_entries.cpp` owns the value decoders, one per entry kind, each
 // the exact inverse of the encoder version six accepted and version seven
-// carries unchanged.
+// carries unchanged. `snapshot_v7_assignments.cpp` owns the one variable-width
+// record and the permission count summed back out of the same octets.
 
 #include "protocol/storage/snapshot_v7.hpp"
 
@@ -17,6 +18,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <span>
 
 namespace protocol::storage::snapshot_v7 {
@@ -51,6 +53,14 @@ struct Rebuild {
 // The caller has already established that keys strictly increase, so no kind
 // needs its own duplicate check.
 [[nodiscard]] bool apply_entry(Rebuild& rebuild, const v7::EconomyEntry& entry);
+
+// The one variable-width value, defined beside the figure derived from the same
+// records in `snapshot_v7_assignments.cpp`.
+[[nodiscard]] bool apply_cycle_assignment(Rebuild& rebuild,
+                                          std::span<const std::uint8_t> key,
+                                          std::span<const std::uint8_t> value);
+// `nullopt` when a recorded assignment will not decode or the sum leaves `u64`.
+std::optional<std::uint64_t> derive_assigned_permissions(const v7::Ledger& ledger);
 
 // Every fixed entry present, and `assigned_permissions` re-derived from the
 // assignment records rather than read from the payload.

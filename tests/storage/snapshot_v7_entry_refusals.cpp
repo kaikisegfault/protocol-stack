@@ -9,6 +9,7 @@
 
 #include "snapshot_v7_fixture.hpp"
 
+#include <algorithm>
 #include <bit>
 #include <variant>
 
@@ -76,9 +77,23 @@ void check_seat(const Payload& base, const ps::SnapshotParametersV7& parameters)
 
 void check_channel_and_pools(const Payload& base,
                              const ps::SnapshotParametersV7& parameters) {
+  // An eleventh channel is *added* rather than an existing one renamed: renaming
+  // leaves the manifest's tenth channel absent, and the presence check refuses
+  // that — so the first attempt passed while proving nothing about the index
+  // bound. The bound guards a write into a ten-element array, so it is worth
+  // isolating.
   auto undefined_channel = base;
-  last_of(undefined_channel, v7::Entry::channel).key[1] =
-      static_cast<std::uint8_t>(v7::kChannelCount);
+  const auto last_channel = std::find_if(
+      undefined_channel.economy.rbegin(), undefined_channel.economy.rend(),
+      [](const v7::EconomyEntry& entry) {
+        return !entry.key.empty() &&
+               entry.key.front() == static_cast<std::uint8_t>(v7::Entry::channel);
+      });
+  pv::require(last_channel != undefined_channel.economy.rend(),
+              "the fixture carries a channel entry");
+  auto eleventh = *last_channel;
+  eleventh.key[1] = static_cast<std::uint8_t>(v7::kChannelCount);
+  undefined_channel.economy.insert(last_channel.base(), eleventh);
   require_refusal(undefined_channel, parameters, ps::SnapshotV7Error::invalid_state,
                   "a channel index no manifest defines");
 
