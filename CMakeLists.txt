@@ -191,6 +191,8 @@ add_library(
     src/storage/sqlite_schema_v1.cpp
     src/storage/sqlite_snapshot_v1.cpp
     src/storage/snapshot_v1.cpp
+    src/storage/snapshot_v7.cpp
+    src/storage/snapshot_v7_entries.cpp
 )
 add_library(
   protocol_application
