@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-08-29
+Last updated: 2026-08-30
 
 ## Phase
 
@@ -146,10 +146,111 @@ met against version seven: the kernel executes the contract, and the C++ and the
 Python model reproduce both `test-vectors/economy-transition-v7.txt` and
 `test-vectors/economy-transition-v7-execution.txt`. What remains is
 `calendar-v1`, the HUB verification architecture of ADR 0048, and requirement
-13 — the four-node adversarial scenarios, which has not started. **A chain still
-does not run**: the kernel executes blocks against an in-memory ledger, and
-wiring it to the storage and consensus adapters is requirement 13's work rather
-than this slice's.
+13 — the four-node adversarial scenarios, which has not started.
+
+**M3.13a delivered the version-seven state snapshot on 2026-08-30**, which is the
+first artifact that lets a version-seven state leave memory. ADR 0056 records it.
+**It also corrected the recorded next action.** M3.12b's closeout named
+`calendar-v1` "the only [contract] requirement 13 depends on"; version seven
+mentions a month in one descriptive sentence and executes nothing against one, so
+what requirement 13 was actually waiting for was a state that can be written
+down. `calendar-v1` is still owed and is not it.
+
+**A chain still does not run.** The kernel executes blocks against an in-memory
+ledger, and a snapshot is a payload rather than a store: nothing yet writes one
+to disk, reopens it, and continues. Wiring the kernel to the storage and
+consensus adapters is requirement 13's work.
+
+### How M3.13a was delivered
+
+**Storage artifacts follow ADR 0007's precedent** — an ADR and an implementation
+with evidence, not a transition specification — because a snapshot is node-local
+and consensus-visible only through the root it must reproduce. No accepted vector
+file changed and no new one was added: recording a snapshot's bytes would pin an
+operational format as though it were a contract and oblige every future storage
+change to re-version a normative file.
+
+**The payload is the state root's own inputs and nothing else** — the summary,
+the ordered account map, and the ordered economy map, in the shapes `state_root`
+takes them, with the economy section using the accepted `bytes(x)` primitive so
+it is literally the concatenation of the leaves the root is taken over. Encoding
+a second projection would create a second opinion about what a state *is*, and
+the root would then be checking the snapshot against itself. Two genesis
+parameters ride beside the summary because a restored ledger has to keep
+executing rather than merely verify: the fixed fee and the verifier key. The
+verifier key is also an economy entry, so a payload carries it twice and the two
+copies must agree.
+
+**`assigned_permissions` is re-derived, never encoded**, and that is the load
+bearing decision rather than a tidiness one. It is not a state entry, so nothing
+in the root commits to it, and the channel identity is stated over exactly that
+figure. A cycle's contributing count is its accrued seats plus its reallocated
+ones, and the record commits to both.
+
+**The restore ends with three gates and only the third is one an adversary cannot
+defeat.** The rebuilt ledger's projection must reproduce the payload's root; the
+payload's entries must produce the same root; and `conservation_failures` must be
+empty. **An attacker who edits a state can recompute its root and reseal its
+digest, so both root gates pass by construction.** Only an identity that must
+still hold refuses an edited state — which is precisely why the permission count
+has to be derived rather than read. Two tests are resealed payloads, and one of
+them deletes an assignment record: a snapshot that carried the count could have
+lowered it to match.
+
+**Each value decoder fails closed on a value no transition could have written**,
+not merely on the wrong width, and each refusal names its subject where a root
+mismatch would say only that something is wrong. Refusing them is free: a
+snapshot is node-local, so a rule stricter than the kernel's own decoder changes
+no accepted state.
+
+**One of those rules is stricter than the kernel and the difference is recorded
+rather than fixed here.** `bitmap()` never sets a bit at or above `bitmap_bits`,
+but `decode_cycle_assignment_value` does not require the pad bits to be clear and
+`bit_is_set` bounds itself by the packed width rather than the recorded count —
+so a record with a pad bit set would be read as an accrued seat by the mint's own
+walk. **It is unreachable on-chain and reachable through a file.** The accepted
+specification fixes the bitmap width and does not state the pad rule, so the
+kernel is conforming and tightening its decoder would be a compatibility change
+rather than a fix. The snapshot refuses it; a later transition version should
+state the rule outright.
+
+**Evidence is a third source rather than a second opinion of the encoder.** For
+each of the five scenarios in `test-vectors/economy-transition-v7-execution.txt`
+the final ledger is snapshotted, restored, and required to reproduce that
+scenario's **recorded** `final_state_root` — a figure produced by a model that
+knows nothing about snapshots. A round trip compared only against the encoder
+would pass for a matched pair of mistakes. Each scenario also requires the
+restored ledger to re-encode to identical bytes, to project entry-for-entry to
+the payload it came from, and to execute the next block to the same block
+identifier as the ledger it was taken from, which is the only question a matching
+root cannot answer.
+
+**Twenty-six mutation probes were run and three of them found a test that was
+passing for the wrong reason.** A pad-bit case was caught by the contributing
+bound rather than by the padding rule it named, so it now compensates the counts
+the extra bit disturbs. A channel-index case renamed the tenth channel, which
+left the manifest's tenth absent and was caught by the presence check, so it now
+*adds* an eleventh — and that bound guards a write into a ten-element array, so
+isolating it mattered. Two further probes confirm the suite reads the recorded
+file rather than itself: corrupting one recorded root fails the round trip, and
+making the test's own payload builder disagree with the encoder fails before any
+refusal is constructed.
+
+**Re-aiming the channel probe also showed the payload-root gate is not
+decoration.** With the bound removed the eleventh channel is admitted, the
+rebuilt ledger has nowhere to keep it, and that second gate is what refuses the
+payload. That is the shape every future divergence between an entry kind and the
+`Ledger` will have, and without the gate a reader would diagnose it as a
+corrupted file.
+
+**A self-review after the first green matrix found two more things.** The decoder
+reads every prefix field at a literal offset and nothing checked that the encoder
+wrote that many, so a field added or removed would have left those offsets
+reading the wrong octets while the total-size check still passed; `encode_genesis`
+guards its own prefix the same way and this one now does too. And the entry
+decoders were over the size target with a real seam inside them, so the cycle
+assignment and the permission count summed out of the same octets moved to their
+own translation unit.
 
 ### How M3.12b was delivered
 
@@ -2305,6 +2406,15 @@ slices.
   `economy-transition-v7` is the first contract to bind version three; every
   other simulator, transition model, and kernel path still binds version two,
   which remains correct against it.
+- **A version-seven state can be written down and read back.**
+  `protocol::storage::snapshot_v7` encodes a whole `Ledger` to canonical bytes
+  and restores it to a ledger that keeps executing: the summary, the ordered
+  account map, and the ordered economy map, with `assigned_permissions`
+  re-derived from the assignment records rather than encoded. A restore hands
+  back a state some sequence of blocks could have produced or it hands back
+  nothing, and the conservation gate is the only one a resealed forgery does not
+  defeat. It is a payload rather than a store: nothing yet writes one to disk and
+  reopens it.
 - The accepted `economy-transition-v7` contract is version six with the
   per-channel carry deleted from state and replaced by a recovery pool. Its
   independent Python model runs the respecified settlement — a zero-winner
@@ -2692,6 +2802,28 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #202 and PR #205 are the M3.13a delivery, merged by rebase across
+  commits `8d491b2` through `61064ab` on `main`. It adds
+  `include/protocol/storage/snapshot_v7.hpp`, four translation units under
+  `src/storage/`, five test translation units under `tests/storage/`, one fuzz
+  target, and ADR 0056. `kChannelCount` moves from `include/protocol/v7/ledger.hpp`
+  to `include/protocol/v7/economy.hpp`, because it bounds a channel *key* before
+  it bounds a channel *balance*. **No accepted vector file changes and no new one
+  is added.** Two ctest entries are added — `version-seven-snapshot` and
+  `storage-snapshot-v7-fuzz-smoke` — so the suite goes from 146 to 147 entries in
+  the debug presets and from 153 to 155 under `clang-sanitizers`.
+  **The slice has two green matrices rather than one.** PR run 33333211282 on head
+  `3679635` passed the complete hosted matrix — scope classification `full`, GCC
+  and Clang debug, both sanitizers, and the aggregate required check — with
+  **147 of 147** ctest entries passing in the debug presets and **155 of 155**
+  under `clang-sanitizers`, and the job logs confirm both new entries running and
+  passing. **A self-review on that green tree then found four things**, so the
+  final commit adds the prefix width guard, splits the assignment record out of
+  the entry decoders, and re-aims two refusal tests that were passing for the
+  wrong reason. PR run 33333784418 on head `abc1591` passed the same complete
+  matrix on that tree, with the same counts and the same two entries confirmed in
+  the logs. Push run 33334302566 then passed the same matrix on the merged
+  commit `61064ab`.
 - Issue #196 and PR #200 are the M3.12b delivery, merged by rebase across
   commits `ad4c59a` through `9538174` on `main`. It moves the C++20 kernel from
   `economy-transition-v6` to `economy-transition-v7`: `src/v6/` becomes
@@ -3404,12 +3536,20 @@ identities — and reproduces both version-seven vector files. Requirements 10 a
 
 **What is missing now is everything between a block and a network.** The kernel
 executes blocks against an in-memory ledger. It is not wired to the SQLite
-owning store, to the archive, or to the CometBFT adapter, so no state it
-produces survives a restart and no two nodes agree on one. That wiring is
-requirement 13's four-node adversarial scenarios, which have not started, and it
-is the largest single remaining piece of `first-goal.md`.
+owning store, to the archive, or to the CometBFT adapter, so no state it produces
+survives a restart and no two nodes agree on one. That wiring is requirement 13's
+four-node adversarial scenarios, which have not started, and it is the largest
+single remaining piece of `first-goal.md`.
 
-**Two contracts are also still owed, and neither blocks requirement 13.**
+**As of 2026-08-30 the first brick of it is laid and the gap is one step
+narrower.** A version-seven state can be encoded to canonical bytes and restored
+to a ledger that keeps executing, which is what "two replicas agree on one state"
+needs before it can be asked. **What a snapshot is not is a store**: nothing yet
+writes one to a file, reopens it after a process ends, and continues from it, and
+until something does, "survives a restart" remains a claim rather than evidence.
+
+**Two contracts are also still owed, and neither blocks requirement 13.** That
+was recorded the other way round at the close of M3.12b and M3.13a corrected it.
 `calendar-v1` has to fix the consensus timestamp's monotonicity rule and
 acceptance tolerance and the calendar-month boundary derived from it, because
 the tolerance is consensus-visible and a proposer can move a month boundary
@@ -3609,75 +3749,55 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.13a: the version-seven state snapshot and restore**, which
-is issue #202. Storage artifacts follow ADR 0007's precedent — an ADR and
-implementation with vectors, not a transition specification — because a
-snapshot is node-local and consensus-visible only through the root it must
-reproduce.
+Milestone slice **M3.13b: the version-seven owning store**, which is the next
+brick under requirement 13 and the one M3.13a's snapshot exists to make
+possible. It follows ADR 0007's SQLite adapter, whose version-one form is
+`src/storage/sqlite_ledger.cpp` with `sqlite_schema_v1.cpp`,
+`sqlite_snapshot_v1.cpp`, and `sqlite_fault_injection.cpp` beside it.
 
-**This corrects the next action M3.12b's own closeout recorded, and the
-correction is the useful part.** That closeout named `calendar-v1` and called it
-"the last contract the pivot left unwritten and the only one requirement 13
-depends on". **The second half is wrong.** Version seven mentions a month in one
-descriptive sentence and executes nothing against one; the unreferred pool's
-payout — "the month, the ranking snapshot, and the payout transition" — is
-explicitly unestablished in version six and version seven alike. A calendar
-written before the payout that needs it is machinery with no caller, which
-`CLAUDE.md` names as the thing to defer. `calendar-v1` is still owed. It is not
-what requirement 13 is waiting for.
+**The slice owes a store, not a serialiser.** M3.13a produced a *payload*: bytes
+that a whole `Ledger` encodes to and restores from, with three gates and
+twenty-six probed refusals. Nothing yet writes one to a file, reopens it after a
+process ends, and continues from it. Until something does, "no state survives a
+restart" is still true of this repository.
 
-**What requirement 13 is waiting for is that the kernel's state cannot be
-written down.** It executes blocks against an in-memory ledger, so nothing it
-produces
-survives a restart and no two nodes can be shown to agree on one. "Adversarial
-four-node economic scenarios through restart and recovery, proving deterministic
-replica agreement on state roots" cannot begin until a state can be snapshotted
-and restored.
-
-The slice owes: a canonical snapshot payload over what the state root already
-commits to — the summary, the ordered account map, and the ordered economy
-map; the value decoders each entry kind needs, every one the exact inverse of
-the encoder version six accepted and version seven carries unchanged; a restore
-that
-rebuilds a `Ledger` and re-derives `assigned_permissions` from the assignment
-records rather than trusting an encoded copy; an integrity check that recomputes
-the version-seven state root; a fuzz target over the snapshot decoder; and the
-ADR.
-
-**Its evidence is already available and is a third source rather than a second
-opinion of the encoder.** For each of the five scenarios in
-`test-vectors/economy-transition-v7-execution.txt`: snapshot the final ledger,
-restore it, and require the restored ledger to reproduce that scenario's
-**recorded** `final_state_root` — a figure the kernel does not choose.
-
-**An exploratory pass was written and discarded** when the session concluded,
-because this is the next slice rather than the one in progress. It compiled
-clean under both compilers with `-Wall -Wextra -Wpedantic -Werror` and had no
-tests. Issue #202 carries what it settled, including the one move to make first:
-`kChannelCount` belongs in `economy.hpp` rather than `ledger.hpp`, because it
-bounds a channel key before it bounds a channel balance, and everything else
-depends on that compiling.
-
-**`calendar-v1` remains owed** and is the slice after, unless the unreferred
-pool's payout is specified first, in which case it becomes that slice's
-dependency rather than a free-standing one. It must fix the consensus
-timestamp's monotonicity rule and acceptance tolerance and the calendar-month
-boundary derived from them. **The tolerance is consensus-visible**: a proposer
-can move a month boundary within it, so it must be a stated parameter rather
-than an adapter default, and the rule must be statable in a form any consensus
-adapter can satisfy, because CometBFT's own time is a median of validator
-clocks.
+**The one piece of evidence it must carry, because the snapshot alone does not
+establish it, is mid-scenario restart equivalence.** Take one of the five
+recorded scenarios, execute it to block *k*, persist, end the process, reopen,
+execute the remaining blocks, and require the **recorded** `final_state_root` —
+the same third source M3.13a used, asked a harder question. The snapshot's own
+tests restore a *final* ledger and execute one further block; they do not
+establish that a chain interrupted in the middle of its history resumes on the
+same trajectory, which is exactly what "through restart and recovery" means.
 
 **Then, in order, each its own slice:**
 
+* the CometBFT adapter and application layer carrying version-seven
+  transactions, which is what turns a store into a node;
+* requirement 13 proper, the four-node adversarial scenarios;
+* `calendar-v1`, which must fix the consensus timestamp's monotonicity rule and
+  acceptance tolerance and the calendar-month boundary derived from them. **The
+  tolerance is consensus-visible**: a proposer can move a month boundary within
+  it, so it must be a stated parameter rather than an adapter default, and the
+  rule must be statable in a form any consensus adapter can satisfy, because
+  CometBFT's own time is a median of validator clocks. It belongs with the
+  unreferred pool's payout — the month, the ranking snapshot, and the payout
+  transition — which is unestablished in version six and version seven alike;
 * the HUB verification architecture of ADR 0048, which needs its threat model,
   with the biometric stabilization scheme named as requiring independent
-  cryptographic review before anything rests on it;
-* requirement 13, the four-node adversarial scenarios, which has not started and
-  is the largest single remaining piece. It is where the kernel meets the SQLite
-  owning store, the archive, and the CometBFT adapter for the first time: the
-  kernel executes blocks against an in-memory ledger today, so nothing it
-  produces survives a restart and no two nodes agree on one.
+  cryptographic review before anything rests on it.
+
+**One consensus-visible rule M3.13a found and deliberately did not fix.**
+`decode_cycle_assignment_value` does not require an assignment record's bitmap
+pad bits to be clear, and `bit_is_set` bounds itself by the packed width rather
+than by the recorded bit count, so a record with a pad bit set would be read as
+an accrued seat by the mint's own walk. It is **unreachable on-chain** — every
+record a block writes comes from `bitmap()`, which never sets one — and reachable
+through a file, which is why the snapshot decoder refuses it. The accepted
+specification fixes the bitmap width and does not state the pad rule, so the
+kernel is conforming and tightening its decoder would be a compatibility change
+rather than a fix. ADR 0056 records it; **a later transition version should state
+the rule outright**, and that is a `change-protocol` slice rather than a repair.
 
 **One cost requirement 13 will hit, recorded now rather than discovered then.**
 `conservation_failures` calls `claimable`, which is the mint's walk run once per
@@ -3685,12 +3805,25 @@ seat over up to thirty assignment records each. That is ADR 0055's decision and
 it is right — a second walk would make the backing identity check the kernel
 against itself — but it is `O(seats x 30)` per block, and a cycle assignment
 record at the 100,000-seat capacity is about 25 KB. At capacity the invariant
-would decode on the order of gigabytes per block. **Nothing about that is
-consensus-visible**: the identity either holds or it does not, so a node may
-cache or incrementalise the walk without changing a single accepted state. It is
-an implementation cost rather than a contract defect, and it has not been paid
-because no fixture yet runs at capacity. Do not "fix" it by writing a second
-walk.
+would decode on the order of gigabytes per block. **The snapshot restore now runs
+that same walk once per restore**, which is the right place for it and the same
+cost. **Nothing about it is consensus-visible**: the identity either holds or it
+does not, so a node may cache or incrementalise the walk without changing a
+single accepted state. It is an implementation cost rather than a contract
+defect, and it has not been paid because no fixture yet runs at capacity. Do not
+"fix" it by writing a second walk.
+
+**What the snapshot looks like now, so a later session does not rediscover it.**
+`protocol::storage::snapshot_v7` is one public header and four translation
+units: `snapshot_v7.cpp` owns the framing and the three gates,
+`snapshot_v7_entries.cpp` the fixed-width value decoders and the dispatch,
+`snapshot_v7_assignments.cpp` the one variable-width record and the permission
+count summed back out of the same octets, and `snapshot_v7_internal.hpp` the
+seam. The payload's magic is version one's `PSSN` with a version field of 7, so
+version one's decoder recognises the family and answers `unsupported_version`
+rather than `malformed`. The prefix is 126 octets and the encoder checks that it
+wrote exactly that many, because the decoder reads every prefix field at a
+literal offset.
 
 **What the kernel looks like now, so a later session does not rediscover it.**
 `src/v7/` holds seventeen sources and `include/protocol/v7/` two headers.
@@ -3743,7 +3876,19 @@ g++ -std=c++20 -O0 -I include -I src -I tests -I <shim> \
 
 links either kernel test target in about eleven seconds, and the binary takes
 the same vector-file arguments CMake passes it. **That is what made thirteen
-mutation probes affordable in M3.12b**; without it each probe is a hosted run.
+mutation probes affordable in M3.12b and twenty-six in M3.13a**; without it each
+probe is a hosted run.
+
+**M3.13a extended it to the storage tests and the pattern is worth keeping.**
+Adding `src/storage/snapshot_v7*.cpp tests/storage/snapshot_v7_*.cpp
+tests/kernel/economy_v7_trace.cpp tests/kernel/economy_v7_scenarios_test.cpp`
+links the snapshot suite with no SQLite at all, because the snapshot touches
+none. **Compile the stable translation units to objects once and recompile only
+the mutated one**, which takes a probe from about twenty seconds to about four
+and is what made twenty-six of them affordable in one session. Beware deleting
+the cached objects with a glob: `rm obj/snapshot_v7*.o` also removes the test
+entry point and the fixture, and the relink then fails for a reason that has
+nothing to do with the probe.
 Its one known limit is that it does not reproduce libsodium's rejection of
 small-order public keys, so `tests/kernel/primitives_test.cpp` fails under it at
 that assertion and passes on the hosted matrix. **Run Clang locally before
@@ -3757,9 +3902,21 @@ flag explicitly and the mutation never reached the executed path. M3.12a ran one
 that substituted a line for itself. **M3.12b ran a third**: an "absorb after
 contributing" probe that added the dust before subtracting what was taken and
 dropped the later addition, which cancels exactly because a cycle absorbs either
-the whole pool or nothing. **A probe that passes has proved nothing until you
-have checked that it changed the code the test runs**, and the cheapest way to
-check is to make it fail on purpose first.
+the whole pool or nothing. **M3.13a ran two more, and both were tests caught by a
+*different* rule than the one they named**: a bitmap pad bit that the
+contributing bound refused first, and a channel index that the fixed-entry
+presence check refused first because renaming the tenth channel also removed it.
+Both are now written to compensate whatever else the mutation disturbs, so only
+the rule under test can refuse them. **A probe that passes has proved nothing
+until you have checked that it changed the code the test runs**, and the cheapest
+way to check is to make it fail on purpose first.
+
+**M3.13a's second re-aim paid twice, which is the argument for doing it at all.**
+Isolating the channel-index case did not only fix the test: with the bound
+removed, the eleventh channel is admitted, the rebuilt ledger has nowhere to keep
+it, and the snapshot's *second* root gate is what refuses the payload — which
+demonstrated that a gate the session had written down as unreachable is the one
+that catches an entry kind the `Ledger` cannot hold.
 
 **One probe in M3.12b passed for a better reason and it is the pattern to
 repeat.** Removing the backing identity from `conservation_failures` passed,
@@ -3795,7 +3952,42 @@ same count rather than reading it back.
 
 ## Blockers
 
-**None for M3.13a.** M3.12b ran the founder-decision gate and **passed** it. It
+**None for M3.13b.**
+
+**M3.13a ran the founder-decision gate and passed it.** It enumerated seventeen
+decisions the slice had to settle — whether the snapshot is a storage artifact or
+a kernel one; whether it is recorded by an ADR or a transition specification;
+whether a new accepted vector file is added; the magic, the version
+discriminator, the prefix layout, and the field order; which genesis parameters
+ride beside the summary and whether the verifier key's two copies must agree;
+whether `assigned_permissions` is encoded or re-derived; the strictness rule each
+value decoder enforces; whether the assignment record's bitmap pad bits are
+refused; whether ordering is checked at the parse or at the root; the three
+restore gates and their order; the error enumeration; the digest domain label;
+which vector file the tests read and what they compare against; whether
+`kChannelCount` moves to the codec header; the test target and CMake
+registration; and the fuzz target's shape. **Every one is fixed by ADR 0007's
+precedent, issue #202's recorded design, the accepted `economy-transition-v7`
+specification, `docs/engineering/verification.md`, or `CLAUDE.md`'s rule that
+storage integrations remain replaceable adapters — or is encoding, mechanism, or
+layout**, which `founder-constitution.md` names as engineering work. **None is
+consensus-visible at all**: a snapshot is node-local and reaches consensus only
+through a root it must reproduce, so none of them sets or changes supply,
+allocation, beneficiaries, Founder ownership, creator hierarchy, commercial
+routing, AI institutional authority, bridge scope, content permanence, or what a
+participant must do, own, run, or receive. No question was asked because none was
+reserved.
+
+**One decision inside that set was classified deliberately rather than by
+default, and it is the one worth naming.** Refusing an assignment record whose
+bitmap pad bits are set makes the snapshot stricter than the kernel's own
+decoder. That would be a compatibility decision if it were made in the kernel —
+and it is not made there for exactly that reason. In a node-local decoder it
+changes no accepted state, so it is engineering work; in `decode_cycle_assignment_value`
+it would be a `change-protocol` slice against an accepted specification that
+fixes the bitmap width without stating the pad rule.
+
+M3.12b ran the founder-decision gate and **passed** it. It
 enumerated eighteen decisions the slice had to settle — whether version seven
 replaces version six in the kernel or sits beside it; which constructions
 re-version and which keep the version that accepted them; the retirement of
