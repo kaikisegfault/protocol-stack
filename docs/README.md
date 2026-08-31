@@ -515,6 +515,23 @@ next slice**: the uptime schedule is `nullptr`, so a chain driven through this
 layer writes no cycle assignment and accrues nothing to any seat, and nothing yet
 speaks to CometBFT.
 
+ADR 0059 records the version-seven transport, and its decision is mostly what it
+declines to add. **The frame format is version one's, reused unchanged**, because
+the header and all five request payloads carry no ledger-version meaning — a
+height, a transaction list, a byte budget — so a second wire would differ in
+nothing but its name while doubling the places a framing rule can be wrong. The
+same argument makes the socket's connection loop one function over a dispatcher,
+and the `V1` in `UnixSocketServerV1` the *wire's* version rather than the
+ledger's. What is genuinely version-specific is the response half: a finalized
+block carries a block identifier version one's does not, and its receipts are
+version seven's fifty-six octets. **Every response is validated on the way out
+rather than merely serialised** — a declared code that disagrees with the receipt
+beside it is refused rather than written — because the adapter on the other side
+has no ledger, no kernel, and no vectors, and cannot tell a wrong answer from a
+right one. Two of its four probes found missing tests: one because the suite only
+ever sent proposals that should be accepted, and one because an assertion inside
+the socket test aborted the process instead of reporting.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
