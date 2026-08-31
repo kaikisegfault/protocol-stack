@@ -53,6 +53,11 @@ SQLiteV7SnapshotResult SQLiteLedgerV7::create_snapshot() const {
                                 implementation_->head_snapshot);
 }
 
+v7::SignatureVerifier SQLiteLedgerV7::verifier() const {
+  const std::lock_guard<std::mutex> lock(implementation_->mutex);
+  return implementation_->verify;
+}
+
 SQLiteV7BlockResult SQLiteLedgerV7::apply_block(
     std::uint64_t height, std::span<const v7::Bytes> raw_transactions,
     const v7::UptimeSchedule* uptime) {

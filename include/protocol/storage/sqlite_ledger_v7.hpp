@@ -65,6 +65,8 @@ struct BlockCommitV7 {
   protocol::v7::Hash transaction_root{};
   protocol::v7::Hash block_id{};
   std::uint32_t transaction_count = 0;
+
+  bool operator==(const BlockCommitV7&) const = default;
 };
 
 // A block the kernel rejected whole. It is not a storage error: no write was
@@ -103,6 +105,11 @@ class SQLiteLedgerV7 {
       const protocol::v7::UptimeSchedule* uptime = nullptr);
   // The durable head's own payload, as stored.
   SQLiteV7SnapshotResult create_snapshot() const;
+  // The verification rule this store executes under. A caller that admits a
+  // transaction before offering it — the application layer does, in
+  // `check_transaction` — has to use the same rule, and asking the store for it
+  // is what keeps the two from being separately configured.
+  protocol::v7::SignatureVerifier verifier() const;
 
  private:
   struct Impl;
