@@ -165,12 +165,78 @@ contiguous blocks are replayed through a database closed and reopened between
 each pair, and every block reproduces its *recorded* `block_id`,
 `resulting_state_root`, and `transaction_root`.
 
-**A chain still does not run.** A store is not a node. Nothing yet carries
-version-seven transactions over consensus, so the kernel and the store execute
-blocks a caller hands them rather than blocks a network agreed on. Wiring them to
-the application layer and the CometBFT adapter is requirement 13's remaining
-work, and it is now the only structural piece between here and a four-node
-scenario.
+**M3.13c delivered the version-seven application layer the same day.** ADR 0058
+records it. `ApplicationV7` has version one's seven ABCI operations over the
+version-seven kernel and store, and its whole safety argument is that
+**`finalize_block` writes nothing**: it copies the durable head, executes the
+block against the copy, and stages the root it produced, and `commit` replays
+that block through the store and requires the store to reproduce exactly what was
+staged. That equality is what makes the root a node *announced* and the root it
+*persisted* one fact rather than two. The stage keeps the candidate root and
+deliberately not the candidate state, because the root commits to every entry and
+keeping the state would invite committing it instead of replaying the block.
+
+**A chain still does not run, and what is missing is now smaller and named.**
+Nothing yet speaks to CometBFT: the version-seven wire, dispatcher, and Unix
+server do not exist, and neither does a Go adapter that carries version-seven
+transactions. **And one debt inside the layer matters more than the wire.** The
+uptime schedule handed to `execute_block` is `nullptr`, so a chain driven
+entirely through `ApplicationV7` writes **no cycle assignment record and accrues
+nothing to any seat**. Every root in its evidence is the recorded one because the
+recorded contiguous run opens no window — the layer executes blocks correctly and
+cannot yet run a chain past a cycle boundary and mean it.
+
+### How M3.13c was delivered
+
+**`finalize_block` is pure and `commit` is the check.** CometBFT calls the two
+separately while `SQLiteLedgerV7::apply_block` writes the head and the block row
+together and takes no target height beyond `current + 1`. Version one already
+reconciles that and version seven keeps its answer: finalize copies the head,
+executes in memory, writes nothing, and stages the root, the block identifier,
+the per-input results, and the commit record it expects, answering an identical
+repeat from the stage because CometBFT may ask twice. Commit replays the block
+through the store, requires the store's commit record to equal the staged one,
+then requires the durable head to be at the root the network was told. Anything
+else latches the application terminal.
+
+**Two refusals deliberately do not latch, and both are tested for it.** An
+admission failure in `check_transaction` is a mempool answer, and a
+`process_proposal` that votes against a peer's block is an ordinary answer about
+a proposal. A node that bricked itself on a peer's bad block would be a liveness
+hole rather than a safety property.
+
+**`process_proposal` executes, where version one's only checks bounds.** The
+reason is the kernel rather than taste: `execute_block` rejects whole blocks for
+reasons version one's transfer kernel does not have, and meeting one at
+`finalize_block` halts the node permanently. It needs no new store surface,
+because `read_head` already returns a whole `v7::Ledger` by value — and **adding
+a dry-run operation to the store would be a second way to execute a block**.
+**No constructible input reaches that execution's own refusal today** and ADR
+0058 says so outright: every whole-block rejection is either already refused by
+the bounds check, since `kMaxRawInputs` and `kMaxAdmitted` are the same figure,
+or is an invariant violation no conforming sequence reaches. It is insurance
+against a kernel defect and it costs one execution of a block the node is about
+to execute anyway. **The full cost is three executions per committed block** —
+proposal, finalize, and the store's own — and each answers a different question;
+the store must execute it because the store is what commits the head.
+
+**One probe passed and that was the useful result.** Dropping rejected raw inputs
+from the response was invisible to the whole suite, because **none of the
+recorded blocks contains a rejected admission**. The fix was a better test, not a
+better probe: appending eight zero octets to a recorded block must reproduce the
+*same* recorded root and the *same* recorded block identifier — a refused
+admission performs no state read or write and never enters the transaction root —
+and differ only by one more result row carrying the admission code and no
+receipt. Re-aimed against that case the probe fails, and so does a sixth that
+offsets the rejected input's code into the execution range.
+
+**A self-review before merge found the debt the ADR now records in place.** The
+layer refuses, terminally, a `finalize_block` at any height that is not
+`current + 1`, **including one it has already committed** — which is exactly what
+CometBFT's replay handshake does to an application whose height is behind its
+engine's. Version one behaves the same way. It is a property of the pair rather
+than of either piece, so it is owed to the adapter slice rather than repaired
+here.
 
 ### How M3.13b was delivered
 
@@ -2516,6 +2582,20 @@ slices.
   `transaction_root`, with the rows read back through a bare SQLite connection.
   **It is a store rather than a node**: nothing yet carries version-seven
   transactions over consensus.
+- **A consensus engine's block pipeline can drive that store.**
+  `protocol::application::ApplicationV7` has the seven operations an ABCI adapter
+  needs. `finalize_block` copies the durable head, executes the block against the
+  copy, writes nothing, and stages what it produced; `commit` replays the same
+  block through the store and requires the store to reproduce exactly what was
+  staged, then requires the durable head to be at the root the network was told.
+  `process_proposal` executes the block against a candidate and votes against one
+  this node cannot execute, rather than meeting it at `finalize_block` where the
+  refusal would halt the node. Its evidence is the `carried` scenario's four
+  contiguous blocks driven as `process_proposal` → `finalize_block` → `commit`,
+  **with the application and its store destroyed and reopened between every
+  pair**, against the recorded roots and block identifiers. **Nothing yet speaks
+  to CometBFT**, and **the uptime schedule is `nullptr`**, so a chain driven
+  through it writes no cycle assignment and accrues nothing to any seat.
 - The accepted `economy-transition-v7` contract is version six with the
   per-channel carry deleted from state and replaced by a recovery pool. Its
   independent Python model runs the respecified settlement — a zero-winner
@@ -2903,6 +2983,22 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #210 and PR #211 are the M3.13c delivery, merged by rebase across
+  commits `8a3b345` through `62941c2` on `main`. It adds
+  `include/protocol/application/application_v7.hpp`, two translation units and
+  one internal header under `src/application/`, one test translation unit under
+  `tests/application/`, and ADR 0058. `SQLiteLedgerV7` gains `verifier()` and
+  `BlockCommitV7` gains a defaulted equality, neither of which changes any
+  behaviour of the store. **No accepted vector file changes and no new one is
+  added.** One ctest entry is added, `version-seven-application`, so the suite
+  goes from 148 to 149 entries in the debug presets and from 156 to 157 under
+  `clang-sanitizers`.
+  PR run 33434821050 on head `7dd1d82` passed the complete hosted matrix — scope
+  classification `full`, GCC and Clang debug, both sanitizer presets, and the
+  aggregate required check — with **149 of 149** and **157 of 157** entries
+  passing and all four job logs confirming the new entry. An earlier run on
+  `56df84e` was superseded and cancelled by the concurrency group when a
+  self-review found the replay-handshake debt worth recording before merge.
 - Issue #207 and PR #208 are the M3.13b delivery, merged across commits
   `5f5b731` through `aca7b5b` on `main`. It adds
   `include/protocol/storage/sqlite_ledger_v7.hpp`, three translation units and
@@ -3675,11 +3771,21 @@ stopped in the middle of its history resumes on the same trajectory. "Survives a
 restart" is now evidence rather than a claim, and the evidence is against
 recorded roots rather than against the store's own arithmetic.
 
-**What is left between a store and a node is the application layer and the
-adapter.** Version one has both — `protocol::application::ApplicationV1` over
-`SQLiteLedger`, its wire and dispatcher, and the Go ABCI adapter under
-`adapter/cometbft` — and version seven has neither, so nothing yet turns a block
-a network agreed on into a block the store commits.
+**What is left between a store and a node is now the transport, not the logic.**
+As of 2026-08-31 `ApplicationV7` turns a block a consensus engine decided into a
+block the store commits, and requires the two to agree about what it did. What
+version seven still lacks is what carries those calls: the wire, the dispatcher,
+the Unix server, and a Go ABCI adapter. Version one has all four —
+`wire_v1`, `dispatcher_v1`, `response_v1`, `unix_server_v1`, and
+`adapter/cometbft` — and **the wire's request shapes are already
+version-agnostic**, so the version-seven work is a response encoder, a
+dispatcher, and a server binding rather than a new frame format.
+
+**And one gap inside the layer is larger than the transport.** `ApplicationV7`
+hands `execute_block` a null uptime schedule, so a chain driven through it writes
+no cycle assignment record and no seat accrues anything. Requirement 13 asks for
+adversarial *economic* scenarios; four nodes agreeing on empty blocks would meet
+the word "four-node" and not the word "economic".
 
 **Two contracts are also still owed, and neither blocks requirement 13.** That
 was recorded the other way round at the close of M3.12b and M3.13a corrected it.
@@ -3882,44 +3988,42 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.13c: the version-seven application layer**, which is what
-turns a store into a node and is the next brick under requirement 13.
+Milestone slice **M3.13d: the version-seven wire, dispatcher, and server**,
+which is what carries `ApplicationV7`'s seven operations to a process CometBFT
+can talk to.
 
-**Version one is the precedent and it is complete.**
-`include/protocol/application/application_v1.hpp` defines `ApplicationV1` over
-`SQLiteLedger` with the seven operations an ABCI adapter needs — `info`,
-`init_chain`, `check_transaction`, `prepare_proposal`, `process_proposal`,
-`finalize_block`, and `commit` — with `wire_v1`, `dispatcher_v1`,
-`response_v1`, and `unix_server_v1` beside it and the Go adapter under
-`adapter/cometbft`. **Version seven has none of it.** The slice is
-`ApplicationV7` over `SQLiteLedgerV7` with the same surface, and it should be
-taken before the wire and the Go adapter, because the sequencing rules are what
-carry the risk and they are all on this side.
+**Most of the frame format is already version-agnostic and should be reused
+rather than re-versioned.** `include/protocol/application/wire_v1.hpp` defines a
+20-octet header, seven `MessageKind` values matching the seven operations, and
+five request payloads whose shapes carry no version-seven meaning — a height, a
+transaction list, a byte budget, an app state. **The responses are the
+version-specific half**: `response_v1` encodes `ApplicationInfo`,
+`FinalizedBlock`, and `CommittedHead`, and version seven's three differ.
+So the slice is a `response_v7` and a `dispatcher_v7` over the same wire, then a
+server binding, and it is smaller than it looks.
 
-**The sequencing is where the work actually is, and version one already answers
-it — read `src/application/application_block_v1.cpp` before inventing anything.**
-CometBFT calls `finalize_block` and `commit` separately while the store commits
-the head and the block row together, and version one reconciles that by making
-`finalize_block` a *pure* operation: it restores a candidate from the durable
-head, executes the block against the candidate in memory, writes nothing, and
-stages the result — returning the same staged response if the identical call
-repeats. `commit` then replays that block through the store's `apply_block` and
-**requires the resulting commit and head to equal the staged ones**, failing
-terminally if they do not. That equality is the whole safety argument and version
-seven should keep it.
-
-**Version seven's candidate is cheaper than version one's**, which is worth
-knowing before the shape is chosen. `SQLiteLedgerV7::read_head` already hands
-back a whole `v7::Ledger` by value, so `finalize_block` and `process_proposal`
-can call `v7::execute_block` against that copy directly; version one has to run
-`restore_ledger` over a `State` first. **The store needs no dry-run operation
-added to it**, and adding one would be a second way to execute a block, which is
-a second opinion about what a block does.
+**One conversion is real and worth knowing before it surprises someone.**
+`InitChainRequest::chain_id` is a `protocol::v1::ChainId`, which is a
+`TaggedHash<ChainIdTag>` and therefore a *distinct type* from version seven's
+`Octets32`, even though both are thirty-two octets. The dispatcher has to convert
+explicitly. Do not "fix" that by loosening either type: the tag is what stops a
+state root being passed where a chain identity belongs.
 
 **Then, in order, each its own slice:**
 
-* the version-seven wire, dispatcher, and Unix server, then the Go ABCI adapter
-  carrying version-seven transactions;
+* the Go ABCI adapter carrying version-seven transactions, which must also answer
+  the replay handshake ADR 0058 records as owed: this layer refuses, terminally,
+  a `finalize_block` at any height that is not `current + 1`, **including one it
+  has already committed**, and that is exactly what CometBFT does to an
+  application whose height is behind its engine's;
+* **the uptime schedule, which is the gap that decides whether requirement 13
+  measures anything.** `ApplicationV7` hands `execute_block` a `nullptr`, so a
+  chain driven through it writes no cycle assignment and no seat accrues. Four
+  nodes agreeing on blocks that pay nobody would satisfy the word "four-node" and
+  not the word "economic". Where an uptime measurement enters consensus is ADR
+  0028's attested-claim pipeline; wiring it is mechanism, but note that **the
+  concrete resource commitment behind it is founder-reserved** and becomes the
+  nearest dependency at the Founder Machine milestone rather than at this one;
 * requirement 13 proper, the four-node adversarial scenarios;
 * `calendar-v1`, which must fix the consensus timestamp's monotonicity rule and
   acceptance tolerance and the calendar-month boundary derived from them. **The
@@ -3970,6 +4074,19 @@ version one's decoder recognises the family and answers `unsupported_version`
 rather than `malformed`. The prefix is 126 octets and the encoder checks that it
 wrote exactly that many, because the decoder reads every prefix field at a
 literal offset.
+
+**What the application looks like now, so a later session does not rediscover
+it.** `protocol::application::ApplicationV7` is one public header, two
+translation units, and one internal header: `application_v7.cpp` owns
+construction and the five operations that do not write, `application_block_v7.cpp`
+owns `finalize_block` and `commit` and the per-input result rows, and
+`application_v7_internal.hpp` holds the `Impl` with its staged block. It reuses
+version one's `ApplicationError`, `TransactionResult`, and `PreparedProposal`
+unchanged, because none of those six codes or two shapes names a ledger version.
+The stage holds the candidate **root** and not the candidate ledger, on purpose.
+`init_chain` is idempotent at genesis because CometBFT calls it again on a node
+that crashed before its first block, and an application opened on a store already
+past genesis comes back ready without it.
 
 **What the store looks like now, so a later session does not rediscover it.**
 `protocol::storage::SQLiteLedgerV7` is one public header and three translation
@@ -4124,7 +4241,41 @@ same count rather than reading it back.
 
 ## Blockers
 
-**None for M3.13c.**
+**None for M3.13d.**
+
+**M3.13c ran the founder-decision gate and passed it.** Ten decisions were
+enumerated before any was judged: whether version seven gets its own application
+class or version one's is parameterised; whether the error enumeration is reused
+or restated; how the `finalize_block`/`commit` split reconciles with a store that
+writes the head and the block row together; whether the stage holds the candidate
+state or only its root; whether `process_proposal` executes or checks bounds
+only, and whether the store grows a dry-run operation for it; the
+`prepare_proposal` policy; the app-state string and the `init_chain` predicates;
+where the verifier comes from; the response code scheme; and whether the wire and
+the Go adapter are in scope.
+
+**Every one is delegated.** `founder-constitution.md` places mechanism, encoding,
+storage, consensus scheduling, networking, and packaging outside the reserved
+set, and an ABCI adapter's operation sequencing is squarely networking and
+scheduling. ADR 0007 fixes the persistence boundary the layer sits on and ADR
+0045 fixes that the layer never chooses a verification rule, which is what makes
+"take it from the store" a deduction rather than a choice. **One decision was
+examined closely rather than waved through**: `prepare_proposal`'s ordering
+policy could have economic consequences, and the answer — keep the order the
+engine handed us, truncated at the budget — invents nothing and is version one's.
+A reordering policy *would* need asking, and none is introduced. Nothing in the
+slice sets or changes supply, allocation, beneficiaries, Founder ownership,
+creator hierarchy, commercial routing, AI institutional authority, bridge scope,
+content permanence, or what an end user must do, own, run, or receive, and no
+accepted vector file changed.
+
+**One founder-reserved decision moved closer and does not block M3.13d.** The
+concrete resource commitment — what a Founder Machine must prove it holds — is
+what an uptime measurement is a measurement *of*. `ApplicationV7` hands
+`execute_block` a null uptime schedule, so nothing in the repository yet needs
+the answer; the moment a chain is asked to accrue to seats through this layer, it
+does. Ask it when a challenge must actually be constructed, as recorded below,
+and not before.
 
 **M3.13b ran the founder-decision gate and passed it.** Twenty decisions were
 enumerated before any was judged: whether the store is a new adapter or a version
