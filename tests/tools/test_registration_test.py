@@ -37,6 +37,16 @@ ENTRY_POINT = 'if __name__ == "__main__":'
 ADD_TEST = re.compile(r"add_test\(\s*NAME\s+(\S+)\s+COMMAND\s+(.*?)\n\s*\)", re.DOTALL)
 BINARY_DIR_ARGUMENT = re.compile(r"\$\{CMAKE_CURRENT_BINARY_DIR\}/([^\"\s]+)")
 
+# Every target the project builds itself must appear in `PROTOCOL_STACK_TARGETS`,
+# because that list is the only place the C++ standard, the warning flags,
+# `-Werror`, and the sanitizer flags are applied. A target left out of it still
+# builds — with a *different* language standard and no warnings — which is a
+# failure that hides until the compiler happens to reject something.
+DECLARED_TARGET = re.compile(r"add_(?:executable|library)\(\s*([A-Za-z0-9_]+)")
+# The two imported dependency libraries are built by their own projects and take
+# none of this project's flags.
+IMPORTED_TARGETS = frozenset({"protocol_stack_sodium", "protocol_stack_sqlite"})
+
 # A fuzz executable is registered in four separate places, and each omission
 # fails differently. Missing from `PROTOCOL_STACK_TARGETS` it builds without
 # `-Werror`, the sanitizer flags, or the libsodium link — the M3.9a defect, and
@@ -294,6 +304,31 @@ class FuzzTargetRegistrationTest(unittest.TestCase):
             [],
             "these fuzz targets have no registered smoke entry, so the hosted "
             "matrix never runs them",
+        )
+
+
+class BuildFlagRegistrationTest(unittest.TestCase):
+    """`PROTOCOL_STACK_TARGETS` is the only place the build flags are applied."""
+
+    def test_every_built_target_takes_the_project_build_flags(self) -> None:
+        """A target outside the list compiles at a different standard.
+
+        M3.13e added `protocol_application_server_v7` and did not add it here.
+        It built at the compiler's default standard, so `operator<=>` and
+        `std::span` in headers it includes stopped parsing — on the hosted
+        matrix only, because a local harness passes `-std=c++20` explicitly.
+        """
+        declared = {
+            name
+            for name in DECLARED_TARGET.findall(cmake_text())
+            if name not in IMPORTED_TARGETS
+        }
+        self.assertNotEqual(declared, set(), "the target parse reached nothing")
+        self.assertEqual(
+            sorted(declared - project_build_targets()),
+            [],
+            "these targets are not in PROTOCOL_STACK_TARGETS, so they take "
+            "neither the C++ standard, the warning flags, nor the sanitizers",
         )
 
 

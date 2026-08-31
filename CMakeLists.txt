@@ -516,6 +516,7 @@ set(
   protocol_storage
   protocol_application
   protocol_application_server
+  protocol_application_server_v7
   kernel_primitive_tests
   economy_v7_codec_tests
   economy_v7_execution_tests
