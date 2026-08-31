@@ -2,6 +2,7 @@
 
 #include "protocol/v1/crypto.hpp"
 
+#include <algorithm>
 #include <array>
 
 namespace protocol::v7 {
@@ -50,6 +51,53 @@ std::optional<Bytes> encode_genesis(const Genesis& genesis) {
   if (raw.size() != kGenesisPrefixBytes) return std::nullopt;
   if (raw.size() > kMaxObjectBytes) return std::nullopt;
   return raw;
+}
+
+// **The field order here is the encoding's, not the struct's.** `total_supply`
+// is written before `fixed_transfer_fee`, and a decoder that read them in
+// declaration order would produce a genesis whose re-encoding differs — which is
+// exactly what the round-trip check below refuses.
+std::optional<Genesis> decode_genesis(std::span<const std::uint8_t> raw) {
+  if (raw.size() != kGenesisPrefixBytes) return std::nullopt;
+  if (!std::equal(kGenesisMagic.begin(), kGenesisMagic.end(), raw.begin())) {
+    return std::nullopt;
+  }
+  const auto schema = i::read_u16(raw, 4);
+  if (!schema || *schema != kGenesisSchemaVersion) return std::nullopt;
+
+  const auto network_id = i::read_u32(raw, 6);
+  const auto supply_limit = i::read_u64(raw, 10);
+  const auto total_supply = i::read_u64(raw, 18);
+  const auto fixed_transfer_fee = i::read_u64(raw, 26);
+  const auto initial_fee_pool = i::read_u64(raw, 34);
+  const auto account_count = i::read_u32(raw, 106);
+  if (!network_id || !supply_limit || !total_supply || !fixed_transfer_fee ||
+      !initial_fee_pool || !account_count) {
+    return std::nullopt;
+  }
+
+  Genesis genesis;
+  genesis.network_id = *network_id;
+  genesis.supply_limit = *supply_limit;
+  genesis.total_supply = *total_supply;
+  genesis.fixed_transfer_fee = *fixed_transfer_fee;
+  genesis.initial_fee_pool = *initial_fee_pool;
+  if (!i::copy32(raw.subspan(42, 32), genesis.manifest_digest)) {
+    return std::nullopt;
+  }
+  if (!i::copy32(raw.subspan(74, 32), genesis.verifier_key)) {
+    return std::nullopt;
+  }
+  genesis.account_count = *account_count;
+
+  // The whole validity rule, stated once. Anything the encoder would refuse to
+  // write, or would write differently, is not this file's genesis.
+  const auto reencoded = encode_genesis(genesis);
+  if (!reencoded || reencoded->size() != raw.size() ||
+      !std::equal(reencoded->begin(), reencoded->end(), raw.begin())) {
+    return std::nullopt;
+  }
+  return genesis;
 }
 
 std::optional<Hash> chain_id(const Genesis& genesis) {

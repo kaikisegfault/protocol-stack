@@ -535,6 +535,12 @@ struct Genesis {
 };
 
 std::optional<Bytes> encode_genesis(const Genesis& genesis);
+// The exact inverse of `encode_genesis`, and it checks itself against that
+// claim: a decoded genesis is returned only when re-encoding it reproduces the
+// input octet for octet. So there is no second statement anywhere of what a
+// valid genesis is — the encoder's rule is the only one, and a file that would
+// not have been produced by it is refused rather than opened.
+std::optional<Genesis> decode_genesis(std::span<const std::uint8_t> raw);
 std::optional<Hash> chain_id(const Genesis& genesis);
 
 struct Receipt {

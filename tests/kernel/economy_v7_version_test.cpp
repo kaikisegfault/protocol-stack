@@ -89,6 +89,76 @@ void verify_manifest_binding(const pv::Values& values, const pv::Values& manifes
   }
 }
 
+// The decoder is the encoder's inverse, and the round trip is the claim.
+//
+// **The distinctive fee is deliberate.** `total_supply` is written *before*
+// `fixed_transfer_fee`, which is not the order the struct declares them, so a
+// decoder that read the two in declaration order would put the fee where the
+// supply belongs. A zero fee would hide that; this one does not.
+void verify_genesis_decoding(const v7::Genesis& founder) {
+  auto genesis = founder;
+  genesis.fixed_transfer_fee = 0x0102030405060708ULL;
+  const auto encoded = v7::encode_genesis(genesis);
+  pv::require(encoded.has_value(), "the probe genesis encodes");
+
+  const auto decoded = v7::decode_genesis(*encoded);
+  pv::require(decoded.has_value(), "the probe genesis decodes");
+  pv::require(decoded->network_id == genesis.network_id,
+              "the decoded network identifier");
+  pv::require(decoded->supply_limit == genesis.supply_limit,
+              "the decoded supply limit");
+  pv::require(decoded->total_supply == genesis.total_supply,
+              "the decoded total supply");
+  pv::require(decoded->fixed_transfer_fee == genesis.fixed_transfer_fee,
+              "the decoded transfer fee");
+  pv::require(decoded->initial_fee_pool == genesis.initial_fee_pool,
+              "the decoded fee pool");
+  pv::require(decoded->manifest_digest == genesis.manifest_digest,
+              "the decoded manifest digest");
+  pv::require(decoded->verifier_key == genesis.verifier_key,
+              "the decoded verifier key");
+  pv::require(decoded->account_count == genesis.account_count,
+              "the decoded account count");
+  // The identity a node joins a chain by must survive the file it was read from.
+  pv::require(v7::chain_id(*decoded) == v7::chain_id(genesis),
+              "the decoded genesis derives the same chain identity");
+
+  // A file one octet short or one octet long is not this genesis.
+  auto short_bytes = *encoded;
+  short_bytes.pop_back();
+  pv::require(!v7::decode_genesis(short_bytes).has_value(), "a short genesis");
+  auto long_bytes = *encoded;
+  long_bytes.push_back(0);
+  pv::require(!v7::decode_genesis(long_bytes).has_value(), "a long genesis");
+
+  auto wrong_magic = *encoded;
+  wrong_magic[0] ^= 0x01;
+  pv::require(!v7::decode_genesis(wrong_magic).has_value(), "a foreign magic");
+  auto wrong_version = *encoded;
+  wrong_version[5] = 6;
+  pv::require(!v7::decode_genesis(wrong_version).has_value(),
+              "an earlier schema version");
+
+  // And every field the encoder refuses to write, the decoder refuses to read,
+  // because the decoder states the rule exactly once: by re-encoding.
+  auto nonzero_supply = *encoded;
+  nonzero_supply[25] = 1;
+  pv::require(!v7::decode_genesis(nonzero_supply).has_value(),
+              "a nonzero total supply in a file");
+  auto nonzero_pool = *encoded;
+  nonzero_pool[41] = 1;
+  pv::require(!v7::decode_genesis(nonzero_pool).has_value(),
+              "a nonzero fee pool in a file");
+  auto with_accounts = *encoded;
+  with_accounts[109] = 1;
+  pv::require(!v7::decode_genesis(with_accounts).has_value(),
+              "an account count in a file");
+  auto zero_limit = *encoded;
+  for (std::size_t index = 10; index < 18; ++index) zero_limit[index] = 0;
+  pv::require(!v7::decode_genesis(zero_limit).has_value(),
+              "a zero supply limit in a file");
+}
+
 void verify_non_collision(const pv::Values& values, const pv::Values& carried,
                           const pv::Values& manifest) {
   const auto genesis = identity_genesis(manifest);
@@ -200,6 +270,8 @@ void verify_genesis(const pv::Values& values, const pv::Values& manifest) {
   rejected = genesis;
   rejected.initial_fee_pool = 1;
   pv::require(!v7::encode_genesis(rejected).has_value(), "a nonzero fee pool");
+
+  verify_genesis_decoding(genesis);
 }
 
 }  // namespace
