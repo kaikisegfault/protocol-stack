@@ -206,7 +206,9 @@ add_library(
     src/application/application_v1.cpp
     src/application/application_v7.cpp
     src/application/dispatcher_v1.cpp
+    src/application/dispatcher_v7.cpp
     src/application/response_v1.cpp
+    src/application/response_v7.cpp
     src/application/unix_connection_v1.cpp
     src/application/unix_server_v1.cpp
     src/application/wire_v1.cpp
@@ -383,6 +385,15 @@ add_executable(
   tests/kernel/economy_v7_trace.cpp
   tests/kernel/economy_v7_scenarios_test.cpp
 )
+# The scenario translation units are the kernel execution suite's own: the
+# recorded scenarios are the third source a block driven over the wire is
+# checked against.
+add_executable(
+  application_transport_v7_tests
+  tests/application/transport_v7_test.cpp
+  tests/kernel/economy_v7_trace.cpp
+  tests/kernel/economy_v7_scenarios_test.cpp
+)
 add_executable(
   application_wire_v1_tests
   tests/application/wire_v1_test.cpp
@@ -461,6 +472,12 @@ target_link_libraries(
     protocol_stack_sqlite
 )
 target_link_libraries(
+  application_transport_v7_tests
+  PRIVATE
+    protocol_application
+    protocol_stack_sqlite
+)
+target_link_libraries(
   application_wire_v1_tests
   PRIVATE
     protocol_application
@@ -508,6 +525,7 @@ set(
   storage_archive_v1_tests
   application_v1_tests
   application_v7_tests
+  application_transport_v7_tests
   application_wire_v1_tests
   application_response_v1_tests
   application_unix_server_v1_tests
@@ -875,6 +893,15 @@ add_test(
     application_v7_tests
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7-execution.txt"
     "${CMAKE_CURRENT_BINARY_DIR}/version-seven-application"
+)
+# The directory name is deliberately short: this entry binds a Unix socket
+# inside it, and `sun_path` caps a socket pathname near 108 octets.
+add_test(
+  NAME version-seven-transport
+  COMMAND
+    application_transport_v7_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7-execution.txt"
+    "${CMAKE_CURRENT_BINARY_DIR}/at-v7"
 )
 add_test(
   NAME application-wire-v1
