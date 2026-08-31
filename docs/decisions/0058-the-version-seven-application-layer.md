@@ -175,6 +175,14 @@ terminal latch after each.
   to this layer is the dependency between here and a chain that pays anyone.
 - **The wire, the dispatcher, the Unix server, and the Go ABCI adapter**, each
   its own slice. Nothing yet speaks to CometBFT.
+- **The replay handshake.** CometBFT replays blocks to an application whose
+  height is behind its own and asks `info` to decide how far back to start. This
+  layer answers `info` correctly, but it refuses — terminally — a
+  `finalize_block` at any height that is not `current + 1`, **including one it
+  has already committed**. Version one behaves the same way. Until the adapter
+  reconciles it, a node whose store is ahead of its engine halts instead of
+  resynchronising, and that is a property of the pair rather than of either
+  piece, which is why it is recorded here and owed to the adapter slice.
 - **Fault injection over the application's storage failures.** The seams exist in
   the storage layer; nothing drives them through this one, so the terminal path
   after a storage failure is reasoned about rather than exercised.
