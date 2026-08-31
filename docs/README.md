@@ -497,6 +497,24 @@ root the block header already commits to — and `execute_block` now carries tha
 root out of the block, which changes no encoding, no state, and no accepted
 vector.
 
+ADR 0058 records the version-seven application layer, which is the first piece
+that turns the store into something a consensus engine can drive. **Its whole
+safety argument is that `finalize_block` writes nothing.** It copies the durable
+head, executes the block against the copy, and stages the root it produced;
+`commit` then replays the same block through the store and requires the store to
+reproduce exactly what was staged, which is what makes the root a node told the
+network and the root it persisted one fact rather than two. The candidate *state*
+is deliberately not kept — only its root, because the root commits to every entry
+and keeping the state would invite a later change to commit it instead of
+replaying the block. Version seven's `process_proposal` also executes, where
+version one's only checks bounds, because `execute_block` rejects whole blocks
+for reasons version one's kernel cannot and meeting one at `finalize_block` halts
+the node permanently; the ADR records honestly that no constructible input
+reaches that refusal today. **Two things it owes are worth reading before the
+next slice**: the uptime schedule is `nullptr`, so a chain driven through this
+layer writes no cycle assignment and accrues nothing to any seat, and nothing yet
+speaks to CometBFT.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
