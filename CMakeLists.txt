@@ -189,6 +189,9 @@ add_library(
     src/storage/sqlite_history_replay_v1.cpp
     src/storage/sqlite_ledger.cpp
     src/storage/sqlite_schema_v1.cpp
+    src/storage/sqlite_ledger_v7.cpp
+    src/storage/sqlite_ledger_v7_open.cpp
+    src/storage/sqlite_schema_v7.cpp
     src/storage/sqlite_snapshot_v1.cpp
     src/storage/snapshot_v1.cpp
     src/storage/snapshot_v7.cpp
@@ -341,6 +344,16 @@ add_executable(
 # rather than restated: the recorded scenarios are what a snapshot is checked
 # against, and a second copy of them would be a second opinion about the states
 # whose roots the vectors fix.
+# The two scenario translation units are the kernel execution suite's own, for
+# the reason the snapshot tests reuse them: the recorded scenarios are the third
+# source a store is checked against.
+add_executable(
+  storage_sqlite_ledger_v7_tests
+  tests/storage/sqlite_ledger_v7_test.cpp
+  tests/storage/sqlite_ledger_v7_refusals.cpp
+  tests/kernel/economy_v7_trace.cpp
+  tests/kernel/economy_v7_scenarios_test.cpp
+)
 add_executable(
   storage_snapshot_v7_tests
   tests/storage/snapshot_v7_test.cpp
@@ -414,6 +427,12 @@ target_link_libraries(
     protocol_stack_sqlite
 )
 target_link_libraries(
+  storage_sqlite_ledger_v7_tests
+  PRIVATE
+    protocol_storage
+    protocol_stack_sqlite
+)
+target_link_libraries(
   storage_archive_v1_tests
   PRIVATE
     protocol_storage
@@ -468,6 +487,7 @@ set(
   storage_sqlite_vfs_failure_tests
   storage_snapshot_v1_tests
   storage_snapshot_v7_tests
+  storage_sqlite_ledger_v7_tests
   storage_archive_v1_tests
   application_v1_tests
   application_wire_v1_tests
@@ -690,6 +710,13 @@ add_test(
   COMMAND
     storage_snapshot_v7_tests
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7-execution.txt"
+)
+add_test(
+  NAME version-seven-owning-store
+  COMMAND
+    storage_sqlite_ledger_v7_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7-execution.txt"
+    "${CMAKE_CURRENT_BINARY_DIR}/version-seven-owning-store"
 )
 add_test(
   NAME ledger-transition-cpp
