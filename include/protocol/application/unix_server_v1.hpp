@@ -1,6 +1,14 @@
 #pragma once
 
+// A Unix socket that speaks the version-one **wire**.
+//
+// The `V1` in this name is the frame format's version, not the ledger's. The
+// header, the seven message kinds, and the five request payloads carry no
+// ledger-version meaning, so one socket serves both applications and the only
+// version-specific step is which dispatcher the decoded request is handed to.
+
 #include "protocol/application/application_v1.hpp"
+#include "protocol/application/application_v7.hpp"
 
 #include <filesystem>
 #include <memory>
@@ -35,6 +43,9 @@ class UnixSocketServerV1 {
 
   ServeConnectionResult serve_connection(
       ApplicationV1& application,
+      int shutdown_descriptor = -1);
+  ServeConnectionResult serve_connection(
+      ApplicationV7& application,
       int shutdown_descriptor = -1);
 
  private:

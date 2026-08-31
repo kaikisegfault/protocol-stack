@@ -3,6 +3,7 @@
 #include "unix_server_v1_internal.hpp"
 
 #include "protocol/application/dispatcher_v1.hpp"
+#include "protocol/application/dispatcher_v7.hpp"
 #include "protocol/application/wire_v1.hpp"
 
 #include <poll.h>
@@ -112,21 +113,24 @@ WriteResult write_exact(
   return WriteResult::complete;
 }
 
-}  // namespace
-
-ServeConnectionResult UnixSocketServerV1::serve_connection(
-    ApplicationV1& application,
-    int shutdown_descriptor) {
+// The connection loop is one function over a dispatcher, because everything in
+// it — accepting, framing, the duplicate-request-id rule, the shutdown
+// descriptor — is a property of the wire rather than of a ledger version. Two
+// copies of it would be two places for a framing rule to be wrong.
+template <typename Dispatch>
+ServeConnectionResult serve_with(
+    int listener,
+    int shutdown_descriptor,
+    Dispatch dispatch) {
   const auto listener_ready = wait_for(
-      implementation_->listener, POLLIN, shutdown_descriptor);
+      listener, POLLIN, shutdown_descriptor);
   if (listener_ready == WaitResult::interrupted) {
     return UnixServerError::shutdown_requested;
   }
   if (listener_ready != WaitResult::ready) {
     return UnixServerError::accept_failure;
   }
-  FileDescriptor client(
-      ::accept(implementation_->listener, nullptr, nullptr));
+  FileDescriptor client(::accept(listener, nullptr, nullptr));
   if (client.get() < 0) return UnixServerError::accept_failure;
 
   std::unordered_set<std::uint64_t> request_ids;
@@ -169,8 +173,7 @@ ServeConnectionResult UnixSocketServerV1::serve_connection(
     if (!std::holds_alternative<DecodedRequest>(request)) {
       return UnixServerError::protocol_failure;
     }
-    auto response = dispatch_request(
-        application, std::get<DecodedRequest>(std::move(request)));
+    auto response = dispatch(std::get<DecodedRequest>(std::move(request)));
     if (!std::holds_alternative<Bytes>(response)) {
       return UnixServerError::application_failure;
     }
@@ -184,6 +187,28 @@ ServeConnectionResult UnixSocketServerV1::serve_connection(
       return UnixServerError::connection_failure;
     }
   }
+}
+
+}  // namespace
+
+ServeConnectionResult UnixSocketServerV1::serve_connection(
+    ApplicationV1& application,
+    int shutdown_descriptor) {
+  return serve_with(
+      implementation_->listener, shutdown_descriptor,
+      [&application](const DecodedRequest& request) {
+        return dispatch_request(application, request);
+      });
+}
+
+ServeConnectionResult UnixSocketServerV1::serve_connection(
+    ApplicationV7& application,
+    int shutdown_descriptor) {
+  return serve_with(
+      implementation_->listener, shutdown_descriptor,
+      [&application](const DecodedRequest& request) {
+        return dispatch_request_v7(application, request);
+      });
 }
 
 }  // namespace protocol::application
