@@ -203,6 +203,17 @@ what it read and requiring the octets back — so the validity rule is stated
 exactly once, in the encoder, and a field read at the wrong offset is caught
 along with everything else.
 
+**M3.13f closed the two debts ADR 0057 recorded as owed**, and requirement 13's
+own words are now met on the storage side: "through restart **and recovery**".
+Everything before the commit rolls back and is an ordinary refusal that leaves
+the store usable; only the commit can leave a head the process cannot name, and
+there the store poisons itself and **reads the file again**, recovering to the
+block's root or its predecessor's and never to anything between. **The process is
+killed at both post-commit points by a re-executed child** and the parent must
+find the committed block durable at its recorded root and continue the chain.
+ADR 0057 is amended in place with the contract, which came out narrower than its
+first text implied.
+
 **A chain still does not run, and exactly one structural piece is missing.**
 There is **no Go ABCI adapter carrying version-seven transactions**; the existing
 `adapter/cometbft` speaks version one's responses and cannot read a finalized
@@ -212,6 +223,39 @@ a chain driven through this process writes **no cycle assignment record and
 accrues nothing to any seat**. Every root in the evidence is the recorded one
 because the recorded contiguous run opens no window — the stack executes blocks
 correctly and cannot yet run a chain past a cycle boundary and mean it.
+
+### How M3.13f was delivered
+
+**Settling recovery corrected the fault contract.** The store poisoned itself on
+any write failure, which was safe and wrong: everything before the commit rolls
+back and writes nothing, so a fault there is an ordinary refusal — the durable
+head is the one it already was and the same store accepts the same block once the
+fault is gone. **A refusal that wrote nothing is not a reason to stop
+answering**, and the test says so by clearing each fault and requiring the next
+block's recorded root.
+
+**Only the commit can leave a head this process cannot name.** There the store
+poisons itself and then reads the file again: closes the connection, reopens it,
+runs the same four validation steps an ordinary open runs, and adopts whatever
+head the file holds. That head is the block's or its predecessor's because
+SQLite's transaction is what decides, and nothing between is reachable.
+
+**Recovery is allowed to fail and then the store stays poisoned.** It is
+`noexcept` and answers `false`; a store that could not read its own file back
+refuses to read a head, refuses to hand out a payload, and refuses every later
+block. Worse state, honest answer, and it is tested by denying recovery through
+`before_recovery_open`.
+
+**The two termination cases are the property rather than an extra.** The process
+is killed at `after_commit_before_publication` and at `after_publication` by a
+re-executed child, and in both the parent must find the committed block durable
+at its recorded root **and** continue the chain to the next block's recorded
+root. Together with the rolled-back faults that is the whole claim: **a fault
+anywhere in the write path leaves the durable head at the pre-block root or the
+post-block root, never at anything between.**
+
+**Version one's recovery suite was re-run locally**, because the fault seams this
+slice wires are the ones it drives. Sharing a seam means sharing a blast radius.
 
 ### How M3.13e was delivered
 
@@ -2696,6 +2740,16 @@ slices.
   `transaction_root`, with the rows read back through a bare SQLite connection.
   **It is a store rather than a node**: nothing yet carries version-seven
   transactions over consensus.
+- **That store survives a fault in its own write path.** Everything before the
+  commit rolls back and is an ordinary refusal that leaves the store usable; a
+  commit that fails poisons the store and then makes it read the file again,
+  recovering to the block's root or its predecessor's; and a recovery that itself
+  fails leaves the store refusing every later call rather than guessing. Its
+  evidence drives all seven fault points, fails a commit through the fault VFS,
+  and **kills the process at both post-commit points from a re-executed child**,
+  requiring the durable head to be the recorded one and the chain to continue.
+  That is requirement 13's "through restart **and recovery**" on the storage
+  side.
 - **A consensus engine's block pipeline can drive that store.**
   `protocol::application::ApplicationV7` has the seven operations an ABCI adapter
   needs. `finalize_block` copies the durable head, executes the block against the
@@ -3115,6 +3169,18 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #219 and PR #220 are the M3.13f delivery, merged by rebase across
+  commits `73955eb` through `a30a997` on `main`. It wires version one's seven
+  fault points into `SQLiteLedgerV7::apply_block`, adds
+  `Impl::recover_durable_head`, adds
+  `tests/storage/sqlite_recovery_v7_test.cpp`, and **amends ADR 0057 in place**
+  rather than adding a document, because the store's contract belongs in one. **No
+  accepted vector file changes and no new one is added.** One ctest entry is
+  added, `version-seven-store-recovery`, so the suite goes from 151 to 152
+  entries in the debug presets and from 159 to 160 under `clang-sanitizers`. PR
+  run 33448781878 on head `c8ad4ae` passed the complete hosted matrix with those
+  counts and all four job logs confirming the new entry, so the fork/exec
+  termination cases and the fault-VFS commit failure ran under both sanitizers.
 - Issue #216 and PR #217 are the M3.13e delivery, merged by rebase across
   commits `cf1d28c` through `8ffc2bd` on `main`. It adds `decode_genesis` to
   `include/protocol/v7/economy.hpp` and `src/v7/economy_genesis.cpp`,
@@ -3941,6 +4007,12 @@ reconciles a consensus engine's block pipeline with that store and requires the
 two to agree about what it did, the transport carries it in frames, and
 `protocol-application-v7` is a process that serves them on a socket.
 
+**As of 2026-09-01 the storage side also satisfies the words "and recovery".** A
+fault anywhere in the write path leaves the durable head at the pre-block root or
+the post-block root, a failed commit recovers by reading the file again, and a
+process killed between the commit and its return leaves a state some sequence of
+blocks produced. That was the last thing ADR 0057 owed.
+
 **What is missing is the Go ABCI adapter.** `adapter/cometbft` exists and speaks
 version one: `internal/localapp` is the socket client and frame codec and
 `internal/bridge` is the ABCI application over it, together about 1,800 lines
@@ -4161,8 +4233,15 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.13f: the version-seven ABCI adapter**, which is the last
+Milestone slice **M3.13g: the version-seven ABCI adapter**, which is the last
 structural piece between the stack that exists and a network that runs it.
+
+**The letter moved and the reason is worth one line.** This entry was recorded as
+M3.13f at the close of M3.13e. The slice actually taken next was the store's
+fault and recovery work — the two debts ADR 0057 carried, and the half of
+requirement 13's "through restart **and recovery**" that was unbuilt — so that
+took M3.13f and the adapter is M3.13g. Nothing about the adapter's content
+changed.
 
 **`adapter/cometbft` exists and speaks version one.** `internal/localapp` is the
 Unix socket client and frame codec; `internal/bridge` is the ABCI application
@@ -4247,6 +4326,16 @@ version one's decoder recognises the family and answers `unsupported_version`
 rather than `malformed`. The prefix is 126 octets and the encoder checks that it
 wrote exactly that many, because the decoder reads every prefix field at a
 literal offset.
+
+**What the store's failure contract looks like now, so a later session does not
+rediscover it.** All seven of version one's fault points are live in
+`SQLiteLedgerV7::apply_block`. The four before the commit **throw** and roll
+back, and the store is left usable; the two after it are **invoked and ignored**
+so a test can terminate the process there; `before_recovery_open` fires only
+during recovery. A commit failure sets `poisoned` and immediately calls
+`Impl::recover_durable_head`, which clears it on success. **Do not "simplify"
+that into poisoning on every write failure** — that is what it was, and it made
+an ordinary rolled-back refusal permanent.
 
 **What the node process looks like now, so a later session does not rediscover
 it.** `src/application/main_v7.cpp` is the `protocol-application-v7` target and
@@ -4446,7 +4535,23 @@ same count rather than reading it back.
 
 ## Blockers
 
-**None for M3.13f.**
+**None for M3.13g.**
+
+**M3.13f ran the founder-decision gate and passed it.** Six decisions were
+enumerated before any was judged: which of version one's fault points the
+version-seven write path raises at and which it merely invokes; whether a
+pre-commit failure poisons the store or is an ordinary refusal; what recovery
+does and whether it may throw; what a store whose recovery failed answers; how a
+terminated process is exercised; and whether the contract is recorded in a new
+ADR or as an amendment to ADR 0057. **Every one is storage, operational, or
+testing work**, which `founder-constitution.md` places outside the reserved set,
+and version one already answers four of them by precedent. Nothing in the slice
+sets or changes supply, allocation, beneficiaries, Founder ownership, creator
+hierarchy, commercial routing, AI institutional authority, bridge scope, content
+permanence, or what an end user must do, own, run, or receive, and no accepted
+vector file changed. **One correction was made rather than a choice invented**:
+the original poison-on-any-write-failure behaviour was wrong against ADR 0057's
+own text, which said the store is poisoned "if the write itself fails".
 
 **M3.13e ran the founder-decision gate and passed it.** Five decisions were
 enumerated before any was judged: whether the decoder restates the validity rule
