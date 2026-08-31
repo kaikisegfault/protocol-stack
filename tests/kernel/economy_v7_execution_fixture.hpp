@@ -270,6 +270,11 @@ struct Scenario {
   std::vector<std::vector<std::string>> labels;
   std::map<std::string, std::uint8_t> rejected;
   std::vector<std::size_t> raw_inputs;
+  // The exact bytes each block was executed over, retained so a caller outside
+  // this fixture can execute the same block somewhere else. The storage tests
+  // replay a scenario's contiguous run through a real database and require the
+  // recorded roots, which is a question the counts above cannot be asked.
+  std::vector<std::vector<Bytes>> block_inputs;
   std::uint64_t skipped_blocks = 0;
   // The figures the vectors record at named points of a scenario, keyed by the
   // vector's own name without its scenario prefix. Every one is compared, so a
