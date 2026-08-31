@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-08-31
+Last updated: 2026-09-01
 
 ## Phase
 
@@ -192,15 +192,72 @@ tell a wrong answer from a right one.
 **A version-seven application now answers over a real Unix socket**, and the
 recorded blocks were driven through one to prove it.
 
-**A chain still does not run, and what is missing is now two named things.**
-There is **no version-seven server binary** — `protocol-application` is still
-version one's — and **no Go ABCI adapter** carrying version-seven transactions.
-**And one debt inside the layer still matters more than either.** The uptime
-schedule handed to `execute_block` is `nullptr`, so a chain driven entirely
-through `ApplicationV7` writes **no cycle assignment record and accrues nothing
-to any seat**. Every root in its evidence is the recorded one because the
-recorded contiguous run opens no window — the stack executes blocks correctly and
-cannot yet run a chain past a cycle boundary and mean it.
+**M3.13e delivered the version-seven node process the same day.** ADR 0060
+records it. `protocol-application-v7` reads a canonical genesis file, opens or
+creates its store, binds a private Unix socket, and serves until `SIGTERM`; it is
+checked as a **process**, started and connected to and shut down, against the
+recorded chain identity and a genesis root read out of a recorded block header.
+The piece that made it possible is `decode_genesis`, which is **defined as
+`encode_genesis`'s inverse and checks itself against that claim** by re-encoding
+what it read and requiring the octets back — so the validity rule is stated
+exactly once, in the encoder, and a field read at the wrong offset is caught
+along with everything else.
+
+**A chain still does not run, and exactly one structural piece is missing.**
+There is **no Go ABCI adapter carrying version-seven transactions**; the existing
+`adapter/cometbft` speaks version one's responses and cannot read a finalized
+block that carries a block identifier. **And one debt inside the stack still
+matters as much.** The uptime schedule handed to `execute_block` is `nullptr`, so
+a chain driven through this process writes **no cycle assignment record and
+accrues nothing to any seat**. Every root in the evidence is the recorded one
+because the recorded contiguous run opens no window — the stack executes blocks
+correctly and cannot yet run a chain past a cycle boundary and mean it.
+
+### How M3.13e was delivered
+
+**The decoder is the encoder's inverse and checks itself.** It reads the 110
+canonical octets and then re-encodes what it read, returning a genesis only when
+the result equals the input octet for octet. **The validity rule is therefore
+stated exactly once**, in `encode_genesis` — a nonzero supply limit, a zero total
+supply, a zero fee pool, no accounts — and a decoder with its own copy of those
+four conditions would be a second opinion kept in step by discipline. The round
+trip also catches what a restatement would not: a trailing octet, an
+unrecognised schema version, and a field read at the wrong offset.
+
+**That last one is not hypothetical.** `total_supply` is encoded *before*
+`fixed_transfer_fee` while the struct declares them the other way round, so a
+decoder reading in declaration order puts the fee where the supply belongs. The
+test uses a distinctive nonzero fee for exactly that reason; a zero fee would
+hide it, and the probe that swaps the two offsets fails.
+
+**The binary opens before it creates**, because a create over an existing path is
+refused by the store, so a restart is the ordinary case rather than a special
+one. Its evidence checks it as a process against figures no process produced:
+the recorded chain identity, and a height-zero root read **out of the recorded
+`carried.block0.header`** — a header commits to its previous state root, and at
+height one that is the genesis root.
+
+**The hosted matrix caught something no local check could, and the shape
+generalises.** `protocol_application_server_v7` was declared as a target and
+never added to `PROTOCOL_STACK_TARGETS`, **which is the only place this project
+applies the C++ standard, the warning flags, `-Werror`, and the sanitizers**. It
+built at the compiler's default standard, so `operator<=>` and `std::span` in
+long-standing headers stopped parsing and all four jobs failed on a tree that
+compiled clean locally. **The scratch harness passes `-std=c++20` on every
+invocation, so it can never reproduce this class at all.**
+`test_every_built_target_takes_the_project_build_flags` now requires every target
+the project builds itself to appear in that list, and removing the entry was
+checked to make it fail. **Add a target in four places or the guard will tell
+you**: `add_executable`, its properties, its link libraries, and
+`PROTOCOL_STACK_TARGETS`.
+
+**Two probes passed and neither was a gap.** Widening the genesis file's size
+check from "exactly 110 octets" to "at most 4,096" broke nothing, because that
+check is an **allocation bound** and not a validity rule — the comment now says
+so instead of claiming a better error message. And accepting version one's app
+state at `init_chain` is invisible to the process test; it fails in
+`version-seven-application`, which owns that rule, and **that was re-run to
+confirm the coverage rather than assumed**.
 
 ### How M3.13d was delivered
 
@@ -2660,8 +2717,17 @@ slices.
   request to the version-seven dispatcher. Its evidence is the recorded blocks
   driven through the whole frame pipeline as the octets an adapter would send,
   and one of them driven over a real socket, against the recorded roots and block
-  identifiers. **There is still no version-seven server binary and no Go ABCI
-  adapter**, so nothing runs as a node yet.
+  identifiers.
+- **A version-seven node is a process.** `protocol-application-v7` reads a
+  canonical genesis file, decodes it, opens or creates its store, binds a private
+  Unix socket at mode 0600, and serves until `SIGTERM`, and
+  `--genesis-identity` prints the chain identity and height-zero application hash
+  an operator puts into a consensus engine's configuration. It is checked as a
+  process — started, connected to, restarted, shut down — against the recorded
+  chain identity and a genesis root read out of a recorded block header.
+  `decode_genesis` is what made it possible and is defined as `encode_genesis`'s
+  inverse, checking itself by re-encoding. **There is still no Go ABCI adapter
+  carrying version-seven transactions**, so nothing yet joins a network.
 - The accepted `economy-transition-v7` contract is version six with the
   per-channel carry deleted from state and replaced by a recovery pool. Its
   independent Python model runs the respecified settlement — a zero-winner
@@ -3049,6 +3115,23 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #216 and PR #217 are the M3.13e delivery, merged by rebase across
+  commits `cf1d28c` through `8ffc2bd` on `main`. It adds `decode_genesis` to
+  `include/protocol/v7/economy.hpp` and `src/v7/economy_genesis.cpp`,
+  `src/application/main_v7.cpp` as the `protocol-application-v7` target, and
+  `tests/application/headless_process_v7_test.py`, plus ADR 0060. **No accepted
+  vector file changes and no new one is added**, and nothing that existed before
+  behaves differently: the decoder is additive. One ctest entry is added,
+  `version-seven-headless-process`, so the suite goes from 150 to 151 entries in
+  the debug presets and from 158 to 159 under `clang-sanitizers`.
+  **The slice's first matrix failed and the reason is worth keeping.** Run
+  33441137560 on head `611e7b6` failed in all four jobs because the new binary
+  was never added to `PROTOCOL_STACK_TARGETS` and therefore built at the
+  compiler's default standard; the final commit fixes it and adds the guard that
+  makes it non-repeatable. Run 33442267440 on head `b388656` then passed the
+  complete hosted matrix with the counts above and all four job logs confirming
+  the new entry, so the binary is sanitizer-clean as a process rather than only
+  as a translation unit.
 - Issue #213 and PR #214 are the M3.13d delivery, merged by rebase across
   commits `cc8b9c0` through `115c295` on `main`. It adds
   `include/protocol/application/response_v7.hpp` and `dispatcher_v7.hpp`, two
@@ -3851,23 +3934,25 @@ stopped in the middle of its history resumes on the same trajectory. "Survives a
 restart" is now evidence rather than a claim, and the evidence is against
 recorded roots rather than against the store's own arithmetic.
 
-**What is left between a store and a node is now a process and an adapter.**
-As of 2026-08-31 `ApplicationV7` turns a block a consensus engine decided into a
-block the store commits, requires the two to agree about what it did, and answers
-over a Unix socket in frames an adapter can read. What is missing is a **binary**
-that opens a store, an application, and a socket and serves them — version one's
-`protocol-application` does exactly that and version seven has no equivalent —
-and the **Go ABCI adapter** that connects to it.
+**What is left between a node process and a network is one adapter.**
+As of 2026-08-31 the whole C++ side exists: the kernel executes version-seven
+blocks, the store makes a state durable across a restart, `ApplicationV7`
+reconciles a consensus engine's block pipeline with that store and requires the
+two to agree about what it did, the transport carries it in frames, and
+`protocol-application-v7` is a process that serves them on a socket.
 
-**One concrete obstacle sits in front of the binary and is worth knowing now.**
-Version one's binary reads a genesis *file* and hands the bytes to
-`create_sqlite_ledger`. Version seven's store takes a `v7::Genesis` **struct**,
-and version seven publishes `encode_genesis` with **no inverse** — so a binary
-has nothing to turn a file into a genesis. The canonical encoding is 110 octets,
-which the store's own schema already asserts, so a `decode_genesis` over exactly
-those octets is the natural answer and its round trip against `encode_genesis` is
-the property to test. The founder-directed values inside a genesis are already
-fixed; a decoder for them is encoding work.
+**What is missing is the Go ABCI adapter.** `adapter/cometbft` exists and speaks
+version one: `internal/localapp` is the socket client and frame codec and
+`internal/bridge` is the ABCI application over it, together about 1,800 lines
+with their tests. **It cannot read a version-seven finalized block**, because
+that response carries a block identifier version one's does not, and it sends
+version one's app state at `InitChain`, which `ApplicationV7` refuses by design.
+
+**And one gap inside the stack is larger than the adapter.** Every layer hands
+`execute_block` a null uptime schedule, so a chain run end to end writes no cycle
+assignment record and no seat accrues anything. Requirement 13 asks for
+adversarial *economic* scenarios; four nodes agreeing on blocks that pay nobody
+would satisfy the word "four-node" and not the word "economic".
 
 **And one gap inside the layer is larger than the transport.** `ApplicationV7`
 hands `execute_block` a null uptime schedule, so a chain driven through it writes
@@ -4076,38 +4161,34 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.13e: `decode_genesis` and the version-seven server
-binary**, which is the last C++ piece before a version-seven node is a process
-something can connect to.
+Milestone slice **M3.13f: the version-seven ABCI adapter**, which is the last
+structural piece between the stack that exists and a network that runs it.
 
-**Do the decoder first, because the binary cannot exist without it.** Version
-one's `src/application/main.cpp` reads a genesis *file* and hands the bytes to
-`create_sqlite_ledger`. Version seven's `create_sqlite_ledger_v7` takes a
-`v7::Genesis` **struct**, and `include/protocol/v7/economy.hpp` publishes
-`encode_genesis` with **no inverse**. The canonical encoding is 110 octets — the
-store's own `ledger_meta_v7` schema asserts exactly that length — so
-`decode_genesis` over those octets is the natural answer, and **its round trip
-against `encode_genesis` is the property to test**: decode then encode must
-reproduce the same octets, and every field the encoder rejects the decoder must
-refuse. The eight fields are founder-directed values that are already fixed; a
-decoder for them is encoding work.
+**`adapter/cometbft` exists and speaks version one.** `internal/localapp` is the
+Unix socket client and frame codec; `internal/bridge` is the ABCI application
+over it; `cmd/protocol-cometbft-node`, `-init`, `-devnet`, and `-bridge` are the
+binaries. About 1,800 lines with their tests, and **the frame format is the one
+version seven already uses**, so the codec's header, kinds, and request encoders
+are shared rather than replaced.
 
-**Then the binary, which is version one's `main.cpp` with three substitutions.**
-It reads the genesis file, decodes it, opens or creates the store, makes the
-application, binds the socket, and serves in a loop with a `signalfd` for
-shutdown. Version one's `--genesis-identity` mode prints the chain identity and
-app hash an operator needs for CometBFT's configuration, and version seven needs
-the same: `v7::chain_id(genesis)` and `ledger_state_root` after `open_ledger`.
-**Keep the socket pathname bound in mind** — `sun_path` caps it near 108 octets,
-which is why the transport test's registered directory name is short.
+**Three things actually differ and each is small.** The finalized-block response
+carries a **block identifier** after the state root, which version one's decoder
+does not expect; the app state at `InitChain` is `"protocol-stack-v7"`; and the
+per-transaction result codes are version seven's, so an adapter that maps them to
+names needs the wider table. Everything else — the header, the request payloads,
+the status-and-reserved prefix, the commit and info shapes — is unchanged.
+
+**Two things it must answer that are not encoding.** First, the **replay
+handshake** ADR 0058 records: `ApplicationV7` refuses, terminally, a
+`finalize_block` at any height that is not `current + 1`, *including one it has
+already committed*, which is exactly what CometBFT does to an application whose
+height is behind its engine's. Deciding what the adapter does about that — and
+whether the application should answer a repeat rather than halt — is the slice's
+one real design question, and it is mechanism rather than a founder decision.
+Second, the socket pathname bound: `sun_path` caps it near 108 octets and the
+binary reports only "failed to create the private Unix socket".
 
 **Then, in order, each its own slice:**
-
-* the Go ABCI adapter carrying version-seven transactions, which must also answer
-  the replay handshake ADR 0058 records as owed: the application refuses,
-  terminally, a `finalize_block` at any height that is not `current + 1`,
-  **including one it has already committed**, and that is exactly what CometBFT
-  does to an application whose height is behind its engine's;
 * **the uptime schedule, which is the gap that decides whether requirement 13
   measures anything.** `ApplicationV7` hands `execute_block` a `nullptr`, so a
   chain driven through it writes no cycle assignment and no seat accrues. Four
@@ -4167,6 +4248,16 @@ rather than `malformed`. The prefix is 126 octets and the encoder checks that it
 wrote exactly that many, because the decoder reads every prefix field at a
 literal offset.
 
+**What the node process looks like now, so a later session does not rediscover
+it.** `src/application/main_v7.cpp` is the `protocol-application-v7` target and
+takes `<absolute-database> <absolute-genesis> <absolute-socket>`, or
+`--genesis-identity <absolute-genesis>`. The genesis file is exactly 110 octets
+and nothing else; the size check in the binary is an **allocation bound**, and
+the validity rule lives only in `decode_genesis`. Opening the store is attempted
+before creating it. A `connection_failure` or a `protocol_failure` continues the
+serve loop; only the application's own terminal latch stops a node that has
+contradicted itself.
+
 **What the transport looks like now, so a later session does not rediscover it.**
 There is no version-seven wire. `wire_v1` decodes every request for both
 versions, and version seven adds `response_v7.cpp` and `dispatcher_v7.cpp` only.
@@ -4213,6 +4304,18 @@ prologue. `Assignment` and `SeatCycle` live in `ledger.hpp`; `SeatCycle` carries
 **three** fields on purpose, because the mark and the recorded referrer are
 chain state and a four-field version would make ADR 0055's first derived rule
 optional.
+
+**One class of failure the local harness cannot reproduce at all, learned in
+M3.13e.** Every target this project builds must appear in
+`PROTOCOL_STACK_TARGETS`, which is the **only** place the C++ standard, the
+warning flags, `-Werror`, and the sanitizers are applied. A target left out still
+builds — at the compiler's default standard — and the scratch harness passes
+`-std=c++20` explicitly on every invocation, so it compiles clean locally and
+fails in all four hosted jobs with errors pointing at headers that have not
+changed in months. `test_every_built_target_takes_the_project_build_flags` now
+catches it, and `python3 -B tests/tools/test_registration_test.py` is where it
+runs. **Adding an executable means four edits**: `add_executable`, its
+properties, its link libraries, and that list.
 
 **Local checks worth running, and one worth running first.** `git diff --check
 main HEAD` is exactly the whitespace gate the classification job runs; it costs
@@ -4343,7 +4446,22 @@ same count rather than reading it back.
 
 ## Blockers
 
-**None for M3.13e.**
+**None for M3.13f.**
+
+**M3.13e ran the founder-decision gate and passed it.** Five decisions were
+enumerated before any was judged: whether the decoder restates the validity rule
+or delegates it to the encoder; the genesis file's format and the bound on
+reading it; the binary's command surface and whether it is a separate executable
+or a mode of version one's; whether opening precedes creating; and what the serve
+loop does with a failed connection. **Every one is encoding, packaging, or
+operational work**, which `founder-constitution.md` places outside the reserved
+set. The eight values inside a genesis are founder-directed and **already
+fixed** — the slice reads them from a file and changes none of them, and the
+recorded `genesis.bytes` is what it is checked against. Nothing in the slice sets
+or changes supply, allocation, beneficiaries, Founder ownership, creator
+hierarchy, commercial routing, AI institutional authority, bridge scope, content
+permanence, or what an end user must do, own, run, or receive, and no accepted
+vector file changed.
 
 **M3.13d ran the founder-decision gate and passed it.** Six decisions were
 enumerated before any was judged: whether the frame format is reused or
