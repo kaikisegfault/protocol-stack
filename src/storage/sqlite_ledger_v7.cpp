@@ -23,6 +23,15 @@
 namespace protocol::storage {
 
 using namespace internal_v7;
+
+namespace {
+
+bool fault(internal::SQLiteBlockFaultPoint point,
+           internal::Connection& connection) {
+  return internal::invoke_sqlite_block_fault(point, connection.get());
+}
+
+}  // namespace
 static_assert(std::is_nothrow_move_constructible_v<SQLiteLedgerV7>);
 static_assert(std::is_nothrow_destructible_v<SQLiteLedgerV7>);
 
@@ -112,34 +121,75 @@ SQLiteV7BlockResult SQLiteLedgerV7::apply_block(
                                SQLiteLedgerV7Error::storage_failure);
   }
 
+  // **Everything up to the commit rolls back and writes nothing.** A failure
+  // there is an ordinary refusal: the transaction is abandoned, the durable head
+  // is the one it already was, and the store keeps working. Only the commit
+  // itself can leave a head this process cannot name.
   try {
     auto& connection = state.resources->connection;
+    internal::verify_stable_path(*state.resources, state.path);
+    if (fault(internal::SQLiteBlockFaultPoint::before_transaction, connection)) {
+      throw FailureV7{SQLiteLedgerV7Error::storage_failure};
+    }
     internal::begin_exclusive(connection);
     try {
+      if (fault(internal::SQLiteBlockFaultPoint::after_transaction_begin,
+                connection)) {
+        throw FailureV7{SQLiteLedgerV7Error::storage_failure};
+      }
       internal::persist_block_v7(connection, durable, commit, executed->header);
+      if (fault(internal::SQLiteBlockFaultPoint::after_persistence, connection)) {
+        throw FailureV7{SQLiteLedgerV7Error::storage_failure};
+      }
       internal::verify_stable_path(*state.resources, state.path);
+      if (fault(internal::SQLiteBlockFaultPoint::before_commit, connection)) {
+        throw FailureV7{SQLiteLedgerV7Error::storage_failure};
+      }
     } catch (...) {
       internal::rollback_or_terminate(connection);
       throw;
     }
-    internal::commit(connection);
-    internal::verify_stable_path(*state.resources, state.path);
+
+    // From here the transaction may have landed and this process may not know.
+    // Anything that goes wrong poisons the store, and recovery is an attempt to
+    // stop being poisoned by reading the file again.
+    auto commit_error = SQLiteLedgerV7Error::storage_failure;
+    bool published = false;
+    try {
+      internal::commit(connection);
+      // Invoked and ignored: a test terminates the process here, which is how
+      // "the durable head is the block's or its predecessor's and never
+      // anything between" is checked rather than argued.
+      (void)internal::invoke_sqlite_block_fault(
+          internal::SQLiteBlockFaultPoint::after_commit_before_publication,
+          connection.get());
+      internal::verify_stable_path(*state.resources, state.path);
+      published = true;
+    } catch (const FailureV7& failure) {
+      commit_error = failure.error;
+    } catch (const internal::Failure& failure) {
+      commit_error = translate(failure.error);
+    } catch (...) {
+    }
+    if (!published) {
+      state.poisoned = true;
+      (void)state.recover_durable_head();
+      return SQLiteV7BlockResult(std::in_place_type<SQLiteLedgerV7Error>,
+                                 commit_error);
+    }
 
     state.ledger = std::move(candidate);
     state.state_root = durable.state_root;
     state.head_snapshot = std::move(durable.snapshot);
+    (void)internal::invoke_sqlite_block_fault(
+        internal::SQLiteBlockFaultPoint::after_publication, connection.get());
   } catch (const FailureV7& failure) {
-    // The durable head is whatever the transaction left, and this process no
-    // longer knows which. Refusing every later call is the honest answer.
-    state.poisoned = true;
     return SQLiteV7BlockResult(std::in_place_type<SQLiteLedgerV7Error>,
                                failure.error);
   } catch (const internal::Failure& failure) {
-    state.poisoned = true;
     return SQLiteV7BlockResult(std::in_place_type<SQLiteLedgerV7Error>,
                                translate(failure.error));
   } catch (...) {
-    state.poisoned = true;
     return SQLiteV7BlockResult(std::in_place_type<SQLiteLedgerV7Error>,
                                SQLiteLedgerV7Error::storage_failure);
   }

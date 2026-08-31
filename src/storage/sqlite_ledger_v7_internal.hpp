@@ -9,6 +9,7 @@
 
 #include "protocol/storage/sqlite_ledger_v7.hpp"
 
+#include "sqlite_fault_injection.hpp"
 #include "sqlite_schema_v7.hpp"
 
 #include <filesystem>
@@ -148,6 +149,51 @@ struct SQLiteLedgerV7::Impl {
         ledger(std::move(live_ledger)),
         state_root(verified_root),
         head_snapshot(std::move(payload)) {}
+
+  // **After a commit whose outcome is unknown, the only honest answer is to read
+  // the file again.** This closes the connection, reopens it, runs the same four
+  // validation steps an ordinary open runs, and adopts whatever head the file
+  // actually holds — which is either the block's or its predecessor's and never
+  // anything between, because SQLite's transaction is what decides. It is
+  // version one's recovery for version one's reason.
+  //
+  // It is `noexcept` and answers `false` rather than throwing: a store that
+  // cannot recover stays poisoned, which is a worse state but an honest one.
+  bool recover_durable_head() noexcept {
+    try {
+      if (!resources) return false;
+      resources->connection.close();
+      resources.reset();
+      if (internal::invoke_sqlite_block_fault(
+              internal::SQLiteBlockFaultPoint::before_recovery_open, nullptr)) {
+        throw internal::FailureV7{SQLiteLedgerV7Error::storage_failure};
+      }
+
+      auto replacement = std::make_unique<internal::SQLiteResources>(
+          internal::open_sqlite_database(path));
+      internal::configure_connection(replacement->connection);
+      internal::acquire_lifetime_lock(replacement->connection);
+      internal::require_existing_journal_mode(replacement->connection);
+      internal::verify_stable_path(*replacement, path);
+      internal::validate_integrity_v7(replacement->connection);
+      internal::validate_schema_v7(replacement->connection);
+      internal::validate_stored_genesis_v7(
+          replacement->connection,
+          internal_v7::bytes_view(canonical_genesis));
+      auto durable = internal::read_durable_head_v7(replacement->connection);
+      auto payload = durable.snapshot;
+      auto restored = internal_v7::restore_durable_head(durable, parameters);
+
+      resources.swap(replacement);
+      ledger = std::move(restored);
+      state_root = durable.state_root;
+      head_snapshot = std::move(payload);
+      poisoned = false;
+      return true;
+    } catch (...) {
+      return false;
+    }
+  }
 };
 
 }  // namespace protocol::storage
