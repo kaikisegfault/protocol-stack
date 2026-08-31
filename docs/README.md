@@ -472,6 +472,31 @@ it is unreachable on-chain and reachable through a file, the accepted
 specification fixes the bitmap width without stating the rule, so the snapshot
 refuses it and a later transition version should state it outright.
 
+ADR 0057 records the version-seven owning store, which is what makes a
+version-seven state survive the process that built it. **The head is one
+snapshot payload rather than a row per entry**, because the snapshot is already
+the canonical projection of everything a state root commits to and a second
+row-shaped projection would be a second opinion about what a state *is*; what
+the schema keeps in its own columns is only what a reopen must agree on before
+it trusts the payload. The connection, locking, journal, and path-stability
+contract is version one's, reused unchanged, since ADR 0007 settles all of it
+against the filesystem and SQLite rather than against a ledger. Its evidence is
+the question ADR 0056 could not ask: the `carried` scenario's four contiguous
+blocks are replayed through a database **closed and reopened between each
+pair**, and every block must reproduce its recorded `block_id` and
+`resulting_state_root`. Two findings are worth more than the schema. **The
+integrity check is what keeps every later comparison from lying about why an
+open failed** — with it removed, a database whose pages were overwritten reports
+`genesis_mismatch`, which tells an operator they opened the wrong chain when in
+fact their disk is failing, and that is why it runs first. And two of the ten
+mutation probes found tests that did not exist rather than tests that were
+wrong: nothing exercised a block the *kernel* rejects whole, so a store that
+committed a rejected block passed the whole suite. Checking the stored
+transaction root also found the store's one duplicated derivation — it rebuilt a
+root the block header already commits to — and `execute_block` now carries that
+root out of the block, which changes no encoding, no state, and no accepted
+vector.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
