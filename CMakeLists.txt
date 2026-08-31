@@ -237,6 +237,20 @@ target_link_libraries(
   PRIVATE
     protocol_application
 )
+add_executable(
+  protocol_application_server_v7
+  src/application/main_v7.cpp
+)
+set_target_properties(
+  protocol_application_server_v7
+  PROPERTIES
+    OUTPUT_NAME protocol-application-v7
+)
+target_link_libraries(
+  protocol_application_server_v7
+  PRIVATE
+    protocol_application
+)
 target_include_directories(
   protocol_storage
   PUBLIC
@@ -929,6 +943,17 @@ add_test(
     "$<TARGET_FILE:protocol_application_server>"
     "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
     "${CMAKE_CURRENT_BINARY_DIR}/ah-v1"
+)
+# The directory name is short because this entry binds a Unix socket inside it
+# and `sun_path` caps a socket pathname near 108 octets.
+add_test(
+  NAME version-seven-headless-process
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/application/headless_process_v7_test.py"
+    "$<TARGET_FILE:protocol_application_server_v7>"
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7-execution.txt"
+    "${CMAKE_CURRENT_BINARY_DIR}/ah-v7"
 )
 add_test(
   NAME cometbft-port-allocation
