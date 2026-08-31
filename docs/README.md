@@ -532,6 +532,21 @@ right one. Two of its four probes found missing tests: one because the suite onl
 ever sent proposals that should be accepted, and one because an assertion inside
 the socket test aborted the process instead of reporting.
 
+ADR 0060 records the version-seven node process and the decoder that made it
+possible. **`decode_genesis` is defined as `encode_genesis`'s inverse and checks
+itself against that claim**: it reads the 110 canonical octets, re-encodes what
+it read, and returns a genesis only when the result equals the input octet for
+octet. The validity rule — a nonzero supply limit, a zero total supply, a zero
+fee pool, no accounts — is therefore stated exactly once, in the encoder, and the
+round trip catches more than a restatement would, including a field read at the
+wrong offset. That is not hypothetical: `total_supply` is encoded *before*
+`fixed_transfer_fee` while the struct declares them the other way round. The
+binary is version one's with three substitutions, opens before it creates so that
+a restart is the ordinary case, and is checked as a **process** — started,
+connected to, shut down — against the recorded chain identity and a genesis root
+read out of a recorded block header, since a header commits to its previous state
+root and at height 1 that is the genesis root.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
