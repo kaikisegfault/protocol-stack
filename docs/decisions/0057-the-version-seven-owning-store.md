@@ -99,8 +99,8 @@ state meaning "the durable head is unknown" rather than "something went wrong".
 
 If the write itself fails the store is **poisoned**: the durable head is whatever
 the transaction left and this process no longer knows which, so every later call
-returns `storage_failure`. Version one recovers by reopening; version seven does
-not yet, and that is recorded as owed rather than implied.
+returns `storage_failure`. **Recovery was owed at first publication and is
+recorded below as delivered on 2026-09-01.**
 
 ### The verifier is supplied at construction
 
@@ -190,13 +190,53 @@ accepted the file. A second fuzz target over those would be exercising
 - The next slices are the application layer and the CometBFT adapter carrying
   version-seven transactions, which is what turns a store into a node.
 
+## Update, 2026-09-01: the write path's faults and its recovery
+
+The first two items of the owed list below are now delivered, and the contract
+they settle is narrower than the original text implied.
+
+**Everything before the commit rolls back and is an ordinary refusal.** A fault
+at `before_transaction`, `after_transaction_begin`, `after_persistence`, or
+`before_commit` abandons the transaction, leaves the durable head the one it
+already was, and **leaves the store usable** — the same store accepts the same
+block once the fault is gone. The original text poisoned the store on any write
+failure, which was safe and wrong: a refusal that wrote nothing is not a reason
+to stop answering.
+
+**Only the commit can leave a head this process cannot name**, and there the
+store poisons itself and then **reads the file again**. Recovery closes the
+connection, reopens it, runs the same four validation steps an ordinary open
+runs, and adopts whatever head the file actually holds — which is either the
+block's or its predecessor's, because SQLite's transaction is what decides and
+nothing between is reachable. On success the poison is cleared and the store
+continues.
+
+**Recovery is allowed to fail, and then the store stays poisoned.** It is
+`noexcept` and answers `false`; a store that could not read its own file back
+refuses to read a head, refuses to hand out a payload, and refuses every later
+block. That is a worse state and an honest one.
+
+The evidence is `version-seven-store-recovery`. The four rolled-back faults are
+each driven and then cleared, and the block that follows must reproduce its
+**recorded** root. A commit made to fail through the fault VFS's journal sync
+must recover to height zero, stay conserved, and then execute the same block to
+its recorded root. A commit whose recovery is *also* denied must refuse
+everything afterwards. And the process is **killed** at
+`after_commit_before_publication` and at `after_publication` by a re-executed
+child: in both cases the parent must find the committed block durable at its
+recorded root, and must be able to continue the chain to the next block's
+recorded root.
+
+That last pair is the property requirement 13 names when it says "through
+restart **and recovery**": a fault anywhere in the write path leaves the durable
+head at the pre-block root or the post-block root, and never at anything between.
+
 ## Owed, and recorded rather than implied
 
-- **Fault-injection coverage of the version-seven write path.** The seams exist
-  and are reused; nothing yet drives them for this store, so the poisoned path is
-  reasoned about rather than exercised.
-- **Recovery after a poisoned write.** Version one reopens and revalidates;
-  version seven refuses every later call until the process restarts.
+- ~~**Fault-injection coverage of the version-seven write path.**~~ Delivered
+  2026-09-01; see the update above.
+- ~~**Recovery after a poisoned write.**~~ Delivered 2026-09-01, with a narrower
+  contract than this section first assumed; see the update above.
 - **The archive and block-history replay.** Version one validates its
   materialized head by replaying every block from genesis. Version seven's head
   is validated by the snapshot's gates and the conservation invariants instead,

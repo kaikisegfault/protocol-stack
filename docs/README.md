@@ -495,7 +495,13 @@ committed a rejected block passed the whole suite. Checking the stored
 transaction root also found the store's one duplicated derivation — it rebuilt a
 root the block header already commits to — and `execute_block` now carries that
 root out of the block, which changes no encoding, no state, and no accepted
-vector.
+vector. **It was amended in place on 2026-09-01** when the two things it recorded
+as owed were delivered, and the contract turned out narrower than its first text
+implied: everything before the commit rolls back and is an ordinary refusal that
+leaves the store usable, only the commit can leave a head the process cannot
+name, and there the store poisons itself and reads the file again — recovering to
+the block's root or its predecessor's and never to anything between, which is the
+property requirement 13 names when it says "through restart *and recovery*".
 
 ADR 0058 records the version-seven application layer, which is the first piece
 that turns the store into something a consensus engine can drive. **Its whole
