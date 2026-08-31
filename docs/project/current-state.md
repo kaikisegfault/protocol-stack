@@ -176,15 +176,72 @@ staged. That equality is what makes the root a node *announced* and the root it
 deliberately not the candidate state, because the root commits to every entry and
 keeping the state would invite committing it instead of replaying the block.
 
-**A chain still does not run, and what is missing is now smaller and named.**
-Nothing yet speaks to CometBFT: the version-seven wire, dispatcher, and Unix
-server do not exist, and neither does a Go adapter that carries version-seven
-transactions. **And one debt inside the layer matters more than the wire.** The
-uptime schedule handed to `execute_block` is `nullptr`, so a chain driven
-entirely through `ApplicationV7` writes **no cycle assignment record and accrues
-nothing to any seat**. Every root in its evidence is the recorded one because the
-recorded contiguous run opens no window — the layer executes blocks correctly and
+**M3.13d delivered the version-seven transport the same day.** ADR 0059 records
+it, and most of its decision is what it declines to add: **no new frame format**,
+because the header and all five request payloads carry no ledger-version
+meaning, and **no second connection loop**, because accepting, framing, and the
+duplicate-request-identifier rule are properties of the wire. What version seven
+adds is the response half — a finalized block carrying a block identifier version
+one's does not, and receipts of version seven's fifty-six octets — and a
+dispatcher. `UnixSocketServerV1::serve_connection` gains an overload, and the
+`V1` in that name is the wire's version rather than the ledger's. **Every
+response is validated on the way out rather than merely serialised**, because the
+adapter on the other side has no ledger, no kernel, and no vectors and cannot
+tell a wrong answer from a right one.
+
+**A version-seven application now answers over a real Unix socket**, and the
+recorded blocks were driven through one to prove it.
+
+**A chain still does not run, and what is missing is now two named things.**
+There is **no version-seven server binary** — `protocol-application` is still
+version one's — and **no Go ABCI adapter** carrying version-seven transactions.
+**And one debt inside the layer still matters more than either.** The uptime
+schedule handed to `execute_block` is `nullptr`, so a chain driven entirely
+through `ApplicationV7` writes **no cycle assignment record and accrues nothing
+to any seat**. Every root in its evidence is the recorded one because the
+recorded contiguous run opens no window — the stack executes blocks correctly and
 cannot yet run a chain past a cycle boundary and mean it.
+
+### How M3.13d was delivered
+
+**The wire is version one's, reused unchanged, and that is the whole decision.**
+The 20-octet header, the seven message kinds, the seven wire errors, and the five
+request payloads carry no ledger-version meaning — a height, a transaction list,
+a byte budget, an app state, a raw transaction. A second frame format would
+differ from the first in nothing but its name while doubling the places a framing
+rule can be wrong. The same argument reduces the socket to one connection loop
+over a dispatcher.
+
+**The responses are the version-specific half.** A finalized block carries a
+**block identifier** version one's does not, because an adapter that could not
+name the block it just executed could not tell a peer which one it agreed to; its
+receipts are version seven's fifty-six octets with a version field of 7; and its
+result codes are version seven's thirty-three.
+
+**Every response is validated on the way out.** A receipt whose declared code and
+encoded result byte disagree, a mempool answer carrying a receipt, a response of
+the wrong type for its kind — each is refused rather than written. The adapter
+has no ledger, no kernel, and no vectors, so the encoder is the last place a
+disagreement can be caught, and catching it costs one comparison per result.
+
+**The chain identity is converted explicitly.** `InitChainRequest::chain_id` is a
+`TaggedHash` and therefore a distinct type from version seven's `Octets32`. Do
+not "fix" that by loosening either type: the tag is what stops a state root being
+passed where a chain identity belongs.
+
+**Two of four probes found tests that did not exist.** A dispatcher that ignored
+the application and always accepted a proposal passed, because the suite only
+ever sent proposals that *should* be accepted; the fix is a proposal one height
+ahead that must come back as a vote against, **sent before the block is staged**,
+because a staged block refuses the same call for a different reason and the test
+would then pass for the wrong one. And a socket wired to the wrong dispatcher
+**aborted rather than failed** — an assertion inside the client block left the
+server thread unjoined and `std::thread`'s destructor called `std::terminate`,
+hiding the message. The block now captures the exception, lets the client's
+destructor close the socket so the server returns, joins, and rethrows. **A test
+that aborts instead of reporting is a test that will one day hide a real
+failure**, and this is the pattern to check for wherever a thread outlives an
+assertion.
 
 ### How M3.13c was delivered
 
@@ -2596,6 +2653,15 @@ slices.
   pair**, against the recorded roots and block identifiers. **Nothing yet speaks
   to CometBFT**, and **the uptime schedule is `nullptr`**, so a chain driven
   through it writes no cycle assignment and accrues nothing to any seat.
+- **That pipeline answers over a Unix socket.** Version seven's responses are
+  encoded over version one's frame format, reused unchanged because its header
+  and all five request payloads carry no ledger-version meaning, and
+  `UnixSocketServerV1::serve_connection` has an overload that hands a decoded
+  request to the version-seven dispatcher. Its evidence is the recorded blocks
+  driven through the whole frame pipeline as the octets an adapter would send,
+  and one of them driven over a real socket, against the recorded roots and block
+  identifiers. **There is still no version-seven server binary and no Go ABCI
+  adapter**, so nothing runs as a node yet.
 - The accepted `economy-transition-v7` contract is version six with the
   per-channel carry deleted from state and replaced by a recovery pool. Its
   independent Python model runs the respecified settlement — a zero-winner
@@ -2983,6 +3049,20 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #213 and PR #214 are the M3.13d delivery, merged by rebase across
+  commits `cc8b9c0` through `115c295` on `main`. It adds
+  `include/protocol/application/response_v7.hpp` and `dispatcher_v7.hpp`, two
+  translation units under `src/application/`, one test translation unit under
+  `tests/application/`, and ADR 0059. `unix_connection_v1.cpp`'s loop becomes one
+  function over a dispatcher and `serve_connection` gains a version-seven
+  overload; **version one's behaviour is unchanged and both of its suites were
+  re-run locally to prove it**. **No accepted vector file changes and no new one
+  is added.** One ctest entry is added, `version-seven-transport`, so the suite
+  goes from 149 to 150 entries in the debug presets and from 157 to 158 under
+  `clang-sanitizers`. PR run 33438537070 on head `440c214` passed the complete
+  hosted matrix with those counts and all four job logs confirming the new entry
+  — which means the socket case ran under both sanitizers as well as the plain
+  builds.
 - Issue #210 and PR #211 are the M3.13c delivery, merged by rebase across
   commits `8a3b345` through `62941c2` on `main`. It adds
   `include/protocol/application/application_v7.hpp`, two translation units and
@@ -3771,15 +3851,23 @@ stopped in the middle of its history resumes on the same trajectory. "Survives a
 restart" is now evidence rather than a claim, and the evidence is against
 recorded roots rather than against the store's own arithmetic.
 
-**What is left between a store and a node is now the transport, not the logic.**
+**What is left between a store and a node is now a process and an adapter.**
 As of 2026-08-31 `ApplicationV7` turns a block a consensus engine decided into a
-block the store commits, and requires the two to agree about what it did. What
-version seven still lacks is what carries those calls: the wire, the dispatcher,
-the Unix server, and a Go ABCI adapter. Version one has all four —
-`wire_v1`, `dispatcher_v1`, `response_v1`, `unix_server_v1`, and
-`adapter/cometbft` — and **the wire's request shapes are already
-version-agnostic**, so the version-seven work is a response encoder, a
-dispatcher, and a server binding rather than a new frame format.
+block the store commits, requires the two to agree about what it did, and answers
+over a Unix socket in frames an adapter can read. What is missing is a **binary**
+that opens a store, an application, and a socket and serves them — version one's
+`protocol-application` does exactly that and version seven has no equivalent —
+and the **Go ABCI adapter** that connects to it.
+
+**One concrete obstacle sits in front of the binary and is worth knowing now.**
+Version one's binary reads a genesis *file* and hands the bytes to
+`create_sqlite_ledger`. Version seven's store takes a `v7::Genesis` **struct**,
+and version seven publishes `encode_genesis` with **no inverse** — so a binary
+has nothing to turn a file into a genesis. The canonical encoding is 110 octets,
+which the store's own schema already asserts, so a `decode_genesis` over exactly
+those octets is the natural answer and its round trip against `encode_genesis` is
+the property to test. The founder-directed values inside a genesis are already
+fixed; a decoder for them is encoding work.
 
 **And one gap inside the layer is larger than the transport.** `ApplicationV7`
 hands `execute_block` a null uptime schedule, so a chain driven through it writes
@@ -3988,34 +4076,38 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.13d: the version-seven wire, dispatcher, and server**,
-which is what carries `ApplicationV7`'s seven operations to a process CometBFT
-can talk to.
+Milestone slice **M3.13e: `decode_genesis` and the version-seven server
+binary**, which is the last C++ piece before a version-seven node is a process
+something can connect to.
 
-**Most of the frame format is already version-agnostic and should be reused
-rather than re-versioned.** `include/protocol/application/wire_v1.hpp` defines a
-20-octet header, seven `MessageKind` values matching the seven operations, and
-five request payloads whose shapes carry no version-seven meaning — a height, a
-transaction list, a byte budget, an app state. **The responses are the
-version-specific half**: `response_v1` encodes `ApplicationInfo`,
-`FinalizedBlock`, and `CommittedHead`, and version seven's three differ.
-So the slice is a `response_v7` and a `dispatcher_v7` over the same wire, then a
-server binding, and it is smaller than it looks.
+**Do the decoder first, because the binary cannot exist without it.** Version
+one's `src/application/main.cpp` reads a genesis *file* and hands the bytes to
+`create_sqlite_ledger`. Version seven's `create_sqlite_ledger_v7` takes a
+`v7::Genesis` **struct**, and `include/protocol/v7/economy.hpp` publishes
+`encode_genesis` with **no inverse**. The canonical encoding is 110 octets — the
+store's own `ledger_meta_v7` schema asserts exactly that length — so
+`decode_genesis` over those octets is the natural answer, and **its round trip
+against `encode_genesis` is the property to test**: decode then encode must
+reproduce the same octets, and every field the encoder rejects the decoder must
+refuse. The eight fields are founder-directed values that are already fixed; a
+decoder for them is encoding work.
 
-**One conversion is real and worth knowing before it surprises someone.**
-`InitChainRequest::chain_id` is a `protocol::v1::ChainId`, which is a
-`TaggedHash<ChainIdTag>` and therefore a *distinct type* from version seven's
-`Octets32`, even though both are thirty-two octets. The dispatcher has to convert
-explicitly. Do not "fix" that by loosening either type: the tag is what stops a
-state root being passed where a chain identity belongs.
+**Then the binary, which is version one's `main.cpp` with three substitutions.**
+It reads the genesis file, decodes it, opens or creates the store, makes the
+application, binds the socket, and serves in a loop with a `signalfd` for
+shutdown. Version one's `--genesis-identity` mode prints the chain identity and
+app hash an operator needs for CometBFT's configuration, and version seven needs
+the same: `v7::chain_id(genesis)` and `ledger_state_root` after `open_ledger`.
+**Keep the socket pathname bound in mind** — `sun_path` caps it near 108 octets,
+which is why the transport test's registered directory name is short.
 
 **Then, in order, each its own slice:**
 
 * the Go ABCI adapter carrying version-seven transactions, which must also answer
-  the replay handshake ADR 0058 records as owed: this layer refuses, terminally,
-  a `finalize_block` at any height that is not `current + 1`, **including one it
-  has already committed**, and that is exactly what CometBFT does to an
-  application whose height is behind its engine's;
+  the replay handshake ADR 0058 records as owed: the application refuses,
+  terminally, a `finalize_block` at any height that is not `current + 1`,
+  **including one it has already committed**, and that is exactly what CometBFT
+  does to an application whose height is behind its engine's;
 * **the uptime schedule, which is the gap that decides whether requirement 13
   measures anything.** `ApplicationV7` hands `execute_block` a `nullptr`, so a
   chain driven through it writes no cycle assignment and no seat accrues. Four
@@ -4074,6 +4166,16 @@ version one's decoder recognises the family and answers `unsupported_version`
 rather than `malformed`. The prefix is 126 octets and the encoder checks that it
 wrote exactly that many, because the decoder reads every prefix field at a
 literal offset.
+
+**What the transport looks like now, so a later session does not rediscover it.**
+There is no version-seven wire. `wire_v1` decodes every request for both
+versions, and version seven adds `response_v7.cpp` and `dispatcher_v7.cpp` only.
+`unix_connection_v1.cpp` holds one templated `serve_with` over a dispatcher and
+two thin `serve_connection` overloads; **the `V1` in `UnixSocketServerV1` is the
+wire's version, not the ledger's**, and the header says so. The response layout
+is version one's status-and-reserved prefix followed by the body, and the one
+shape that differs is `finalize_block`, which carries the state root, **then the
+block identifier**, then one `{code, receipt}` pair per raw input.
 
 **What the application looks like now, so a later session does not rediscover
 it.** `protocol::application::ApplicationV7` is one public header, two
@@ -4241,7 +4343,22 @@ same count rather than reading it back.
 
 ## Blockers
 
-**None for M3.13d.**
+**None for M3.13e.**
+
+**M3.13d ran the founder-decision gate and passed it.** Six decisions were
+enumerated before any was judged: whether the frame format is reused or
+re-versioned; the response payload layout for the three responses that differ,
+including whether the finalized block carries a block identifier; what the
+encoder validates before writing rather than merely serialising; whether the
+socket grows an overload, a second loop, or a renamed class; how the tagged chain
+identity is converted; and whether the server binary and the Go adapter are in
+scope. **Every one is transport encoding or packaging**, which
+`founder-constitution.md` places outside the reserved set alongside mechanism,
+storage, consensus scheduling, and networking. Nothing in the slice sets or
+changes supply, allocation, beneficiaries, Founder ownership, creator hierarchy,
+commercial routing, AI institutional authority, bridge scope, content
+permanence, or what an end user must do, own, run, or receive, and no accepted
+vector file changed.
 
 **M3.13c ran the founder-decision gate and passed it.** Ten decisions were
 enumerated before any was judged: whether version seven gets its own application
