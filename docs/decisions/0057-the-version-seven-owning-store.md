@@ -171,6 +171,16 @@ rewritten schema version reach the schema comparison; a rewritten root and a
 rewritten height reach the columns-agree check; and a head payload that is not a
 snapshot reaches the decoder.
 
+**The untrusted-byte surface is the snapshot payload, and it already has a fuzz
+target.** `tests/fuzz/snapshot_v7_fuzz.cpp` drives `decode_snapshot_v7`, which is
+the only place in this path where an attacker-supplied length or index decides
+how far a read goes. Everything the store decodes on its own is two fixed-width
+column reads — an eight-octet height and a thirty-two-octet root, each length
+checked before it is used — and verbatim text comparisons of the stored DDL, all
+reached only after `PRAGMA integrity_check` and the schema comparison have
+accepted the file. A second fuzz target over those would be exercising
+`std::span::size()`, so this ADR records the reason rather than adding one.
+
 ## Consequences
 
 - Requirement 13's first two bricks are laid. A version-seven state can be
