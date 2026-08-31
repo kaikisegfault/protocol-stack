@@ -314,6 +314,11 @@ struct BlockOutcome {
   Hash resulting_state_root{};
   std::vector<Admitted> admissions;
   std::vector<ExecutedTransaction> executed;
+  // The root the header commits to, carried out of the block so that a caller
+  // storing it beside the header is not a second derivation of it. It is the
+  // tree over the admitted identifiers in admission order, which is the same
+  // order `executed` is in.
+  Hash transaction_root{};
   Bytes header;
   Hash block_id{};
   std::uint32_t atomic_failures = 0;

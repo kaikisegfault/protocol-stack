@@ -175,9 +175,10 @@ std::optional<BlockOutcome> execute_block(Ledger& ledger,
     return std::nullopt;
   }
   outcome.resulting_state_root = *resulting_root;
+  outcome.transaction_root = transaction_root(admitted_ids);
   const auto header = block_header(
       ledger.chain_id, outcome.height, outcome.previous_state_root,
-      transaction_root(admitted_ids), outcome.resulting_state_root,
+      outcome.transaction_root, outcome.resulting_state_root,
       static_cast<std::uint32_t>(outcome.executed.size()));
   if (!header) {
     ledger = snapshot;
