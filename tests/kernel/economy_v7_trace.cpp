@@ -216,6 +216,7 @@ const v7::BlockOutcome& run(Scenario& scenario, const Signatures& signatures,
               scenario.name + ": the whole block was rejected");
   scenario.blocks.push_back(std::move(*outcome));
   scenario.raw_inputs.push_back(steps.size());
+  scenario.block_inputs.push_back(raw_inputs);
 
   std::vector<std::string> labels;
   for (const auto& step : steps) {
