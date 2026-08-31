@@ -202,7 +202,9 @@ add_library(
   protocol_application
   STATIC
     src/application/application_block_v1.cpp
+    src/application/application_block_v7.cpp
     src/application/application_v1.cpp
+    src/application/application_v7.cpp
     src/application/dispatcher_v1.cpp
     src/application/response_v1.cpp
     src/application/unix_connection_v1.cpp
@@ -372,6 +374,15 @@ add_executable(
   application_v1_tests
   tests/application/application_v1_test.cpp
 )
+# The two scenario translation units are the kernel execution suite's own, for
+# the reason the snapshot and store tests reuse them: the recorded scenarios are
+# the third source a block driven through the application is checked against.
+add_executable(
+  application_v7_tests
+  tests/application/application_v7_test.cpp
+  tests/kernel/economy_v7_trace.cpp
+  tests/kernel/economy_v7_scenarios_test.cpp
+)
 add_executable(
   application_wire_v1_tests
   tests/application/wire_v1_test.cpp
@@ -444,6 +455,12 @@ target_link_libraries(
     protocol_application
 )
 target_link_libraries(
+  application_v7_tests
+  PRIVATE
+    protocol_application
+    protocol_stack_sqlite
+)
+target_link_libraries(
   application_wire_v1_tests
   PRIVATE
     protocol_application
@@ -490,6 +507,7 @@ set(
   storage_sqlite_ledger_v7_tests
   storage_archive_v1_tests
   application_v1_tests
+  application_v7_tests
   application_wire_v1_tests
   application_response_v1_tests
   application_unix_server_v1_tests
@@ -850,6 +868,13 @@ add_test(
     application_v1_tests
     "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
     "${CMAKE_CURRENT_BINARY_DIR}/application-v1-test"
+)
+add_test(
+  NAME version-seven-application
+  COMMAND
+    application_v7_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7-execution.txt"
+    "${CMAKE_CURRENT_BINARY_DIR}/version-seven-application"
 )
 add_test(
   NAME application-wire-v1
