@@ -354,6 +354,15 @@ add_executable(
   tests/storage/sqlite_vfs_failure_test.cpp
   tests/storage/sqlite_fault_vfs.cpp
 )
+# The scenario translation units are the kernel execution suite's own: a
+# recovered head is checked against the recorded roots, not against the store.
+add_executable(
+  storage_sqlite_recovery_v7_tests
+  tests/storage/sqlite_recovery_v7_test.cpp
+  tests/storage/sqlite_fault_vfs.cpp
+  tests/kernel/economy_v7_trace.cpp
+  tests/kernel/economy_v7_scenarios_test.cpp
+)
 add_executable(
   storage_snapshot_v1_tests
   tests/storage/snapshot_v1_test.cpp
@@ -440,6 +449,12 @@ target_link_libraries(
 )
 target_link_libraries(
   storage_sqlite_sequence_tests
+  PRIVATE
+    protocol_storage
+    protocol_stack_sqlite
+)
+target_link_libraries(
+  storage_sqlite_recovery_v7_tests
   PRIVATE
     protocol_storage
     protocol_stack_sqlite
@@ -534,6 +549,7 @@ set(
   storage_sqlite_recovery_tests
   storage_sqlite_sequence_tests
   storage_sqlite_vfs_failure_tests
+  storage_sqlite_recovery_v7_tests
   storage_snapshot_v1_tests
   storage_snapshot_v7_tests
   storage_sqlite_ledger_v7_tests
@@ -761,6 +777,15 @@ add_test(
   COMMAND
     storage_snapshot_v7_tests
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7-execution.txt"
+)
+# The directory name is short because the termination cases re-exec this binary
+# and its arguments include the directory.
+add_test(
+  NAME version-seven-store-recovery
+  COMMAND
+    storage_sqlite_recovery_v7_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7-execution.txt"
+    "${CMAKE_CURRENT_BINARY_DIR}/sr-v7"
 )
 add_test(
   NAME version-seven-owning-store
