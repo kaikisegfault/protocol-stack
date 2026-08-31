@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-08-30
+Last updated: 2026-08-31
 
 ## Phase
 
@@ -156,10 +156,97 @@ mentions a month in one descriptive sentence and executes nothing against one, s
 what requirement 13 was actually waiting for was a state that can be written
 down. `calendar-v1` is still owed and is not it.
 
-**A chain still does not run.** The kernel executes blocks against an in-memory
-ledger, and a snapshot is a payload rather than a store: nothing yet writes one
-to disk, reopens it, and continues. Wiring the kernel to the storage and
-consensus adapters is requirement 13's work.
+**M3.13b delivered the version-seven owning store on 2026-08-31**, and with it
+"no state survives a restart" stops being true of this repository. ADR 0057
+records it. The head is one snapshot payload inside a SQLite database rather than
+a row per entry, and the evidence is the one thing the snapshot alone could not
+establish: **mid-scenario restart equivalence**. The `carried` scenario's four
+contiguous blocks are replayed through a database closed and reopened between
+each pair, and every block reproduces its *recorded* `block_id`,
+`resulting_state_root`, and `transaction_root`.
+
+**A chain still does not run.** A store is not a node. Nothing yet carries
+version-seven transactions over consensus, so the kernel and the store execute
+blocks a caller hands them rather than blocks a network agreed on. Wiring them to
+the application layer and the CometBFT adapter is requirement 13's remaining
+work, and it is now the only structural piece between here and a four-node
+scenario.
+
+### How M3.13b was delivered
+
+**The head is one snapshot payload, not a row per entry.** Version one
+decomposes its state into an `accounts` table; version seven stores the exact
+bytes `encode_snapshot_v7` produces. The argument is the snapshot's own — it is
+already the canonical projection of everything a state root commits to, already
+checked against recorded roots, three gates, and a fuzz target — and a second
+row-shaped projection would be a second opinion about what a state *is*, owed to
+both sides for every future entry kind. What the schema keeps in its own columns
+is only what a reopen must agree on *before* it trusts the payload: the canonical
+genesis, the chain identity, the height, and the root. **The cost is accepted
+deliberately**: a commit rewrites the whole head, which is `O(state)` per block,
+and at the 100,000-seat capacity that is a large write. It is node-local, changes
+no accepted state, and ADR 0007 reserves exactly that freedom for operational
+data.
+
+**The connection contract is version one's, reused unchanged.** Path reservation
+and normalisation, the exclusive-create primitive, the lifetime lock, journal
+handling, path-stability verification, the exclusive-transaction helpers, and the
+fault-injection seams are all settled by ADR 0007 against the filesystem and
+SQLite rather than against a ledger, so a second copy would be a second place for
+a locking rule to be wrong. Version seven throws its own `FailureV7` and
+translates version one's codes through an explicit mapping rather than a cast:
+the two enumerations agree on every number they share, and the one they do not —
+`invalid_archive`, which only the archive import raises — would become a value
+outside the version-seven enumeration under a cast.
+
+**The integrity check runs first and that ordering is load-bearing.** With it
+removed, a database whose pages were overwritten reports `genesis_mismatch` —
+which tells an operator they opened the wrong chain when in fact their disk is
+failing. The check does not merely add a refusal; it is what keeps every later
+comparison from lying about why an open failed.
+
+**Two of its mutation probes found tests that did not exist rather than tests
+that were wrong.** Nothing exercised a block the *kernel* rejects whole — every
+other refusal returns before `execute_block` is reached — so a store that
+committed a rejected block passed the whole suite; offering more raw inputs than
+`kMaxRawInputs` is the cheapest such block and closes it. And nothing corrupted
+the file in a way `PRAGMA integrity_check` could catch, because every
+statement-level tamper leaves a database SQLite considers valid; overwriting a
+b-tree page header does. ADR 0057 records ten probes in total; what is verified
+here is that both closing cases exist and pass in every hosted job.
+
+**Checking the stored transaction root found the store's one duplicated
+derivation**, which is the finding worth carrying forward. The block header
+already commits to that root, but `BlockOutcome` did not carry it, so the store
+rebuilt the admitted identifier list from `executed` and ran the tree a second
+time — two derivations that agree only because the kernel happens to push
+`executed` and its identifier list in lockstep, a property nothing stated and
+nothing checked. `execute_block` now carries the root it computed. **It changes
+no encoding, no state, and no accepted vector**, and the proof is that every
+recorded `block_id` still matches, because the header committed to this exact
+value before and after.
+
+**Only one recorded scenario could supply the evidence.** `carried` is the only
+one with a contiguous run: the other four skip millions of heights between
+segments, because the trace's `advance_to` sets the height rather than executing
+the gap. A store that executes every height cannot replay a scenario that skips
+5,846,395 of them, and giving the store a "jump to height" operation to make it
+possible would be test-only machinery in production code answering to no chain
+rule. The four blocks are asserted contiguous from genesis, and asserted to open
+no assignment window, at the top of `main` rather than assumed.
+
+**The two probes run at final review are the pattern, not an extra.** Each was
+made to fail on purpose first, and each is caught by the check that names it:
+zeroing the committed transaction root is refused by the commit comparison, and
+storing the block identifier in the `transaction_root` column is refused by the
+row comparison. A probe that passes has proved nothing until you have checked
+that it changed the code the test runs.
+
+**A failed write poisons the store; a state that cannot be encoded does not.**
+The payload is built before the write path is entered, so an encode failure
+leaves both the durable and the live head exactly where they were and is a
+refusal. That keeps "poisoned" meaning *the durable head is unknown* rather than
+*something went wrong*.
 
 ### How M3.13a was delivered
 
@@ -2413,8 +2500,22 @@ slices.
   re-derived from the assignment records rather than encoded. A restore hands
   back a state some sequence of blocks could have produced or it hands back
   nothing, and the conservation gate is the only one a resealed forgery does not
-  defeat. It is a payload rather than a store: nothing yet writes one to disk and
-  reopens it.
+  defeat. The payload is what the owning store below makes durable.
+- **A version-seven chain survives the process that ran it.**
+  `protocol::storage::SQLiteLedgerV7` keeps the head as one snapshot payload
+  inside a SQLite database, executes each block against a candidate copy, and
+  writes the new head and the block's row in one exclusive transaction, so a
+  reader can never see a state no block produced. A reopen runs
+  `PRAGMA integrity_check` first, then the pinned `application_id` and
+  `user_version` with the DDL compared verbatim, then the stored canonical
+  genesis, then the snapshot's own three gates and the conservation invariants,
+  and finally requires the height and root columns to agree with what the payload
+  restored to. Its evidence is the `carried` scenario's four contiguous blocks
+  replayed through a database **closed and reopened between each pair**, every
+  block reproducing its recorded `block_id`, `resulting_state_root`, and
+  `transaction_root`, with the rows read back through a bare SQLite connection.
+  **It is a store rather than a node**: nothing yet carries version-seven
+  transactions over consensus.
 - The accepted `economy-transition-v7` contract is version six with the
   per-channel carry deleted from state and replaced by a recovery pool. Its
   independent Python model runs the respecified settlement — a zero-winner
@@ -2802,6 +2903,31 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #207 and PR #208 are the M3.13b delivery, merged across commits
+  `5f5b731` through `aca7b5b` on `main`. It adds
+  `include/protocol/storage/sqlite_ledger_v7.hpp`, three translation units and
+  two internal headers under `src/storage/`, three test translation units under
+  `tests/storage/`, and ADR 0057. It also carries the transaction root out of
+  `BlockOutcome` in `src/v7/economy_block.cpp`, which removes the store's one
+  duplicated derivation, and retains each block's raw inputs on the kernel
+  trace's `Scenario` so a caller outside the fixture can execute a recorded
+  block. **No accepted vector file changes and no new one is added**, which is
+  the check that the kernel change is inert: the header committed to the same
+  transaction root before and after, so every recorded `block_id` still matches.
+  One ctest entry is added, `version-seven-owning-store`, so the suite goes from
+  147 to 148 entries in the debug presets and from 155 to 156 under
+  `clang-sanitizers`.
+  **The slice has two green matrices rather than one**, for the same reason
+  M3.13a did. PR run 33430999790 on head `db750e7` passed the complete hosted
+  matrix — scope classification `full`, GCC and Clang debug, both sanitizer
+  presets, and the aggregate required check — with **148 of 148** entries passing
+  in the debug presets and **156 of 156** under `clang-sanitizers`, and all four
+  job logs confirm the new entry running and passing. **A self-review against
+  `docs/engineering/verification.md` on that green tree then found one thing**:
+  the rule requiring a fuzz target for untrusted bytes *or a documented reason
+  one does not apply* had been reasoned about and never written down, so the
+  final commit records the reason in ADR 0057. PR run 33432019705 on head
+  `886dec6` passed the same complete matrix with the same counts.
 - Issue #202 and PR #205 are the M3.13a delivery, merged by rebase across
   commits `8d491b2` through `61064ab` on `main`. It adds
   `include/protocol/storage/snapshot_v7.hpp`, four translation units under
@@ -3541,12 +3667,19 @@ survives a restart and no two nodes agree on one. That wiring is requirement 13'
 four-node adversarial scenarios, which have not started, and it is the largest
 single remaining piece of `first-goal.md`.
 
-**As of 2026-08-30 the first brick of it is laid and the gap is one step
+**As of 2026-08-31 the first two bricks of it are laid and the gap is two steps
 narrower.** A version-seven state can be encoded to canonical bytes and restored
 to a ledger that keeps executing, which is what "two replicas agree on one state"
-needs before it can be asked. **What a snapshot is not is a store**: nothing yet
-writes one to a file, reopens it after a process ends, and continues from it, and
-until something does, "survives a restart" remains a claim rather than evidence.
+needs before it can be asked; and the owning store makes one durable, so a chain
+stopped in the middle of its history resumes on the same trajectory. "Survives a
+restart" is now evidence rather than a claim, and the evidence is against
+recorded roots rather than against the store's own arithmetic.
+
+**What is left between a store and a node is the application layer and the
+adapter.** Version one has both — `protocol::application::ApplicationV1` over
+`SQLiteLedger`, its wire and dispatcher, and the Go ABCI adapter under
+`adapter/cometbft` — and version seven has neither, so nothing yet turns a block
+a network agreed on into a block the store commits.
 
 **Two contracts are also still owed, and neither blocks requirement 13.** That
 was recorded the other way round at the close of M3.12b and M3.13a corrected it.
@@ -3749,31 +3882,44 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.13b: the version-seven owning store**, which is the next
-brick under requirement 13 and the one M3.13a's snapshot exists to make
-possible. It follows ADR 0007's SQLite adapter, whose version-one form is
-`src/storage/sqlite_ledger.cpp` with `sqlite_schema_v1.cpp`,
-`sqlite_snapshot_v1.cpp`, and `sqlite_fault_injection.cpp` beside it.
+Milestone slice **M3.13c: the version-seven application layer**, which is what
+turns a store into a node and is the next brick under requirement 13.
 
-**The slice owes a store, not a serialiser.** M3.13a produced a *payload*: bytes
-that a whole `Ledger` encodes to and restores from, with three gates and
-twenty-six probed refusals. Nothing yet writes one to a file, reopens it after a
-process ends, and continues from it. Until something does, "no state survives a
-restart" is still true of this repository.
+**Version one is the precedent and it is complete.**
+`include/protocol/application/application_v1.hpp` defines `ApplicationV1` over
+`SQLiteLedger` with the seven operations an ABCI adapter needs — `info`,
+`init_chain`, `check_transaction`, `prepare_proposal`, `process_proposal`,
+`finalize_block`, and `commit` — with `wire_v1`, `dispatcher_v1`,
+`response_v1`, and `unix_server_v1` beside it and the Go adapter under
+`adapter/cometbft`. **Version seven has none of it.** The slice is
+`ApplicationV7` over `SQLiteLedgerV7` with the same surface, and it should be
+taken before the wire and the Go adapter, because the sequencing rules are what
+carry the risk and they are all on this side.
 
-**The one piece of evidence it must carry, because the snapshot alone does not
-establish it, is mid-scenario restart equivalence.** Take one of the five
-recorded scenarios, execute it to block *k*, persist, end the process, reopen,
-execute the remaining blocks, and require the **recorded** `final_state_root` —
-the same third source M3.13a used, asked a harder question. The snapshot's own
-tests restore a *final* ledger and execute one further block; they do not
-establish that a chain interrupted in the middle of its history resumes on the
-same trajectory, which is exactly what "through restart and recovery" means.
+**The sequencing is where the work actually is, and version one already answers
+it — read `src/application/application_block_v1.cpp` before inventing anything.**
+CometBFT calls `finalize_block` and `commit` separately while the store commits
+the head and the block row together, and version one reconciles that by making
+`finalize_block` a *pure* operation: it restores a candidate from the durable
+head, executes the block against the candidate in memory, writes nothing, and
+stages the result — returning the same staged response if the identical call
+repeats. `commit` then replays that block through the store's `apply_block` and
+**requires the resulting commit and head to equal the staged ones**, failing
+terminally if they do not. That equality is the whole safety argument and version
+seven should keep it.
+
+**Version seven's candidate is cheaper than version one's**, which is worth
+knowing before the shape is chosen. `SQLiteLedgerV7::read_head` already hands
+back a whole `v7::Ledger` by value, so `finalize_block` and `process_proposal`
+can call `v7::execute_block` against that copy directly; version one has to run
+`restore_ledger` over a `State` first. **The store needs no dry-run operation
+added to it**, and adding one would be a second way to execute a block, which is
+a second opinion about what a block does.
 
 **Then, in order, each its own slice:**
 
-* the CometBFT adapter and application layer carrying version-seven
-  transactions, which is what turns a store into a node;
+* the version-seven wire, dispatcher, and Unix server, then the Go ABCI adapter
+  carrying version-seven transactions;
 * requirement 13 proper, the four-node adversarial scenarios;
 * `calendar-v1`, which must fix the consensus timestamp's monotonicity rule and
   acceptance tolerance and the calendar-month boundary derived from them. **The
@@ -3824,6 +3970,21 @@ version one's decoder recognises the family and answers `unsupported_version`
 rather than `malformed`. The prefix is 126 octets and the encoder checks that it
 wrote exactly that many, because the decoder reads every prefix field at a
 literal offset.
+
+**What the store looks like now, so a later session does not rediscover it.**
+`protocol::storage::SQLiteLedgerV7` is one public header and three translation
+units with two internal headers: `sqlite_ledger_v7.cpp` owns what a live store
+does, `sqlite_ledger_v7_open.cpp` owns how one comes into existence and holds
+every validation step, `sqlite_schema_v7.cpp` owns the DDL and the two rows a
+commit writes, `sqlite_ledger_v7_internal.hpp` is the seam between the first two,
+and `sqlite_schema_v7.hpp` declares the schema surface. The schema is two tables
+— `ledger_meta_v7`, a singleton, and `blocks_v7` — both `STRICT, WITHOUT ROWID`,
+with the DDL stored and compared verbatim on every open. Heights are stored as
+fixed-width big-endian octets **on purpose**: `ORDER BY height` over a blob column
+is then numeric order, which is what lets the history be read back in block order
+by a bare connection. The `head_snapshot` column's `length >= 190` is the
+snapshot's own `kFixedSize`, the 126-octet prefix plus a root plus a digest, so
+the column check and the decoder cannot drift apart.
 
 **What the kernel looks like now, so a later session does not rediscover it.**
 `src/v7/` holds seventeen sources and `include/protocol/v7/` two headers.
@@ -3889,6 +4050,17 @@ and is what made twenty-six of them affordable in one session. Beware deleting
 the cached objects with a glob: `rm obj/snapshot_v7*.o` also removes the test
 entry point and the fixture, and the relink then fails for a reason that has
 nothing to do with the probe.
+**M3.13b extended it again, to the tests that need SQLite, and the cost is
+lower than it looks.** A SQLite amalgamation already on this machine —
+`sqlite3.c` and `sqlite3.h` under
+`~/.bun/install/cache/better-sqlite3@*/deps/sqlite3/`, version 3.53.0 against the
+repository's pinned 3.53.3 — compiles in **about three seconds** with the
+project's own flags (`-DSQLITE_DQS=0 -DSQLITE_TRUSTED_SCHEMA=0
+-DSQLITE_ENABLE_API_ARMOR`) and links straight into the scratch harness, so no
+`ExternalProject` download is needed to run the storage suite locally. Copy
+`sqlite3.h` next to the `sodium.h` shim and add `sqlite3.o` to the link. The
+whole store suite builds from cold in about fifteen seconds and each mutation
+probe relinks in about four.
 Its one known limit is that it does not reproduce libsodium's rejection of
 small-order public keys, so `tests/kernel/primitives_test.cpp` fails under it at
 that assertion and passes on the hosted matrix. **Run Clang locally before
@@ -3952,7 +4124,40 @@ same count rather than reading it back.
 
 ## Blockers
 
-**None for M3.13b.**
+**None for M3.13c.**
+
+**M3.13b ran the founder-decision gate and passed it.** Twenty decisions were
+enumerated before any was judged: whether the store is a new adapter or a version
+parameter on `SQLiteLedger`; the persistence engine; whether the connection,
+locking, journal, and path contract is reused or restated; the head's
+representation as a payload rather than rows; the DDL, the table names, the
+column types and their `CHECK` constraints, and the big-endian height encoding;
+the pinned `application_id` and `user_version`; the error enumeration and its
+numbers including `invalid_snapshot` at 13; the mapping from version one's codes;
+the four reopen validation steps and their order; whether the height and root
+columns must agree with the restored payload; whether a block at a wrong height
+is a rejection or a storage error; whether a failed write poisons the store and
+whether an encode failure does; whether recovery after poisoning is implemented
+now; where the signature verifier comes from; which recorded scenario supplies
+the evidence and how many of its blocks are contiguous; whether the store gains a
+"jump to height" operation to make the other four replayable; whether block
+history is replayed on open; the block row's columns; whether concurrent readers
+are supported; and retaining each block's raw inputs on the kernel trace.
+
+**Every one is delegated and the evidence is in three places.**
+`founder-constitution.md` places mechanism, encoding, storage, consensus
+scheduling, networking, packaging, and testing outside the reserved set. ADR 0007
+fixes the persistence boundary and states outright that "storage rows, files,
+schemas, and snapshot formats are operational compatibility data" which "never
+define transaction, receipt, state-root, or block meaning" — which is what makes
+the head's representation an engineering choice rather than a contract one. ADR
+0045 fixes that the layer never chooses a verification rule, which is why the
+verifier is supplied at construction. Nothing in the slice sets or changes supply,
+allocation, beneficiaries, Founder ownership, creator hierarchy, commercial
+routing, AI institutional authority, bridge scope, content permanence, or what an
+end user must do, own, run, or receive. **No accepted vector file changed and no
+new one was added**, and the one kernel edit is inert by the same evidence: the
+header committed to the same transaction root before and after.
 
 **M3.13a ran the founder-decision gate and passed it.** It enumerated seventeen
 decisions the slice had to settle — whether the snapshot is a storage artifact or
