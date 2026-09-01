@@ -99,6 +99,22 @@ its root depends on a state read back out of SQLite rather than one held in
 memory. That is the half of requirement 13's "through restart" that a single run
 cannot show, and making it the fixture's last block costs nothing.
 
+### The fixture is a live session, not a frozen list
+
+*Amended 2026-09-01, when the four-replica run needed it.*
+
+A consensus engine decides how many blocks a chain has. A frozen list of blocks
+is enough for a single node driven one transaction at a time; it is not enough
+for a network that may close a block the fixture did not ask for, because **an
+empty version-seven block still moves the state root** — the root commits to the
+height.
+
+So `Session` holds the ledger live: the caller advances it to whatever height
+the network reports, then executes the next transaction against it, and the
+model and the chain stay at the same height for the same reason rather than by
+luck. `build_chain` is three lines over it and produces the blocks it always
+did.
+
 ### The harness is parameterized rather than copied
 
 `start_stack`, `stop_stack`, and `application_info` take a protocol version, and
@@ -136,10 +152,11 @@ the pinned libsodium.
 
 ## Owed, and recorded rather than implied
 
-- **The four-validator devnet is still version one.** Its genesis and the
-  `-protocol-version` its supervisor passes each bridge have to move in one
-  slice, because a genesis that says one thing while the bridges say another
-  fails at `InitChain`.
+- ~~**The four-validator devnet is still version one.**~~ Delivered on
+  2026-09-01. `devnet.Run` takes the version and hands it to both
+  `Devnet.Ensure` and every bridge from one place, and four replicas are
+  required to agree on version-seven roots through a restart with three
+  transactions entering through three different nodes.
 - **The uptime schedule is still `nullptr`.** This chain executes correctly and
   pays nobody. Three blocks over three heights open no cycle window, so the
   fixture is honest about what it shows; four nodes agreeing on blocks that pay
