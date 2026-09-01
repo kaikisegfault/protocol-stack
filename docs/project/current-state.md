@@ -4897,7 +4897,35 @@ same count rather than reading it back.
 
 ## Blockers
 
-**None for M3.13h.**
+**None for M3.13j.** The slice it names is unblocked on the founder side, and
+that is a finding rather than an assumption: `uptime-measurement-v1` puts *the
+content of a challenge* — the concrete resource commitment — in its own
+"explicitly not in scope" list and treats the answer as an abstract predicate,
+so a transition version can bind the pipeline without settling it.
+
+**M3.13i ran the founder-decision gate and passed it.** Six decisions were
+enumerated before any was judged: which protocol version the devnet defaults to;
+how that version reaches the supervisor, the genesis, and each bridge; which
+application binary the supervisor starts; whether the devnet harness is shared
+or copied; whether the fixture stays a frozen list or becomes a live session;
+and what the four-node scenario asserts. **Every one is operational,
+engineering, or testing work.** Nothing in the slice sets or changes supply,
+allocation, beneficiaries, Founder ownership, creator hierarchy, commercial
+routing, AI institutional authority, bridge scope, content permanence, or what
+an end user must do, own, run, or receive, and no accepted vector file changed.
+**One decision was settled by measurement rather than preference**: the fixture
+became a live session because an empty version-seven block moves the state root,
+which was demonstrated locally before the design changed.
+
+**M3.13h ran the founder-decision gate and passed it.** Six decisions were
+enumerated before any was judged: whether the real-signing fixture is Python or
+C++; how its keys are derived; the scenario's shape and which kinds it
+exercises; whether the record is a new vector file or an addition to an accepted
+one; which genesis parameters the fixture opens on; and whether the C++ kernel
+also checks it. **Every one is fixture, encoding, or engineering work**, and the
+trace genesis's existing figures were reused rather than any being chosen. No
+accepted vector file changed, because the fixture is computed at test time from
+the independent model, which is what version one's integration already does.
 
 **M3.13g ran the founder-decision gate and passed it.** Nine decisions were
 enumerated before any was judged: whether the Go client reuses version one's
