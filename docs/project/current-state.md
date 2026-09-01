@@ -239,6 +239,61 @@ any seat**. Every root in the evidence is the recorded one because the recorded
 contiguous run opens no window — the stack executes blocks correctly and cannot
 yet run a chain past a cycle boundary and mean it.
 
+### How M3.13i was delivered
+
+**Requirement 13's central claim now holds for version seven.** Four processes
+that were never told each other's answer hold the same state root at the same
+height, through a restart, having each executed the same blocks independently.
+Alice registers through node 0, Bob registers through node 1, the network is
+stopped and started, and Alice pays Bob through node 2 — **three transactions
+entering through three different replicas**, because a node that agreed only
+with the peer it heard from would pass a single-submitter run. After every stop
+all four databases are opened directly and required to report the same head,
+which asks the claim of the store rather than of the engine.
+
+**The version reaches the genesis and every bridge from one place, and that is
+deliberate.** The application state `Devnet.Ensure` writes is what the
+application requires at `InitChain`, so a home written for one ledger version
+and bridges started for the other is refused there rather than at the first
+block — and a version configured twice is a version that can disagree with
+itself. `devnet.Run` takes it once and hands it to both.
+`protocol-cometbft-devnet start -protocol-version N` is parsed through
+`nodeconfig.ParseProtocolVersion`, so a mistyped version is an error rather than
+a chain nobody joins, and it defaults to one so every existing caller is
+unchanged.
+
+**The fixture became a live session, and the reason is a fact rather than a
+preference.** An empty version-seven block still moves the state root, because
+the root commits to the height. A frozen list of blocks is enough for a single
+node driven one transaction at a time and is not enough for a network that may
+close a block the fixture did not ask for. `version_seven_chain.Session` holds
+the ledger live and the caller advances it to whatever height the network
+reports before executing the next transaction against it; `build_chain` is three
+lines over it and produces the same three blocks it always did. ADR 0062 is
+amended in place rather than given a successor that would restate it with one
+addition.
+
+**The devnet harness is shared and the model deliberately is not.**
+`tests/integration/cometbft_devnet.py` holds what is a property of the network
+— the port block, the supervisor, health, submitting exact bytes through one
+node, auditing every replica's durable head, and stopping — with the protocol
+version as one field reaching both the supervisor and the audit. Each version
+drives its own model and compares it against what the network reports, which is
+the whole point of running four of them.
+
+**Almost all of it was verified locally**, which is now the pattern for anything
+that touches the fixture: `build_chain` still passes its four checks after the
+refactor, a session interleaved with empty blocks produces five distinct roots at
+five contiguous heights, a transaction that lands at height 5 because the network
+closed two blocks nobody asked for is executed at height 5 by the model, and a
+health report that disagrees with the model is refused. Only the Go changes and
+the run itself needed the matrix.
+
+**One thing was measured rather than assumed before pushing.** The previous
+matrix's slowest job was 10m53s against a 20-minute timeout, so a second
+four-validator run had margin. A slice that adds an integration run should check
+that rather than discover it.
+
 ### How M3.13h was delivered
 
 **The slice changed shape before it started, and checking the recorded fixtures
@@ -2968,6 +3023,16 @@ slices.
   block is committed by a process that did not execute the first two**, so its
   root comes from a state read back out of SQLite. The uptime schedule is still
   `nullptr`: the chain executes correctly and pays nobody.
+- **Four independent version-seven replicas agree on those roots through a
+  restart.** The devnet runs at a chosen ledger version — `devnet.Run` hands it
+  to both the genesis and every bridge from one place, because a home written
+  for one version and bridges started for the other is refused at `InitChain` —
+  and `cometbft_four_validator_v7_test.py` submits **three transactions through
+  three different replicas**, since a node that agreed only with the peer it
+  heard from would pass a single-submitter run. After every stop all four
+  databases are opened directly and required to report the same head, which asks
+  requirement 13's claim of the store rather than of the engine. It passes under
+  both sanitizers, so each replica's roots came out of an instrumented kernel.
 - The accepted `economy-transition-v7` contract is version six with the
   per-channel carry deleted from state and replaced by a recovery pool. Its
   independent Python model runs the respecified settlement — a zero-winner
@@ -3355,6 +3420,20 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #228 and PR #229 are the M3.13i delivery, merged by rebase across
+  commits `2a32be3` through `e543681` on `main`. It gives `devnet.Run` and
+  `protocol-cometbft-devnet start` a protocol version, extracts the devnet
+  harness into `tests/integration/cometbft_devnet.py`, turns the fixture into a
+  live `Session`, adds `cometbft_four_validator_v7_test.py`, amends ADR 0062,
+  and adds the run to `tools/verify.sh`. **No accepted vector file changes and
+  no ctest entry changes**: the new run is an integration script like the other
+  three, so the suite stays at 153 entries in the debug presets and 161 under
+  `clang-sanitizers`. PR run 33506987240 on head `ae5e3e1` passed the complete
+  hosted matrix, with all four job logs reporting all four integrations passing,
+  which is what proves the shared-harness extraction left version one's two
+  alone. The four integrations cost 36 seconds combined and the matrix came in
+  at 8m35s-9m00s per job against a twenty-minute timeout, faster than the
+  previous run despite the addition.
 - Issue #225 and PR #226 are the M3.13h delivery, merged by rebase across
   commits `8857acc through 9c733e4` on `main`. It adds
   `tests/integration/version_seven_chain.py`, its registered contract test,
@@ -4456,44 +4535,40 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.13i: where the uptime schedule comes from**, which is the
-gap that decides whether requirement 13 measures anything.
+Milestone slice **M3.13j: binding `uptime-measurement-v1` to a transition
+version**, which is what makes requirement 13's word *economic* true.
+
+**Four nodes now agree on version-seven roots, and they agree about blocks that
+pay nobody.** `execute_block` takes an `UptimeSchedule*` and every caller passes
+`nullptr`, so no cycle assignment record is written and no seat accrues
+anything. That is the whole remaining distance between what runs today and what
+requirement 13 asks for.
 
 **It is not plumbing, and establishing that is the first thing this slice
-inherits.** `execute_block` takes an `UptimeSchedule*` and every caller passes
-`nullptr`, so a chain run end to end writes no cycle assignment record and no
-seat accrues anything. The obvious reading is that some caller should pass one.
-**No caller can.** A schedule is `uptime-measurement-v1`'s measured seats for a
-window, and a node cannot invent it: every validator must reach the same
-assignment record or the state roots diverge. So the schedule has to be data the
-chain agrees on.
-
-**None of version seven's fourteen kinds carries one, and they were enumerated
-rather than assumed.** They are the transfer and the confirmed transfer,
-registration, the seat purchase and activation, the direct issue, the three
-mints, the two escrow and two signer operations, and the posture change. Not one
-submits an uptime claim. ADR 0028's attested-claim pipeline is where a
-real-world measurement is supposed to enter consensus, and nothing binds it to
-version seven. **Wiring uptime is therefore a transition-version change**, not a
-call-site change, and it belongs behind the `change-protocol` skill.
+inherits.** A schedule is `uptime-measurement-v1`'s measured seats for a window,
+and a node cannot invent one: every validator must reach the same assignment
+record or the state roots diverge. So the schedule has to be data the chain
+agrees on — and **none of version seven's fourteen kinds carries it**. They are
+the transfer and the confirmed transfer, registration, the seat purchase and
+activation, the direct issue, the three mints, the two escrow and two signer
+operations, and the posture change. Not one submits an uptime claim.
 
 Note that the transaction-kind constants collide numerically with the state
 entry-kind constants — `TRANSFER` and `SEAT_ENTRY` are both 1 — so enumerate
 them through `KIND_SCHEME` rather than by reversing a name table, which is how a
 first attempt produced a list that looked right and was not.
 
-**The design is not owed, and finding that out is what makes this slice
-tractable.** `docs/specifications/uptime-measurement-v1.md` is accepted and 599
-lines long. It already settles the slot grid and its correspondence to the
-founder-directed 24-, 18-, and 6-hour figures, the two evidence sources and the
-mapping of the constitution's five "fully operational" components onto them,
-challenge selection and its response deadline, the conjunctive
-no-partial-credit slot credit rule, the dispute window and how far a dispute may
-reach, finalisation by expiry, record completeness, and the 100,000-seat storage
-bound. `simulation/uptime_measurement/` executes it and
+**The design is not owed.** `docs/specifications/uptime-measurement-v1.md` is
+accepted and 599 lines long. It already settles the slot grid and its
+correspondence to the founder-directed 24-, 18-, and 6-hour figures, the two
+evidence sources and the mapping of the constitution's five "fully operational"
+components onto them, challenge selection and its response deadline, the
+conjunctive no-partial-credit slot credit rule, the dispute window and how far a
+dispute may reach, finalisation by expiry, record completeness, and the
+100,000-seat storage bound. `simulation/uptime_measurement/` executes it and
 `test-vectors/uptime-measurement-v1.txt` records it, with a registered verifier.
 
-**And the founder-reserved part is already scoped out of it by name.** The
+**And the founder-reserved part is scoped out of it by name.** The
 specification's own "explicitly not in scope" list puts *the content of a
 challenge* — what a node must hold, compute, or serve to answer one, which is
 the concrete resource commitment — in the Founder Node and resource-network
@@ -4514,11 +4589,17 @@ are requirement 5." Three things follow from it, and they are the slice:
 * **a C++ kernel for it**, since `simulation/uptime_measurement/` is Python and
   nothing consensus-critical may stay there.
 
-**Two things this slice must not do.** It must not invent a challenge's
-content to unblock itself — the accepted specification deliberately does not
-have one — and it must not make the schedule a proposer's opinion: a value one
-node supplies and another cannot reproduce is a consensus fork with extra
-steps.
+**It is larger than any slice since the kernel move, so divide it.** The
+narrowest first piece that stands on its own is the specification of the
+carrier — kinds, bodies, authorities, receipt codes, and the point in block
+execution where a finalised window becomes readable — recorded as an ADR and a
+contract version before anything is implemented, which is what
+`change-protocol` requires anyway.
+
+**Two things this slice must not do.** It must not invent a challenge's content
+to unblock itself — the accepted specification deliberately has none — and it
+must not make the schedule a proposer's opinion: a value one node supplies and
+another cannot reproduce is a consensus fork with extra steps.
 
 **One figure is already settled and should not be re-litigated.**
 `kActivityThresholdSeconds` in `economy_assignment.cpp` is 64,800 seconds, 18
@@ -4526,12 +4607,11 @@ hours per cycle, founder-directed, read from the accepted manifest layer, and
 checked against `test-vectors/economy-transition-v3.txt`.
 
 **Then, in order, each its own slice:**
-* requirement 13 proper, the four-node adversarial scenarios. **The devnet is
-  version one and stays that way until one slice moves both halves together**:
-  `nodeconfig.Devnet.Ensure` takes a `ProtocolVersion` and the supervisor passes
-  it `ProtocolV1` explicitly, but the supervisor also has to pass each bridge
-  `-protocol-version 7` and start `protocol-application-v7`, and a genesis that
-  says one thing while the bridges say another fails at `InitChain`;
+* requirement 13's remaining half, the **adversarial** scenarios. Four replicas
+  now agree on version-seven roots through a restart, which is the requirement's
+  central claim; what is untested is disagreement — a replica fed a block the
+  others refuse, a partition, a node restarted mid-block — and none of it means
+  anything economically until the uptime schedule above is bound;
 * `calendar-v1`, which must fix the consensus timestamp's monotonicity rule and
   acceptance tolerance and the calendar-month boundary derived from them. **The
   tolerance is consensus-visible**: a proposer can move a month boundary within
