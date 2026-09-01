@@ -96,6 +96,14 @@ ctest --preset "$preset" --test-dir "$repo_root/out/build/$preset" \
   "$repo_root/out/build/$preset/dependencies/libsodium/lib/libsodium.so" \
   "$repo_root/out/build/$preset/integration"
 "$toolchain_dir/bin/python" \
+  "$repo_root/tests/integration/cometbft_version_seven_test.py" \
+  "$repo_root/out/build/$preset/protocol-application-v7" \
+  "$go_output/protocol-cometbft-bridge" \
+  "$go_output/protocol-cometbft-init" \
+  "$go_output/protocol-cometbft-node" \
+  "$repo_root/out/build/$preset/dependencies/libsodium/lib/libsodium.so" \
+  "$repo_root/out/build/$preset/integration"
+"$toolchain_dir/bin/python" \
   "$repo_root/tests/integration/cometbft_four_validator_test.py" \
   "$repo_root/out/build/$preset/protocol-application" \
   "$go_output/protocol-cometbft-bridge" \

@@ -14,6 +14,8 @@ sys.path.insert(0, str(REPOSITORY / "tests" / "differential"))
 from cases import make_fixture, transfer  # noqa: E402
 from cometbft_process import (  # noqa: E402
     ManagedProcess,
+    initialize_home,
+    inspect_identity,
     reserve_ports,
     start_stack,
     stop_stack,
@@ -35,56 +37,6 @@ class Stack:
     home: pathlib.Path
     abci_port: int
     rpc_port: int
-
-
-def inspect_identity(
-    application: pathlib.Path,
-    genesis: pathlib.Path,
-) -> tuple[bytes, bytes]:
-    result = subprocess.run(
-        [application, "--genesis-identity", genesis],
-        check=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    values: dict[str, str] = {}
-    for line in result.stdout.decode("ascii").splitlines():
-        key, value = line.split("=", 1)
-        values[key] = value
-    if set(values) != {"chain_id", "app_hash"}:
-        raise RuntimeError("unexpected genesis identity output")
-    return bytes.fromhex(values["chain_id"]), bytes.fromhex(values["app_hash"])
-
-
-def initialize_home(
-    initializer: pathlib.Path,
-    home: pathlib.Path,
-    chain_id: bytes,
-    app_hash: bytes,
-    abci_port: int,
-    rpc_port: int,
-    p2p_port: int,
-) -> None:
-    subprocess.run(
-        [
-            initializer,
-            "-home",
-            home,
-            "-chain-id",
-            chain_id.hex(),
-            "-app-hash",
-            app_hash.hex(),
-            "-proxy-app",
-            f"tcp://127.0.0.1:{abci_port}",
-            "-rpc-listen",
-            f"tcp://127.0.0.1:{rpc_port}",
-            "-p2p-listen",
-            f"tcp://127.0.0.1:{p2p_port}",
-        ],
-        check=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
 
 
 def launch(stack: Stack) -> list[ManagedProcess]:

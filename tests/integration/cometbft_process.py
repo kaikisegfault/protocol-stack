@@ -228,7 +228,17 @@ def receive_exact(connection: socket.socket, size: int) -> bytes:
     return bytes(result)
 
 
-def application_info(path: pathlib.Path) -> tuple[int, bytes]:
+def application_info(
+    path: pathlib.Path,
+    protocol_version: int = 1,
+) -> tuple[int, bytes]:
+    """The application's own durable head, read straight off its Unix socket.
+
+    `Info` is the one operation whose request and response are identical in both
+    ledger versions, so the only version-specific thing here is which protocol
+    version the application must report -- and requiring it is what catches a
+    stack wired to the wrong binary.
+    """
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
         connection.connect(str(path))
         connection.sendall(HEADER.pack(b"PSAP", 1, 0, INFO_KIND, 1, 0))
@@ -249,9 +259,78 @@ def application_info(path: pathlib.Path) -> tuple[int, bytes]:
     if len(payload) != 54 or payload[:6] != b"\0\0\0\0\0\0":
         raise RuntimeError("invalid application Info response")
     app_version, height = struct.unpack(">QQ", payload[6:22])
-    if app_version != 1:
-        raise RuntimeError("unexpected application version")
+    if app_version != protocol_version:
+        raise RuntimeError(
+            f"application reports protocol version {app_version}, "
+            f"not {protocol_version}"
+        )
     return height, payload[22:]
+
+
+def inspect_identity(
+    application_binary: pathlib.Path,
+    genesis: pathlib.Path,
+) -> tuple[bytes, bytes]:
+    """The two figures an operator puts into a consensus engine's configuration.
+
+    They come from the application binary rather than from the model, so the
+    caller comparing them against its own derivation is comparing two
+    independent implementations of the same genesis.
+    """
+    result = subprocess.run(
+        [application_binary, "--genesis-identity", genesis],
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    values: dict[str, str] = {}
+    for line in result.stdout.decode("ascii").splitlines():
+        key, value = line.split("=", 1)
+        values[key] = value
+    if set(values) != {"chain_id", "app_hash"}:
+        raise RuntimeError("unexpected genesis identity output")
+    return bytes.fromhex(values["chain_id"]), bytes.fromhex(values["app_hash"])
+
+
+def initialize_home(
+    initializer: pathlib.Path,
+    home: pathlib.Path,
+    chain_id: bytes,
+    app_hash: bytes,
+    abci_port: int,
+    rpc_port: int,
+    p2p_port: int,
+    protocol_version: int = 1,
+) -> None:
+    """Initialize or exact-validate a CometBFT home.
+
+    `protocol_version` selects the genesis application state, which is what a
+    version-seven application requires at InitChain: a home written for one
+    ledger version and a bridge started for the other is refused there rather
+    than at the first block.
+    """
+    subprocess.run(
+        [
+            initializer,
+            "-home",
+            home,
+            "-chain-id",
+            chain_id.hex(),
+            "-app-hash",
+            app_hash.hex(),
+            "-proxy-app",
+            f"tcp://127.0.0.1:{abci_port}",
+            "-rpc-listen",
+            f"tcp://127.0.0.1:{rpc_port}",
+            "-p2p-listen",
+            f"tcp://127.0.0.1:{p2p_port}",
+            "-protocol-version",
+            str(protocol_version),
+        ],
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
 
 
 def start_stack(
@@ -265,6 +344,7 @@ def start_stack(
     home: pathlib.Path,
     abci_port: int,
     rpc_port: int,
+    protocol_version: int = 1,
 ) -> list[ManagedProcess]:
     processes: list[ManagedProcess] = []
     try:
@@ -289,6 +369,8 @@ def start_stack(
                 application_socket,
                 "-abci-listen",
                 f"tcp://127.0.0.1:{abci_port}",
+                "-protocol-version",
+                str(protocol_version),
             ],
             workspace,
         )
@@ -312,11 +394,12 @@ def start_stack(
 def stop_stack(
     processes: list[ManagedProcess],
     application_socket: pathlib.Path,
+    protocol_version: int = 1,
 ) -> tuple[int, bytes]:
     node, bridge, application = processes[2], processes[1], processes[0]
     node.stop()
     bridge.stop()
-    head = application_info(application_socket)
+    head = application_info(application_socket, protocol_version)
     application.stop()
     if application_socket.exists():
         raise RuntimeError("application retained its socket after shutdown")
