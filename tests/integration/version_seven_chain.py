@@ -58,6 +58,9 @@ SUPPLY_LIMIT = 5_699_395_010_000_000_000
 FIXED_FEE = 1_000
 VALID_UNTIL = 10_000_000_000
 
+# A version-seven receipt's result byte. Zero is SUCCESS.
+RESULT_OFFSET = 39
+
 ALICE_IDENTITY = bytes.fromhex("a1" * 32)
 BOB_IDENTITY = bytes.fromhex("b1" * 32)
 TRANSFER_AMOUNT = 1_000_000
@@ -202,77 +205,106 @@ def _confirmed_transfer(
     )
 
 
-def _run(ledger: Ledger, signer: Signer, raw: bytes) -> Block:
-    """Execute one block holding exactly one transaction, and require it to succeed.
+class Session:
+    """A live version-seven ledger, advanced one block at a time.
 
-    A fixture whose transaction is refused is a fixture that proves nothing about
-    a node, so the refusal is raised here rather than recorded.
+    A consensus engine decides how many blocks a chain has, not this fixture. A
+    frozen list of blocks is enough for a single node driven one transaction at
+    a time, and it is not enough for a network that may close a block this
+    fixture did not ask for: **an empty version-seven block still moves the
+    state root**, because the root commits to the height. So the ledger stays
+    live and the caller advances it to whatever the chain did.
     """
-    outcome = execute_block(ledger, [raw], signer)
-    if len(outcome.admissions) != 1 or outcome.admissions[0].code is not None:
-        raise RuntimeError(
-            f"fixture transaction was refused at admission: "
-            f"{outcome.admissions[0].code}"
+
+    def __init__(self, sodium: Sodium) -> None:
+        self._signer = Signer(sodium)
+        self.verifier_key = self._signer.derive("verifier")
+        self.alice_hub = self._signer.derive("alice-hub")
+        self.alice_signer = self._signer.derive("alice-signer")
+        self.bob_hub = self._signer.derive("bob-hub")
+        self.bob_signer = self._signer.derive("bob-signer")
+        genesis = _genesis(self.verifier_key)
+        self._ledger = Ledger.from_genesis(genesis)
+        self.genesis = g.encode(genesis)
+        self.chain_id = g.chain_id(genesis)
+        self.genesis_root = bytes.fromhex(self._ledger.state_root())
+
+    @property
+    def height(self) -> int:
+        return self._ledger.height
+
+    def state_root(self) -> bytes:
+        return bytes.fromhex(self._ledger.state_root())
+
+    def register_alice(self) -> bytes:
+        return _register(
+            self._signer, self._ledger, ALICE_IDENTITY, self.alice_hub,
+            self.alice_signer, self.verifier_key)
+
+    def register_bob(self) -> bytes:
+        return _register(
+            self._signer, self._ledger, BOB_IDENTITY, self.bob_hub,
+            self.bob_signer, self.verifier_key)
+
+    def alice_pays_bob(self, nonce: int, amount: int = TRANSFER_AMOUNT) -> bytes:
+        return _confirmed_transfer(
+            self._signer, self._ledger, ALICE_IDENTITY, self.alice_hub,
+            self.alice_signer, nonce, escrow_id(BOB_IDENTITY, 0), amount)
+
+    def apply_empty(self) -> Block:
+        """Close a block the fixture did not fill, which a chain may do."""
+        return self._apply([])
+
+    def apply(self, raw: bytes) -> Block:
+        """Execute one block holding this transaction, and require it to succeed.
+
+        A fixture whose transaction is refused proves nothing about a node, so
+        the refusal is raised here rather than recorded.
+        """
+        block = self._apply([raw])
+        if block.receipts[0][RESULT_OFFSET] != 0:
+            raise RuntimeError("fixture transaction did not succeed")
+        return block
+
+    def _apply(self, raw_inputs: list[bytes]) -> Block:
+        outcome = execute_block(self._ledger, raw_inputs, self._signer)
+        if len(outcome.admissions) != len(raw_inputs):
+            raise RuntimeError("the model dropped a raw input")
+        for admission in outcome.admissions:
+            if admission.code is not None:
+                raise RuntimeError(
+                    "fixture transaction was refused at admission: "
+                    f"{admission.code}"
+                )
+        return Block(
+            height=outcome.height,
+            raw_inputs=tuple(raw_inputs),
+            transaction_root=bytes.fromhex(outcome.transaction_root),
+            state_root=bytes.fromhex(outcome.resulting_state_root),
+            block_id=bytes.fromhex(outcome.block_id),
+            receipts=tuple(
+                r.encode(executed.receipt) for executed in outcome.executed
+            ),
         )
-    if (len(outcome.executed) != 1
-            or outcome.executed[0].outcome.result != "SUCCESS"):
-        raise RuntimeError(
-            f"fixture transaction did not succeed: "
-            f"{outcome.executed[0].outcome.result}"
-        )
-    return Block(
-        height=outcome.height,
-        raw_inputs=(raw,),
-        transaction_root=bytes.fromhex(outcome.transaction_root),
-        state_root=bytes.fromhex(outcome.resulting_state_root),
-        block_id=bytes.fromhex(outcome.block_id),
-        receipts=(r.encode(outcome.executed[0].receipt),),
-    )
 
 
 def build_chain(sodium: Sodium) -> Chain:
     """Three contiguous blocks: two registrations and a confirmed transfer.
 
-    Two registrations because a transfer to an unregistered recipient is refused,
-    and a transfer because it is the first block that moves value and charges the
-    fee, so a node that agreed to the first two and not the third would be caught.
+    Two registrations because a transfer to an unregistered recipient is
+    refused, and a transfer because it is the first block that moves value and
+    charges the fee, so a node that agreed to the first two and not the third
+    would be caught.
     """
-    signer = Signer(sodium)
-    verifier_key = signer.derive("verifier")
-    alice_hub = signer.derive("alice-hub")
-    alice_signer = signer.derive("alice-signer")
-    bob_hub = signer.derive("bob-hub")
-    bob_signer = signer.derive("bob-signer")
-
-    genesis = _genesis(verifier_key)
-    ledger = Ledger.from_genesis(genesis)
-    genesis_root = bytes.fromhex(ledger.state_root())
-
-    blocks = [
-        _run(
-            ledger,
-            signer,
-            _register(
-                signer, ledger, ALICE_IDENTITY, alice_hub, alice_signer,
-                verifier_key),
-        ),
-        _run(
-            ledger,
-            signer,
-            _register(
-                signer, ledger, BOB_IDENTITY, bob_hub, bob_signer, verifier_key),
-        ),
-        _run(
-            ledger,
-            signer,
-            _confirmed_transfer(
-                signer, ledger, ALICE_IDENTITY, alice_hub, alice_signer, 1,
-                escrow_id(BOB_IDENTITY, 0), TRANSFER_AMOUNT),
-        ),
-    ]
+    session = Session(sodium)
+    blocks = (
+        session.apply(session.register_alice()),
+        session.apply(session.register_bob()),
+        session.apply(session.alice_pays_bob(1)),
+    )
     return Chain(
-        genesis=g.encode(genesis),
-        chain_id=g.chain_id(genesis),
-        genesis_root=genesis_root,
-        blocks=tuple(blocks),
+        genesis=session.genesis,
+        chain_id=session.chain_id,
+        genesis_root=session.genesis_root,
+        blocks=blocks,
     )
