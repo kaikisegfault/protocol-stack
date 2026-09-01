@@ -174,9 +174,20 @@ adopted, because the initializer exact-validates an existing genesis.
   The single-node integration test drives version one; driving version seven
   needs the recorded blocks' **raw inputs**, which no accepted vector file
   carries today — the version-seven vectors record each block's roots,
-  identifier, and receipts but not the transactions that produced them. That is
-  the next slice, and only four of the five recorded blocks are reachable
-  through it: `carried.block4` is at height 1,152,000.
+  identifier, and receipts but not the transactions that produced them.
+
+  **Emitting those octets would not be enough, and this was established after
+  this ADR was first written.** Every recorded version-seven transaction is
+  signed with a stand-in: an eight-octet counter padded to 64 octets, recorded
+  in an oracle that verifies by exact-match lookup, in both the Python trace and
+  the C++ fixture that reproduces its bytes. That keeps the model free of
+  cryptography while leaving every message-binding claim testable, and it is the
+  right decision for a fixture — but `protocol-application-v7` opens its store
+  with `protocol::v7::ed25519_verifier()`, so it would refuse every recorded
+  input as `invalid_signature`. What the run needs first is a version-seven
+  fixture that **signs for real**, which version one has and version seven has
+  never needed. Only four of the five recorded blocks would have been reachable
+  in any case: `carried.block4` is at height 1,152,000.
 - **The four-node devnet.** Its genesis and its bridges must choose one version
   together, and it stays on version one until they do.
 - **The uptime schedule is still `nullptr`.** A chain driven through this
