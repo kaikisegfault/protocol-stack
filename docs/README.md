@@ -574,6 +574,26 @@ has no field for — is emitted as an indexed block event rather than decoded an
 discarded, because a value that crosses a process boundary and is then thrown
 away is the one a later simplification deletes.
 
+ADR 0062 records the version-seven chain fixture, and the decision came out of a
+finding rather than a preference. **Every recorded version-seven transaction is
+signed with a stand-in** — an eight-octet counter padded to 64 octets, recorded
+in an oracle that verifies by exact-match lookup — which is the right decision
+for a contract fixture, because it makes every message-binding claim testable
+without the model implementing cryptography. It also means nothing recorded
+could ever be broadcast to a node: `protocol-application-v7` opens its store
+with `ed25519_verifier()` and would refuse all of it as `invalid_signature`. So
+the plan of emitting the recorded blocks' raw octets into a vector file was
+abandoned for a second fixture that **signs for real**, in the shape version
+one's already has. The model needed no change, because `execute_block` already
+takes the signature oracle as an argument. **One transaction per block is a
+requirement rather than a simplification**: a state root commits to the whole
+block, and broadcasting through a mempool will not put a chosen set into one
+block in a chosen order. The run's claim is agreement between two
+implementations — the model's root, the binary's genesis identity, and the
+node's executed root — never a value against itself, and the third block is
+committed by a process that did not execute the first two, so its root comes
+from a state read back out of SQLite.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
