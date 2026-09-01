@@ -85,11 +85,18 @@ func runStart(arguments []string) error {
 	flags.StringVar(&application, "application", "", "application binary")
 	flags.StringVar(&bridge, "bridge", "", "ABCI bridge binary")
 	flags.StringVar(&node, "node", "", "CometBFT node binary")
+	var protocolVersion uint
+	flags.UintVar(&protocolVersion, "protocol-version", 1,
+		"protocol ledger version every node runs (1 or 7)")
 	if err := flags.Parse(arguments); err != nil {
 		return err
 	}
 	if flags.NArg() != 0 {
 		return errors.New("start received unexpected positional arguments")
+	}
+	protocol, err := nodeconfig.ParseProtocolVersion(protocolVersion)
+	if err != nil {
+		return err
 	}
 	topology, err := layout.devnet()
 	if err != nil {
@@ -102,7 +109,7 @@ func runStart(arguments []string) error {
 		Application: application,
 		Bridge:      bridge,
 		Node:        node,
-	})
+	}, protocol)
 }
 
 func runHealth(arguments []string) error {

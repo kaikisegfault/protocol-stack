@@ -125,9 +125,21 @@ protocol-cometbft-bridge -protocol-version 7 \
   -abci-listen tcp://127.0.0.1:26658
 ```
 
-The four-validator devnet is version one only. Its genesis and the
-`-protocol-version` its supervisor passes each bridge must be one choice, and
-that is not yet wired.
+The four-validator devnet takes the same flag, and it reaches the genesis and
+every bridge from that one place, because a home written for one ledger version
+and bridges started for the other is refused at `InitChain`:
+
+```sh
+protocol-cometbft-devnet start -protocol-version 7 \
+  -genesis /absolute/path/protocol.genesis \
+  -application /absolute/path/protocol-application-v7 \
+  -bridge /absolute/path/protocol-cometbft-bridge \
+  -node /absolute/path/protocol-cometbft-node
+```
+
+`tools/devnet.sh` remains version one: it decodes a bundled version-one genesis
+and selects version one's application binary, and a version-seven wrapper needs
+a bundled version-seven genesis of its own.
 
 ## Single-node lifecycle
 

@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/kaikisegfault/protocol-stack/adapter/cometbft/internal/nodeconfig"
@@ -27,6 +28,7 @@ func Run(
 	devnet nodeconfig.Devnet,
 	genesis string,
 	binaries Binaries,
+	protocol nodeconfig.ProtocolVersion,
 ) (runError error) {
 	if err := validateInputs(genesis, binaries); err != nil {
 		return err
@@ -35,10 +37,12 @@ func Run(
 	if err != nil {
 		return err
 	}
-	// The local network is version one's. A version-seven devnet needs this
-	// version and the `-protocol-version` the supervisor passes each bridge to
-	// be the same choice, and that is the four-node slice rather than this one.
-	if err := devnet.Ensure(identity, nodeconfig.ProtocolV1); err != nil {
+	// **The genesis and the bridges must be one choice.** The application state
+	// this writes is what the application requires at InitChain, so a home
+	// written for one ledger version and bridges started for the other is
+	// refused there rather than at the first block. That is why the version
+	// reaches both from here rather than being configured twice.
+	if err := devnet.Ensure(identity, protocol); err != nil {
 		return fmt.Errorf("initialize devnet: %w", err)
 	}
 	if err := ensureSocketRoot(devnet.SocketRoot); err != nil {
@@ -99,6 +103,8 @@ func Run(
 			node.ApplicationSocket,
 			"-abci-listen",
 			node.Endpoints.ProxyApp,
+			"-protocol-version",
+			strconv.Itoa(int(protocol)),
 		)
 		if err != nil {
 			return err
