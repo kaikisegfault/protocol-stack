@@ -223,15 +223,90 @@ v0.39.4 turns out never to ask — it replays an already-committed height
 against a *mock* application built from its own saved response. The adapter
 reconciles nothing and guards the case instead.
 
-**A chain still does not run, and what is missing is no longer structural.**
-Nothing has yet driven a version-seven chain through a real CometBFT engine,
-because the recorded blocks' **raw inputs** are in no accepted vector file. **And
-one debt inside the stack still matters more.** The uptime schedule handed to
-`execute_block` is `nullptr`, so a chain driven through this process writes **no
-cycle assignment record and accrues nothing to any seat**. Every root in the
-evidence is the recorded one because the recorded contiguous run opens no
-window — the stack executes blocks correctly and cannot yet run a chain past a
-cycle boundary and mean it.
+**A version-seven chain runs as of 2026-09-01.** M3.13h drove three
+contiguous blocks — two registrations and a confirmed transfer — through a
+real CometBFT process, with the engine required to report the state root the
+independent Python model says each block produces, and the third block committed
+by a process that did not execute the first two. **What made it possible was a
+fixture that signs for real**: every recorded version-seven transaction carries
+an eight-octet stand-in an oracle verifies by lookup, and a node runs
+`ed25519_verifier()`, so nothing recorded could ever have been broadcast to one.
+
+**One debt inside the stack now matters more than anything structural.** The
+uptime schedule handed to `execute_block` is `nullptr`, so a chain driven
+through this process writes **no cycle assignment record and accrues nothing to
+any seat**. Every root in the evidence is the recorded one because the recorded
+contiguous run opens no window — the stack executes blocks correctly and cannot
+yet run a chain past a cycle boundary and mean it.
+
+### How M3.13h was delivered
+
+**The slice changed shape before it started, and checking the recorded fixtures
+is what changed it.** The handoff said the next step was to emit the recorded
+blocks' raw inputs into a vector file. Reading
+`simulation/economy_transition_v7/trace.py` first found the sentence that makes
+that impossible: *no signature is computed anywhere*. Every recorded
+version-seven transaction carries an eight-octet counter padded to 64 octets,
+recorded in an oracle that verifies by exact-match lookup, and
+`tests/kernel/economy_v7_execution_fixture.hpp` issues byte-identical tokens so
+the C++ trace reproduces the model's exact bytes. **That is right for a contract
+fixture** — it makes every message-binding claim testable without the model
+implementing cryptography — and it means `protocol-application-v7`, which opens
+its store with `ed25519_verifier()`, would refuse every recorded input as
+`invalid_signature`.
+
+**So the slice built a second fixture rather than emitting the first.**
+`tests/integration/version_seven_chain.py` derives keys from labelled seeds
+through the pinned libsodium, builds the transactions, and runs the same octets
+through the independent Python model to learn what each block produces. It is
+version one's `tests/differential/cases.py` shape, which is the shape that
+already works.
+
+**The model needed no change, and that is why this was a fixture slice rather
+than a model slice.** `execute_block` takes the signature oracle as an argument
+and only ever calls `verify(public_key, message, signature)`, so a
+libsodium-backed object is a drop-in for the recorded table. The seam was already
+there.
+
+**One transaction per block is a requirement rather than a simplification.** A
+state root commits to the whole block, so reproducing a recorded block that holds
+four transactions needs all four in one block in one order, and a mempool does
+not give you that. Three blocks: two registrations, because a transfer to an
+unregistered recipient is refused, then a confirmed transfer, because it is the
+first block that moves value and charges the fee — a node that agreed to two
+airdrops and then disagreed about a fee would pass a two-block fixture.
+
+**Every comparison in the run is one implementation against another.** The
+fixture derives the chain identity, the height-zero root, and each block's root
+from the Python model; the binary derives the same two figures from the same
+genesis file through `--genesis-identity`; the running node derives each block's
+root by executing the octets. Three RPC claims are checked at every height and
+they are different claims: `/status` is the app hash in the latest header, which
+at height `H` is the state after `H - 1`; `/abci_info` is the application's own
+durable head; and `block_results` must publish the recorded block identifier as
+the `protocol_block` event M3.13g's bridge emits, which is what proves an
+identifier ABCI has no field for survived the whole path.
+
+**The restart is the third block rather than a separate case.** It is committed
+by a process that did not execute the first two, so its root comes from a state
+read back out of SQLite rather than one held in memory.
+
+**Six mutation probes, and the first is the argument for the whole slice.**
+Making `Signer.sign` issue stand-ins is refused by the model itself at
+admission with code 3, `invalid_signature` — the finding demonstrated rather
+than asserted. A stand-in spliced into a raw input, two blocks sharing a root,
+and a version-six receipt version are each caught by the check that names them.
+**One probe passed uncaught and was re-aimed**: a key that drifts only after
+the fifth derivation never reached the executed path, because a rebuild derives
+exactly five keys.
+
+**The local check that made this affordable is worth keeping.** This machine has
+libsodium 1.0.18 and the repository pins 1.0.22, and `pinned_sodium.Sodium`
+refuses anything else — correctly. Ed25519 is Ed25519, so a scratch copy that
+relaxes the pin (never committed, and it must stay that way) runs the fixture and
+all six probes against real signatures in under a second. **Almost none of this
+slice needed the hosted matrix to find its bugs**, which is the opposite of
+M3.13g.
 
 ### How M3.13g was delivered
 
@@ -2879,6 +2954,20 @@ slices.
   real engine**, and no recorded transaction could be broadcast to one: every
   version-seven vector is signed with a stand-in the model verifies by lookup,
   while a node runs `ed25519_verifier()`.
+- **A version-seven chain runs under a real consensus engine.**
+  `tests/integration/version_seven_chain.py` is the first version-seven fixture
+  that signs for real — labelled seeds through the pinned libsodium, the model's
+  own envelope encoding, and the independent Python model run over the same
+  octets to learn each block's root. Three contiguous blocks, one transaction
+  each, are broadcast to a CometBFT node and committed: two registrations and a
+  confirmed transfer that moves value and charges the fee. **Every comparison is
+  one implementation against another** — the model's roots, the binary's
+  `--genesis-identity`, and the node's executed root — and three RPC claims are
+  checked at every height, including `block_results` publishing the recorded
+  block identifier as the `protocol_block` event the bridge emits. **The third
+  block is committed by a process that did not execute the first two**, so its
+  root comes from a state read back out of SQLite. The uptime schedule is still
+  `nullptr`: the chain executes correctly and pays nobody.
 - The accepted `economy-transition-v7` contract is version six with the
   per-channel carry deleted from state and replaced by a recovery pool. Its
   independent Python model runs the respecified settlement — a zero-winner
@@ -3266,6 +3355,23 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #225 and PR #226 are the M3.13h delivery, merged by rebase across
+  commits `8857acc through 9c733e4` on `main`. It adds
+  `tests/integration/version_seven_chain.py`, its registered contract test,
+  `tests/integration/cometbft_version_seven_test.py`, and ADR 0062; it moves
+  `inspect_identity` and `initialize_home` into `cometbft_process.py` and gives
+  `start_stack`, `stop_stack`, and `application_info` a protocol version; and it
+  adds the run to `tools/verify.sh`. **No accepted vector file changes and no new
+  one is added** — the fixture is computed at test time from the independent
+  model, which is what version one's integration already does. One ctest entry is
+  added, `version-seven-chain-fixture`, so the suite goes from 152 to 153 entries
+  in the debug presets and from 160 to 161 under `clang-sanitizers`. PR run
+  33504060503 on head `7b7ba55` passed the complete hosted matrix, with all
+  four job logs reporting `CometBFT version-seven integration: passed (2
+  registrations, 1
+  confirmed transfer, restart at height 2, durable height 3)` and both existing
+  integrations still passing, which is what proves the harness parameterization
+  left version one's path alone.
 - Issue #222 and PR #223 are the M3.13g delivery, merged by rebase across
   commits `6193a91 through ecd3fcf` on `main`. It adds
   `adapter/cometbft/internal/localapp/wire_v7.go` and `client_v7.go`,
@@ -4350,89 +4456,62 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.13h: a version-seven chain through a real CometBFT
-process**, which is the first time anything in this repository would *run* a
-version-seven network rather than execute its blocks.
+Milestone slice **M3.13i: where the uptime schedule comes from**, which is the
+gap that decides whether requirement 13 measures anything.
 
-**Every structural piece now exists.** The kernel executes version-seven blocks,
-the store makes them durable across a restart and a fault, `ApplicationV7`
-reconciles the two and requires them to agree, the transport carries it in
-frames, `protocol-application-v7` serves it on a socket, and as of M3.13g
-`adapter/cometbft` reads it and speaks ABCI. Nothing has connected them.
+**It is not plumbing, and establishing that is the first thing this slice
+inherits.** `execute_block` takes an `UptimeSchedule*` and every caller passes
+`nullptr`, so a chain run end to end writes no cycle assignment record and no
+seat accrues anything. The obvious reading is that some caller should pass one.
+**No caller can.** A schedule is `uptime-measurement-v1`'s measured seats for a
+window, and a node cannot invent it: every validator must reach the same
+assignment record or the state roots diverge. So the schedule has to be data the
+chain agrees on.
 
-**The obstacle is not the adapter and it is sharper than it looks. Every
-recorded version-seven transaction is signed with a stand-in.** Both traces say
-so outright — `simulation/economy_transition_v7/trace.py` states that no
-signature is computed anywhere and that a stand-in is an eight-octet counter
-padded to 64 octets, recorded in an oracle against the exact key and message it
-authorizes, and `Signatures` in `tests/kernel/economy_v7_execution_fixture.hpp`
-issues byte-identical tokens so the C++ trace reproduces the model's exact
-transaction bytes. **That is a good decision and it is not a defect**:
-exact-match lookup makes every message-binding claim in the contract testable
-without the model implementing cryptography.
+**None of version seven's fourteen kinds carries one, and they were enumerated
+rather than assumed.** They are the transfer and the confirmed transfer,
+registration, the seat purchase and activation, the direct issue, the three
+mints, the two escrow and two signer operations, and the posture change. Not one
+submits an uptime claim. ADR 0028's attested-claim pipeline is where a
+real-world measurement is supposed to enter consensus, and nothing binds it to
+version seven. **Wiring uptime is therefore a transition-version change**, not a
+call-site change, and it belongs behind the `change-protocol` skill.
 
-**But a real node verifies real signatures.** `protocol-application-v7` opens its
-store through `open_sqlite_ledger_v7`, whose verifier defaults to
-`protocol::v7::ed25519_verifier()`, so **not one recorded raw input can be
-broadcast to it** — every one would be refused at admission as
-`invalid_signature`. Emitting the recorded blocks' octets into a vector file
-would therefore produce a fixture no chain can accept. That is the finding, and
-it is why this slice is a fixture slice rather than a plumbing one.
+Note that the transaction-kind constants collide numerically with the state
+entry-kind constants — `TRANSFER` and `SEAT_ENTRY` are both 1 — so enumerate
+them through `KIND_SCHEME` rather than by reversing a name table, which is how a
+first attempt produced a list that looked right and was not.
 
-**Version one already has what version seven lacks**, which is the shape to copy.
-`tests/differential/cases.py` takes a `pinned_sodium.Sodium`, generates real
-keypairs, signs for real, and runs the same bytes through the Python reference
-model to learn the block's root and receipt; the integration test then broadcasts
-the transaction and requires CometBFT to report that root.
+**And one input it needs is founder-reserved.** What a Founder Machine must do
+to be counted as operational for a cycle — the concrete resource commitment —
+sets what an end user must own and run in order to be paid. The constitution
+places that outside autonomous choice. The mechanism around it is not reserved:
+how a claim is attested, who signs it, how a block carries it, how a validator
+checks it, and how the assignment prologue reads it are all engineering.
 
-**The Python model is already parameterized for it.** `execute_block` takes the
-oracle as an argument and only ever calls `oracle.verify(public_key, message,
-signature)`, so a class whose `verify` calls libsodium is a drop-in for the
-recorded table. Nothing in the model has to change.
+**So the slice divides, and the first half is unblocked.** Specify the
+attested-claim carrier — the kind, its body, its authority, the window it
+names, the deduplication rule, and the point in block execution where a
+finalised window becomes readable — against `uptime-measurement-v1` and ADR
+0028, and
+record it. **The threshold itself is already settled**:
+`kActivityThresholdSeconds` in `economy_assignment.cpp` is 64,800 seconds — 18
+hours of cumulative fully operational uptime per cycle — founder-directed, read
+from the accepted manifest layer, and checked against
+`test-vectors/economy-transition-v3.txt`. What is reserved is **what a machine
+must do to be counted operational** toward it, which is a statement about what a
+participant must own and run, not about the arithmetic.
 
-**So M3.13h is: a version-seven fixture that signs for real, and a vector file
-recorded for the run.** Real keypairs from `pinned_sodium`, the trace's existing
-envelope builders, a libsodium-backed verifier in place of the stand-in table,
-**one transaction per block over contiguous heights**, and the raw input octets
-recorded beside each block's root, identifier, and receipt. Emit it through a
-verifier's own `--emit` so the file and its derivations cannot disagree at birth,
-and register that verifier, because
-`python3 -B tests/tools/test_registration_test.py` refuses a recorded vector file
-no registered verifier reads. Then M3.13i drives it through CometBFT.
+**Ask before the second half, not before the first.** The reserved question
+becomes the nearest dependency once the carrier is specified and a vector needs
+a real figure in it.
 
-**One transaction per block is a requirement rather than a simplification.** A
-root commits to the whole block, so reproducing a recorded block with four
-transactions would need all four to land in one block in the recorded order, and
-broadcasting through a mempool does not give you that. `CreateEmptyBlocks` is
-already false, and the version-one test gets one transaction per block precisely
-because it submits one at a time.
-
-**Three facts to carry in rather than rediscover.** The existing `carried` blocks
-hold two, four, four, and four inputs and admit every one of them, so their only
-disqualification is the signatures. Only blocks 0 through 3 would have been
-reachable in any case, because `carried.block4` is at height 1,152,000. And the
-genesis file needs no new machinery: it is `genesis.bytes` in the same vector
-file, exactly as `tests/application/headless_process_v7_test.py` uses it —
-though a fixture that signs for real will want its own genesis verifier key.
-
-**The pieces the run needs are all present and take one flag each.**
-`protocol-application-v7 --genesis-identity` prints the chain identity and the
-height-zero application hash; `protocol-cometbft-init -protocol-version 7` writes
-a home whose genesis application state is `"protocol-stack-v7"`; and
-`protocol-cometbft-bridge -protocol-version 7` speaks version seven's responses.
-`tests/integration/cometbft_process.py` already starts, stops, and reconciles the
-three-process stack for version one and should be parameterized rather than
-copied.
+**Two things this slice must not do.** It must not invent a resource commitment
+to unblock itself, and it must not make the schedule a proposer's opinion: a
+value one node supplies and another cannot reproduce is a consensus fork with
+extra steps.
 
 **Then, in order, each its own slice:**
-* **the uptime schedule, which is the gap that decides whether requirement 13
-  measures anything.** `ApplicationV7` hands `execute_block` a `nullptr`, so a
-  chain driven through it writes no cycle assignment and no seat accrues. Four
-  nodes agreeing on blocks that pay nobody would satisfy the word "four-node" and
-  not the word "economic". Where an uptime measurement enters consensus is ADR
-  0028's attested-claim pipeline; wiring it is mechanism, but note that **the
-  concrete resource commitment behind it is founder-reserved** and becomes the
-  nearest dependency at the Founder Machine milestone rather than at this one;
 * requirement 13 proper, the four-node adversarial scenarios. **The devnet is
   version one and stays that way until one slice moves both halves together**:
   `nodeconfig.Devnet.Ensure` takes a `ProtocolVersion` and the supervisor passes
