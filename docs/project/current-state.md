@@ -214,15 +214,96 @@ find the committed block durable at its recorded root and continue the chain.
 ADR 0057 is amended in place with the contract, which came out narrower than its
 first text implied.
 
-**A chain still does not run, and exactly one structural piece is missing.**
-There is **no Go ABCI adapter carrying version-seven transactions**; the existing
-`adapter/cometbft` speaks version one's responses and cannot read a finalized
-block that carries a block identifier. **And one debt inside the stack still
-matters as much.** The uptime schedule handed to `execute_block` is `nullptr`, so
-a chain driven through this process writes **no cycle assignment record and
-accrues nothing to any seat**. Every root in the evidence is the recorded one
-because the recorded contiguous run opens no window — the stack executes blocks
-correctly and cannot yet run a chain past a cycle boundary and mean it.
+**M3.13g completed the structural stack on 2026-09-01.** `adapter/cometbft`
+now reads a version-seven finalized block, bridges it to ABCI, and initialises a
+home for a version-seven chain, so every layer between a signed transaction and a
+consensus engine exists. **Its one real design question answered itself**:
+`ApplicationV7` refuses a repeated `finalize_block` terminally, and CometBFT
+v0.39.4 turns out never to ask — it replays an already-committed height
+against a *mock* application built from its own saved response. The adapter
+reconciles nothing and guards the case instead.
+
+**A chain still does not run, and what is missing is no longer structural.**
+Nothing has yet driven a version-seven chain through a real CometBFT engine,
+because the recorded blocks' **raw inputs** are in no accepted vector file. **And
+one debt inside the stack still matters more.** The uptime schedule handed to
+`execute_block` is `nullptr`, so a chain driven through this process writes **no
+cycle assignment record and accrues nothing to any seat**. Every root in the
+evidence is the recorded one because the recorded contiguous run opens no
+window — the stack executes blocks correctly and cannot yet run a chain past a
+cycle boundary and mean it.
+
+### How M3.13g was delivered
+
+**The slice's one real design question answered itself, and reading the engine
+is what answered it.** ADR 0058 recorded that `ApplicationV7` refuses a
+`finalize_block` at any height that is not its current plus one — including one
+it has already committed — and that the refusal is terminal, so an adapter had
+to decide what to do when CometBFT replays. **CometBFT v0.39.4 never asks.** In
+`consensus/replay.go`, the one branch where the application is ahead of the
+engine's state loads its **own saved** `FinalizeBlock` response and replays that
+height against a *mock* application built from it; the source comment says it
+does not want to call `Commit` twice for the same block on the real app. Every
+other branch replays from `appBlockHeight + 1`, which is `current + 1` at each
+step because `ExecCommitBlock` commits each replayed block before sending the
+next, or returns `ErrAppBlockHeightTooHigh` at the handshake without sending a
+request at all.
+
+**So the adapter reconciles nothing, and that is the finding rather than a
+shortcut.** A reconciliation would have had to reproduce per-transaction
+receipts that the stage no longer holds after `commit` and that the store never
+recorded, so anything it answered would have been synthesised — the fabricated
+agreement `ApplicationV7` exists to refuse. What the adapter adds instead is a
+**guard**: a `FinalizeBlock` at a height at or below the one the application has
+said it committed is refused before it is forwarded. The height comes only from
+the application's own answers to `Info` and `Commit`, never from counting here,
+so it can never exceed the height the application would accept and can never
+refuse a legitimate `current + 1`. The cost is one comparison per block; the
+benefit is that a version change or a misconfiguration produces an error the
+engine stops on rather than a node bricked on a contradiction it did not commit.
+
+**The Go client is version one's client and one different answer.** `ClientV7`
+embeds `Client` and declares `FinalizeBlock`. The connection, the
+request-identifier discipline, the terminal latch, the frame codec, and all five
+request encoders are shared, for the reason ADR 0059 gives on the C++ side: a
+second copy would be a second place for a framing rule to be wrong, kept in step
+by discipline alone.
+
+**Both shapes refuse each other, which is what makes `-protocol-version` safe.**
+Version seven's decoder refuses version one's finalized block because the count
+it would read is the identifier's leading octets, and version one's refuses
+version seven's for the same reason in reverse. A client dialled at the wrong
+version fails closed rather than misreading a block, and both directions are
+tested.
+
+**One `Application`, parameterized, rather than two.** Six of the seven ABCI
+conversions name no ledger version, so `New` and `NewV7` differ by the codespace
+and by whether a finalized block arrives with an identifier. That identifier is
+a **pointer** in the bridge's own `FinalizedBlock`, because a zero hash would
+have been emitted and indexed as though it named something.
+
+**The block identifier becomes an indexed block event.** ABCI has no field for a
+second identifier, and a value that crosses a process boundary and is then
+discarded is the one a later simplification deletes. It is observable rather
+than consensus-visible: a block event is not hashed into anything CometBFT
+agrees on, and only a transaction result's code and data reach
+`LastResultsHash`.
+
+**The genesis application state is what pairs a home with a ledger version.**
+`ApplicationV7` requires `"protocol-stack-v7"` at `init_chain`, so a mismatched
+pair is refused there rather than at the first block. `protocol-cometbft-init`
+takes `-protocol-version`, and its parser compares as the wider type, because
+`ProtocolVersion(257)` truncates to one.
+
+**The local check that mattered was a scratch module.** `internal/localapp`
+imports no third-party code, so copying the package into a stdlib-only module
+with `go 1.23` type-checks and runs it under the machine's own Go in under a
+second — `go vet ./...` and `go test` both clean — without downloading the
+CometBFT module graph the repository's resource rules forbid pulling locally.
+The `bridge` and `nodeconfig` packages import CometBFT and could only be
+verified on the hosted matrix. **The engine's own source was read the same
+way**: two files fetched over HTTPS into the scratchpad rather than a module
+download.
 
 ### How M3.13f was delivered
 
@@ -2780,8 +2861,23 @@ slices.
   process — started, connected to, restarted, shut down — against the recorded
   chain identity and a genesis root read out of a recorded block header.
   `decode_genesis` is what made it possible and is defined as `encode_genesis`'s
-  inverse, checking itself by re-encoding. **There is still no Go ABCI adapter
-  carrying version-seven transactions**, so nothing yet joins a network.
+  inverse, checking itself by re-encoding.
+- **A consensus engine can be pointed at that process.** `adapter/cometbft` reads
+  a version-seven finalized block over version one's frames — `ClientV7` embeds
+  the version-one client and declares one method — and `bridge.NewV7` turns it
+  into ABCI responses under the `protocol-stack-v7` codespace, emitting the block
+  identifier ABCI has no field for as an indexed block event. **The two finalized
+  shapes refuse each other**, so a client started at the wrong version fails
+  closed rather than misreading a block. `protocol-cometbft-init` and
+  `protocol-cometbft-bridge` take `-protocol-version`, and the genesis
+  application state is what refuses a mismatched pair at `InitChain` rather than
+  at the first block. **The replay handshake ADR 0058 owed is a guard rather than
+  a reconciliation**: CometBFT v0.39.4 replays an already-committed height
+  against a mock built from its own saved response, so the real application is
+  never asked, and the adapter refuses to forward such a request using a height
+  taken only from the application's own answers. **Nothing has yet spoken to a
+  real engine**: the end-to-end run needs the recorded blocks' raw inputs, which
+  no accepted vector file carries.
 - The accepted `economy-transition-v7` contract is version six with the
   per-channel carry deleted from state and replaced by a recovery pool. Its
   independent Python model runs the respecified settlement — a zero-winner
@@ -3169,6 +3265,20 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #222 and PR #223 are the M3.13g delivery, merged by rebase across
+  commits `6193a91 through ecd3fcf` on `main`. It adds
+  `adapter/cometbft/internal/localapp/wire_v7.go` and `client_v7.go`,
+  `adapter/cometbft/internal/bridge/local.go`, `NewV7` and the committed-height
+  guard in `bridge/application.go`, `nodeconfig.ProtocolVersion` threaded through
+  `Ensure`, `-protocol-version` on the bridge and initializer binaries, and ADR
+  0061. **No accepted vector file changes, no CMake target is added, and no ctest
+  entry changes**: the whole slice is Go and Markdown, so the suite stays at 152
+  entries in the debug presets and 160 under `clang-sanitizers`. PR run
+  33500977481 on head `142f750` passed the complete hosted matrix, which is what
+  verifies the
+  `bridge` and `nodeconfig` packages — they import CometBFT and cannot be
+  compiled on the owner's machine, where Go is 1.23.6 against a module requiring
+  1.25.7.
 - Issue #219 and PR #220 are the M3.13f delivery, merged by rebase across
   commits `73955eb` through `a30a997` on `main`. It wires version one's seven
   fault points into `SQLiteLedgerV7::apply_block`, adds
@@ -4013,24 +4123,29 @@ the post-block root, a failed commit recovers by reading the file again, and a
 process killed between the commit and its return leaves a state some sequence of
 blocks produced. That was the last thing ADR 0057 owed.
 
-**What is missing is the Go ABCI adapter.** `adapter/cometbft` exists and speaks
-version one: `internal/localapp` is the socket client and frame codec and
-`internal/bridge` is the ABCI application over it, together about 1,800 lines
-with their tests. **It cannot read a version-seven finalized block**, because
-that response carries a block identifier version one's does not, and it sends
-version one's app state at `InitChain`, which `ApplicationV7` refuses by design.
+**As of 2026-09-01 the Go ABCI adapter exists too, and the gap is no longer
+structural.** `adapter/cometbft` reads a version-seven finalized block, bridges
+it to ABCI under its own codespace, and initialises a home whose genesis
+application state names the ledger version. Every layer between a signed
+version-seven transaction and a consensus engine is now built.
+
+**What is missing is the run.** Nothing has driven a version-seven chain through
+a real CometBFT process. The single-node integration drives version one by
+rebuilding its blocks from `tests/differential/cases.py`; version seven has no
+such builder, because only the C++ trace constructs its signed transactions and
+the Python model works from decoded structures. **The recorded blocks' raw inputs
+are in no accepted vector file** — `economy-transition-v7-execution.txt`
+records each block's roots, identifier, admitted count, and every receipt, but
+not the octets that produced them. Emitting them through the verifier's own
+`--emit` is the nearest step, and only four of the five recorded blocks are
+reachable through an engine in any case: `carried.block4` is at height
+1,152,000.
 
 **And one gap inside the stack is larger than the adapter.** Every layer hands
 `execute_block` a null uptime schedule, so a chain run end to end writes no cycle
 assignment record and no seat accrues anything. Requirement 13 asks for
 adversarial *economic* scenarios; four nodes agreeing on blocks that pay nobody
 would satisfy the word "four-node" and not the word "economic".
-
-**And one gap inside the layer is larger than the transport.** `ApplicationV7`
-hands `execute_block` a null uptime schedule, so a chain driven through it writes
-no cycle assignment record and no seat accrues anything. Requirement 13 asks for
-adversarial *economic* scenarios; four nodes agreeing on empty blocks would meet
-the word "four-node" and not the word "economic".
 
 **Two contracts are also still owed, and neither blocks requirement 13.** That
 was recorded the other way round at the close of M3.12b and M3.13a corrected it.
@@ -4233,39 +4348,60 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.13g: the version-seven ABCI adapter**, which is the last
-structural piece between the stack that exists and a network that runs it.
+Milestone slice **M3.13h: a version-seven chain through a real CometBFT
+process**, which is the first time anything in this repository would *run* a
+version-seven network rather than execute its blocks.
 
-**The letter moved and the reason is worth one line.** This entry was recorded as
-M3.13f at the close of M3.13e. The slice actually taken next was the store's
-fault and recovery work — the two debts ADR 0057 carried, and the half of
-requirement 13's "through restart **and recovery**" that was unbuilt — so that
-took M3.13f and the adapter is M3.13g. Nothing about the adapter's content
-changed.
+**Every structural piece now exists.** The kernel executes version-seven blocks,
+the store makes them durable across a restart and a fault, `ApplicationV7`
+reconciles the two and requires them to agree, the transport carries it in
+frames, `protocol-application-v7` serves it on a socket, and as of M3.13g
+`adapter/cometbft` reads it and speaks ABCI. Nothing has connected them.
 
-**`adapter/cometbft` exists and speaks version one.** `internal/localapp` is the
-Unix socket client and frame codec; `internal/bridge` is the ABCI application
-over it; `cmd/protocol-cometbft-node`, `-init`, `-devnet`, and `-bridge` are the
-binaries. About 1,800 lines with their tests, and **the frame format is the one
-version seven already uses**, so the codec's header, kinds, and request encoders
-are shared rather than replaced.
+**The obstacle is not the adapter, it is the fixture, and its shape is worth
+knowing before the slice starts.** The version-one integration test builds its
+expectations from `tests/differential/cases.py`: it constructs a signed transfer,
+runs it through the Python reference model to get the block's root and receipt,
+broadcasts the transaction, and requires CometBFT to report that root. Version
+seven has no equivalent builder — **only the C++ trace constructs its signed
+transactions**, and `simulation/economy_transition_v7/` works from decoded
+structures rather than raw octets. So `economy-transition-v7-execution.txt`
+records each block's roots, identifier, admitted count, and every receipt, and
+**not the octets that produced them**.
 
-**Three things actually differ and each is small.** The finalized-block response
-carries a **block identifier** after the state root, which version one's decoder
-does not expect; the app state at `InitChain` is `"protocol-stack-v7"`; and the
-per-transaction result codes are version seven's, so an adapter that maps them to
-names needs the wider table. Everything else — the header, the request payloads,
-the status-and-reserved prefix, the commit and info shapes — is unchanged.
+**Emitting the raw inputs is the obvious step and is not sufficient on its own.**
+The recorded blocks hold two, four, four, and four transactions, and a root
+commits to the whole block: reproducing `carried.block1`'s root requires its four
+transactions to land in *one* block in the recorded order, which broadcasting
+through a mempool does not give you. `CreateEmptyBlocks` is already false and the
+version-one test gets one transaction per block precisely because it submits one
+at a time. Two ways out, and the second is probably right:
 
-**Two things it must answer that are not encoding.** First, the **replay
-handshake** ADR 0058 records: `ApplicationV7` refuses, terminally, a
-`finalize_block` at any height that is not `current + 1`, *including one it has
-already committed*, which is exactly what CometBFT does to an application whose
-height is behind its engine's. Deciding what the adapter does about that — and
-whether the application should answer a repeat rather than halt — is the slice's
-one real design question, and it is mechanism rather than a founder decision.
-Second, the socket pathname bound: `sun_path` caps it near 108 octets and the
-binary reports only "failed to create the private Unix socket".
+* drive the four blocks through the adapter's own client rather than through
+  CometBFT, which tests the adapter and not the network, and is a weaker claim
+  than the C++ transport test already makes; or
+* **record a scenario built for the run**: one transaction per block over
+  contiguous heights, emitted through the verifier's own `--emit` so the file and
+  its derivations cannot disagree at birth, with the raw input octets beside each
+  block's root. That is what version one effectively has, and it makes the
+  integration claim the same claim: *the engine reports the root the protocol
+  says the block produces*.
+
+**Two facts to carry in rather than rediscover.** All four contiguous `carried`
+blocks admit every input, so no recorded block depends on a mempool passing
+through something it would reject — but only blocks 0 through 3 are reachable
+at all, because `carried.block4` is at height 1,152,000. And the genesis file is
+already available as `genesis.bytes` in the same vector file, exactly as
+`tests/application/headless_process_v7_test.py` uses it.
+
+**The pieces the run needs are all present and take one flag each.**
+`protocol-application-v7 --genesis-identity` prints the chain identity and the
+height-zero application hash; `protocol-cometbft-init -protocol-version 7` writes
+a home whose genesis application state is `"protocol-stack-v7"`; and
+`protocol-cometbft-bridge -protocol-version 7` speaks version seven's responses.
+`tests/integration/cometbft_process.py` already starts, stops, and reconciles the
+three-process stack for version one and should be parameterized rather than
+copied.
 
 **Then, in order, each its own slice:**
 * **the uptime schedule, which is the gap that decides whether requirement 13
@@ -4276,7 +4412,12 @@ binary reports only "failed to create the private Unix socket".
   0028's attested-claim pipeline; wiring it is mechanism, but note that **the
   concrete resource commitment behind it is founder-reserved** and becomes the
   nearest dependency at the Founder Machine milestone rather than at this one;
-* requirement 13 proper, the four-node adversarial scenarios;
+* requirement 13 proper, the four-node adversarial scenarios. **The devnet is
+  version one and stays that way until one slice moves both halves together**:
+  `nodeconfig.Devnet.Ensure` takes a `ProtocolVersion` and the supervisor passes
+  it `ProtocolV1` explicitly, but the supervisor also has to pass each bridge
+  `-protocol-version 7` and start `protocol-application-v7`, and a genesis that
+  says one thing while the bridges say another fails at `InitChain`;
 * `calendar-v1`, which must fix the consensus timestamp's monotonicity rule and
   acceptance tolerance and the calendar-month boundary derived from them. **The
   tolerance is consensus-visible**: a proposer can move a month boundary within
@@ -4326,6 +4467,33 @@ version one's decoder recognises the family and answers `unsupported_version`
 rather than `malformed`. The prefix is 126 octets and the encoder checks that it
 wrote exactly that many, because the decoder reads every prefix field at a
 literal offset.
+
+**What the Go adapter looks like now, so a later session does not rediscover
+it.** `internal/localapp` gained two files and no wire: `wire_v7.go` holds the
+version-seven finalized-block decoder and its receipt rule, and `client_v7.go`
+holds `ClientV7`, which **embeds `Client` and declares exactly one method**.
+`internal/bridge` gained `local.go`, holding `LocalV1` and `LocalV7` — two
+embeddings that give each client the shape the bridge consumes — and
+`application.go` gained `NewV7`, a `codespace` field, and a `committedHeight`.
+**That height is never counted here**: it is raised only by the application's own
+answers to `Info` and `Commit`, which is what makes the finalize guard incapable
+of refusing a legitimate block. Do not "simplify" the bridge's `FinalizedBlock`
+by giving version one a zero `BlockID` instead of a nil pointer — the pointer
+is what stops a zero hash being emitted and indexed as though it named a
+block.
+
+**One local check that is worth rebuilding rather than rediscovering.**
+`internal/localapp` imports no third-party code, so copying its `*.go` into a
+scratch module with `go 1.23` and running `go vet ./...` and `go test`
+type-checks and exercises the whole package under this machine's own Go in
+under a second —
+no CometBFT module graph, which the repository's resource rules forbid pulling
+locally. `internal/bridge` and `internal/nodeconfig` import CometBFT and can only
+be verified on the hosted matrix, so **write those two carefully the first
+time**: a compile error there costs a full matrix round trip. The engine's own
+source is worth reading the same way — `curl` one file from
+`raw.githubusercontent.com/cometbft/cometbft/v0.39.4/` beats a module download,
+and `consensus/replay.go` is where the replay handshake is decided.
 
 **What the store's failure contract looks like now, so a later session does not
 rediscover it.** All seven of version one's fault points are live in
@@ -4535,7 +4703,29 @@ same count rather than reading it back.
 
 ## Blockers
 
-**None for M3.13g.**
+**None for M3.13h.**
+
+**M3.13g ran the founder-decision gate and passed it.** Nine decisions were
+enumerated before any was judged: whether the Go client reuses version one's
+frame codec or gets its own; how the version-seven finalized block decodes; what
+the adapter does with the block identifier ABCI has no field for; the replay
+handshake; whether the finalize guard applies to version one as well; the ABCI
+codespace for version seven's result codes; the genesis application state; one
+bridge binary with a flag against two binaries; and which version that flag
+defaults to. **Every one is encoding, mechanism, operational, or engineering
+work**, which `founder-constitution.md` places outside the reserved set: ADR 0058
+already fixes the application state, ADR 0059 already fixes the wire, and the
+rest are adapter internals. Nothing in the slice sets or changes supply,
+allocation, beneficiaries, Founder ownership, creator hierarchy, commercial
+routing, AI institutional authority, bridge scope — the asset-bridge sense, not
+the ABCI process that shares the word — content permanence, or what an end user
+must do, own, run, or receive, and **no accepted vector file changed**.
+
+**One decision was settled by reading the engine rather than by choosing.** The
+replay handshake looked like a design question and was a question of fact:
+CometBFT v0.39.4 never asks the real application to finalize a height it has
+committed. Fetching `consensus/replay.go` and `state/execution.go` over HTTPS
+cost seconds and replaced a guess that would have shaped the whole slice.
 
 **M3.13f ran the founder-decision gate and passed it.** Six decisions were
 enumerated before any was judged: which of version one's fault points the
