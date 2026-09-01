@@ -91,7 +91,7 @@ func TestNewDevnet(t *testing.T) {
 func TestEnsureDevnetFreshAndRepeated(t *testing.T) {
 	devnet := mustDevnet(t)
 	identity := testIdentity()
-	if err := devnet.Ensure(identity); err != nil {
+	if err := devnet.Ensure(identity, ProtocolV1); err != nil {
 		t.Fatalf("fresh ensure: %v", err)
 	}
 
@@ -147,7 +147,7 @@ func TestEnsureDevnetFreshAndRepeated(t *testing.T) {
 	if document.ChainID != identity.CometChainID() ||
 		document.InitialHeight != 1 ||
 		!bytes.Equal(document.AppHash, identity.AppHash[:]) ||
-		!bytes.Equal(document.AppState, []byte(appState)) ||
+		!bytes.Equal(document.AppState, []byte(appStateV1)) ||
 		len(document.Validators) != DevnetNodeCount {
 		t.Fatal("common genesis identity mismatch")
 	}
@@ -199,7 +199,7 @@ func TestEnsureDevnetFreshAndRepeated(t *testing.T) {
 		}
 	}
 
-	if err := devnet.Ensure(identity); err != nil {
+	if err := devnet.Ensure(identity, ProtocolV1); err != nil {
 		t.Fatalf("repeated ensure: %v", err)
 	}
 	for path, expected := range before {
@@ -265,12 +265,12 @@ func TestEnsureDevnetRejectsChangedFiles(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			devnet := mustDevnet(t)
 			identity := testIdentity()
-			if err := devnet.Ensure(identity); err != nil {
+			if err := devnet.Ensure(identity, ProtocolV1); err != nil {
 				t.Fatalf("fresh ensure: %v", err)
 			}
 			path := test.change(t, devnet)
 			changed := readFile(t, path)
-			err := devnet.Ensure(identity)
+			err := devnet.Ensure(identity, ProtocolV1)
 			if err == nil || !strings.Contains(err.Error(), test.match) {
 				t.Fatalf("changed-file error = %v", err)
 			}
@@ -293,7 +293,7 @@ func TestEnsureDevnetRejectsPartialOrDuplicateKeys(t *testing.T) {
 			t.Fatal(err)
 		}
 		writeTestFile(t, path, []byte("{}"))
-		err := devnet.Ensure(testIdentity())
+		err := devnet.Ensure(testIdentity(), ProtocolV1)
 		if err == nil || !strings.Contains(err.Error(), "incomplete") {
 			t.Fatalf("partial-home error = %v", err)
 		}
@@ -304,7 +304,7 @@ func TestEnsureDevnetRejectsPartialOrDuplicateKeys(t *testing.T) {
 			t.Fatal(err)
 		}
 		writeTestFile(t, devnet.Nodes[0].Database, []byte("not-a-ledger"))
-		err := devnet.Ensure(testIdentity())
+		err := devnet.Ensure(testIdentity(), ProtocolV1)
 		if err == nil || !strings.Contains(
 			err.Error(), "ledger without a validator home") {
 			t.Fatalf("orphan-ledger error = %v", err)
@@ -313,11 +313,11 @@ func TestEnsureDevnetRejectsPartialOrDuplicateKeys(t *testing.T) {
 	t.Run("incomplete-ledger-set", func(t *testing.T) {
 		devnet := mustDevnet(t)
 		identity := testIdentity()
-		if err := devnet.Ensure(identity); err != nil {
+		if err := devnet.Ensure(identity, ProtocolV1); err != nil {
 			t.Fatalf("fresh ensure: %v", err)
 		}
 		writeTestFile(t, devnet.Nodes[0].Database, []byte("not-a-ledger"))
-		err := devnet.Ensure(identity)
+		err := devnet.Ensure(identity, ProtocolV1)
 		if err == nil || !strings.Contains(
 			err.Error(), "incomplete set of replica ledgers") {
 			t.Fatalf("incomplete-ledger error = %v", err)
@@ -354,7 +354,7 @@ func TestEnsureDevnetRejectsPartialOrDuplicateKeys(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			devnet := mustDevnet(t)
 			identity := testIdentity()
-			if err := devnet.Ensure(identity); err != nil {
+			if err := devnet.Ensure(identity, ProtocolV1); err != nil {
 				t.Fatalf("fresh ensure: %v", err)
 			}
 			source := cfg.DefaultConfig().SetRoot(devnet.Nodes[0].Home)
@@ -364,7 +364,7 @@ func TestEnsureDevnetRejectsPartialOrDuplicateKeys(t *testing.T) {
 				test.targetPath(target),
 				readFile(t, test.sourcePath(source)),
 			)
-			err := devnet.Ensure(identity)
+			err := devnet.Ensure(identity, ProtocolV1)
 			if err == nil || !strings.Contains(err.Error(), test.match) {
 				t.Fatalf("duplicate-key error = %v", err)
 			}

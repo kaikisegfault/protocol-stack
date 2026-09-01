@@ -11,7 +11,7 @@ func (a *Application) Query(
 	context.Context,
 	*abci.RequestQuery,
 ) (*abci.ResponseQuery, error) {
-	return &abci.ResponseQuery{Code: 1, Codespace: codespace}, nil
+	return &abci.ResponseQuery{Code: 1, Codespace: a.codespace}, nil
 }
 
 func (a *Application) InsertTx(

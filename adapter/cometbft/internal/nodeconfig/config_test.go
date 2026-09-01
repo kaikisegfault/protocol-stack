@@ -78,7 +78,7 @@ func TestParseIdentity(t *testing.T) {
 func TestEnsureFreshAndRepeated(t *testing.T) {
 	home := filepath.Join(t.TempDir(), "node")
 	identity := testIdentity()
-	if err := Ensure(home, identity, testEndpoints()); err != nil {
+	if err := Ensure(home, identity, testEndpoints(), ProtocolV1); err != nil {
 		t.Fatalf("fresh ensure: %v", err)
 	}
 
@@ -115,7 +115,7 @@ func TestEnsureFreshAndRepeated(t *testing.T) {
 	if document.ChainID != identity.CometChainID() ||
 		document.InitialHeight != 1 ||
 		!bytes.Equal(document.AppHash, identity.AppHash[:]) ||
-		!bytes.Equal(document.AppState, []byte(appState)) {
+		!bytes.Equal(document.AppState, []byte(appStateV1)) {
 		t.Fatal("generated genesis identity mismatch")
 	}
 	if document.ConsensusParams.ABCI.VoteExtensionsEnableHeight != 0 {
@@ -145,7 +145,7 @@ func TestEnsureFreshAndRepeated(t *testing.T) {
 		validatorStatePath: readFile(t, validatorStatePath),
 		nodeKeyPath:        readFile(t, nodeKeyPath),
 	}
-	if err := Ensure(home, identity, testEndpoints()); err != nil {
+	if err := Ensure(home, identity, testEndpoints(), ProtocolV1); err != nil {
 		t.Fatalf("repeated ensure: %v", err)
 	}
 	for path, expected := range before {
@@ -158,7 +158,7 @@ func TestEnsureFreshAndRepeated(t *testing.T) {
 func TestEnsureRejectsDivergentGenesis(t *testing.T) {
 	home := filepath.Join(t.TempDir(), "node")
 	identity := testIdentity()
-	if err := Ensure(home, identity, testEndpoints()); err != nil {
+	if err := Ensure(home, identity, testEndpoints(), ProtocolV1); err != nil {
 		t.Fatalf("fresh ensure: %v", err)
 	}
 	genesisPath := filepath.Join(
@@ -167,7 +167,7 @@ func TestEnsureRejectsDivergentGenesis(t *testing.T) {
 
 	changedRoot := identity
 	changedRoot.AppHash[0] ^= 1
-	if err := Ensure(home, changedRoot, testEndpoints()); err == nil ||
+	if err := Ensure(home, changedRoot, testEndpoints(), ProtocolV1); err == nil ||
 		!strings.Contains(err.Error(), "genesis differs") {
 		t.Fatalf("changed root error = %v", err)
 	}
@@ -177,7 +177,8 @@ func TestEnsureRejectsDivergentGenesis(t *testing.T) {
 
 	changedChain := identity
 	changedChain.ChainID[0] ^= 1
-	if err := Ensure(home, changedChain, testEndpoints()); err == nil ||
+	if err := Ensure(
+		home, changedChain, testEndpoints(), ProtocolV1); err == nil ||
 		!strings.Contains(err.Error(), "genesis differs") {
 		t.Fatalf("changed chain error = %v", err)
 	}
@@ -189,7 +190,7 @@ func TestEnsureRejectsDivergentGenesis(t *testing.T) {
 func TestEnsureRejectsMalformedExistingGenesis(t *testing.T) {
 	home := filepath.Join(t.TempDir(), "node")
 	identity := testIdentity()
-	if err := Ensure(home, identity, testEndpoints()); err != nil {
+	if err := Ensure(home, identity, testEndpoints(), ProtocolV1); err != nil {
 		t.Fatalf("fresh ensure: %v", err)
 	}
 	genesisPath := filepath.Join(
@@ -198,7 +199,7 @@ func TestEnsureRejectsMalformedExistingGenesis(t *testing.T) {
 	if err := os.WriteFile(genesisPath, malformed, 0o644); err != nil {
 		t.Fatalf("corrupt genesis: %v", err)
 	}
-	if err := Ensure(home, identity, testEndpoints()); err == nil ||
+	if err := Ensure(home, identity, testEndpoints(), ProtocolV1); err == nil ||
 		!strings.Contains(err.Error(), "decode genesis") {
 		t.Fatalf("malformed genesis error = %v", err)
 	}
@@ -209,13 +210,18 @@ func TestEnsureRejectsMalformedExistingGenesis(t *testing.T) {
 
 func TestEnsureRejectsInvalidInputs(t *testing.T) {
 	identity := testIdentity()
-	if err := Ensure("relative", identity, testEndpoints()); err == nil {
+	if err := Ensure(
+		"relative", identity, testEndpoints(), ProtocolV1); err == nil {
 		t.Fatal("relative home accepted")
 	}
-	if err := Ensure(string(filepath.Separator), identity, testEndpoints()); err == nil {
+	if err := Ensure(
+		string(filepath.Separator), identity, testEndpoints(),
+		ProtocolV1); err == nil {
 		t.Fatal("root home accepted")
 	}
-	if err := Ensure(filepath.Join(t.TempDir(), "node"), identity, Endpoints{}); err == nil {
+	if err := Ensure(
+		filepath.Join(t.TempDir(), "node"), identity, Endpoints{},
+		ProtocolV1); err == nil {
 		t.Fatal("missing endpoints accepted")
 	}
 
@@ -228,7 +234,8 @@ func TestEnsureRejectsInvalidInputs(t *testing.T) {
 	if err := os.WriteFile(keyPath, []byte("{}"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := Ensure(partialHome, identity, testEndpoints()); err == nil ||
+	if err := Ensure(
+		partialHome, identity, testEndpoints(), ProtocolV1); err == nil ||
 		!strings.Contains(err.Error(), "pair is incomplete") {
 		t.Fatalf("partial validator error = %v", err)
 	}
@@ -242,4 +249,63 @@ func hexString(value []byte) string {
 		encoded[index*2+1] = alphabet[current&0x0f]
 	}
 	return string(encoded)
+}
+
+// The genesis application state is what refuses a node started against a
+// version-one genesis and a version-seven engine, so it must be the one thing
+// a home initialized for version seven differs by.
+func TestProtocolVersionSelectsTheGenesisApplicationState(t *testing.T) {
+	for protocol, expected := range map[ProtocolVersion]string{
+		ProtocolV1: appStateV1,
+		ProtocolV7: appStateV7,
+	} {
+		state, err := protocol.appState()
+		if err != nil || state != expected {
+			t.Fatalf("version %d application state = %q, %v",
+				uint8(protocol), state, err)
+		}
+	}
+	if _, err := ProtocolVersion(6).appState(); err == nil {
+		t.Fatal("an unbridged protocol version produced a genesis")
+	}
+
+	home := filepath.Join(t.TempDir(), "node")
+	identity := testIdentity()
+	if err := Ensure(home, identity, testEndpoints(), ProtocolV7); err != nil {
+		t.Fatalf("fresh version-seven ensure: %v", err)
+	}
+	genesisPath := filepath.Join(
+		home, cfg.DefaultConfigDir, cfg.DefaultGenesisJSONName)
+	document, err := readGenesis(genesisPath)
+	if err != nil {
+		t.Fatalf("read generated genesis: %v", err)
+	}
+	if !bytes.Equal(document.AppState, []byte(appStateV7)) {
+		t.Fatalf("version-seven genesis application state = %q",
+			document.AppState)
+	}
+	// The same home re-ensured for the other version is a different genesis,
+	// and an exact-validating initializer must say so rather than adopt it.
+	if err := Ensure(
+		home, identity, testEndpoints(), ProtocolV1); err == nil {
+		t.Fatal("a version-one genesis replaced a version-seven home")
+	}
+}
+
+func TestParseProtocolVersion(t *testing.T) {
+	for value, expected := range map[uint]ProtocolVersion{
+		1: ProtocolV1,
+		7: ProtocolV7,
+	} {
+		parsed, err := ParseProtocolVersion(value)
+		if err != nil || parsed != expected {
+			t.Fatalf("ParseProtocolVersion(%d) = %d, %v", value, parsed, err)
+		}
+	}
+	// 257 truncates to one in a byte, and must not be admitted as version one.
+	for _, value := range []uint{0, 2, 6, 8, 256, 257, 263} {
+		if _, err := ParseProtocolVersion(value); err == nil {
+			t.Fatalf("ParseProtocolVersion(%d) was accepted", value)
+		}
+	}
 }

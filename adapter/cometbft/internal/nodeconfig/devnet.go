@@ -117,7 +117,10 @@ func loopbackEndpoint(port int) string {
 }
 
 // Ensure initializes or exact-validates every home in the topology.
-func (devnet Devnet) Ensure(identity Identity) error {
+func (devnet Devnet) Ensure(
+	identity Identity,
+	protocol ProtocolVersion,
+) error {
 	_, err := devnet.preflight()
 	if err != nil {
 		return err
@@ -152,7 +155,7 @@ func (devnet Devnet) Ensure(identity Identity) error {
 		return err
 	}
 
-	genesis, err := devnetGenesis(identity, validators)
+	genesis, err := devnetGenesis(identity, validators, protocol)
 	if err != nil {
 		return err
 	}
@@ -269,7 +272,12 @@ func requireDistinctKeys(
 func devnetGenesis(
 	identity Identity,
 	validators []*privval.FilePV,
+	protocol ProtocolVersion,
 ) (*types.GenesisDoc, error) {
+	state, err := protocol.appState()
+	if err != nil {
+		return nil, err
+	}
 	genesisValidators := make(
 		[]types.GenesisValidator, DevnetNodeCount)
 	for index, validator := range validators {
@@ -292,7 +300,7 @@ func devnetGenesis(
 		ConsensusParams: types.DefaultConsensusParams(),
 		Validators:      genesisValidators,
 		AppHash:         identity.AppHash[:],
-		AppState:        []byte(appState),
+		AppState:        []byte(state),
 	}
 	if err := document.ValidateAndComplete(); err != nil {
 		return nil, fmt.Errorf("devnet genesis: %w", err)
