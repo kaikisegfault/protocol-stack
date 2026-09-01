@@ -2876,8 +2876,9 @@ slices.
   against a mock built from its own saved response, so the real application is
   never asked, and the adapter refuses to forward such a request using a height
   taken only from the application's own answers. **Nothing has yet spoken to a
-  real engine**: the end-to-end run needs the recorded blocks' raw inputs, which
-  no accepted vector file carries.
+  real engine**, and no recorded transaction could be broadcast to one: every
+  version-seven vector is signed with a stand-in the model verifies by lookup,
+  while a node runs `ed25519_verifier()`.
 - The accepted `economy-transition-v7` contract is version six with the
   per-channel carry deleted from state and replaced by a recovery pool. Its
   independent Python model runs the respecified settlement — a zero-winner
@@ -4129,17 +4130,18 @@ it to ABCI under its own codespace, and initialises a home whose genesis
 application state names the ledger version. Every layer between a signed
 version-seven transaction and a consensus engine is now built.
 
-**What is missing is the run.** Nothing has driven a version-seven chain through
-a real CometBFT process. The single-node integration drives version one by
-rebuilding its blocks from `tests/differential/cases.py`; version seven has no
-such builder, because only the C++ trace constructs its signed transactions and
-the Python model works from decoded structures. **The recorded blocks' raw inputs
-are in no accepted vector file** — `economy-transition-v7-execution.txt`
-records each block's roots, identifier, admitted count, and every receipt, but
-not the octets that produced them. Emitting them through the verifier's own
-`--emit` is the nearest step, and only four of the five recorded blocks are
-reachable through an engine in any case: `carried.block4` is at height
-1,152,000.
+**What is missing is the run, and what blocks it is the signatures.** Nothing
+has driven a version-seven chain through a real CometBFT process, and no
+recorded version-seven transaction could be broadcast to one if it tried:
+**every recorded transaction is signed with a stand-in**, an eight-octet counter
+padded to 64 octets and recorded in an oracle that verifies by exact-match
+lookup. Both traces do it deliberately, so the model implements no cryptography
+and every message-binding claim stays testable. But `protocol-application-v7`
+opens its store with `ed25519_verifier()` and would refuse every one of them as
+`invalid_signature`. Emitting the recorded raw inputs into a vector file would
+produce a fixture no chain can accept, so what is owed is a fixture that **signs
+for real** — which is what version one has in `tests/differential/cases.py` and
+`pinned_sodium`, and what version seven has never needed until now.
 
 **And one gap inside the stack is larger than the adapter.** Every layer hands
 `execute_block` a null uptime schedule, so a chain run end to end writes no cycle
@@ -4358,41 +4360,60 @@ reconciles the two and requires them to agree, the transport carries it in
 frames, `protocol-application-v7` serves it on a socket, and as of M3.13g
 `adapter/cometbft` reads it and speaks ABCI. Nothing has connected them.
 
-**The obstacle is not the adapter, it is the fixture, and its shape is worth
-knowing before the slice starts.** The version-one integration test builds its
-expectations from `tests/differential/cases.py`: it constructs a signed transfer,
-runs it through the Python reference model to get the block's root and receipt,
-broadcasts the transaction, and requires CometBFT to report that root. Version
-seven has no equivalent builder — **only the C++ trace constructs its signed
-transactions**, and `simulation/economy_transition_v7/` works from decoded
-structures rather than raw octets. So `economy-transition-v7-execution.txt`
-records each block's roots, identifier, admitted count, and every receipt, and
-**not the octets that produced them**.
+**The obstacle is not the adapter and it is sharper than it looks. Every
+recorded version-seven transaction is signed with a stand-in.** Both traces say
+so outright — `simulation/economy_transition_v7/trace.py` states that no
+signature is computed anywhere and that a stand-in is an eight-octet counter
+padded to 64 octets, recorded in an oracle against the exact key and message it
+authorizes, and `Signatures` in `tests/kernel/economy_v7_execution_fixture.hpp`
+issues byte-identical tokens so the C++ trace reproduces the model's exact
+transaction bytes. **That is a good decision and it is not a defect**:
+exact-match lookup makes every message-binding claim in the contract testable
+without the model implementing cryptography.
 
-**Emitting the raw inputs is the obvious step and is not sufficient on its own.**
-The recorded blocks hold two, four, four, and four transactions, and a root
-commits to the whole block: reproducing `carried.block1`'s root requires its four
-transactions to land in *one* block in the recorded order, which broadcasting
-through a mempool does not give you. `CreateEmptyBlocks` is already false and the
-version-one test gets one transaction per block precisely because it submits one
-at a time. Two ways out, and the second is probably right:
+**But a real node verifies real signatures.** `protocol-application-v7` opens its
+store through `open_sqlite_ledger_v7`, whose verifier defaults to
+`protocol::v7::ed25519_verifier()`, so **not one recorded raw input can be
+broadcast to it** — every one would be refused at admission as
+`invalid_signature`. Emitting the recorded blocks' octets into a vector file
+would therefore produce a fixture no chain can accept. That is the finding, and
+it is why this slice is a fixture slice rather than a plumbing one.
 
-* drive the four blocks through the adapter's own client rather than through
-  CometBFT, which tests the adapter and not the network, and is a weaker claim
-  than the C++ transport test already makes; or
-* **record a scenario built for the run**: one transaction per block over
-  contiguous heights, emitted through the verifier's own `--emit` so the file and
-  its derivations cannot disagree at birth, with the raw input octets beside each
-  block's root. That is what version one effectively has, and it makes the
-  integration claim the same claim: *the engine reports the root the protocol
-  says the block produces*.
+**Version one already has what version seven lacks**, which is the shape to copy.
+`tests/differential/cases.py` takes a `pinned_sodium.Sodium`, generates real
+keypairs, signs for real, and runs the same bytes through the Python reference
+model to learn the block's root and receipt; the integration test then broadcasts
+the transaction and requires CometBFT to report that root.
 
-**Two facts to carry in rather than rediscover.** All four contiguous `carried`
-blocks admit every input, so no recorded block depends on a mempool passing
-through something it would reject — but only blocks 0 through 3 are reachable
-at all, because `carried.block4` is at height 1,152,000. And the genesis file is
-already available as `genesis.bytes` in the same vector file, exactly as
-`tests/application/headless_process_v7_test.py` uses it.
+**The Python model is already parameterized for it.** `execute_block` takes the
+oracle as an argument and only ever calls `oracle.verify(public_key, message,
+signature)`, so a class whose `verify` calls libsodium is a drop-in for the
+recorded table. Nothing in the model has to change.
+
+**So M3.13h is: a version-seven fixture that signs for real, and a vector file
+recorded for the run.** Real keypairs from `pinned_sodium`, the trace's existing
+envelope builders, a libsodium-backed verifier in place of the stand-in table,
+**one transaction per block over contiguous heights**, and the raw input octets
+recorded beside each block's root, identifier, and receipt. Emit it through a
+verifier's own `--emit` so the file and its derivations cannot disagree at birth,
+and register that verifier, because
+`python3 -B tests/tools/test_registration_test.py` refuses a recorded vector file
+no registered verifier reads. Then M3.13i drives it through CometBFT.
+
+**One transaction per block is a requirement rather than a simplification.** A
+root commits to the whole block, so reproducing a recorded block with four
+transactions would need all four to land in one block in the recorded order, and
+broadcasting through a mempool does not give you that. `CreateEmptyBlocks` is
+already false, and the version-one test gets one transaction per block precisely
+because it submits one at a time.
+
+**Three facts to carry in rather than rediscover.** The existing `carried` blocks
+hold two, four, four, and four inputs and admit every one of them, so their only
+disqualification is the signatures. Only blocks 0 through 3 would have been
+reachable in any case, because `carried.block4` is at height 1,152,000. And the
+genesis file needs no new machinery: it is `genesis.bytes` in the same vector
+file, exactly as `tests/application/headless_process_v7_test.py` uses it —
+though a fixture that signs for real will want its own genesis verifier key.
 
 **The pieces the run needs are all present and take one flag each.**
 `protocol-application-v7 --genesis-identity` prints the chain identity and the
