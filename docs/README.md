@@ -553,6 +553,27 @@ connected to, shut down — against the recorded chain identity and a genesis ro
 read out of a recorded block header, since a header commits to its previous state
 root and at height 1 that is the genesis root.
 
+ADR 0061 records the version-seven ABCI adapter, and its one real question was
+not encoding. **`ApplicationV7` refuses a `finalize_block` at any height that is
+not its current plus one — including one it has already committed — and that
+refusal is terminal**, so ADR 0058 owed this slice an answer about what the
+adapter does when a consensus engine replays a block. The answer turned out to
+be a fact about the pinned engine: CometBFT v0.39.4 replays exactly that case
+against a **mock** application built from its own saved response, saying in as
+many words that it will not call `Commit` twice for one block on the real app,
+and every other branch sends only `current + 1`. So the adapter reconciles
+nothing — and inventing a reconciliation would have been worse than useless,
+since answering a repeat honestly means reproducing receipts the application no
+longer holds and the store never recorded. What it adds is a **guard**: a
+finalize at an already-committed height is refused before it is forwarded, using
+a height taken only from the application's own answers, so it can never refuse a
+legitimate block. On the Go side the client is version one's client and one
+different answer, the two finalized-block shapes refuse each other so a client
+dialled at the wrong version fails closed, and the block identifier — which ABCI
+has no field for — is emitted as an indexed block event rather than decoded and
+discarded, because a value that crosses a process boundary and is then thrown
+away is the one a later simplification deletes.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.

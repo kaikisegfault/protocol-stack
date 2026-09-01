@@ -3,7 +3,10 @@
 This Go module contains the replaceable adapter between CometBFT `v0.39.4`
 and the headless C++ application. It implements the accepted version-one
 contract in
-[`consensus-application-v1.md`](../../docs/specifications/consensus-application-v1.md).
+[`consensus-application-v1.md`](../../docs/specifications/consensus-application-v1.md),
+and, under `-protocol-version 7`, the version-seven responses recorded in
+[ADR 0059](../../docs/decisions/0059-the-version-seven-transport.md) and
+[ADR 0061](../../docs/decisions/0061-the-version-seven-abci-adapter.md).
 
 The module provides four cgo-free commands:
 
@@ -17,14 +20,21 @@ The adapter:
 
 - serves the official CometBFT ABCI `2.0.0` socket interface;
 - serializes all supported calls onto one persistent local Unix connection;
-- translates only the seven version-one application methods and their exact
-  result fields;
+- translates only the seven application methods and their exact result fields;
+- reads a version-seven finalized block with the same frames and one different
+  decoder, and refuses each version's finalized block under the other, so a
+  client started at the wrong version fails closed rather than misreading a
+  block;
+- refuses to forward a `FinalizeBlock` at a height the application has already
+  committed, using a height taken only from the application's own answers;
 - fails unsupported application-mempool and state-sync operations closed;
 - holds no canonical ledger state and makes no admission or execution
   decision;
 - uses no cgo or Cosmos SDK;
 - fixes the CometBFT genesis time, initial height, application identity,
-  validator, and supported M1 configuration;
+  validator, and supported M1 configuration, with the genesis application state
+  naming the ledger version so that a mismatched pair is refused at `InitChain`
+  rather than at the first block;
 - refuses to overwrite an existing genesis with different semantics.
 
 The repository verifier bootstraps the integrity-pinned Go 1.25.10 Linux
@@ -97,6 +107,27 @@ default. Set
 `PROTOCOL_STACK_DEVNET_BASE_P2P_PORT` when the default `27656..27688` loopback
 block is occupied. Every repeated start refuses partial homes, changed keys,
 changed genesis, or changed configuration.
+
+## Version seven
+
+A version-seven node is the same three processes with the version-seven
+application binary and `-protocol-version 7` on both the initializer and the
+bridge. The two must agree: the genesis application state the initializer
+writes is what `ApplicationV7` requires at `InitChain`.
+
+```sh
+protocol-application-v7 --genesis-identity /absolute/path/protocol.genesis
+
+protocol-cometbft-init -protocol-version 7 ...
+
+protocol-cometbft-bridge -protocol-version 7 \
+  -application-socket /absolute/path/application.sock \
+  -abci-listen tcp://127.0.0.1:26658
+```
+
+The four-validator devnet is version one only. Its genesis and the
+`-protocol-version` its supervisor passes each bridge must be one choice, and
+that is not yet wired.
 
 ## Single-node lifecycle
 
