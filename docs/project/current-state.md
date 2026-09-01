@@ -4482,34 +4482,48 @@ entry-kind constants — `TRANSFER` and `SEAT_ENTRY` are both 1 — so enumerate
 them through `KIND_SCHEME` rather than by reversing a name table, which is how a
 first attempt produced a list that looked right and was not.
 
-**And one input it needs is founder-reserved.** What a Founder Machine must do
-to be counted as operational for a cycle — the concrete resource commitment —
-sets what an end user must own and run in order to be paid. The constitution
-places that outside autonomous choice. The mechanism around it is not reserved:
-how a claim is attested, who signs it, how a block carries it, how a validator
-checks it, and how the assignment prologue reads it are all engineering.
+**The design is not owed, and finding that out is what makes this slice
+tractable.** `docs/specifications/uptime-measurement-v1.md` is accepted and 599
+lines long. It already settles the slot grid and its correspondence to the
+founder-directed 24-, 18-, and 6-hour figures, the two evidence sources and the
+mapping of the constitution's five "fully operational" components onto them,
+challenge selection and its response deadline, the conjunctive
+no-partial-credit slot credit rule, the dispute window and how far a dispute may
+reach, finalisation by expiry, record completeness, and the 100,000-seat storage
+bound. `simulation/uptime_measurement/` executes it and
+`test-vectors/uptime-measurement-v1.txt` records it, with a registered verifier.
 
-**So the slice divides, and the first half is unblocked.** Specify the
-attested-claim carrier — the kind, its body, its authority, the window it
-names, the deduplication rule, and the point in block execution where a
-finalised window becomes readable — against `uptime-measurement-v1` and ADR
-0028, and
-record it. **The threshold itself is already settled**:
-`kActivityThresholdSeconds` in `economy_assignment.cpp` is 64,800 seconds — 18
-hours of cumulative fully operational uptime per cycle — founder-directed, read
-from the accepted manifest layer, and checked against
-`test-vectors/economy-transition-v3.txt`. What is reserved is **what a machine
-must do to be counted operational** toward it, which is a statement about what a
-participant must own and run, not about the arithmetic.
+**And the founder-reserved part is already scoped out of it by name.** The
+specification's own "explicitly not in scope" list puts *the content of a
+challenge* — what a node must hold, compute, or serve to answer one, which is
+the concrete resource commitment — in the Founder Node and resource-network
+milestone, and treats the answer as **an abstract predicate**. So this slice is
+not blocked on a founder answer: it can bind a pipeline whose challenge
+predicate is abstract, exactly as the accepted model already does.
 
-**Ask before the second half, not before the first.** The reserved question
-becomes the nearest dependency once the carrier is specified and a vector needs
-a real figure in it.
+**What is actually missing is the second item on that same list**: "the numeric
+consensus receipt codes and transaction encodings for a C++ transition, which
+are requirement 5." Three things follow from it, and they are the slice:
 
-**Two things this slice must not do.** It must not invent a resource commitment
-to unblock itself, and it must not make the schedule a proposer's opinion: a
-value one node supplies and another cannot reproduce is a consensus fork with
-extra steps.
+* **kinds that carry the pipeline on-chain** — the duty report, the challenge
+  response, and the dispute — with their bodies, authorities, and receipt
+  codes, which is a new transition version rather than an edit;
+* **the binding from `cycle_uptime_record` to `UptimeSchedule`**, so the record
+  the pipeline finalises is the one `execute_block` reads at the assignment
+  prologue, with no second derivation of either; and
+* **a C++ kernel for it**, since `simulation/uptime_measurement/` is Python and
+  nothing consensus-critical may stay there.
+
+**Two things this slice must not do.** It must not invent a challenge's
+content to unblock itself — the accepted specification deliberately does not
+have one — and it must not make the schedule a proposer's opinion: a value one
+node supplies and another cannot reproduce is a consensus fork with extra
+steps.
+
+**One figure is already settled and should not be re-litigated.**
+`kActivityThresholdSeconds` in `economy_assignment.cpp` is 64,800 seconds, 18
+hours per cycle, founder-directed, read from the accepted manifest layer, and
+checked against `test-vectors/economy-transition-v3.txt`.
 
 **Then, in order, each its own slice:**
 * requirement 13 proper, the four-node adversarial scenarios. **The devnet is
