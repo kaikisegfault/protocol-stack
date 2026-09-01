@@ -20,12 +20,13 @@ type fakeLocal struct {
 	checkCode     uint32
 	prepared      [][]byte
 	processAccept bool
-	finalized     localapp.FinalizedBlock
+	finalized     FinalizedBlock
 	committed     localapp.CommittedHead
 	lastChain     localapp.Hash
 	lastHeight    uint64
 	lastState     []byte
 	lastTxs       [][]byte
+	finalizeCalls int
 	infoEntered   chan struct{}
 	releaseInfo   chan struct{}
 	active        atomic.Int32
@@ -103,9 +104,10 @@ func (f *fakeLocal) ProcessProposal(
 func (f *fakeLocal) FinalizeBlock(
 	height uint64,
 	txs [][]byte,
-) (localapp.FinalizedBlock, error) {
+) (FinalizedBlock, error) {
 	f.enter()
 	defer f.leave()
+	f.finalizeCalls++
 	f.lastHeight = height
 	f.lastTxs = txs
 	return f.finalized, nil
@@ -194,7 +196,7 @@ func TestExactABCIConversions(t *testing.T) {
 			}
 			expectedCodespace := ""
 			if code != 0 {
-				expectedCodespace = codespace
+				expectedCodespace = codespaceV1
 			}
 			if checked.Code != code ||
 				checked.Codespace != expectedCodespace ||
@@ -226,7 +228,7 @@ func TestExactABCIConversions(t *testing.T) {
 
 	receipt := make([]byte, 47)
 	copy(receipt, []byte{'P', 'S', 'R', 'C', 0, 1})
-	local.finalized = localapp.FinalizedBlock{
+	local.finalized = FinalizedBlock{
 		StateRoot: root,
 		TransactionResults: []localapp.TransactionResult{
 			{Code: 0, Data: receipt},
@@ -247,7 +249,7 @@ func TestExactABCIConversions(t *testing.T) {
 	if string(finalized.AppHash) != string(root[:]) ||
 		len(finalized.TxResults) != 3 ||
 		finalized.TxResults[0].Codespace != "" ||
-		finalized.TxResults[1].Codespace != codespace ||
+		finalized.TxResults[1].Codespace != codespaceV1 ||
 		finalized.TxResults[2].Code != 264 ||
 		len(finalized.Events) != 0 ||
 		len(finalized.ValidatorUpdates) != 0 ||
@@ -292,7 +294,7 @@ func TestRequestRejectionAndUnsupportedMethods(t *testing.T) {
 	}
 
 	query, err := app.Query(ctx, &abci.RequestQuery{})
-	if err != nil || query.Code != 1 || query.Codespace != codespace ||
+	if err != nil || query.Code != 1 || query.Codespace != codespaceV1 ||
 		len(query.Value) != 0 {
 		t.Fatalf("Query = %#v, %v", query, err)
 	}

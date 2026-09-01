@@ -35,7 +35,10 @@ func Run(
 	if err != nil {
 		return err
 	}
-	if err := devnet.Ensure(identity); err != nil {
+	// The local network is version one's. A version-seven devnet needs this
+	// version and the `-protocol-version` the supervisor passes each bridge to
+	// be the same choice, and that is the four-node slice rather than this one.
+	if err := devnet.Ensure(identity, nodeconfig.ProtocolV1); err != nil {
 		return fmt.Errorf("initialize devnet: %w", err)
 	}
 	if err := ensureSocketRoot(devnet.SocketRoot); err != nil {

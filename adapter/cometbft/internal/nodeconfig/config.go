@@ -19,10 +19,46 @@ import (
 )
 
 const (
-	appState = `"protocol-stack-v1"`
+	appStateV1 = `"protocol-stack-v1"`
+	appStateV7 = `"protocol-stack-v7"`
 	// CometBFTVersion is the exact accepted module release.
 	CometBFTVersion = "0.39.4"
 )
+
+// ProtocolVersion is the ledger version a home is initialised for. It reaches
+// the application as the genesis application state, and **that is what stops a
+// node started against a version-one genesis and a version-seven engine**: the
+// application refuses at InitChain rather than at the first block.
+type ProtocolVersion uint8
+
+const (
+	ProtocolV1 ProtocolVersion = 1
+	ProtocolV7 ProtocolVersion = 7
+)
+
+// ParseProtocolVersion accepts only the versions this adapter bridges, so an
+// operator who mistypes one gets an error rather than a chain nobody joins.
+func ParseProtocolVersion(value uint) (ProtocolVersion, error) {
+	// Compared as the wider type on purpose: converting first would truncate,
+	// and 257 would be admitted as version one.
+	switch value {
+	case uint(ProtocolV1):
+		return ProtocolV1, nil
+	case uint(ProtocolV7):
+		return ProtocolV7, nil
+	}
+	return 0, fmt.Errorf("unsupported protocol version %d", value)
+}
+
+func (p ProtocolVersion) appState() (string, error) {
+	switch p {
+	case ProtocolV1:
+		return appStateV1, nil
+	case ProtocolV7:
+		return appStateV7, nil
+	}
+	return "", fmt.Errorf("unsupported protocol version %d", uint8(p))
+}
 
 type Hash [32]byte
 
@@ -72,7 +108,12 @@ func (i Identity) CometChainID() string {
 	return "ps-" + base64.RawURLEncoding.EncodeToString(i.ChainID[:])
 }
 
-func Ensure(home string, identity Identity, endpoints Endpoints) error {
+func Ensure(
+	home string,
+	identity Identity,
+	endpoints Endpoints,
+	protocol ProtocolVersion,
+) error {
 	if !filepath.IsAbs(home) || filepath.Clean(home) == string(filepath.Separator) {
 		return errors.New("home must be an absolute non-root path")
 	}
@@ -92,7 +133,7 @@ func Ensure(home string, identity Identity, endpoints Endpoints) error {
 	if _, err := ensureNodeKey(config); err != nil {
 		return err
 	}
-	expected, err := singleValidatorGenesis(identity, validator)
+	expected, err := singleValidatorGenesis(identity, validator, protocol)
 	if err != nil {
 		return err
 	}
@@ -234,7 +275,12 @@ func ensureGenesis(path string, expected *types.GenesisDoc) error {
 func singleValidatorGenesis(
 	identity Identity,
 	validator *privval.FilePV,
+	protocol ProtocolVersion,
 ) (*types.GenesisDoc, error) {
+	state, err := protocol.appState()
+	if err != nil {
+		return nil, err
+	}
 	publicKey, err := validator.GetPubKey()
 	if err != nil {
 		return nil, fmt.Errorf("validator public key: %w", err)
@@ -250,7 +296,7 @@ func singleValidatorGenesis(
 			Power:   10,
 		}},
 		AppHash:  identity.AppHash[:],
-		AppState: []byte(appState),
+		AppState: []byte(state),
 	}
 	if err := document.ValidateAndComplete(); err != nil {
 		return nil, fmt.Errorf("genesis: %w", err)

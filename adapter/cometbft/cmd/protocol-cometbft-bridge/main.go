@@ -22,19 +22,22 @@ func run() error {
 	applicationSocket := flag.String(
 		"application-socket", "",
 		"absolute path to the C++ application Unix socket")
+	protocolVersion := flag.Uint(
+		"protocol-version", 1,
+		"protocol ledger version to bridge (1 or 7)")
 	flag.Parse()
 	if *applicationSocket == "" {
 		return errors.New("-application-socket is required")
 	}
 
-	client, err := localapp.Dial(*applicationSocket)
+	application, closeClient, err := dial(
+		*protocolVersion, *applicationSocket)
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	defer closeClient()
 
-	abciServer := server.NewSocketServer(
-		*abciAddress, bridge.New(client))
+	abciServer := server.NewSocketServer(*abciAddress, application)
 	logger := cmtlog.NewTMLogger(cmtlog.NewSyncWriter(os.Stderr))
 	abciServer.SetLogger(logger.With("module", "protocol-cometbft-bridge"))
 	if err := abciServer.Start(); err != nil {
@@ -49,6 +52,34 @@ func run() error {
 		return fmt.Errorf("stop ABCI server: %w", err)
 	}
 	return nil
+}
+
+// One binary, one supervisor, one flag. The ABCI server, the signal handling,
+// and the connection are the same whichever ledger version is underneath; the
+// two things that are not are which response decoder reads the finalized block
+// and which codespace names its result codes.
+func dial(
+	protocolVersion uint,
+	socketPath string,
+) (*bridge.Application, func(), error) {
+	switch protocolVersion {
+	case 1:
+		client, err := localapp.Dial(socketPath)
+		if err != nil {
+			return nil, nil, err
+		}
+		return bridge.New(bridge.LocalV1{Client: client}),
+			func() { _ = client.Close() }, nil
+	case 7:
+		client, err := localapp.DialV7(socketPath)
+		if err != nil {
+			return nil, nil, err
+		}
+		return bridge.NewV7(bridge.LocalV7{ClientV7: client}),
+			func() { _ = client.Close() }, nil
+	}
+	return nil, nil, fmt.Errorf(
+		"unsupported protocol version %d", protocolVersion)
 }
 
 func main() {
