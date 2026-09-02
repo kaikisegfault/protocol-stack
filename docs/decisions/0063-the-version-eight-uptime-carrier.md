@@ -260,25 +260,55 @@ seat's recorded `activation_height` through
 window record. A parameter a caller may supply is a parameter a caller may
 supply *differently*, which is the whole failure mode.
 
-### 9. The response pays the version-seven fixed fee, and an exemption is a founder question
+### 9. The response is fee-exempt, and that is a founder answer rather than a default
 
-Every version-seven kind charges the same `fixed_fee`. Version eight applies
-that rule to both new kinds rather than carving out the first exemption in the
-contract's history, because inheriting an accepted uniform rule invents nothing
-and an exemption would.
+Every version-seven kind charges the same `fixed_fee`. Version eight first
+applied that rule to both new kinds, as a **default rather than a decision**,
+because inheriting an accepted uniform rule invents nothing and carving out the
+contract's first exemption would.
 
-**The consequence is recorded rather than hidden.** A seat expects one challenge
-per slot, so a machine pays about twenty-four fixed fees per cycle to prove the
-uptime it is paid for, and at the 100,000-seat capacity the population offers
-about 2.4 million fee-paying transactions per day. Whether answering a mandatory
-audit should cost an operator anything is a question about what a participant
-must do in order to be paid, which is founder-reserved. It is asked rather than
-settled here, and the specification marks the rule as the inherited default
-awaiting that answer.
+**What the default implied was recorded rather than hidden.** A seat expects one
+challenge per slot, so a machine would have paid about twenty-four fixed fees
+per cycle to prove the uptime it is paid for, and at the 100,000-seat capacity
+the population would have offered about 2.4 million fee-paying transactions per
+day. Whether answering a mandatory audit should cost an operator anything is a
+question about what a participant must do in order to be paid, which is
+founder-reserved, so it was asked at the specification stage rather than
+settled.
 
-Nothing else in version eight depends on which way it is answered: the fee rule
-is one sentence in one transition, and it is settled before the model, the
-vectors, and the kernel exist.
+**On 2026-09-02 the owner answered: the challenge response is fee-exempt.**
+Answering a mandatory audit costs an operator nothing.
+
+Two encoding consequences follow, and they are deliberately not symmetric with
+kind 10, the other fee-exempt kind:
+
+- **The fee limit must be zero**, and a nonzero one is refused at admission
+  rather than ignored at execution. That is kind 10's rule and its reason: a
+  second encoding of "not applicable" is the non-minimal representation
+  `protocol-primitives-v1` forbids. `FEE_LIMIT_TOO_LOW` becomes unreachable for
+  this kind.
+- **The nonce is kept**, which kind 10 drops. A registration has no escrow and
+  therefore no nonce sequence; a response has both, so replay protection is
+  doubled rather than replaced. An operator who does not want the audit path
+  advancing the nonce their wallet uses may dedicate an escrow to the machine,
+  which decision 5's authority rule already permits — any escrow the seat's
+  identity owns may answer.
+
+**The exemption is bounded by the chain rather than by a fee.** A response is
+accepted at most once per challenge the chain itself issued, so the free
+accepted traffic is about 83 transactions per block at capacity and no
+participant can inflate it. A refused response was already free under either
+answer, because version seven charges no fee for any non-success result.
+
+**The dispute is not exempt.** A response is a machine answering an audit the
+chain demanded of it; a dispute is a third party relaying someone else's
+judgment, and nothing about the ecosystem AI's decision reaching the chain is
+free.
+
+**The timing is the argument for asking at all.** The rule is one sentence in
+one transition and it was answered before the execution model, the execution
+vectors, and the kernel depended on it. The same question answered after a
+kernel exists is a re-versioning.
 
 ## Consequences
 

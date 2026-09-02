@@ -615,11 +615,15 @@ authority's own account, which is kind 10's pattern and the right one under ADR
 submits; giving the ecosystem AI a nonce sequence, a balance, and a fee
 obligation is what the alternative would have cost. `RESPONSE_INVALID` is
 deliberately not declared, because the answer predicate is founder-reserved and
-no path could produce the code. **One value is defaulted and asked rather than
-settled**: a response charges the inherited fixed fee, which is about
-twenty-four fees per cycle for a machine proving the uptime it is paid for, and
+no path could produce the code. **One value was defaulted and asked rather than
+settled, and the asking changed it**: a response would have charged the
+inherited fixed fee, about twenty-four fees per cycle for a machine proving the
+uptime it is paid for, and
+the owner answered it on 2026-09-02 and the response is **fee-exempt**, because
 whether a mandatory audit should cost an operator anything is a question about
-what a participant must do in order to be paid.
+what a participant must do in order to be paid. The exemption is bounded by the
+chain rather than by a fee: a response is accepted at most once per challenge
+the chain itself issued.
 
 ## Engineering
 
@@ -804,7 +808,12 @@ immutable; compatible changes require a new version.
   load-bearing one is settled by version *seven's* accepted model: a schedule
   derived from state reproduces a version-seven assignment record exactly, which
   is how "the carrier changed no settlement" becomes evidence rather than a
-  claim version eight makes about itself.
+  claim version eight makes about itself. **A challenge response is fee-exempt**
+  on the founder answer of 2026-09-02: answering a mandatory audit costs an
+  operator nothing. It carries a zero fee limit, refused at admission rather
+  than ignored at execution, and unlike the registration it keeps its nonce,
+  because a response has an escrow and a nonce sequence and a registration has
+  neither. The relayed dispute is not exempt.
 - `specifications/native-economy-simulation-v1.md`: versioned integer-only
   accounting, authority, event, trace, and metric contract for the independent
   M2 research simulator; it is not a consensus transition.
