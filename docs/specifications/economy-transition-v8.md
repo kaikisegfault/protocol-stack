@@ -591,18 +591,29 @@ asserted after every accepted dispute rather than left to the cap arithmetic.
 ## Version-eight genesis
 
 Version seven's field table with the schema version at `8` and one field added.
+**The order below is the encoding's**, which is not the order the fields are
+usually read out in: `total_supply` is written before `fixed_transfer_fee`, and
+a decoder that read them in any other order would produce a genesis whose
+re-encoding differs — which is exactly what version seven's round-trip check
+refuses.
 
-| Field | Bytes |
-| --- | ---: |
-| `network_id` | 4 |
-| `supply_limit` | 8 |
-| `fixed_transfer_fee` | 8 |
-| `manifest_digest` | 32 |
-| `verifier_key` | 32 |
-| `dispute_authority_key` | 32 |
-| `total_supply` | 8 |
-| `initial_fee_pool` | 8 |
-| `account_count` | 4 |
+| Field | Bytes | Offset |
+| --- | ---: | ---: |
+| magic `PSGN` | 4 | 0 |
+| `schema_version` = 8 | 2 | 4 |
+| `network_id` | 4 | 6 |
+| `supply_limit` | 8 | 10 |
+| `total_supply` | 8 | 18 |
+| `fixed_transfer_fee` | 8 | 26 |
+| `initial_fee_pool` | 8 | 34 |
+| `manifest_digest` | 32 | 42 |
+| `verifier_key` | 32 | 74 |
+| `dispute_authority_key` | 32 | 106 |
+| `account_count` | 4 | 138 |
+
+**`dispute_authority_key` sits immediately after `verifier_key`**, so the two
+keys are adjacent and `account_count` stays last, which it must: the account
+entries follow it.
 
 The prefix is 142 octets rather than 110, and the account bound that follows
 from the 1,048,576-octet object limit falls from 21,843 to 21,842. It remains
