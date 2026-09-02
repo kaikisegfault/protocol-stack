@@ -1,7 +1,8 @@
 # Economy transition v8
 
-Status: Accepted M3 consensus transition contract; model, execution, vectors,
-and C++20 kernel implementation still owed
+Status: Accepted M3 consensus transition contract; contract model and contract
+vectors recorded, execution model, execution vectors, and C++20 kernel
+implementation still owed
 
 This document defines the version-eight Founder Economy consensus transition. It
 is [`economy-transition-v7`](economy-transition-v7.md) with **an on-chain
@@ -762,7 +763,12 @@ chain itself decides how many challenges are issued.
 
 ## Required vectors and evidence
 
-`test-vectors/economy-transition-v8.txt` will be normative. It must fix:
+`test-vectors/economy-transition-v8.txt` is normative and records 177 vectors.
+`simulation/economy_transition_v8/` executes this document's codec, its two
+transitions, its expiry step, and its schedule derivation, and
+`tools/economy-transition-v8-vectors/` derives every recorded value twice — once
+from an `expected.py` that imports nothing from `simulation/`, and once from a
+live model run. It fixes:
 
 - **the version identity** — the two re-versioned constructions and the two new
   labels, the seven root non-collisions, and the 142-octet genesis prefix, each
@@ -793,6 +799,20 @@ chain itself decides how many challenges are issued.
   `in_span` false, and a derived schedule reproducing a recorded version-seven
   assignment record exactly when the same seats and uptimes are measured, which
   is what proves the carrier changed no settlement.
+
+**The settlement claim is checked against version *seven's* accepted model**, not
+against version eight's. The derived schedule is compared to an independently
+stated seat list, and that list is then settled by
+`simulation/economy_transition_v7/settlement.py` — so "the carrier changed no
+settlement" is evidence rather than an assertion version eight makes about
+itself.
+
+**Two of the recorded rejections were arrived at by re-aiming a probe that
+passed.** A mutation that made a dispute clear the credited bit was refused by
+the encoder before any vector could compare, so it proved nothing about the
+rule it named; re-aimed at the *folded* bitmap design this document rejects, it
+fails four vectors at once — including `kind21.refuses.dispute_replay`, which
+demonstrates rather than asserts that folding makes that code unreachable.
 
 `docs/engineering/verification.md`'s rules apply: a boolean vector may only be
 true, a name asserts no more than its value establishes, and a claim is checked

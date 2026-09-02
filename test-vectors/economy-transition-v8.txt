@@ -1,0 +1,243 @@
+# Economy transition v8 normative vectors.
+# Hex values are lowercase and contain no prefix.
+#
+# Every value here is derived twice: once by
+# tools/economy-transition-v8-vectors/expected.py, which imports nothing from
+# simulation/, and once by a live run of the model. A boolean vector may only
+# be true, because its name is the claim.
+#
+# Version eight is version seven with an on-chain carrier for
+# uptime-measurement-v1: two transaction kinds, two state entries, twelve
+# result codes, one genesis field, and two labels. What is recorded here is
+# that carrier and its consequences, not version seven's surface, which its
+# own accepted file fixes and which
+# tests/simulation/economy_transition_v8_carryover_test.py requires this
+# version to carry unchanged.
+
+
+# The re-versioned constructions and the two new labels.
+version.chain_id_label=protocol-stack:v8:chain-id
+version.state_root_label=protocol-stack:v8:state-root
+version.economy_tree_prefix=protocol-stack:v8:economy
+version.challenge_label=protocol-stack:v8:challenge
+version.dispute_label=protocol-stack:v8:dispute
+version.state_root_schema_version=8
+version.genesis_schema_version=8
+version.receipt_version=8
+
+# Labels version eight keeps at the version that accepted them.
+version.retained.account_label=protocol-stack:v1:account
+version.retained.escrow_label=protocol-stack:v6:escrow
+version.retained.sign_label=protocol-stack:v1:tx-sign
+version.retained.tx_id_label=protocol-stack:v1:tx-id
+version.retained.hub_message_labels_are_version_six_s=true
+
+# Version eight changes no founder-directed figure.
+manifest.digest=af153c99adf7c49e5a92563946cf0e60dfd7a58785462530988f661aa68faaa7
+manifest.binding_is_version_seven_s=true
+manifest.referral_leg_atomic=3420000000
+manifest.issuance_cycles_per_seat=731
+
+# Genesis gains one 32-octet key after the verifier key.
+genesis.prefix_bytes=142
+genesis.bytes=5053474e0008000000084f1851909daf1400000000000000000000000000000003e80000000000000000af153c99adf7c49e5a92563946cf0e60dfd7a58785462530988f661aa68faaa7a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d800000000
+genesis.chain_id=0647c01fbe3a61013dcfcf36e6e04df915b52df78920d318670c6ac6d1f3bbe9
+genesis.dispute_authority_key_offset=106
+genesis.max_accounts=21842
+genesis.max_accounts_falls_from_version_seven=true
+genesis.writes_fourteen_economy_entries=true
+genesis.writes_no_uptime_entry=true
+
+# No predecessor genesis is the same object.
+genesis.chain_id_differs_from_v2=true
+genesis.chain_id_differs_from_v3=true
+genesis.chain_id_differs_from_v4=true
+genesis.chain_id_differs_from_v5=true
+genesis.chain_id_differs_from_v6=true
+genesis.chain_id_differs_from_v7=true
+genesis.is_thirty_two_octets_longer_than_version_seven=true
+
+# The version-eight root collides with none of its seven predecessors.
+root.version_eight=54ddfcbd88e2c553d521800db0c58588917a844150b75b4c3462393370acccd2
+root.differs_from_v1=true
+root.differs_from_v2=true
+root.differs_from_v3=true
+root.differs_from_v4=true
+root.differs_from_v5=true
+root.differs_from_v6=true
+root.differs_from_v7=true
+
+# The two entry kinds version eight adds.
+state.open_challenge.kind=18
+state.seat_window.kind=19
+state.open_challenge.key_bytes=13
+state.open_challenge.value_bytes=1
+state.seat_window.key_bytes=13
+state.seat_window.value_bytes=8
+state.open_challenge.key=12000000000000714800000007
+state.seat_window.key=13000000000000000100000007
+state.neither_kind_was_ever_assigned=true
+state.no_retired_entry_kind_is_reused=true
+
+# What a decoder refuses, each produced by a live refusal.
+state.open_challenge.refuses_state_two=true
+state.open_challenge.accepts_zero_and_one=true
+state.seat_window.refuses_a_credited_pad_bit=true
+state.seat_window.refuses_a_disputed_pad_bit=true
+state.seat_window.refuses_a_dispute_of_an_uncredited_slot=true
+state.seat_window.refuses_a_short_value=true
+state.entry_shape.refuses_a_wrong_width_key=true
+state.entry_shape.refuses_a_retired_kind=true
+state.entry_shape.checks_the_open_challenge_value=true
+
+# An absent record reads as a fully credited seat.
+state.seat_window.absent_reads_credited=16777215
+state.seat_window.absent_uptime_seconds=86400
+state.seat_window.absent_is_a_full_window=true
+state.seat_window.value_of_a_full_record=00ffffff00000000
+
+# The two transaction kinds, their bodies, and their scheme.
+kind.challenge_response=20
+kind.file_dispute=21
+kind.challenge_response.body_bytes=44
+kind.file_dispute.body_bytes=78
+kind.challenge_response.signed_bytes=204
+kind.file_dispute.signed_bytes=238
+kind.both_are_scheme_one=true
+kind.neither_number_was_ever_assigned=true
+kind.version_seven_kinds_keep_their_bodies=true
+
+# Twelve codes added; the space stays contiguous from zero.
+result.code_count=45
+result.space_is_contiguous=true
+result.added.33=SEAT_NOT_IN_SCOPE
+result.added.34=CHALLENGE_NOT_ISSUED
+result.added.35=CHALLENGE_NOT_OPEN
+result.added.36=RESPONSE_TOO_LATE
+result.added.37=RESPONSE_REPLAY
+result.added.38=UNAUTHORIZED_DISPUTE
+result.added.39=SLOT_RANGE
+result.added.40=WINDOW_NOT_CLOSED
+result.added.41=DISPUTE_WINDOW_CLOSED
+result.added.42=DISPUTE_REPLAY
+result.added.43=DISPUTE_SLOT_NOT_CREDITED
+result.added.44=DISPUTE_CAP_EXCEEDED
+result.version_seven_codes_keep_their_numbers=true
+result.no_name_is_reused=true
+result.frozen_unreachable_codes_are_inherited=true
+
+# Model codes version eight deliberately does not encode.
+result.absent.duty_replay_is_not_encoded=true
+result.absent.height_not_monotonic_is_not_encoded=true
+result.absent.height_range_is_not_encoded=true
+result.absent.invalid_bound_schedule_is_not_encoded=true
+result.absent.invalid_duty_kind_is_not_encoded=true
+result.absent.record_not_final_is_not_encoded=true
+result.absent.response_invalid_is_not_encoded=true
+result.absent.schedule_not_bound_is_not_encoded=true
+result.absent.window_has_no_seats_is_not_encoded=true
+
+# The selection preimage is 44 octets of fixed-width fields.
+selection.preimage=000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f0000000700000000000070a8
+selection.preimage_bytes=44
+selection.value=8331734328655026352
+selection.binds_the_height=true
+selection.binds_the_seat=true
+selection.binds_the_beacon=true
+
+# The final twenty heights of every slot issue nothing.
+selection.challengeable_heights_per_slot=1180
+selection.last_challengeable_height_of_a_slot_is_challengeable=true
+selection.the_next_height_is_excluded=true
+selection.the_slot_s_last_height_is_excluded=true
+selection.an_excluded_height_selects_nobody=true
+selection.a_challenge_and_its_deadline_share_a_slot=true
+
+# The sampling rate, over a stated sample rather than in general.
+selection.sample.seats=400
+selection.sample.selected_in_one_slot=377
+selection.sample.is_within_half_of_one_per_seat=true
+selection.period_equals_the_slot=1200
+selection.period_is_the_slot_length=true
+
+# Kind 20's positive control and its nine ordered refusals.
+kind20.control.is_accepted=true
+kind20.control.marks_the_challenge_answered=1
+kind20.control.writes_no_window_record=true
+kind20.refuses.cycle_range=true
+kind20.refuses.seat_not_purchased=true
+kind20.refuses.seat_not_activated=true
+kind20.refuses.unauthorized=true
+kind20.refuses.seat_not_in_scope=true
+kind20.refuses.challenge_not_open_for_the_current_height=true
+kind20.refuses.challenge_not_open_across_a_slot=true
+kind20.refuses.challenge_not_issued=true
+kind20.refuses.response_replay=true
+
+# The deadline boundary, and the reordering it forces.
+kind20.accepts_at_the_deadline=true
+kind20.refuses_one_height_past_the_deadline=true
+kind20.reports_late_rather_than_unissued_when_the_entry_is_gone=true
+kind20.deadline_blocks=20
+
+# Kind 21's positive control and its ten ordered refusals.
+kind21.control.is_accepted=true
+kind21.control.credited_is_unchanged=16777215
+kind21.control.disputed_bit=1
+kind21.control.uptime_seconds_after=82800
+kind21.refuses.unauthorized_dispute=true
+kind21.refuses.a_signature_over_another_slot=true
+kind21.refuses.cycle_range=true
+kind21.refuses.seat_not_purchased=true
+kind21.refuses.slot_range=true
+kind21.refuses.window_not_closed=true
+kind21.refuses.dispute_window_closed=true
+kind21.refuses.seat_not_in_scope=true
+kind21.refuses.dispute_replay=true
+kind21.refuses.dispute_slot_not_credited=true
+kind21.refuses.dispute_cap_exceeded=true
+
+# The containment theorem, at its boundary, over encoded state.
+containment.maximal_dispute.uptime_seconds=64800
+containment.activity_threshold_seconds=64800
+containment.a_perfect_seat_still_meets_its_cycle=true
+containment.the_cap_is_the_grace_allowance=true
+containment.the_seventh_dispute_is_refused=true
+
+# Expiry: the model's slot-close sweep, made incremental.
+expiry.deletes_every_resolved_challenge=true
+expiry.credited_after_two_unanswered=16777209
+expiry.disputed_stays_empty=0
+expiry.uptime_seconds_after=79200
+expiry.an_answered_challenge_costs_no_slot=true
+expiry.slots_lost=2
+
+# Two lost challenges in one slot cost one slot.
+expiry.two_losses_in_one_slot_cost_one_slot=23
+
+# The schedule is derived from state, and it is complete.
+schedule.in_scope_count=1
+schedule.omits_a_seat_activated_inside_the_window=true
+schedule.seat_id=1
+schedule.uptime_seconds=75600
+schedule.in_span=true
+
+# A seat with no record is present with a full credit.
+schedule.absent_record_uptime_seconds=86400
+schedule.absent_record_is_not_an_omission=true
+
+# A seat past its own 731 cycles is in scope and out of span.
+schedule.past_span.in_scope_count=1
+schedule.past_span.is_out_of_span=true
+schedule.last_window_of_the_span_is_in_span=true
+
+# A derived schedule settles exactly as a supplied one does.
+settlement.derived_schedule_equals_the_supplied_one=true
+settlement.measured_seats=2
+settlement.in_scope_count=2
+settlement.record_key=030000000000000001
+settlement.record_value=00000007f67a960000000000000000010000000200000005000000000000000000000000000000000000000000000000000000000000000000000000000000004808
+settlement.record_fixed_bytes=64
+settlement.the_winner_is_the_seat_with_no_lost_slot=true
+settlement.both_seats_contribute=true
+settlement.the_record_is_version_seven_s_encoding=true

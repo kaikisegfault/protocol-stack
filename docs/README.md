@@ -798,6 +798,13 @@ immutable; compatible changes require a new version.
   assigns duties, and the answer predicate is the weakest one available because
   a challenge's content is founder-reserved, so version eight measures liveness
   of a responder rather than possession of a resource.
+  `simulation/economy_transition_v8/` executes the codec, both transitions, the
+  expiry step, and the schedule derivation, and
+  `test-vectors/economy-transition-v8.txt` records 177 vectors over them. Its
+  load-bearing one is settled by version *seven's* accepted model: a schedule
+  derived from state reproduces a version-seven assignment record exactly, which
+  is how "the carrier changed no settlement" becomes evidence rather than a
+  claim version eight makes about itself.
 - `specifications/native-economy-simulation-v1.md`: versioned integer-only
   accounting, authority, event, trace, and metric contract for the independent
   M2 research simulator; it is not a consensus transition.
