@@ -306,6 +306,54 @@ adapter, which took ten slices for version seven. Version seven cannot be edited
 key space as immutable — so the alternative was not available rather than
 rejected.
 
+### How M3.13k was delivered
+
+**The version-eight carrier now executes in Python, and the first thing the
+model did was find a defect in the specification it was built from.** The
+genesis field table listed nine fields in the order a reader would name them and
+omitted the two the encoding actually writes. The canonical order is the
+encoder's — magic, schema version, network identifier, supply limit, **total
+supply, then the fixed fee**, the initial fee pool, the manifest digest, the
+verifier key, and the account count last. `total_supply` before
+`fixed_transfer_fee` is the one a reader gets wrong from the struct declaration,
+and version seven's decoder refuses a genesis whose re-encoding differs, which is
+what makes the mistake loud. The addition was unchanged in substance and the
+prefix is still 142 octets.
+
+**`simulation/economy_transition_v8/` is eight modules and no copied table.**
+`contract.py` classifies every name version seven exports — 100 carried, 16
+revised, 18 added, and version seven's own five provenance names replaced — and
+`tests/simulation/economy_transition_v8_carryover_test.py` requires the four sets
+to partition that surface exactly and to say the truth about every member. That
+catches the defect no derivation can: a value that moved without any vector
+reaching it.
+
+**`test-vectors/economy-transition-v8.txt` records 177 vectors**, every value
+derived twice: once by a `tools/economy-transition-v8-vectors/expected.py` that
+imports nothing from `simulation/`, and once by a live model run. The file is
+produced by the verifier's `--emit`, which runs the same derivations through the
+same agreement gate, so a file and its derivations cannot disagree at birth.
+
+**The load-bearing vector is settled by version *seven's* model.** The derived
+schedule is compared to an independently stated seat list, and that list is then
+run through `simulation/economy_transition_v7/settlement.py` and its assignment
+record recorded — so "the carrier changed no settlement" is evidence rather than
+an assertion version eight makes about itself.
+
+**Six aimed mutation probes, and the one that passed is the one worth
+recording.** A probe making a dispute clear the credited bit passed uncaught,
+because the encoder refuses the resulting state before any vector can compare —
+so it proved nothing about the rule it named. Re-aimed at the *folded* bitmap
+design ADR 0063 rejects, it fails four vectors at once, including
+`kind21.refuses.dispute_replay`: folding makes that result code unreachable,
+which the ADR argued and the probe now demonstrates. The other five — a changed
+label, a dispute cap of seven, a dropped pad-bit check, an off-by-one deadline,
+and the genesis keys transposed — fail between two and seven vectors each.
+
+**The containment theorem is recorded at its exact boundary.** A seat credited
+for every slot, after a maximal six-slot dispute, holds 64,800 seconds, which is
+the founder-directed activity threshold to the second.
+
 ### How M3.13i was delivered
 
 **Requirement 13's central claim now holds for version seven.** Four processes
@@ -4401,15 +4449,18 @@ assignment record and no seat accrues anything. Requirement 13 asks for
 adversarial *economic* scenarios; four nodes agreeing on blocks that pay nobody
 would satisfy the word "four-node" and not the word "economic".
 
-**M3.13j specified the carrier that closes it and implemented none of it.**
+**M3.13j specified the carrier that closes it and M3.13k made half of it
+executable.**
 `economy-transition-v8` and ADR 0063 are accepted: two transaction kinds, two
 state entries, twelve result codes, one genesis field, and a block execution of
 four ordered steps in which the prologue derives the schedule from state and
-`execute_block` loses its `UptimeSchedule*` parameter. **Nothing executes it.**
-There is no version-eight Python model, no vector file, no kernel, and no
-version-eight chain identity anywhere in the tree, so the gap in what *runs* is
-exactly as wide as it was — what changed is that the contract it will be closed
-against now exists and was argued rather than assumed.
+`execute_block` loses its `UptimeSchedule*` parameter. **A Python model now
+executes the codec, both transitions, the expiry step, and the schedule
+derivation**, and 177 vectors record them. **No chain runs any of it.** There is
+no version-eight execution model, no C++ kernel, and no version-eight chain
+identity anywhere a node could open, so the gap in what *runs* is exactly as
+wide as it was — what changed is that the contract is now executable by
+something and was checked rather than asserted.
 
 **Two contracts are also still owed, and neither blocks requirement 13.** That
 was recorded the other way round at the close of M3.12b and M3.13a corrected it.
@@ -4612,50 +4663,43 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.13k: the version-eight model and its vector file**, which
-is the piece that makes `economy-transition-v8` executable by something.
+Milestone slice **M3.13l: the version-eight execution model and its execution
+vector file**, which is the half of version eight that a chain actually runs.
 
-**The contract exists and nothing runs it.** ADR 0063 and
-`docs/specifications/economy-transition-v8.md` are accepted and there is no
-version-eight Python package, no vector file, and no kernel. The specification's
-"Required vectors and evidence" section names exactly what the file must fix and
-is the slice's acceptance criteria; it is written as requirements rather than as
-a description because nothing had produced them yet.
+**What exists and what does not.** `simulation/economy_transition_v8/` holds the
+codec, both transitions, the expiry step, and the schedule derivation, and
+`test-vectors/economy-transition-v8.txt` records 177 vectors over them. What has
+no model at all is **block execution**: the four ordered steps, admission,
+receipts, the roots, and a ledger the two transitions run against. Version seven
+separated its contract file from its execution file for exactly this reason and
+version eight follows it.
 
-**Build it as `simulation/economy_transition_v8/`, on version seven's pattern**:
-version seven's package both encodes and executes, and version eight needs the
-same two halves — the codec for the two new bodies, the two new entries, the new
-genesis field, and the new labels; and the execution for the four ordered block
-steps, the two transitions, and the schedule derivation. Import version seven's
-settlement rather than restating it. **The carryover test is not optional**:
-version seven established that a test must classify every constant version seven
-exports as carried or revised, require the classification to be total, and fail
-if the revised set is not exactly what the document lists — that catches the
-defect no derivation can, a value that moved without any vector reaching it.
+**Build it as `simulation/economy_transition_v8/` gaining `ledger.py`,
+`execution.py`, and `block.py`, on version seven's shape**, and produce
+`test-vectors/economy-transition-v8-execution.txt`. The scenarios the
+specification asks for are a window measured entirely on-chain producing an
+assignment record, a machine losing slots to unanswered challenges and failing
+its cycle, a dispute voiding a slot and changing a winner set, and every
+version-seven kind still executing unchanged against a version-eight ledger.
 
-**One claim in that list is the one worth building the file around.** A derived
-schedule must reproduce a recorded version-seven assignment record *exactly*
-when the same seats and uptimes are measured. That is what proves the carrier
-changed no settlement, and it is checkable against
-`test-vectors/economy-transition-v7-execution.txt` rather than against itself.
+**Four rules of the block that are easy to get subtly wrong**, each already
+stated in the specification and none of them yet exercised by a model:
 
-**Three details the specification fixes that are easy to get subtly wrong.**
-`credited` is never edited by a dispute — the final credit is
-`popcount(credited & ~disputed)` and the record keeps what the seat's own
-evidence said, because the containment invariant is checked against the evidence
-rather than against a bitmap a dispute has already rewritten. The prologue
-deletes the due window's records **before** anything else in that block runs, so
-exactly two windows are retained at every height including a boundary height.
-And the expiry step runs **after** the transactions, so a response arriving in
-block `c + 20` is counted; expiring first would shorten the deadline to nineteen
-blocks without saying so.
+* the prologue runs **before** the issue step, so a window's evidence is
+  consumed before the block that consumes it issues new challenges;
+* the expiry step runs **after** the transactions, so a response arriving in
+  block `c + 20` is counted — expiring first shortens the deadline to nineteen
+  blocks without saying so;
+* the prologue deletes the due window's records, so **exactly two windows are
+  retained at every height**, including a boundary height; and
+* the issue step evaluates `selected(seat, h)` against `previous_state_root` for
+  every in-scope seat in ascending seat order, and writing a height twice is an
+  invariant failure rather than an overwrite.
 
-**Do not compare version eight's selection to `uptime-measurement-v1`'s.** They
-are different functions over different preimages, deliberately, and a vector
-asserting they agree would fail for a reason that is not a defect. What the
-vectors record is the shared rule: the beacon is the previous state root, the
-period is one challenge per slot in expectation, the final twenty heights of
-every slot are excluded, and the height is bound into the preimage.
+**One thing the execution model must not do**: derive `in_span` or the
+collection mark from anything but the seat entry. ADR 0055's rule survives
+version eight unchanged, and the schedule derivation already refuses to carry
+either.
 
 **Then, in order, each its own slice:**
 * the version-eight C++20 kernel, which is the same replacement move ADR 0046
@@ -4683,10 +4727,35 @@ every slot are excluded, and the height is bound into the preimage.
   standing in for the per-machine attestation registry that ADR 0048 defers, and
   the registry is what ends the interim.
 
+**One flake is now on the record, and it is worth knowing before it costs a
+session.** M3.13k's merge commit failed on `main` in `clang-debug` while the
+identical tree had passed every job on the pull request minutes earlier. All 155
+ctest entries passed, the single-node, version-seven single-node, and
+four-validator version-one integrations passed, and the failure was the newest
+and heaviest step alone: **`CometBFT four-validator version-seven integration:
+failed: devnet transaction failed: RPC broadcast_tx_commit: context deadline
+exceeded`**. A re-run of the failed jobs on the same commit passed everything.
+So a timing-sensitive four-node network on a shared hosted runner will do this
+again. **Re-run the failed job before investigating a change that cannot have
+caused it** — a Python or documentation slice touches nothing the Go devnet
+compiles — and only treat it as a defect if it reproduces.
+
+**Two local checks this slice will want, and one lesson about them.** The
+verifier's `--emit` regenerates the vector file from the derivations, so a
+recorded value is never transcribed; and `python3 -B` is mandatory on every
+Python run, because a stale bytecode cache can make a mutation probe appear to
+pass without ever compiling the mutation. **A probe that passes has proved
+nothing until you have checked that it changed the code the test runs** — M3.13k
+ran one that was refused by the encoder before any vector could compare, and
+re-aiming it at the design the ADR actually rejects turned a silent pass into
+four failures.
+
 **One figure is already settled and should not be re-litigated.**
 `kActivityThresholdSeconds` in `economy_assignment.cpp` is 64,800 seconds, 18
 hours per cycle, founder-directed, read from the accepted manifest layer, and
-checked against `test-vectors/economy-transition-v3.txt`.
+checked against `test-vectors/economy-transition-v3.txt`. Version eight's
+containment vector records the same figure reached from the other direction: a
+perfect seat after a maximal six-slot dispute.
 
 **Note that the transaction-kind constants collide numerically with the state
 entry-kind constants** — `TRANSFER` and `SEAT_ENTRY` are both 1 — so enumerate
@@ -4966,7 +5035,7 @@ same count rather than reading it back.
 
 ## Blockers
 
-**One founder question is open and it does not block M3.13k.** M3.13j ran the
+**One founder question is open and it does not block M3.13l.** M3.13j ran the
 founder-decision gate over twelve decisions and eleven were delegated; the
 twelfth is the fee treatment of a challenge response. `economy-transition-v8`
 defaults it to the version-seven fixed fee, because applying an accepted uniform
@@ -4986,6 +5055,20 @@ scope" list and treats the answer as an abstract predicate, so a transition
 version can bind the pipeline without settling it. Version eight instantiates
 that predicate as the weakest one available and says so, which cannot pre-empt
 the founder's answer because a later version can only tighten it.
+
+**M3.13k ran the founder-decision gate and passed it.** Eight decisions were
+enumerated before any was judged: whether the model is a new package or an
+extension of version seven's; how the carried surface is declared; the fixture's
+keys, seats, and heights; whether the vector file is emitted or transcribed;
+which source each vector's second derivation comes from; how the settlement
+claim is checked; which mutations the probes make; and where the two transitions
+live in the package. **Every one is model, fixture, or engineering work.**
+Nothing in the slice set or changed supply, allocation, beneficiaries, Founder
+ownership, creator hierarchy, commercial routing, AI institutional authority,
+bridge scope, content permanence, or what an end user must do, own, run, or
+receive, and no accepted vector file changed. **One correction was made to an
+accepted document rather than a decision taken**: the genesis field table's
+order, which the encoder already fixed and the specification had stated wrongly.
 
 **M3.13j ran the founder-decision gate and recorded its result.** Twelve
 decisions were enumerated before any was judged: whether the carrier is a new
