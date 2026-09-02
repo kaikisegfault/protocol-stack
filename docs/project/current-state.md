@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-09-01
+Last updated: 2026-09-02
 
 ## Phase
 
@@ -238,6 +238,73 @@ through this process writes **no cycle assignment record and accrues nothing to
 any seat**. Every root in the evidence is the recorded one because the recorded
 contiguous run opens no window — the stack executes blocks correctly and cannot
 yet run a chain past a cycle boundary and mean it.
+
+### How M3.13j was delivered
+
+**The version-eight uptime carrier is specified and none of it is implemented.**
+`docs/specifications/economy-transition-v8.md` and ADR 0063 are accepted, and
+they are the contract that lets a chain derive a cycle schedule instead of being
+handed one. Documentation only: no source, build, workflow, dependency,
+configuration, or vector file changed.
+
+**The obvious three transaction kinds turned out to be two, and finding that is
+most of the slice.** The handoff recorded a duty report, a challenge response,
+and a dispute. A duty report cannot be a transaction: `uptime-measurement-v1`
+states that a report "cannot be forged by the seat it concerns" *because the
+chain produces it*, so whoever signs one asserts something no other node can
+reproduce — which is the schedule-as-a-proposer's-opinion the slice was told not
+to build. The honest mechanism is ADR 0050's attested claim and it cannot be
+produced today, because a report is only ever produced for a duty the seat was
+*assigned* and the active-set protocol that assigns duties is outside that
+specification's scope and does not exist. The accepted specification already
+states the consequence — an empty assignment is satisfied vacuously — so version
+eight encodes no duty report at all, on version seven's own precedent of
+declining to encode the ADR 0049 pool lifecycle because no transition could ever
+set it.
+
+**The storage design fell out of one observation.** A slot bit begins set and
+evidence only ever removes credit, so a window record is written only for a seat
+that lost or had a slot voided and an absent record reads as fully credited: a
+healthy machine writes nothing. And because the chain materialises each
+challenge into an entry at the height it is issued, the beacon — the previous
+state root, which the block already holds — is read once and never retained, a
+response becomes a state lookup, and the model's per-slot counters disappear
+entirely. Selection excludes the final twenty heights of every slot, so clearing
+a bit when a challenge expires is *exactly* equivalent to the model's
+slot-close sweep, and there is no sweep over the population at a slot boundary.
+
+**A dispute is relayed rather than signed by its authority's own account.** The
+body carries a detached signature checked against a new genesis
+`dispute_authority_key` and an ordinary signer pays the fee, which is kind 10's
+`verifier_signature` pattern and the right shape under ADR 0047, where a
+deciding machine issues one signed bounded decision and someone submits it. The
+alternative would have given the ecosystem AI a chain account, a nonce sequence,
+a balance, and a fee obligation that no accepted document gives it.
+
+**Two departures from the accepted model are stated with their reasons.**
+`RESPONSE_TOO_LATE` precedes `CHALLENGE_NOT_ISSUED`, because version eight
+deletes an open challenge at expiry and checking issuance first would report
+that a challenge which *was* issued never was. And the selection preimage is
+octets rather than the model's RFC 8785 JSON, because a kernel canonicalising
+JSON to decide who is audited would put a parser on the pipeline's most
+adversarial path — so the chain and the model select different heights for the
+same beacon, which the specification says outright and the vectors must not
+paper over by comparing two functions that are not the same function.
+
+**Two limits are recorded in the contract rather than discovered later.** The
+duty layer is vacuous, so a seat's credit rests on the challenge layer alone.
+And the answer predicate is the weakest available, because a challenge's content
+is founder-reserved, so **version eight measures liveness of a responder and not
+possession of a resource** — which is why `RESPONSE_INVALID` is deliberately not
+declared: no path could produce it, and a later version binding a real predicate
+can only tighten what an answer must satisfy.
+
+**The cost is honest and large.** A new chain identity re-versions the snapshot,
+the store, the application, the transport, the node process, and the ABCI
+adapter, which took ten slices for version seven. Version seven cannot be edited
+— its own versioning section fixes the kind space, the code space, and the state
+key space as immutable — so the alternative was not available rather than
+rejected.
 
 ### How M3.13i was delivered
 
@@ -4334,6 +4401,16 @@ assignment record and no seat accrues anything. Requirement 13 asks for
 adversarial *economic* scenarios; four nodes agreeing on blocks that pay nobody
 would satisfy the word "four-node" and not the word "economic".
 
+**M3.13j specified the carrier that closes it and implemented none of it.**
+`economy-transition-v8` and ADR 0063 are accepted: two transaction kinds, two
+state entries, twelve result codes, one genesis field, and a block execution of
+four ordered steps in which the prologue derives the schedule from state and
+`execute_block` loses its `UptimeSchedule*` parameter. **Nothing executes it.**
+There is no version-eight Python model, no vector file, no kernel, and no
+version-eight chain identity anywhere in the tree, so the gap in what *runs* is
+exactly as wide as it was — what changed is that the contract it will be closed
+against now exists and was argued rather than assumed.
+
 **Two contracts are also still owed, and neither blocks requirement 13.** That
 was recorded the other way round at the close of M3.12b and M3.13a corrected it.
 `calendar-v1` has to fix the consensus timestamp's monotonicity rule and
@@ -4535,83 +4612,62 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.13j: binding `uptime-measurement-v1` to a transition
-version**, which is what makes requirement 13's word *economic* true.
+Milestone slice **M3.13k: the version-eight model and its vector file**, which
+is the piece that makes `economy-transition-v8` executable by something.
 
-**Four nodes now agree on version-seven roots, and they agree about blocks that
-pay nobody.** `execute_block` takes an `UptimeSchedule*` and every caller passes
-`nullptr`, so no cycle assignment record is written and no seat accrues
-anything. That is the whole remaining distance between what runs today and what
-requirement 13 asks for.
+**The contract exists and nothing runs it.** ADR 0063 and
+`docs/specifications/economy-transition-v8.md` are accepted and there is no
+version-eight Python package, no vector file, and no kernel. The specification's
+"Required vectors and evidence" section names exactly what the file must fix and
+is the slice's acceptance criteria; it is written as requirements rather than as
+a description because nothing had produced them yet.
 
-**It is not plumbing, and establishing that is the first thing this slice
-inherits.** A schedule is `uptime-measurement-v1`'s measured seats for a window,
-and a node cannot invent one: every validator must reach the same assignment
-record or the state roots diverge. So the schedule has to be data the chain
-agrees on — and **none of version seven's fourteen kinds carries it**. They are
-the transfer and the confirmed transfer, registration, the seat purchase and
-activation, the direct issue, the three mints, the two escrow and two signer
-operations, and the posture change. Not one submits an uptime claim.
+**Build it as `simulation/economy_transition_v8/`, on version seven's pattern**:
+version seven's package both encodes and executes, and version eight needs the
+same two halves — the codec for the two new bodies, the two new entries, the new
+genesis field, and the new labels; and the execution for the four ordered block
+steps, the two transitions, and the schedule derivation. Import version seven's
+settlement rather than restating it. **The carryover test is not optional**:
+version seven established that a test must classify every constant version seven
+exports as carried or revised, require the classification to be total, and fail
+if the revised set is not exactly what the document lists — that catches the
+defect no derivation can, a value that moved without any vector reaching it.
 
-Note that the transaction-kind constants collide numerically with the state
-entry-kind constants — `TRANSFER` and `SEAT_ENTRY` are both 1 — so enumerate
-them through `KIND_SCHEME` rather than by reversing a name table, which is how a
-first attempt produced a list that looked right and was not.
+**One claim in that list is the one worth building the file around.** A derived
+schedule must reproduce a recorded version-seven assignment record *exactly*
+when the same seats and uptimes are measured. That is what proves the carrier
+changed no settlement, and it is checkable against
+`test-vectors/economy-transition-v7-execution.txt` rather than against itself.
 
-**The design is not owed.** `docs/specifications/uptime-measurement-v1.md` is
-accepted and 599 lines long. It already settles the slot grid and its
-correspondence to the founder-directed 24-, 18-, and 6-hour figures, the two
-evidence sources and the mapping of the constitution's five "fully operational"
-components onto them, challenge selection and its response deadline, the
-conjunctive no-partial-credit slot credit rule, the dispute window and how far a
-dispute may reach, finalisation by expiry, record completeness, and the
-100,000-seat storage bound. `simulation/uptime_measurement/` executes it and
-`test-vectors/uptime-measurement-v1.txt` records it, with a registered verifier.
+**Three details the specification fixes that are easy to get subtly wrong.**
+`credited` is never edited by a dispute — the final credit is
+`popcount(credited & ~disputed)` and the record keeps what the seat's own
+evidence said, because the containment invariant is checked against the evidence
+rather than against a bitmap a dispute has already rewritten. The prologue
+deletes the due window's records **before** anything else in that block runs, so
+exactly two windows are retained at every height including a boundary height.
+And the expiry step runs **after** the transactions, so a response arriving in
+block `c + 20` is counted; expiring first would shorten the deadline to nineteen
+blocks without saying so.
 
-**And the founder-reserved part is scoped out of it by name.** The
-specification's own "explicitly not in scope" list puts *the content of a
-challenge* — what a node must hold, compute, or serve to answer one, which is
-the concrete resource commitment — in the Founder Node and resource-network
-milestone, and treats the answer as **an abstract predicate**. So this slice is
-not blocked on a founder answer: it can bind a pipeline whose challenge
-predicate is abstract, exactly as the accepted model already does.
-
-**What is actually missing is the second item on that same list**: "the numeric
-consensus receipt codes and transaction encodings for a C++ transition, which
-are requirement 5." Three things follow from it, and they are the slice:
-
-* **kinds that carry the pipeline on-chain** — the duty report, the challenge
-  response, and the dispute — with their bodies, authorities, and receipt
-  codes, which is a new transition version rather than an edit;
-* **the binding from `cycle_uptime_record` to `UptimeSchedule`**, so the record
-  the pipeline finalises is the one `execute_block` reads at the assignment
-  prologue, with no second derivation of either; and
-* **a C++ kernel for it**, since `simulation/uptime_measurement/` is Python and
-  nothing consensus-critical may stay there.
-
-**It is larger than any slice since the kernel move, so divide it.** The
-narrowest first piece that stands on its own is the specification of the
-carrier — kinds, bodies, authorities, receipt codes, and the point in block
-execution where a finalised window becomes readable — recorded as an ADR and a
-contract version before anything is implemented, which is what
-`change-protocol` requires anyway.
-
-**Two things this slice must not do.** It must not invent a challenge's content
-to unblock itself — the accepted specification deliberately has none — and it
-must not make the schedule a proposer's opinion: a value one node supplies and
-another cannot reproduce is a consensus fork with extra steps.
-
-**One figure is already settled and should not be re-litigated.**
-`kActivityThresholdSeconds` in `economy_assignment.cpp` is 64,800 seconds, 18
-hours per cycle, founder-directed, read from the accepted manifest layer, and
-checked against `test-vectors/economy-transition-v3.txt`.
+**Do not compare version eight's selection to `uptime-measurement-v1`'s.** They
+are different functions over different preimages, deliberately, and a vector
+asserting they agree would fail for a reason that is not a defect. What the
+vectors record is the shared rule: the beacon is the previous state root, the
+period is one challenge per slot in expectation, the final twenty heights of
+every slot are excluded, and the height is bound into the preimage.
 
 **Then, in order, each its own slice:**
-* requirement 13's remaining half, the **adversarial** scenarios. Four replicas
-  now agree on version-seven roots through a restart, which is the requirement's
+* the version-eight C++20 kernel, which is the same replacement move ADR 0046
+  fixed — one compiled economy contract, so `src/v8/` replaces `src/v7/` rather
+  than sitting beside it — followed by the snapshot, the store, the application,
+  the transport, the node process, and the adapter, each of which carries a
+  version number and none of which is optional for a chain that runs;
+* requirement 13's remaining half, the **adversarial** scenarios, which only
+  become economic once a version-eight chain is measuring seats. Four replicas
+  agree on version-seven roots through a restart, which is the requirement's
   central claim; what is untested is disagreement — a replica fed a block the
-  others refuse, a partition, a node restarted mid-block — and none of it means
-  anything economically until the uptime schedule above is bound;
+  others refuse, a partition, a node restarted mid-block;
 * `calendar-v1`, which must fix the consensus timestamp's monotonicity rule and
   acceptance tolerance and the calendar-month boundary derived from them. **The
   tolerance is consensus-visible**: a proposer can move a month boundary within
@@ -4622,7 +4678,20 @@ checked against `test-vectors/economy-transition-v3.txt`.
   transition — which is unestablished in version six and version seven alike;
 * the HUB verification architecture of ADR 0048, which needs its threat model,
   with the biometric stabilization scheme named as requiring independent
-  cryptographic review before anything rests on it.
+  cryptographic review before anything rests on it. **It now has a dependency
+  pointing at it**: version eight's `dispute_authority_key` is a single key
+  standing in for the per-machine attestation registry that ADR 0048 defers, and
+  the registry is what ends the interim.
+
+**One figure is already settled and should not be re-litigated.**
+`kActivityThresholdSeconds` in `economy_assignment.cpp` is 64,800 seconds, 18
+hours per cycle, founder-directed, read from the accepted manifest layer, and
+checked against `test-vectors/economy-transition-v3.txt`.
+
+**Note that the transaction-kind constants collide numerically with the state
+entry-kind constants** — `TRANSFER` and `SEAT_ENTRY` are both 1 — so enumerate
+them through `KIND_SCHEME` rather than by reversing a name table, which is how a
+first attempt produced a list that looked right and was not.
 
 **One consensus-visible rule M3.13a found and deliberately did not fix.**
 `decode_cycle_assignment_value` does not require an assignment record's bitmap
@@ -4897,11 +4966,38 @@ same count rather than reading it back.
 
 ## Blockers
 
-**None for M3.13j.** The slice it names is unblocked on the founder side, and
-that is a finding rather than an assumption: `uptime-measurement-v1` puts *the
-content of a challenge* — the concrete resource commitment — in its own
-"explicitly not in scope" list and treats the answer as an abstract predicate,
-so a transition version can bind the pipeline without settling it.
+**One founder question is open and it does not block M3.13k.** M3.13j ran the
+founder-decision gate over twelve decisions and eleven were delegated; the
+twelfth is the fee treatment of a challenge response. `economy-transition-v8`
+defaults it to the version-seven fixed fee, because applying an accepted uniform
+rule to a new kind invents nothing while carving out the contract's first
+exemption would, and the specification carries a section naming it as the one
+defaulted reserved value. **A machine therefore pays about twenty-four fixed
+fees per cycle to prove the uptime it is paid for**, and at the 100,000-seat
+capacity the population offers about 2.4 million fee-paying transactions per
+day. It was asked on 2026-09-02. The model and the vector file can be built
+under the default; the rule is one sentence in one transition, and answering it
+after the kernel exists is what makes it expensive.
+
+**The rest of M3.13j was unblocked on the founder side, and that is a finding
+rather than an assumption**: `uptime-measurement-v1` puts *the content of a
+challenge* — the concrete resource commitment — in its own "explicitly not in
+scope" list and treats the answer as an abstract predicate, so a transition
+version can bind the pipeline without settling it. Version eight instantiates
+that predicate as the weakest one available and says so, which cannot pre-empt
+the founder's answer because a later version can only tighten it.
+
+**M3.13j ran the founder-decision gate and recorded its result.** Twelve
+decisions were enumerated before any was judged: whether the carrier is a new
+transition version or an edit; the numeric assignment of the two kinds and two
+entries; whether a duty report gets a carrier; the response's authority; the
+dispute's authority and whether it is relayed; whether the dispute key is
+separate from the verifier key; the selection preimage; the sparse window
+record; the block-step order; the twelve result codes and the five deliberately
+absent ones; the retention rule; and the response's fee. **Eleven are delegated
+and each is cited in ADR 0063** — to `uptime-measurement-v1`, to
+`cycle-boundary-v1`, to ADR 0045, 0047, 0048, 0049, 0050, and 0055, or to
+version seven's own immutability clause. The twelfth is the one above.
 
 **M3.13i ran the founder-decision gate and passed it.** Six decisions were
 enumerated before any was judged: which protocol version the devnet defaults to;
