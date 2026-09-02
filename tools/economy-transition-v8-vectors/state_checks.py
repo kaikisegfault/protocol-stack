@@ -176,6 +176,37 @@ def check_kind_space(check: Checker) -> None:
         all(c.BODY_BYTES[kind] == v7.BODY_BYTES[kind] for kind in v7.TRANSACTION_KINDS),
     )
 
+    check.section("The challenge response is fee-exempt; the dispute is not.")
+    check.agree(
+        "kind.fee_exempt_kind", x.CHALLENGE_RESPONSE, c.ADDED_FEE_EXEMPT_KIND
+    )
+    check.equal(
+        "kind.a_zero_fee_limit_response_is_admitted",
+        _admission_refusal(_response_transaction(fee_limit=0)) == "ADMITTED",
+    )
+    check.equal(
+        "kind.a_nonzero_fee_limit_response_is_refused",
+        _admission_refusal(_response_transaction(fee_limit=1)) == "MalformedTransaction",
+    )
+    check.agree(
+        "kind.a_fee_exempt_response_keeps_its_nonce",
+        7,
+        _admitted_nonce(_response_transaction(fee_limit=0, nonce=7)),
+    )
+    # Asked as an admission outcome rather than by reading the decoded field: a
+    # probe that also exempted the dispute would make the decoder *raise*, and a
+    # check that indexed into its result would crash instead of failing a
+    # vector. The refusal is the subject, so it must be the value.
+    check.equal(
+        "kind.a_dispute_with_a_fee_limit_is_admitted",
+        _admission_refusal(_dispute_transaction(fee_limit=1_000)) == "ADMITTED",
+    )
+    check.agree(
+        "kind.a_dispute_keeps_its_fee_limit",
+        1_000,
+        _admitted_fee_limit(_dispute_transaction(fee_limit=1_000)),
+    )
+
 
 def check_result_codes(check: Checker) -> None:
     check.section("Twelve codes added; the space stays contiguous from zero.")
@@ -200,3 +231,66 @@ def check_result_codes(check: Checker) -> None:
     check.section("Model codes version eight deliberately does not encode.")
     for name in sorted(c.ABSENT_MODEL_CODES):
         check.equal(f"result.absent.{name.lower()}_is_not_encoded", name not in c.CODE_NUMBER)
+
+
+def _response_transaction(fee_limit: int, nonce: int = 3) -> bytes:
+    transaction = e.Transaction(
+        kind=c.CHALLENGE_RESPONSE,
+        scheme=c.SCHEME_SIGNER,
+        chain_id=bytes(32),
+        authority_public_key=bytes([0x9A]) * 32,
+        nonce=nonce,
+        body={"seat_id": 7, "challenge_height": 40, "answer": bytes(c.ANSWER_BYTES)},
+        fee_limit=fee_limit,
+        valid_until_height=99,
+    )
+    return e.signed_bytes(transaction, bytes([0x5B]) * 64)
+
+
+def _dispute_transaction(fee_limit: int) -> bytes:
+    transaction = e.Transaction(
+        kind=c.FILE_DISPUTE,
+        scheme=c.SCHEME_SIGNER,
+        chain_id=bytes(32),
+        authority_public_key=bytes([0x9A]) * 32,
+        nonce=4,
+        body={
+            "seat_id": 7,
+            "cycle_window": 1,
+            "slot_index": 3,
+            "reason_code": 1,
+            "authority_signature": bytes([0x6C]) * 64,
+        },
+        fee_limit=fee_limit,
+        valid_until_height=99,
+    )
+    return e.signed_bytes(transaction, bytes([0x5B]) * 64)
+
+
+def _admission_refusal(raw: bytes) -> str:
+    try:
+        e.decode_signed(raw)
+    except Exception as error:  # noqa: BLE001 - the refusal is the subject
+        return type(error).__name__
+    return "ADMITTED"
+
+
+def _admitted_fee_limit(raw: bytes) -> int:
+    """The decoded fee limit, or `-1` when admission refuses the bytes.
+
+    A sentinel rather than a propagated exception, so a mutation that made this
+    kind refusable fails a vector instead of crashing the run before the
+    accumulated failures are printed. That is how a probe exempting the dispute
+    slipped through once.
+    """
+    try:
+        return e.decode_signed(raw)[0].fee_limit
+    except Exception:  # noqa: BLE001 - refusal is a value here
+        return -1
+
+
+def _admitted_nonce(raw: bytes) -> int:
+    try:
+        return e.decode_signed(raw)[0].nonce
+    except Exception:  # noqa: BLE001 - refusal is a value here
+        return -1

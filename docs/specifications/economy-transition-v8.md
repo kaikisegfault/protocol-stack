@@ -61,6 +61,7 @@ derives one.
 | Genesis prefix | 110 octets | 142 octets |
 | Result codes | 33 | 45 |
 | Block execution | prologue, transactions | prologue, issue, transactions, expiry |
+| A fee-exempt kind | the registration alone | the registration and the challenge response |
 
 ## Scope
 
@@ -230,6 +231,35 @@ no HUB signature: a response is evidence about a machine rather than a movement
 of value or a change in an identity's standing, and one HUB interaction per hour
 per seat forever is a cost with no corresponding claim.
 
+**A challenge response is fee-exempt.** Answering a mandatory audit costs an
+operator nothing. The owner decided this on 2026-09-02, against a specification
+that had defaulted to the inherited uniform fixed fee; ADR 0063 records both the
+default and the answer.
+
+Two encoding consequences follow, and they are not symmetric with the other
+fee-exempt kind:
+
+- **The fee limit must be zero**, and a nonzero one is `MALFORMED_TRANSACTION`
+  at admission step 1 rather than a value ignored at execution. That is kind
+  10's rule and its reason: a second encoding of "not applicable" is the
+  non-minimal representation `protocol-primitives-v1` forbids. `FEE_LIMIT_TOO_LOW`
+  is therefore unreachable for this kind, and the shared envelope check that
+  produces it does not run.
+- **The nonce is kept**, which kind 10 does not do. A registration has no escrow
+  and therefore no nonce sequence; a response has both. Replay protection is
+  doubled rather than replaced — the nonce and the open challenge entry each
+  refuse a second submission independently. An operator who does not want the
+  audit path advancing the nonce their wallet uses may dedicate an escrow to the
+  machine, which the authority condition already permits: **any** escrow the
+  seat's identity owns may answer.
+
+**The exemption is bounded by the chain rather than by a fee.** A response is
+accepted at most once per challenge the chain itself issued, so the free
+accepted traffic is about 83 transactions per block at the 100,000-seat capacity
+and no participant can inflate it. A *refused* response was already free under
+either answer, because version seven charges no fee for any non-success result,
+so this introduces no new class of free traffic.
+
 **`answer` is opaque to version eight.** The predicate that decides whether an
 answer is *correct* is the content of a challenge, which
 [`uptime-measurement-v1`](uptime-measurement-v1.md) reserves to the founder and
@@ -259,9 +289,9 @@ checks:
    `CHALLENGE_NOT_ISSUED`.
 9. An open challenge entry already in state `1` is `RESPONSE_REPLAY`.
 
-On acceptance the entry's state becomes `1` and the fixed fee is charged. No
-other state is written; a credited slot is not *added* by a response, because a
-slot bit is already set and only expiry or a dispute ever clears one.
+On acceptance the entry's state becomes `1` and **no fee is charged**. No other
+state is written; a credited slot is not *added* by a response, because a slot
+bit is already set and only expiry or a dispute ever clears one.
 
 **Condition 7 precedes condition 8, and the accepted model orders them the other
 way.** The model recomputes selection from beacons it retains for the open slot,
@@ -334,8 +364,13 @@ Rejection conditions, in this order:
     `DISPUTE_CAP_EXCEEDED`.
 
 On acceptance the slot's bit is set in `disputed`, the record is created if
-absent, and the fixed fee is charged to the relaying escrow. `credited` is not
-changed, for the reason the record's definition gives.
+absent, and **the fixed fee is charged to the relaying escrow**. `credited` is
+not changed, for the reason the record's definition gives.
+
+**The dispute is not exempt and the response is.** They are different subjects:
+a response is a machine answering an audit the chain demanded of it, and a
+dispute is a third party relaying someone else's judgment. Nothing about the
+ecosystem AI's decision reaching the chain is free.
 
 Conditions 5 and 6 together are finalisation by expiry stated as a pair of
 bounds: window `w` is disputable exactly while the executing height is inside
@@ -741,25 +776,26 @@ independent review of requirement 15. The beacon's bias — a proposer with
 influence over the state root at `h - 1` has some influence over who is
 challenged at `h` — is the same adversary ADR 0027 already refers to that review.
 
-## The one founder-reserved value this document defaults
+## The founder-reserved value this document carried, and its answer
 
-**A challenge response charges the version-seven fixed fee**, because every
-version-seven kind charges it and applying an accepted uniform rule to a new
-kind invents nothing while carving out the contract's first exemption would.
+**A challenge response is fee-exempt.** The owner decided it on 2026-09-02.
 
-The consequence is recorded rather than hidden. A seat expects one challenge per
-slot, so a machine pays about twenty-four fixed fees per cycle to prove the
-uptime it is paid for, and at the 100,000-seat capacity the population offers
-about 2.4 million fee-paying transactions per day. Whether answering a mandatory
-audit should cost an operator anything is a question about what a participant
-must do in order to be paid, which is founder-reserved and is asked rather than
-settled here.
+This document first carried the opposite as a *default* rather than a decision:
+every version-seven kind charges the fixed fee, and applying an accepted uniform
+rule to a new kind invents nothing while carving out the contract's first
+exemption would. What the default implied was recorded rather than hidden — a
+seat expects one challenge per slot, so a machine would have paid about
+twenty-four fixed fees per cycle to prove the uptime it is paid for, and at the
+100,000-seat capacity the population would have offered about 2.4 million
+fee-paying transactions per day.
 
-**Nothing else in this document depends on the answer.** The rule is one
-sentence in one transition, and it is settled before the model, the vectors, and
-the kernel exist. If the answer is an exemption, the exemption is bounded by
-construction: a response is accepted at most once per issued challenge, and the
-chain itself decides how many challenges are issued.
+Whether answering a mandatory audit should cost an operator anything is a
+question about what a participant must do in order to be paid, which is
+founder-reserved, so it was asked at the specification stage rather than
+settled. **That timing is the point.** The rule is one sentence in one
+transition and it was answered before the execution model, the execution
+vectors, and the kernel depended on it; the same question answered after a
+kernel exists is a re-versioning.
 
 ## Required vectors and evidence
 

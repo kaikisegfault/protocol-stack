@@ -179,6 +179,7 @@ RECEIPT_VERSION = 8
 
 ADDED_IN_V8: tuple[str, ...] = (
     "ABSENT_MODEL_CODES",
+    "ADDED_FEE_EXEMPT_KIND",
     "ADDED_IN_V8_RESULT_CODES",
     "ANSWER_BYTES",
     "CHALLENGEABLE_HEIGHTS_PER_SLOT",
@@ -217,6 +218,12 @@ TRANSACTION_KINDS: dict[int, str] = dict(v7.TRANSACTION_KINDS) | {
 }
 
 ANSWER_BYTES = 32
+
+# Answering a mandatory audit costs an operator nothing, on the founder answer
+# of 2026-09-02. It is the second fee-exempt kind and the first that keeps its
+# nonce: a registration has no escrow and therefore no nonce sequence, while a
+# response has both, so its replay protection is doubled rather than replaced.
+ADDED_FEE_EXEMPT_KIND = CHALLENGE_RESPONSE
 
 # Kind 20 is `seat_id:u32 || challenge_height:u64 || answer:32`. Kind 21 is
 # `seat_id:u32 || cycle_window:u64 || slot_index:u8 || reason_code:u8 ||

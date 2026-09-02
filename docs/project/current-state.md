@@ -5035,18 +5035,29 @@ same count rather than reading it back.
 
 ## Blockers
 
-**One founder question is open and it does not block M3.13l.** M3.13j ran the
-founder-decision gate over twelve decisions and eleven were delegated; the
-twelfth is the fee treatment of a challenge response. `economy-transition-v8`
-defaults it to the version-seven fixed fee, because applying an accepted uniform
-rule to a new kind invents nothing while carving out the contract's first
-exemption would, and the specification carries a section naming it as the one
-defaulted reserved value. **A machine therefore pays about twenty-four fixed
-fees per cycle to prove the uptime it is paid for**, and at the 100,000-seat
-capacity the population offers about 2.4 million fee-paying transactions per
-day. It was asked on 2026-09-02. The model and the vector file can be built
-under the default; the rule is one sentence in one transition, and answering it
-after the kernel exists is what makes it expensive.
+**None. The one founder question this milestone raised was asked and
+answered on the same day.** M3.13j ran the founder-decision gate over twelve
+decisions, eleven were delegated, and the twelfth was the fee treatment of a
+challenge response. `economy-transition-v8` carried the version-seven fixed fee
+as a *default rather than a decision* — applying an accepted uniform rule to a
+new kind invents nothing while carving out the contract's first exemption
+would — and named it as the one defaulted reserved value. Under that default a
+machine would have paid about twenty-four fixed fees per cycle to prove the
+uptime it is paid for, and at the 100,000-seat capacity the population would
+have offered about 2.4 million fee-paying transactions per day.
+
+**On 2026-09-02 the owner answered: the challenge response is fee-exempt.**
+M3.13m implemented it. Kind 20 charges nothing and carries a zero fee limit,
+refused at admission rather than ignored at execution, on kind 10's precedent;
+unlike kind 10 it **keeps its nonce**, because a registration has no escrow and
+therefore no nonce sequence while a response has both. The relayed dispute is
+not exempt: a response is a machine answering an audit the chain demanded of it,
+and a dispute is a third party relaying someone else's judgment.
+
+**The timing is the argument for asking at the specification stage.** The rule
+was one sentence in one transition and it was settled before the execution
+model, the execution vectors, and the kernel depended on it. The same question
+answered after a kernel exists is a re-versioning.
 
 **The rest of M3.13j was unblocked on the founder side, and that is a finding
 rather than an assumption**: `uptime-measurement-v1` puts *the content of a

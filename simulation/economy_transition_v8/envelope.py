@@ -5,6 +5,10 @@ signature, the two signing labels, and the transaction identifier are version
 one's and version six's, unchanged and deliberately not re-versioned: a label
 names the artifact it derives, and none of those artifacts changed.
 
+**One admission rule is new.** A challenge response is fee-exempt, so it carries
+a zero fee limit and a nonzero one is refused here rather than ignored at
+execution. It keeps its nonce, which the other fee-exempt kind does not.
+
 **What is restated here rather than imported is the dispatch**, because version
 six's decoder reads version six's kind table and would refuse a kind-20
 transaction as unknown. The framing is the subject of the compatibility claim,
@@ -150,6 +154,18 @@ def decode_signed(raw: bytes) -> tuple[Transaction, bytes]:
             raise MalformedTransaction(
                 "a registration is fee-exempt and carries a zero fee limit"
             )
+    if kind == c.CHALLENGE_RESPONSE and fee_limit != 0:
+        # Fee-exempt on the founder answer of 2026-09-02, so the fee limit takes
+        # its one canonical value. A second encoding of "not applicable" is the
+        # non-minimal representation the primitives forbid.
+        #
+        # **The nonce is not zeroed with it**, unlike a registration. A
+        # registration has no escrow and therefore no nonce sequence; a response
+        # has both, so its replay protection is doubled — the nonce and the open
+        # challenge entry each refuse a second submission independently.
+        raise MalformedTransaction(
+            "a challenge response is fee-exempt and carries a zero fee limit"
+        )
 
     transaction = Transaction(
         kind=kind,

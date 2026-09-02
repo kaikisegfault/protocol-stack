@@ -107,6 +107,14 @@ kind.both_are_scheme_one=true
 kind.neither_number_was_ever_assigned=true
 kind.version_seven_kinds_keep_their_bodies=true
 
+# The challenge response is fee-exempt; the dispute is not.
+kind.fee_exempt_kind=20
+kind.a_zero_fee_limit_response_is_admitted=true
+kind.a_nonzero_fee_limit_response_is_refused=true
+kind.a_fee_exempt_response_keeps_its_nonce=7
+kind.a_dispute_with_a_fee_limit_is_admitted=true
+kind.a_dispute_keeps_its_fee_limit=1000
+
 # Twelve codes added; the space stays contiguous from zero.
 result.code_count=45
 result.space_is_contiguous=true
