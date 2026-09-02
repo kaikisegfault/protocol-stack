@@ -594,6 +594,33 @@ node's executed root — never a value against itself, and the third block is
 committed by a process that did not execute the first two, so its root comes
 from a state read back out of SQLite.
 
+ADR 0063 records the version-eight uptime carrier, and the finding that shaped
+it is that **the obvious three kinds are two**. A duty report cannot be a
+transaction: `uptime-measurement-v1` states that a report "cannot be forged by
+the seat it concerns" because the chain produces it, and whoever signs one is
+asserting something no other node can reproduce — a proposer's opinion, which is
+a consensus fork with extra steps. The honest mechanism is ADR 0050's attested
+claim, and it cannot be produced today because the active-set protocol that
+assigns duties does not exist; the accepted specification already says an empty
+assignment is satisfied vacuously, so version eight encodes no duty report at
+all, on version seven's own precedent of declining to encode what no transition
+can set. The other decisions follow from storage and from authority. A challenge
+is **materialised into state at the height it is issued**, so the beacon is read
+once and never retained, `CHALLENGE_NOT_ISSUED` becomes a lookup, and the
+model's per-slot counters disappear — clearing a bit at expiry is exactly
+equivalent to the slot-close sweep, because selection excludes the final twenty
+heights of every slot. A dispute is **relayed** rather than signed by its
+authority's own account, which is kind 10's pattern and the right one under ADR
+0047, where a deciding machine issues a signed bounded decision that someone
+submits; giving the ecosystem AI a nonce sequence, a balance, and a fee
+obligation is what the alternative would have cost. `RESPONSE_INVALID` is
+deliberately not declared, because the answer predicate is founder-reserved and
+no path could produce the code. **One value is defaulted and asked rather than
+settled**: a response charges the inherited fixed fee, which is about
+twenty-four fees per cycle for a machine proving the uptime it is paid for, and
+whether a mandatory audit should cost an operator anything is a question about
+what a participant must do in order to be paid.
+
 ## Engineering
 
 - `engineering/continuation.md`: the cross-session `proceed` protocol.
@@ -754,6 +781,23 @@ immutable; compatible changes require a new version.
   `include/protocol/v7/` hold the byte surface, the settlement, all fourteen
   transitions, and the assignment prologue, and reproduce both version-seven
   vector files.
+- `specifications/economy-transition-v8.md`: version seven with an on-chain
+  carrier for `uptime-measurement-v1`, so a cycle assignment is derived from
+  evidence the chain recorded rather than from a schedule a caller supplies.
+  `execute_block` loses its `UptimeSchedule*` parameter; block execution gains
+  an issue step that writes one open challenge entry per selected in-scope seat
+  against the previous state root, and an expiry step that clears a slot bit
+  twenty heights later for a challenge nobody answered. A seat window record is
+  sparse — absent means fully credited — so a healthy machine writes nothing.
+  Kind 20 is a challenge response authorized by the seat's owning identity with
+  no HUB signature; kind 21 is a dispute any signer may relay, carrying the
+  dispute authority's detached signature on kind 10's pattern, and genesis gains
+  a `dispute_authority_key` separate from the verifier key. Twelve result codes
+  are added and the space becomes 45. **Two limits are stated rather than
+  papered over**: the duty layer is vacuous because no active-set protocol
+  assigns duties, and the answer predicate is the weakest one available because
+  a challenge's content is founder-reserved, so version eight measures liveness
+  of a responder rather than possession of a resource.
 - `specifications/native-economy-simulation-v1.md`: versioned integer-only
   accounting, authority, event, trace, and metric contract for the independent
   M2 research simulator; it is not a consensus transition.
