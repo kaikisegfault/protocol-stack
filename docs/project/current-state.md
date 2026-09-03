@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-09-02
+Last updated: 2026-09-03
 
 ## Phase
 
@@ -239,6 +239,17 @@ any seat**. Every root in the evidence is the recorded one because the recorded
 contiguous run opens no window — the stack executes blocks correctly and cannot
 yet run a chain past a cycle boundary and mean it.
 
+**A chain measures its own machines and pays one of them as of 2026-09-03.**
+M3.13l gave `economy-transition-v8` its execution model and 434 execution
+vectors. It is the first time in this repository that a node reward is derived
+from evidence the chain itself recorded rather than from a schedule handed to
+`execute_block`, and the recorded scenario is a whole 28,800-height window run
+block by block: one machine answers all fifty-four audits it is issued and
+writes no state at all, another answers none and fails its cycle, and the
+assignment pays the first without anything anywhere being told the second was
+offline. [ADR 0064](../decisions/0064-the-version-eight-execution-model.md)
+records the one rule the model had to derive and three findings.
+
 ### How M3.13j was delivered
 
 **The version-eight uptime carrier is specified and none of it is implemented.**
@@ -353,6 +364,117 @@ and the genesis keys transposed — fail between two and seven vectors each.
 **The containment theorem is recorded at its exact boundary.** A seat credited
 for every slot, after a maximal six-slot dispute, holds 64,800 seconds, which is
 the founder-directed activity threshold to the second.
+
+### How M3.13l was delivered
+
+**A version-eight chain runs, and it measures its own machines.**
+`simulation/economy_transition_v8/` gained `ledger.py`, `execution.py`,
+`transitions.py`, `receipt.py`, `block.py`, and `trace.py`, and
+`test-vectors/economy-transition-v8-execution.txt` records **434 vectors over
+four scenarios reaching all sixteen transaction kinds**. Every value two sources
+can reach is derived twice, and the settlement claim is checked against version
+*seven's* accepted derivation rather than against version eight's own model.
+
+**The result worth reading is the `measured` scenario.** Alice answers every one
+of fifty-four challenges the chain issues her across windows one and two and
+writes **no window record at all**; Bob answers none, loses fifteen slots, and
+fails his cycle at nine credited slots against the eighteen the founder-directed
+threshold requires. Window one's assignment then makes Alice the sole winner:
+she collects her own base permission and the one Bob failed to earn, plus the
+referral leg his purchase accrued to her, and the recovery pool ends at zero on
+every channel. **Nothing anywhere had to be told that Bob was offline.**
+
+**The `disputed` scenario runs the containment theorem at its exact boundary.**
+Six disputes are accepted against a machine that answered everything, a seventh
+is refused by the cap, and a replay, a foreign authority key, and an open window
+are each refused by name. The disputed seat keeps 18 slots — 64,800 seconds, the
+activity threshold to the second — so it still meets its cycle and loses only its
+place in the winner set. **The counterfactual is a fork of the very ledger the
+dispute block executed against**, so "the dispute moved the winner set" is a
+comparison of two real chains rather than an assertion: `(0, 1)` becomes `(1,)`.
+
+**One rule had to be derived and it is the fee exemption's third consequence.**
+The specification states two — a zero fee limit refused at admission, and a kept
+nonce — and leaves the third to execution because it belongs to version seven's
+shared envelope checks: **what the acting escrow must cover**. It is zero, so
+`DEBIT_OVERFLOW` and `INSUFFICIENT_BALANCE` join `FEE_LIMIT_TOO_LOW` as
+unreachable for kind 20. The alternative is not neutral — charging the fixed fee
+would refuse a response from an escrow holding less than one fee, so an operator
+would have to keep a balance in order to prove the uptime they are paid for,
+which is exactly the cost the founder answer removes. The specification now
+states the consequence in place and a vector records that fifty-four accepted
+responses cost nothing at all.
+
+**Three findings, each recorded as a vector rather than a sentence.**
+
+1. **The prologue-before-issue order is normative and, at the accepted lag,
+   unobservable.** A challenge issued at height `h` belongs to
+   `window_of_height(h)` and the prologue deletes records for
+   `window_of_height(h) - 2`, so with `ASSIGNMENT_LAG_WINDOWS` at 2 the two steps
+   provably cannot touch the same entry. `issue_before_prologue` runs the
+   alternative on a copy of the boundary block and the vectors record that both
+   commit the same root. **A later version shortening the lag to one window would
+   make that vector false first**, which is where it should be noticed.
+2. **The expiry-after-transactions order *is* observable.** The same response
+   accepted at `c + 20` is refused as `CHALLENGE_NOT_ISSUED` under the rejected
+   order **and the seat loses the slot it had just proved**. One height later, at
+   `c + 21`, it is `RESPONSE_TOO_LATE` and the entry is already gone — which is
+   why condition 7 precedes condition 8.
+3. **An unactivated seat's default activation height is zero**, so
+   `first_cycle_window(0)` is 1 and such a seat reads as in scope for every
+   window unless the issue step checks activation separately. A probe removing
+   that check went **uncaught** until `measured` sold Bob a second seat he never
+   runs; it now fails twenty-three vectors. The general form is the lesson this
+   record already carries: a probe that passes is a question about the fixture.
+
+**`advance_to` is refused once any seat is activated, and that is the habit a
+version-seven reader has to unlearn.** Version six's shorthand stands in for a
+run of empty blocks on the argument that such a block "changes height and
+nothing else"; under version eight that is false, because the issue step and the
+expiry step run at every height. It is still exactly true while no seat is in
+scope, so the shorthand survives for the setup segment and raises everywhere
+else. `block.run_quiet_heights` replaces it and executes every height —
+**57,609 of them** in `measured`, which is the tail of window zero plus windows
+one and two, because window one's assignment is not due until the first height
+of window three. It costs about a second.
+
+**What makes that affordable is `state.state_root_frame`**, which splits the root
+preimage around its one field a quiet height changes. `state_root` is *defined*
+through it, so there is one preimage in the module and the fast path cannot drift
+from the root it stands in for; the economy tree is rebuilt only when the issue
+step or the expiry step writes, which no transaction can do at a quiet height
+because there are none. Recomputing the root from scratch at every height would
+cost about 100 microseconds against 2.5.
+
+**Three things are restated rather than imported, and each because a table
+moved.** Version seven imported version six's `Outcome`, `admit`, and
+`require_consistent` unchanged because it changed neither the kind space nor the
+code space. Version eight changes both: `Outcome.code` would raise on all twelve
+added names, `admit` would refuse a kind-20 transaction as unknown, and
+`require_consistent` would refuse a conforming kind-20 receipt. Everything else
+delegates to version seven's own `dispatch` **function object**, which a test
+requires by identity.
+
+**The uptime evidence is one raw key-to-value map and not a typed shadow.**
+`Ledger.uptime` holds every kind-18 and kind-19 entry and is handed directly to
+the accepted contract model's `Context`, so `submit_response` and `file_dispute`
+— the functions the 183 accepted contract vectors were recorded against — are
+*the* implementation rather than siblings of one.
+
+**Eight of nine mutation probes are caught and the ninth is a theorem.** Changing
+which slot an expiry clears — the challenge's or the expiry's — is a no-op,
+because selection excludes the final twenty heights of every slot and the two are
+therefore always the same slot. **Two probes are caught by the model's own
+invariants rather than by a vector mismatch, and each names the rule it broke**:
+removing the prologue's deletion gives "a seat window record outlived its
+retention", and widening the dispute cap by one slot gives "a maximal dispute
+failed a fully credited seat", because seventeen slots is 61,200 seconds against
+a threshold of 64,800.
+
+**One probe had to be re-aimed for the reason M3.11c recorded.** Flipping the
+default of `expire_before_transactions` passed uncaught, because the deadline
+scenario passes the flag explicitly on every branch and the mutation never
+reached the executed path. Moving the step itself made it fail five vectors.
 
 ### How M3.13i was delivered
 
@@ -3043,6 +3165,16 @@ slices.
   `economy-transition-v7` is the first contract to bind version three; every
   other simulator, transition model, and kernel path still binds version two,
   which remains correct against it.
+- **A version-eight chain measures its own machines and pays one from that
+  measurement, in Python.** `simulation/economy_transition_v8/` runs the four
+  ordered steps — the prologue that derives a window's schedule from state, the
+  issue step that audits every in-scope seat against the previous state root, the
+  transactions, and the expiry step that clears a slot bit for a challenge nobody
+  answered — and `test-vectors/economy-transition-v8-execution.txt` records 434
+  vectors over four scenarios reaching all sixteen kinds. A whole 28,800-height
+  window is executed block by block in each. **No C++ kernel compiles version
+  eight yet**, and the snapshot, store, application, transport, node process, and
+  adapter all still name version seven.
 - **A version-seven state can be written down and read back.**
   `protocol::storage::snapshot_v7` encodes a whole `Ledger` to canonical bytes
   and restores it to a ledger that keeps executing: the summary, the ordered
@@ -3535,6 +3667,36 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #241 and PR #242 are the M3.13l delivery, merged by rebase across
+  commits `e455f66` through `af9a5e9` on `main`. It adds
+  `simulation/economy_transition_v8/{ledger,execution,transitions,receipt,block,trace}.py`,
+  `tools/economy-transition-v8-execution-vectors/`,
+  `test-vectors/economy-transition-v8-execution.txt` at 434 vectors,
+  `tests/simulation/economy_transition_v8_{execution,block}_test.py`, and ADR
+  0064; it adds `open_challenge_parts`, `seat_window_parts`, `state_root_frame`,
+  and `state_root_from_frame` to `simulation/economy_transition_v8/state.py`,
+  with `state_root` refactored to be *defined* through the last two so the quiet
+  path cannot drift from it. **No accepted vector file changes**: version eight's
+  183 contract vectors, version seven's 395 and 590, and every earlier file are
+  unchanged and passing. Three ctest entries are added —
+  `economy-transition-v8-execution`, `economy-transition-v8-block`, and
+  `economy-transition-v8-execution-vectors` — so the suite goes from 155 to 158
+  entries in the debug presets and from 163 to 166 under `clang-sanitizers`. No
+  CMake target is added, because the whole slice is Python and Markdown. PR run
+  33784677110 on head `2e930af` passed the complete hosted matrix with all four
+  jobs reporting every ctest entry passing.
+  **Two commits after the first green run came from self-review and both are
+  worth knowing about.** `5be885a` renamed four vectors that asserted more than
+  their values established — two carried a result string under a name ending
+  `_is_accepted` or `_is_refused`, and two carried counts under names asserting
+  an equality — and replaced one claim checked against a rearrangement of
+  itself: `measured.bob_failed_the_cycle` compared the same inequality over the
+  same number twice and is now checked from two directions, the arithmetic and
+  the accrued bitmap the chain itself wrote. `af9a5e9` removed a dead parameter
+  and an unused return and corrected three docstrings that had gone stale. **Run
+  33783743738 shows cancelled**: it was superseded on the branch by the second of
+  those pushes before it finished, which is what the concurrency group does, and
+  no `main` history is affected.
 - Issue #228 and PR #229 are the M3.13i delivery, merged by rebase across
   commits `2a32be3` through `e543681` on `main`. It gives `devnet.Run` and
   `protocol-cometbft-devnet start` a protocol version, extracts the devnet
@@ -4396,6 +4558,15 @@ all fourteen transitions, the assignment prologue, and both conservation
 identities — and reproduces both version-seven vector files. Requirements 10 and
 11 are met.
 
+**As of 2026-09-03 the uptime pipeline is no longer in that list on the Python
+side.** `economy-transition-v8` is specified, modelled, and executed, and a
+recorded chain derives a cycle assignment from evidence it recorded itself. What
+is missing is the whole C++ half of it: the kernel compiles version seven, and
+following ADR 0046 `src/v8/` must *replace* `src/v7/` rather than sit beside it,
+after which the snapshot, the store, the application, the transport, the node
+process, and the adapter each carry a version number and none is optional for a
+chain that runs.
+
 **What is missing now is everything between a block and a network.** The kernel
 executes blocks against an in-memory ledger. It is not wired to the SQLite
 owning store, to the archive, or to the CometBFT adapter, so no state it produces
@@ -4663,50 +4834,57 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.13l: the version-eight execution model and its execution
-vector file**, which is the half of version eight that a chain actually runs.
+Milestone slice **M3.13n: the version-eight C++20 kernel**, which is the same
+replacement move ADR 0046 fixed. There is one compiled economy contract, so
+`src/v8/` and `include/protocol/v8/` **replace** `src/v7/` and
+`include/protocol/v7/` rather than sitting beside them; version seven's Python
+model and both of its accepted vector files remain in place, passing, and
+unedited, exactly as version six's did.
 
-**What exists and what does not.** `simulation/economy_transition_v8/` holds the
-codec, both transitions, the expiry step, and the schedule derivation, and
-`test-vectors/economy-transition-v8.txt` records 177 vectors over them. What has
-no model at all is **block execution**: the four ordered steps, admission,
-receipts, the roots, and a ledger the two transitions run against. Version seven
-separated its contract file from its execution file for exactly this reason and
-version eight follows it.
+**What exists and what does not.** `simulation/economy_transition_v8/` is
+complete: the codec, both transitions, the schedule derivation, the ledger, the
+four ordered block steps, and four recorded scenarios. Nothing in C++ compiles
+version eight at all. `src/v7/` is seventeen sources and
+`include/protocol/v7/` two headers, and the move is the one M3.12b performed
+from version six to version seven, so its shape is known.
 
-**Build it as `simulation/economy_transition_v8/` gaining `ledger.py`,
-`execution.py`, and `block.py`, on version seven's shape**, and produce
-`test-vectors/economy-transition-v8-execution.txt`. The scenarios the
-specification asks for are a window measured entirely on-chain producing an
-assignment record, a machine losing slots to unanswered challenges and failing
-its cycle, a dispute voiding a slot and changing a winner set, and every
-version-seven kind still executing unchanged against a version-eight ledger.
+**What version eight adds to the kernel, and each item is a place to get it
+wrong:**
 
-**Four rules of the block that are easy to get subtly wrong**, each already
-stated in the specification and none of them yet exercised by a model:
+* **two transaction kinds and twelve result codes.** The result code space
+  becomes 45 and the kind space 16, and both are flat extensions — codes 0
+  through 32 keep their exact version-seven meanings.
+* **two state entry kinds**, 18 and 19, at 13 octets of key each and 1 and 8
+  octets of value. The window record's two bitmaps are 24 bits in the low bits
+  of a `u32` each, and **the upper eight bits are pad that a decoder must
+  refuse** — this is the rule ADR 0056 records version seven as *not* stating for
+  the assignment bitmap, and version eight states it outright for this one, so
+  the kernel must enforce it rather than inherit the older laxity.
+* **the challenge selection digest**, over a 44-octet preimage under
+  `protocol-stack:v8:challenge`, truncated to eight octets and reduced modulo
+  1,200. It runs once per in-scope seat per height, which is the pipeline's whole
+  consensus-visible cost.
+* **the four ordered block steps.** The prologue derives the schedule and then
+  deletes the due window's records; the issue step reads the block's
+  `previous_state_root` as its beacon; the expiry step runs **after** the
+  transactions.
+* **`dispute_authority_key`**, a ninth genesis field immediately after
+  `verifier_key`, taking the prefix from 110 to 142 octets.
 
-* the prologue runs **before** the issue step, so a window's evidence is
-  consumed before the block that consumes it issues new challenges;
-* the expiry step runs **after** the transactions, so a response arriving in
-  block `c + 20` is counted — expiring first shortens the deadline to nineteen
-  blocks without saying so;
-* the prologue deletes the due window's records, so **exactly two windows are
-  retained at every height**, including a boundary height; and
-* the issue step evaluates `selected(seat, h)` against `previous_state_root` for
-  every in-scope seat in ascending seat order, and writing a height twice is an
-  invariant failure rather than an overwrite.
-
-**One thing the execution model must not do**: derive `in_span` or the
-collection mark from anything but the seat entry. ADR 0055's rule survives
-version eight unchanged, and the schedule derivation already refuses to carry
-either.
+**Four things that will cost a session if they are rediscovered rather than
+read.** `bitmap()` and `bit_is_set` in the kernel bound themselves by the packed
+width rather than the recorded bit count (ADR 0056); the transaction-kind and
+state entry-kind constants collide numerically, so enumerate through
+`KIND_SCHEME`; every new target must appear in `PROTOCOL_STACK_TARGETS` or it
+builds at the compiler's default standard and fails all four hosted jobs; and
+`python3 -B tests/tools/test_registration_test.py` must run after **any** CMake
+edit, because retargeting the kernel's ctest arguments is how a recorded vector
+file stops being read by anything.
 
 **Then, in order, each its own slice:**
-* the version-eight C++20 kernel, which is the same replacement move ADR 0046
-  fixed — one compiled economy contract, so `src/v8/` replaces `src/v7/` rather
-  than sitting beside it — followed by the snapshot, the store, the application,
-  the transport, the node process, and the adapter, each of which carries a
-  version number and none of which is optional for a chain that runs;
+* the version-eight snapshot, store, application, transport, node process, and
+  adapter, which took six slices for version seven and whose shapes are recorded
+  below;
 * requirement 13's remaining half, the **adversarial** scenarios, which only
   become economic once a version-eight chain is measuring seats. Four replicas
   agree on version-seven roots through a restart, which is the requirement's
@@ -4719,7 +4897,7 @@ either.
   rule must be statable in a form any consensus adapter can satisfy, because
   CometBFT's own time is a median of validator clocks. It belongs with the
   unreferred pool's payout — the month, the ranking snapshot, and the payout
-  transition — which is unestablished in version six and version seven alike;
+  transition — which is unestablished in version six, seven, and eight alike;
 * the HUB verification architecture of ADR 0048, which needs its threat model,
   with the biometric stabilization scheme named as requiring independent
   cryptographic review before anything rests on it. **It now has a dependency
@@ -4727,7 +4905,7 @@ either.
   standing in for the per-machine attestation registry that ADR 0048 defers, and
   the registry is what ends the interim.
 
-**One flake is now on the record, and it is worth knowing before it costs a
+**One flake is on the record, and it is worth knowing before it costs a
 session.** M3.13k's merge commit failed on `main` in `clang-debug` while the
 identical tree had passed every job on the pull request minutes earlier. All 155
 ctest entries passed, the single-node, version-seven single-node, and
@@ -4745,17 +4923,22 @@ verifier's `--emit` regenerates the vector file from the derivations, so a
 recorded value is never transcribed; and `python3 -B` is mandatory on every
 Python run, because a stale bytecode cache can make a mutation probe appear to
 pass without ever compiling the mutation. **A probe that passes has proved
-nothing until you have checked that it changed the code the test runs** — M3.13k
-ran one that was refused by the encoder before any vector could compare, and
-re-aiming it at the design the ADR actually rejects turned a silent pass into
-four failures.
+nothing until you have checked that it changed the code the test runs.** M3.13l
+ran one that flipped `expire_before_transactions`' default and passed, because
+the deadline scenario passes the flag explicitly on every branch — the same
+shape M3.11c hit with `assignment_is_prologue`. Moving the step itself made it
+fail five vectors. **And a probe that passes may be a question about the
+fixture rather than about the code**: M3.13l's activation-check probe passed
+because every seat in every scenario was activated, and the fix was a scenario
+that sells a seat nobody runs.
 
 **One figure is already settled and should not be re-litigated.**
 `kActivityThresholdSeconds` in `economy_assignment.cpp` is 64,800 seconds, 18
 hours per cycle, founder-directed, read from the accepted manifest layer, and
 checked against `test-vectors/economy-transition-v3.txt`. Version eight's
-containment vector records the same figure reached from the other direction: a
-perfect seat after a maximal six-slot dispute.
+containment vectors record the same figure reached from two other directions: a
+perfect seat after a maximal six-slot dispute, and a widened cap of seven slots
+producing 61,200 seconds and an invariant failure by name.
 
 **Note that the transaction-kind constants collide numerically with the state
 entry-kind constants** — `TRANSFER` and `SEAT_ENTRY` are both 1 — so enumerate
@@ -4771,8 +4954,9 @@ record a block writes comes from `bitmap()`, which never sets one — and reacha
 through a file, which is why the snapshot decoder refuses it. The accepted
 specification fixes the bitmap width and does not state the pad rule, so the
 kernel is conforming and tightening its decoder would be a compatibility change
-rather than a fix. ADR 0056 records it; **a later transition version should state
-the rule outright**, and that is a `change-protocol` slice rather than a repair.
+rather than a fix. ADR 0056 records it. **Version eight states the pad rule
+outright for its own window record**, so the version-eight kernel must enforce it
+there while leaving the assignment record's older laxity alone.
 
 **One cost requirement 13 will hit, recorded now rather than discovered then.**
 `conservation_failures` calls `claimable`, which is the mint's walk run once per
@@ -4787,6 +4971,29 @@ does not, so a node may cache or incrementalise the walk without changing a
 single accepted state. It is an implementation cost rather than a contract
 defect, and it has not been paid because no fixture yet runs at capacity. Do not
 "fix" it by writing a second walk.
+
+**Version eight adds a second cost of the same kind, and it is larger.** The
+issue step evaluates one digest per in-scope seat per height — 100,000 digests
+and about 7.2 MB of digest input per block at capacity, paid at 1,180 heights in
+every 1,200. It is the direct cost of per-seat independent selection, which is
+what makes a challenge unpredictable until one block before it must be answered,
+and the specification states it rather than leaving it to be discovered. **The
+evaluation is order-independent and may be parallelised**; the entries it writes
+are in ascending seat order.
+
+**What the version-eight Python execution model looks like, so the kernel slice
+does not rediscover it.** `ledger.py` subclasses version seven's `Ledger` and
+overrides four things: genesis binds the dispute authority key, the projection
+adds `self.uptime`, the root is version eight's, and `conservation_failures`
+appends six invariants. **`Ledger.uptime` is one raw key-to-value map holding
+every kind-18 and kind-19 entry**, handed directly to the accepted contract
+model's `Context`, so the two transitions the 183 contract vectors were recorded
+against are the implementation rather than siblings of one. `block.py` holds the
+four steps plus `run_quiet_heights`, which executes transaction-free heights with
+a beacon built from `state.state_root_frame` — the same preimage `state_root` is
+*defined* through, with only the height field varying. `Ledger.advance_to`
+**raises** once any seat is activated, because a version-eight block with no
+transactions still audits every in-scope seat.
 
 **What the snapshot looks like now, so a later session does not rediscover it.**
 `protocol::storage::snapshot_v7` is one public header and four translation
@@ -4845,7 +5052,8 @@ and nothing else; the size check in the binary is an **allocation bound**, and
 the validity rule lives only in `decode_genesis`. Opening the store is attempted
 before creating it. A `connection_failure` or a `protocol_failure` continues the
 serve loop; only the application's own terminal latch stops a node that has
-contradicted itself.
+contradicted itself. **A version-eight genesis file is 142 octets**, so that
+bound moves with the version.
 
 **What the transport looks like now, so a later session does not rediscover it.**
 There is no version-seven wire. `wire_v1` decodes every request for both
@@ -4892,7 +5100,9 @@ ancestor: it derives a cycle and applies it, and `execute_block` calls it as a
 prologue. `Assignment` and `SeatCycle` live in `ledger.hpp`; `SeatCycle` carries
 **three** fields on purpose, because the mark and the recorded referrer are
 chain state and a four-field version would make ADR 0055's first derived rule
-optional.
+optional. **Version eight makes that shape structural rather than disciplined**:
+its `derive_schedule` returns three fields, so a measurement cannot supply the
+other two even by accident.
 
 **One class of failure the local harness cannot reproduce at all, learned in
 M3.13e.** Every target this project builds must appear in
@@ -4989,8 +5199,11 @@ the whole pool or nothing. **M3.13a ran two more, and both were tests caught by 
 *different* rule than the one they named**: a bitmap pad bit that the
 contributing bound refused first, and a channel index that the fixed-entry
 presence check refused first because renaming the tenth channel also removed it.
-Both are now written to compensate whatever else the mutation disturbs, so only
-the rule under test can refuse them. **A probe that passes has proved nothing
+**M3.13l ran two more of a third kind.** One repeated M3.11c's mistake exactly,
+on a different flag. The other passed because of the *fixture* rather than the
+code — no scenario had a purchased, unactivated seat, so removing the issue
+step's activation check changed nothing — and the fix was a scenario that sells
+a seat nobody runs, not a better probe. **A probe that passes has proved nothing
 until you have checked that it changed the code the test runs**, and the cheapest
 way to check is to make it fail on purpose first.
 
@@ -5008,13 +5221,22 @@ nowhere else. The fix was not a better probe but a better test: each identity is
 now broken on purpose and the kernel's invariant is required to report it by
 name. A probe that passes is a question about the tests, not only about itself.
 
+**A probe caught by an invariant rather than by a vector is a stronger result,
+not a weaker one.** Two of M3.13l's nine are refused before any comparison
+happens, and each names the rule it broke: "a seat window record outlived its
+retention" and "a maximal dispute failed a fully credited seat". Check that the
+message is the expected one — a crash for an unrelated reason reports the same
+non-zero exit.
+
 **One fixture rule the kernel tests now depend on.** Three builders in
 `economy_v7_trace.cpp` are version six's, imported rather than restated — the
 confirmed transfer, the verified-user mint, and the posture change — and they
 carry `kInheritedValidUntil` (10,000,000) rather than `kValidUntil`
 (10,000,000,000). The bytes a transaction commits to include the height it
 expires at, so unifying the two constants produces identical state roots and
-different transaction roots. Do not tidy them into one.
+different transaction roots. Do not tidy them into one. **The Python version-eight
+trace has the same split for the same reason**: its own builders use
+10,000,000,000 and the version-six builders it imports use 10,000,000.
 
 **One sequencing rule an earlier slice learned the hard way.** Let the merge's
 own `main` push run finish before pushing the closeout documentation commit.
@@ -5023,15 +5245,13 @@ workflow's concurrency group cancelled it, which leaves a cancelled run and a
 failed aggregate check on `main`'s history for a commit whose tree had already
 passed the matrix in full on the pull request.
 
-**Two generation details.** Both version-seven vector files are produced by their
-verifier's `--emit`, which runs the same derivations through the same agreement
-gate as the checking mode, so a file and its derivations cannot disagree at
-birth; the section comments are emitted with them, so regenerating is one
-command rather than a transcription. And **the coverage claim is a vector of its
-own**: `coverage.every_kind_version_seven_admits_is_executed` fails if a later
-scenario change stops reaching one, and the C++ execution checks now derive the
-same count rather than reading it back.
-
+**Two generation details.** Every version-seven and version-eight vector file is
+produced by its verifier's `--emit`, which runs the same derivations through the
+same agreement gate as the checking mode, so a file and its derivations cannot
+disagree at birth; the section comments are emitted with them, so regenerating is
+one command rather than a transcription. And **the coverage claim is a vector of
+its own**: `coverage.every_kind_version_eight_admits_is_executed` fails if a
+later scenario change stops reaching one.
 
 ## Blockers
 
@@ -5066,6 +5286,31 @@ scope" list and treats the answer as an abstract predicate, so a transition
 version can bind the pipeline without settling it. Version eight instantiates
 that predicate as the weakest one available and says so, which cannot pre-empt
 the founder's answer because a later version can only tighten it.
+
+**M3.13l ran the founder-decision gate and passed it.** Fifteen decisions were
+enumerated before any was judged: whether the execution model extends version
+seven's ledger or restates it; how the two new entry kinds reach the projection;
+whether `Outcome`, `admit`, and `require_consistent` are imported or restated;
+what the acting escrow must cover for a fee-exempt kind; whether `execute_block`
+keeps an uptime parameter; where the six added invariants run; whether the uptime
+evidence is typed or raw; whether `advance_to` survives; how a trace answers a
+challenge it could not predict; the fixture's keys, seats, heights, and windows;
+which scenarios the file records; whether the vector file is emitted or
+transcribed; which mutations the probes make; how the settlement claim is
+checked; and whether the two step orderings get demonstration flags. **Fourteen
+are model, fixture, encoding, or engineering work.**
+
+**The fifteenth is the one worth naming, and it is a derivation rather than a
+choice.** What a fee-exempt challenge response's acting escrow must cover touches
+what an end user must own in order to be paid, which is reserved — but the owner
+already answered the question it belongs to on 2026-09-02: answering a mandatory
+audit costs an operator nothing. A nonzero debit would contradict that answer by
+requiring a balance, so the value is not among the ones the decided principle
+leaves open. It is recorded in ADR 0064 and added to the accepted specification
+as a stated consequence rather than a new rule. Nothing else in the slice set or
+changed supply, allocation, beneficiaries, Founder ownership, creator hierarchy,
+commercial routing, AI institutional authority, bridge scope, or content
+permanence, and **no accepted vector file changed**.
 
 **M3.13k ran the founder-decision gate and passed it.** Eight decisions were
 enumerated before any was judged: whether the model is a new package or an
