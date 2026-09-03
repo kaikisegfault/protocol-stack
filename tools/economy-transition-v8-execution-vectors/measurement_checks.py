@@ -41,10 +41,10 @@ def check_measured_window(check: Checker, scenario) -> None:
     check.equal("measured.alice_challenges_issued", notes["alice_challenges"])
     check.equal("measured.alice_challenges_answered", notes["alice_answered"])
     check.equal("measured.alice_answered_every_challenge", notes["alice_unanswered"] == 0)
-    check.agree(
+    check.equal("measured.responses_accepted", notes["responses_accepted"])
+    check.equal(
         "measured.every_offered_response_was_accepted",
-        notes["alice_answered"],
-        notes["responses_accepted"],
+        notes["alice_answered"] == notes["responses_accepted"],
     )
     # The founder answer of 2026-09-02, at the scale it was answered for: a
     # machine proving a whole window's uptime paid nothing at all.
@@ -77,11 +77,16 @@ def check_measured_window(check: Checker, scenario) -> None:
         "measured.every_challenge_expired_inside_its_own_slot",
         notes["every_challenge_expired_in_its_own_slot"],
     )
+    check.equal(
+        "measured.bob_uptime_seconds", e.uptime_seconds(_credited_bitmap(bob_slots), 0)
+    )
+    # Checked from two directions rather than one: the arithmetic says his
+    # credited slots fall short of the founder-directed threshold, and the
+    # assignment record the chain wrote holds no accrued bit for him.
     check.agree(
         "measured.bob_failed_the_cycle",
         bob_slots * e.SLOT_SECONDS < e.ACTIVITY_THRESHOLD_SECONDS,
-        e.uptime_seconds(_credited_bitmap(bob_slots), 0)
-        < e.ACTIVITY_THRESHOLD_SECONDS,
+        e.BOB_SEAT not in _accrued_of(ledger, e.MEASURED_WINDOW),
     )
 
     totals = e.measured_totals(bob_slots)
@@ -165,10 +170,9 @@ def check_dispute_moves_the_winner_set(check: Checker, scenario) -> None:
     check.equal("disputed.responses_charged_no_fee", notes["response_fees_charged"] == 0)
 
     check.equal("disputed.accepted_disputes", notes["alice_disputed_bits"])
-    check.agree(
-        "disputed.the_cap_is_the_founder_directed_grace_allowance",
-        e.DISPUTE_CAP_SLOTS_PER_SEAT,
-        notes["alice_disputed_bits"],
+    check.equal(
+        "disputed.the_accepted_disputes_fill_the_founder_directed_grace_allowance",
+        e.DISPUTE_CAP_SLOTS_PER_SEAT == notes["alice_disputed_bits"],
     )
     check.equal(
         "disputed.a_dispute_does_not_clear_a_credited_bit",
@@ -245,7 +249,11 @@ def check_deadline(check: Checker, scenario) -> None:
         challenge + e.RESPONSE_DEADLINE_BLOCKS,
         on_time["height"],
     )
-    check.equal("deadline.response_at_the_deadline_is_accepted", on_time["result"])
+    check.equal("deadline.response_at_the_deadline_result", on_time["result"])
+    check.equal(
+        "deadline.response_at_the_deadline_is_accepted",
+        on_time["result"] == "SUCCESS",
+    )
     check.equal(
         "deadline.the_seat_keeps_every_slot_when_it_answers_in_time",
         on_time["credited_slots_after"] == e.SLOTS_PER_WINDOW,
@@ -255,7 +263,11 @@ def check_deadline(check: Checker, scenario) -> None:
         challenge + e.RESPONSE_DEADLINE_BLOCKS + 1,
         late["height"],
     )
-    check.equal("deadline.response_one_height_late_is_refused", late["result"])
+    check.equal("deadline.response_one_height_late_result", late["result"])
+    check.equal(
+        "deadline.response_one_height_late_is_refused",
+        late["result"] == "RESPONSE_TOO_LATE",
+    )
     check.equal(
         "deadline.the_slot_was_already_lost_one_height_past_the_deadline",
         late["credited_slots_before"] == e.SLOTS_PER_WINDOW - 1,
