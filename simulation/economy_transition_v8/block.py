@@ -270,7 +270,7 @@ def _prologue(ledger: Ledger) -> int | None:
     measured = derive_schedule(ledger.activations(), due, ledger.uptime)
     assigned: int | None = None
     if measured:
-        seats = _in_scope(ledger, due, measured)
+        seats = _resolved(ledger, measured)
         assignment = derive_assignment(due, seats, ledger.pool)
         marks = {
             identity: entry.collected_through_window
@@ -284,7 +284,7 @@ def _prologue(ledger: Ledger) -> int | None:
     return assigned
 
 
-def _in_scope(ledger: Ledger, window: int, measured: list) -> list[SeatCycle]:
+def _resolved(ledger: Ledger, measured: list) -> list[SeatCycle]:
     """The derived seats with their two chain-state fields read from the chain.
 
     ADR 0055's rule, unchanged by the carrier and enforced by the shape of what
@@ -292,8 +292,15 @@ def _in_scope(ledger: Ledger, window: int, measured: list) -> list[SeatCycle]:
     and the recorded referrer cannot arrive from a measurement even by accident.
     A measurement can decide who worked and can decide neither who is paid nor
     which windows a cycle may still accrue into.
+
+    **The missing-seat refusal is unreachable under version eight**, and that is
+    the carrier's whole point rather than an oversight. Version seven took its
+    measurement from a caller, so a schedule could name a machine the chain had
+    never sold; version eight derives the seat set from the seat table itself, so
+    every seat it names is one this loop is about to find. It is kept as the
+    named refusal rather than an assertion, because a later version that
+    reintroduced a supplied schedule would need it back and should find it here.
     """
-    del window
     resolved: list[SeatCycle] = []
     for seat in measured:
         entry = ledger.seats.get(seat.seat_id)
@@ -311,14 +318,16 @@ def _in_scope(ledger: Ledger, window: int, measured: list) -> list[SeatCycle]:
     return resolved
 
 
-def _delete_window_records(ledger: Ledger, window: int) -> list[int]:
-    """Every kind-19 entry for one window, removed in ascending seat order."""
+def _delete_window_records(ledger: Ledger, window: int) -> None:
+    """Every kind-19 entry for one window, removed in ascending seat order.
+
+    The order is not observable — a deletion leaves no trace of when it happened
+    — and it is written this way so that a reader comparing this loop with the
+    issue step and the expiry step finds the same rule in all three.
+    """
     prefix = u8(c.SEAT_WINDOW_ENTRY) + u64(window)
-    removed = []
     for key in sorted(key for key in ledger.uptime if key.startswith(prefix)):
         del ledger.uptime[key]
-        removed.append(int.from_bytes(key[9:13], "big"))
-    return removed
 
 
 # --- step 2: the issue step -------------------------------------------------

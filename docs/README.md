@@ -817,14 +817,15 @@ immutable; compatible changes require a new version.
   The same package now also **runs blocks**: `ledger.py`, `execution.py`,
   `transitions.py`, `receipt.py`, `block.py`, and `trace.py` execute the four
   ordered steps, and `test-vectors/economy-transition-v8-execution.txt` records
-  430 vectors over four scenarios that reach **all sixteen** transaction kinds.
+  434 vectors over four scenarios that reach **all sixteen** transaction kinds.
   It holds the first node reward in this repository paid from uptime the chain
-  itself measured: one machine answers every one of fifty-four audits across a
-  whole window and writes no state at all, another answers none and fails its
-  cycle at nine credited slots, and the assignment pays the first from evidence
-  nobody supplied. A run of transaction-free blocks is no longer a no-op, so
-  `Ledger.advance_to` is refused once any seat is activated and
-  `block.run_quiet_heights` executes all 57,609 heights of each recorded window.
+  itself measured: one machine answers every one of the fifty-four audits it is
+  issued and writes no state at all, another answers none and fails its cycle at
+  nine credited slots against the eighteen the threshold requires, and the
+  assignment pays the first from evidence nobody supplied. A run of
+  transaction-free blocks is no longer a no-op, so `Ledger.advance_to` is refused
+  once any seat is activated and `block.run_quiet_heights` executes every height
+  — 57,609 of them in the measured scenario.
   [ADR 0064](decisions/0064-the-version-eight-execution-model.md) records the one
   rule the model had to derive — a fee-exempt response covers a zero debit, so an
   operator needs no balance to prove uptime — and three findings.

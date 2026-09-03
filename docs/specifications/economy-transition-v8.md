@@ -865,7 +865,7 @@ against something other than itself.
 
 **A second file records what a chain conforming to this document does.**
 `test-vectors/economy-transition-v8-execution.txt`, on version seven's pattern,
-is normative and records 430 vectors over four scenarios: a window measured
+is normative and records 434 vectors over four scenarios: a window measured
 entirely on-chain producing an assignment record and paying a mint from it, a
 machine losing slots to unanswered challenges and failing its cycle, a dispute
 voiding six slots and moving a winner set against the counterfactual chain that

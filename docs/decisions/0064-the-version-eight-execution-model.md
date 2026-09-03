@@ -171,8 +171,9 @@ it executes every height, runs the whole block transition at a height that opens
 a window or that a responder has inputs for, and offers a responder the seats a
 challenge was just issued to.
 
-The cost is real and it is paid. A window is 28,800 heights and the recorded
-scenarios run 57,609 of them each. What makes that affordable is
+The cost is real and it is paid. A window is 28,800 heights, and `measured`
+runs 57,609 of them — the tail of window zero, then windows one and two, because
+window one's assignment is not due until the first height of window three. What makes that affordable is
 `state.state_root_frame`, which splits the root preimage around its height field:
 `state_root` is *defined* through it, so the quiet path cannot drift from the
 root it is standing in for, and the economy tree is rebuilt only when the issue
@@ -211,7 +212,7 @@ window the chain never lived through.
 
 ## Consequences
 
-`test-vectors/economy-transition-v8-execution.txt` records 430 vectors over four
+`test-vectors/economy-transition-v8-execution.txt` records 434 vectors over four
 scenarios. Every kind version eight admits is executed; the coverage claim is
 itself a vector, so a later scenario change that stopped reaching one fails.
 
