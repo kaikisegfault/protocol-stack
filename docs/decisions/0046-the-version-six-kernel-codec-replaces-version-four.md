@@ -2,6 +2,14 @@
 
 - Status: Accepted
 - Date: 2026-08-17
+- Amended on 2026-09-03 by
+  [ADR 0065](0065-a-kernel-replacement-may-be-staged-across-a-stack-migration.md):
+  a kernel replacement may be **staged** while a stack migration is in flight,
+  with the removal slice enumerated before the first slice of it lands. The rule
+  below is otherwise unchanged and applies again the moment that migration ends.
+  What changed is not the principle but the facts it was stated over: when this
+  ADR was written nothing above the kernel named the kernel's version, and since
+  M3.13a through M3.13g twenty-three files do.
 
 ## Context
 

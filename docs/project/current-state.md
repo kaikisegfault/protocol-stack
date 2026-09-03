@@ -4834,19 +4834,52 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.13n: the version-eight C++20 kernel**, which is the same
-replacement move ADR 0046 fixed. There is one compiled economy contract, so
-`src/v8/` and `include/protocol/v8/` **replace** `src/v7/` and
-`include/protocol/v7/` rather than sitting beside them; version seven's Python
-model and both of its accepted vector files remain in place, passing, and
-unedited, exactly as version six's did.
+Milestone slice **M3.13n: the version-eight kernel codec**, the first of the
+seven-slice stack migration [ADR
+0065](../decisions/0065-a-kernel-replacement-may-be-staged-across-a-stack-migration.md)
+enumerates.
+
+**The plan this document carried until 2026-09-03 said one slice, and it was
+wrong.** It read the version-eight kernel as the same atomic replacement ADR 0046
+fixed for versions four and six. That reading does not survive the dependency
+graph: when ADR 0046 was written nothing above the kernel named the kernel's
+version, and **twenty-three files outside `src/v7/` and `include/protocol/v7/`
+now name `protocol::v7`** — the snapshot, the owning store, the application, the
+transport, the node binary, two fuzz targets, and five test fixtures. Replacing
+the kernel atomically therefore means about 14,000 lines in one commit with
+nothing buildable until the last of them.
+
+**ADR 0065 amends ADR 0046 to permit a staged replacement under a stated end**,
+and the end is enumerated rather than intended:
+
+1. **M3.13n** — the version-eight kernel codec, beside version seven's.
+2. **M3.13o** — the version-eight kernel execution: the ledger, the four ordered
+   block steps, the two transitions, and the schedule derivation.
+3. **M3.13p** — `snapshot_v8`, which must encode the two entry kinds version
+   eight adds or a version-eight ledger cannot be written down.
+4. **M3.13q** — `SQLiteLedgerV8`.
+5. **M3.13r** — `ApplicationV8` and the version-eight transport responses.
+6. **M3.13s** — `protocol-application-v8` and the Go adapter's version-eight
+   client.
+7. **M3.13t** — **the deletion.** Version seven's kernel, storage, application,
+   transport, node sources, tests, and CTest entries are removed and the
+   repository compiles exactly one economy contract again. **A session that
+   reaches step 6 finds step 7 here as its next action**, which is the mechanism
+   that makes the end real.
+
+**M3.13n's own scope.** `economy-transition-v8.txt`'s 183 vectors split at 121
+a codec can reproduce — the result-code space, the state key space, selection,
+the kind space, genesis, the version identity, the roots, and the manifest
+binding — and 62 that need a ledger: the two transitions' ordered conditions,
+the schedule derivation, the settlement claim, expiry, and containment. The
+first 121 are this slice; the rest are M3.13o. That is the split versions four
+and six were given and the atomic reading had taken away.
 
 **What exists and what does not.** `simulation/economy_transition_v8/` is
 complete: the codec, both transitions, the schedule derivation, the ledger, the
 four ordered block steps, and four recorded scenarios. Nothing in C++ compiles
 version eight at all. `src/v7/` is seventeen sources and
-`include/protocol/v7/` two headers, and the move is the one M3.12b performed
-from version six to version seven, so its shape is known.
+`include/protocol/v7/` two headers.
 
 **What version eight adds to the kernel, and each item is a place to get it
 wrong:**
@@ -4882,14 +4915,19 @@ edit, because retargeting the kernel's ctest arguments is how a recorded vector
 file stops being read by anything.
 
 **Then, in order, each its own slice:**
-* the version-eight snapshot, store, application, transport, node process, and
-  adapter, which took six slices for version seven and whose shapes are recorded
-  below;
+* steps 2 through 7 of the migration above, whose layer shapes are recorded
+  further down this document;
 * requirement 13's remaining half, the **adversarial** scenarios, which only
   become economic once a version-eight chain is measuring seats. Four replicas
   agree on version-seven roots through a restart, which is the requirement's
   central claim; what is untested is disagreement — a replica fed a block the
-  others refuse, a partition, a node restarted mid-block;
+  others refuse, a partition, a node restarted mid-block. **Its ordering after
+  the kernel was doubted on 2026-09-03 and the doubt resolved against itself**:
+  a disagreement test needs no version eight, but requirement 13 says
+  *economic*, and the version-seven ABCI path hands `execute_block` a null
+  uptime schedule — so a chain driven through it writes no cycle assignment and
+  accrues nothing to any seat. Version eight is what removes the parameter, so
+  the stack cannot run an economic scenario until the stack is version eight;
 * `calendar-v1`, which must fix the consensus timestamp's monotonicity rule and
   acceptance tolerance and the calendar-month boundary derived from them. **The
   tolerance is consensus-visible**: a proposer can move a month boundary within
