@@ -1,4 +1,4 @@
-"""The recorded version-eight transition trace: three scenarios, executed.
+"""The recorded version-eight transition trace: four scenarios, executed.
 
 Version eight changes no settlement and no carried transaction, so this trace
 does not re-record what `test-vectors/economy-transition-v7-execution.txt`
@@ -20,7 +20,12 @@ from**:
    dispute is refused by the cap. The counterfactual chain — identical up to the
    dispute block, with no dispute filed — is run beside it, so "the dispute
    changed the winner set" is a comparison rather than an assertion.
-3. **carried** — every version-seven kind version eight leaves alone, executed
+3. **deadline** — the one execution ordering a chain can observe, run three ways
+   on identical copies of one chain: the same response is accepted at `c + 20`,
+   refused as `RESPONSE_TOO_LATE` at `c + 21` with the slot already lost, and
+   refused as `CHALLENGE_NOT_ISSUED` at `c + 20` when the expiry step is moved
+   ahead of the transactions — costing the seat the slot it had just proved.
+4. **carried** — every version-seven kind version eight leaves alone, executed
    against a version-eight ledger. The bytes are version six's, built by version
    six's own builders; what is version eight's is the state they land in and the
    roots and receipts they commit to.
@@ -675,10 +680,12 @@ def _finish_window(
 ) -> tuple[int, ...]:
     """Run to the assignment height and return window 1's winner set.
 
-    The two responders keep answering on both branches. They are the same two
-    objects on purpose: a responder answers the challenge it is handed at the
-    height it is handed one, so running it against a second ledger is answering
-    that ledger's audits rather than replaying the first ledger's.
+    Each branch gets responders bound to its own ledger, which is what `fork`
+    exists for: a responder answers the challenge it is handed at the height it
+    is handed one, and it reads its nonce from the ledger it is answering. The
+    branch that filed six disputes from Bob's escrow has a different nonce
+    sequence from the branch that filed none, so a responder carrying its own
+    counter would offer a stale nonce to exactly one of the two.
     """
     def respond(height: int, issued: list[int]) -> list[bytes]:
         return alice(height, issued) + bob(height, issued)
@@ -687,7 +694,7 @@ def _finish_window(
         ledger, ASSIGNMENT_HEIGHT - 1, signatures.oracle, respond=respond
     )
     scenario.skipped_blocks += heights
-    scenario.audit_blocks = list(getattr(scenario, "audit_blocks", [])) + recorded
+    scenario.audit_blocks = scenario.audit_blocks + recorded
     _run(scenario, signatures, [])
     return ledger.winners_of(MEASURED_WINDOW)
 
