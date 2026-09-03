@@ -365,6 +365,60 @@ and the genesis keys transposed — fail between two and seven vectors each.
 for every slot, after a maximal six-slot dispute, holds 64,800 seconds, which is
 the founder-directed activity threshold to the second.
 
+**The recorded plan for the C++ side was corrected on 2026-09-03 before anything
+was built on it.** It read the version-eight kernel as the atomic replacement
+ADR 0046 fixed for versions four and six, and that reading does not survive the
+dependency graph: **twenty-three files outside `src/v7/` and
+`include/protocol/v7/` now name `protocol::v7`**, so an atomic move is about
+14,000 lines in one commit with nothing buildable until the last of them.
+[ADR 0065](../decisions/0065-a-kernel-replacement-may-be-staged-across-a-stack-migration.md)
+amends ADR 0046 to permit a **staged** replacement under a stated end, enumerates
+the seven slices, and puts the deletion of version seven's kernel in slice seven
+so a session reaching slice six finds it recorded as its next action.
+
+### How ADR 0065 was delivered
+
+**It is a planning correction found by attempting the work rather than by
+reading about it.** The session created the kernel issue, branched, and began the
+port; the dependency graph is what stopped it. `grep -rl 'protocol::v7'` over
+`src/`, `include/`, and `tests/` returns twenty-three files outside the kernel —
+the snapshot, the owning store, the application, the transport dispatcher and
+responses, the node binary, two fuzz targets, and five test fixtures — none of
+which existed when ADR 0046 was written, because the storage and application
+layers were version one's until M3.13a through M3.13g.
+
+**The amendment is narrow and its end is enumerated rather than intended.**
+ADR 0046 refused keeping a *superseded* contract, and version seven is not
+superseded during the migration: it is the contract six live layers are written
+against and the only kernel a running node in this repository can use until slice
+six. ADR 0046 also refused "retire it later", and the retirement here is a
+numbered slice with stated content — and if the migration is abandoned part-way,
+slice seven still runs and deletes `src/v8/` instead.
+
+**One consequence is a slice the atomic reading had taken away.**
+`economy-transition-v8.txt`'s 183 vectors split at **121 a codec can reproduce**
+— the result-code space, the state key space, selection, the kind space, genesis,
+the version identity, the roots, and the manifest binding — and **62 that need a
+ledger**. So the kernel becomes the codec-then-execution pair versions four and
+six were given, and M3.13n is the codec alone.
+
+**One doubt was raised and resolved against itself rather than left open.**
+Requirement 13's adversarial four-node scenarios were considered as an earlier
+slice, on the ground that a disagreement test needs no version eight. They cannot
+be: requirement 13 says *economic*, and the version-seven ABCI path hands
+`execute_block` a null uptime schedule, so a chain driven through it writes no
+cycle assignment and accrues nothing to any seat. Version eight is what removes
+the parameter.
+
+**The session ended here on a `conclude` instruction.** The kernel port was begun
+— nine codec sources and the public header copied and rebound to `protocol::v8`,
+with the header's constants, labels, kind space, entry space, code space, body
+record, genesis field, and the selection and dispute declarations written — and
+**it was removed rather than committed**, because M3.13n is the recorded next
+slice and a conclusion does not begin one. Nothing of it is in the tree. What it
+established and a fresh session should not re-derive is recorded under the exact
+next action below.
+
 ### How M3.13l was delivered
 
 **A version-eight chain runs, and it measures its own machines.**
@@ -3667,6 +3721,16 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- PR #245 is the ADR 0065 delivery, merged by rebase as commit `b0a17b0` on
+  `main`. It adds
+  `docs/decisions/0065-a-kernel-replacement-may-be-staged-across-a-stack-migration.md`,
+  amends ADR 0046 in place with a pointer to it, and rewrites this document's
+  exact next action to carry the seven-slice enumeration. **Pure Markdown**, so
+  it took the focused metadata path: run 33788599501 passed with the compiler
+  matrix correctly skipped and `Classify and verify change scope` and
+  `Verification required` both green in seconds. Issue #244 is **open on
+  purpose** and is the recorded next slice, retitled to the codec scope; it is
+  the only open item and it agrees with the next action below.
 - Issue #241 and PR #242 are the M3.13l delivery, merged by rebase across
   commits `e455f66` through `af9a5e9` on `main`. It adds
   `simulation/economy_transition_v8/{ledger,execution,transitions,receipt,block,trace}.py`,
@@ -4867,13 +4931,48 @@ and the end is enumerated rather than intended:
    reaches step 6 finds step 7 here as its next action**, which is the mechanism
    that makes the end real.
 
-**M3.13n's own scope.** `economy-transition-v8.txt`'s 183 vectors split at 121
-a codec can reproduce — the result-code space, the state key space, selection,
-the kind space, genesis, the version identity, the roots, and the manifest
-binding — and 62 that need a ledger: the two transitions' ordered conditions,
-the schedule derivation, the settlement claim, expiry, and containment. The
-first 121 are this slice; the rest are M3.13o. That is the split versions four
-and six were given and the atomic reading had taken away.
+**M3.13n's own scope, and its issue is #244.** `economy-transition-v8.txt`'s 183
+vectors split at 121 a codec can reproduce — the result-code space, the state key
+space, selection, the kind space, genesis, the version identity, the roots, and
+the manifest binding — and 62 that need a ledger: the two transitions' ordered
+conditions, the schedule derivation, the settlement claim, expiry, and
+containment. The first 121 are this slice; the rest are M3.13o. That is the split
+versions four and six were given and the atomic reading had taken away.
+
+**The port was begun on 2026-09-03 and removed rather than committed**, because
+a `conclude` freezes scope at work already started and M3.13n is the next slice
+rather than the current one. Four things it established are worth reading before
+starting again, and none of them is in the tree:
+
+* **`src/v7/`'s seventeen sources split 9 / 8 at exactly the codec boundary.**
+  The codec is `economy_contract`, `economy_envelope`, `economy_body`,
+  `economy_genesis`, `economy_identity`, `economy_messages`, `economy_receipt`,
+  `economy_state`, and `economy_tree`, plus `economy_internal.hpp` — 1,506 lines.
+  The execution half is `economy_assignment`, `economy_block`,
+  `economy_execution`, `economy_invariants`, `economy_ledger`,
+  `economy_settlement`, `economy_transitions`, and `economy_value_transitions`,
+  plus `economy_ledger_internal.hpp` — 1,997 lines. `include/protocol/v7/` splits
+  the same way: `economy.hpp` is the codec's and `ledger.hpp` is the execution's,
+  so the codec slice copies one header and the execution slice copies the other.
+* **Three `sed` expressions do the whole rebinding and no more**:
+  `namespace protocol::v7` to `protocol::v8`, `protocol::v7::` to
+  `protocol::v8::`, and `"protocol/v7/` to `"protocol/v8/`. **Do not run a
+  blanket `v7` to `v8` rewrite** — after those three, exactly nine literal
+  mentions of version seven remain and every one is prose about history that a
+  reader needs to keep or to have rewritten deliberately. That is the same
+  mistake shape the CMake `sed` note further down records.
+* **The header's edits are eight and they are enumerable**: the version constants
+  and the 142-octet genesis prefix; the measurement figures; twelve result codes
+  and the count at 45; the three re-versioned labels plus the two new ones; two
+  kinds and two entry kinds; six `Body` fields; the `Genesis` field and its
+  round-trip consequence; and the new declarations — `dispute_message`, the
+  selection group, the two key builders, the two value codecs, `SeatWindowRecord`,
+  `predecessor_chain_id`, and `predecessor_state_root`.
+* **`kFrozenUnreachableCodes` stays at three.** Version eight makes
+  `FEE_LIMIT_TOO_LOW`, `DEBIT_OVERFLOW`, and `INSUFFICIENT_BALANCE` unreachable
+  **for kind 20 only**, and every other kind still produces them, so they are not
+  frozen codes and the array does not grow. The ledger enforces that, not the
+  codec, which is why it is M3.13o's rule and not this slice's.
 
 **What exists and what does not.** `simulation/economy_transition_v8/` is
 complete: the codec, both transitions, the schedule derivation, the ledger, the
