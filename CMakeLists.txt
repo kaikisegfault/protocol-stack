@@ -1443,6 +1443,26 @@ add_test(
     "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_v8_carryover_test.py"
 )
 add_test(
+  NAME economy-transition-v8-execution
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_v8_execution_test.py"
+)
+add_test(
+  NAME economy-transition-v8-block
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_v8_block_test.py"
+)
+add_test(
+  NAME economy-transition-v8-execution-vectors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tools/economy-transition-v8-execution-vectors/verify.py"
+    --vectors
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v8-execution.txt"
+)
+add_test(
   NAME founder-seat-vectors
   COMMAND
     "${Python3_EXECUTABLE}"

@@ -804,7 +804,7 @@ immutable; compatible changes require a new version.
   of a responder rather than possession of a resource.
   `simulation/economy_transition_v8/` executes the codec, both transitions, the
   expiry step, and the schedule derivation, and
-  `test-vectors/economy-transition-v8.txt` records 177 vectors over them. Its
+  `test-vectors/economy-transition-v8.txt` records 183 vectors over them. Its
   load-bearing one is settled by version *seven's* accepted model: a schedule
   derived from state reproduces a version-seven assignment record exactly, which
   is how "the carrier changed no settlement" becomes evidence rather than a
@@ -814,6 +814,20 @@ immutable; compatible changes require a new version.
   than ignored at execution, and unlike the registration it keeps its nonce,
   because a response has an escrow and a nonce sequence and a registration has
   neither. The relayed dispute is not exempt.
+  The same package now also **runs blocks**: `ledger.py`, `execution.py`,
+  `transitions.py`, `receipt.py`, `block.py`, and `trace.py` execute the four
+  ordered steps, and `test-vectors/economy-transition-v8-execution.txt` records
+  430 vectors over four scenarios that reach **all sixteen** transaction kinds.
+  It holds the first node reward in this repository paid from uptime the chain
+  itself measured: one machine answers every one of fifty-four audits across a
+  whole window and writes no state at all, another answers none and fails its
+  cycle at nine credited slots, and the assignment pays the first from evidence
+  nobody supplied. A run of transaction-free blocks is no longer a no-op, so
+  `Ledger.advance_to` is refused once any seat is activated and
+  `block.run_quiet_heights` executes all 57,609 heights of each recorded window.
+  [ADR 0064](decisions/0064-the-version-eight-execution-model.md) records the one
+  rule the model had to derive — a fee-exempt response covers a zero debit, so an
+  operator needs no balance to prove uptime — and three findings.
 - `specifications/native-economy-simulation-v1.md`: versioned integer-only
   accounting, authority, event, trace, and metric contract for the independent
   M2 research simulator; it is not a consensus transition.
