@@ -86,6 +86,7 @@ __all__ = [
     "hub_identity_key",
     "hub_identity_value",
     "open_challenge_key",
+    "open_challenge_parts",
     "open_challenge_value",
     "ordered_entries",
     "predecessor_state_root",
@@ -97,10 +98,13 @@ __all__ = [
     "seat_key",
     "seat_value",
     "seat_window_key",
+    "seat_window_parts",
     "seat_window_value",
     "signer_key",
     "signer_value",
     "state_root",
+    "state_root_frame",
+    "state_root_from_frame",
     "typed_custody_key",
     "typed_custody_value",
     "unreferred_pool_key",
@@ -145,6 +149,20 @@ def open_challenge_value(state: int) -> bytes:
     return u8(state)
 
 
+def open_challenge_parts(key: bytes) -> tuple[int, int]:
+    """The challenge height and seat a kind-18 key names.
+
+    A key is read back rather than carried alongside the value, because the key
+    space is what the state root commits to and a parallel index would be a
+    second source of the same fact.
+    """
+    if len(key) != c.ENTRY_KEY_BYTES[c.OPEN_CHALLENGE_ENTRY] or key[0] != (
+        c.OPEN_CHALLENGE_ENTRY
+    ):
+        raise InvalidStateEntry("not an open challenge key")
+    return int.from_bytes(key[1:9], "big"), int.from_bytes(key[9:13], "big")
+
+
 def decode_open_challenge_value(raw: bytes) -> int:
     if len(raw) != c.ENTRY_VALUE_BYTES[c.OPEN_CHALLENGE_ENTRY]:
         raise InvalidStateEntry("open challenge value is not one octet")
@@ -159,6 +177,15 @@ def decode_open_challenge_value(raw: bytes) -> int:
 
 def seat_window_key(cycle_window: int, seat_id: int) -> bytes:
     return u8(c.SEAT_WINDOW_ENTRY) + u64(cycle_window) + u32(seat_id)
+
+
+def seat_window_parts(key: bytes) -> tuple[int, int]:
+    """The cycle window and seat a kind-19 key names."""
+    if len(key) != c.ENTRY_KEY_BYTES[c.SEAT_WINDOW_ENTRY] or key[0] != (
+        c.SEAT_WINDOW_ENTRY
+    ):
+        raise InvalidStateEntry("not a seat window key")
+    return int.from_bytes(key[1:9], "big"), int.from_bytes(key[9:13], "big")
 
 
 def seat_window_value(credited: int, disputed: int) -> bytes:
@@ -250,18 +277,51 @@ def state_root(
 ) -> str:
     """The version-eight root. Its label and version differ from all seven
     predecessors, and each non-collision is required separately."""
-    return _root(
-        c.STATE_ROOT_LABEL,
-        c.STATE_ROOT_SCHEMA_VERSION,
-        chain_id,
+    return state_root_from_frame(
+        state_root_frame(
+            chain_id, supply_limit, total_supply, fee_pool_balance, accounts, economy
+        ),
         height,
-        supply_limit,
-        total_supply,
-        fee_pool_balance,
-        accounts,
-        economy,
-        c.ECONOMY_TREE_PREFIX,
     )
+
+
+def state_root_frame(
+    chain_id: bytes,
+    supply_limit: int,
+    total_supply: int,
+    fee_pool_balance: int,
+    accounts: list[tuple[bytes, int, int]],
+    economy: dict[bytes, bytes],
+) -> tuple[bytes, bytes]:
+    """The root preimage split around its one field that a quiet height changes.
+
+    Version eight is the first version whose block transition runs at every
+    height whether or not a transaction was offered, because the issue step
+    needs the previous root as its beacon. A run of transaction-free heights
+    therefore recomputes this preimage once per height, and every field but the
+    height is identical across the run.
+
+    Returning the two halves rather than a cached root is what keeps the fast
+    path exact: `state_root` is *defined* through this function, so there is one
+    preimage in this module and a run of quiet heights cannot drift from it.
+    """
+    head = u16(c.STATE_ROOT_SCHEMA_VERSION) + _octets(chain_id, 32, "chain ID")
+    leaves = [entry_leaf(key, value) for key, value in sorted(economy.items())]
+    tail = (
+        u64(supply_limit)
+        + u64(total_supply)
+        + u64(fee_pool_balance)
+        + u64(len(accounts))
+        + accounts_root(accounts)
+        + u64(len(economy))
+        + root(leaves, c.ECONOMY_TREE_PREFIX)
+    )
+    return head, tail
+
+
+def state_root_from_frame(frame: tuple[bytes, bytes], height: int) -> str:
+    head, tail = frame
+    return digest(c.STATE_ROOT_LABEL, head + u64(height) + tail).hex()
 
 
 def predecessor_state_root(

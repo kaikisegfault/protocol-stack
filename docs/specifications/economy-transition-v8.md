@@ -1,7 +1,7 @@
 # Economy transition v8
 
-Status: Accepted M3 consensus transition contract; contract model and contract
-vectors recorded, execution model, execution vectors, and C++20 kernel
+Status: Accepted M3 consensus transition contract; contract model, contract
+vectors, execution model, and execution vectors recorded, C++20 kernel
 implementation still owed
 
 This document defines the version-eight Founder Economy consensus transition. It
@@ -245,6 +245,15 @@ fee-exempt kind:
   non-minimal representation `protocol-primitives-v1` forbids. `FEE_LIMIT_TOO_LOW`
   is therefore unreachable for this kind, and the shared envelope check that
   produces it does not run.
+- **What the acting escrow must cover is zero**, which is version seven's own
+  rule — the fee, plus a transfer's amount — applied to a kind whose fee is
+  nothing. `DEBIT_OVERFLOW` and `INSUFFICIENT_BALANCE` are therefore also
+  unreachable for this kind. Charging the debit at the fixed fee would refuse a
+  response from an escrow holding less than one fee, so an operator would have to
+  keep a balance in order to prove the uptime they are paid for, which is the
+  cost the exemption removes.
+  [ADR 0064](../decisions/0064-the-version-eight-execution-model.md) records the
+  derivation.
 - **The nonce is kept**, which kind 10 does not do. A registration has no escrow
   and therefore no nonce sequence; a response has both. Replay protection is
   doubled rather than replaced — the nonce and the open challenge entry each
@@ -799,7 +808,7 @@ kernel exists is a re-versioning.
 
 ## Required vectors and evidence
 
-`test-vectors/economy-transition-v8.txt` is normative and records 177 vectors.
+`test-vectors/economy-transition-v8.txt` is normative and records 183 vectors.
 `simulation/economy_transition_v8/` executes this document's codec, its two
 transitions, its expiry step, and its schedule derivation, and
 `tools/economy-transition-v8-vectors/` derives every recorded value twice — once
@@ -854,12 +863,19 @@ demonstrates rather than asserts that folding makes that code unreachable.
 true, a name asserts no more than its value establishes, and a claim is checked
 against something other than itself.
 
-**A second file must record what a chain conforming to this document does.**
+**A second file records what a chain conforming to this document does.**
 `test-vectors/economy-transition-v8-execution.txt`, on version seven's pattern,
-holds the recorded scenarios: a window measured entirely on-chain producing an
-assignment record, a machine losing slots to unanswered challenges and failing
-its cycle, a dispute voiding a slot and changing a winner set, and every
-version-seven kind still executing unchanged against a version-eight ledger.
+is normative and records 430 vectors over four scenarios: a window measured
+entirely on-chain producing an assignment record and paying a mint from it, a
+machine losing slots to unanswered challenges and failing its cycle, a dispute
+voiding six slots and moving a winner set against the counterfactual chain that
+had none filed, the response deadline from both sides and under the rejected
+step order, and every version-seven kind still executing unchanged against a
+version-eight ledger.
+[ADR 0064](../decisions/0064-the-version-eight-execution-model.md) records the
+one rule that model had to derive and three findings, including that the
+prologue-before-issue order is unobservable at the accepted two-window lag while
+the expiry-after-transactions order costs a seat a slot it had proved.
 
 **The carryover claim is checked over the packages rather than over the vector
 files**, as version seven established: a test must classify every constant
