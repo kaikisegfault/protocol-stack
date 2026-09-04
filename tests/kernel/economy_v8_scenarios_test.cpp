@@ -679,10 +679,10 @@ Scenario carried_scenario(Signatures& signatures) {
   run(scenario, signatures,
       {{"alice_registers",
         register_input(signatures, ledger, kAliceIdentity, kAliceKey,
-                       kAliceSignerKey, kValidUntil)},
+                       kAliceSignerKey)},
        {"bob_registers",
-        register_input(signatures, ledger, kBobIdentity, kBobKey, kBobSignerKey,
-                       kValidUntil)}});
+        register_input(signatures, ledger, kBobIdentity, kBobKey,
+                       kBobSignerKey)}});
 
   // Kinds 1, 19, and 6. The default posture requires a confirmation at every
   // amount, so the unconfirmed transfer is refused and the confirmed one is not;
@@ -705,7 +705,7 @@ Scenario carried_scenario(Signatures& signatures) {
                                  kAliceSignerKey, kAliceEscrow)},
        {"alice_attempts_a_direct_issue",
         build(signatures, ledger, static_cast<std::uint8_t>(v8::Kind::direct_issue),
-              kAliceSignerKey, 2, direct)}});
+              kAliceSignerKey, 2, direct, kInheritedValidUntil)}});
 
   // Kinds 13, 14, 15, and 16 — the four an identity performs with no signer at
   // all, which is the recovery architecture ADR 0040 exists for.
@@ -728,18 +728,18 @@ Scenario carried_scenario(Signatures& signatures) {
       {{"alice_creates_a_second_escrow",
         build(signatures, ledger,
               static_cast<std::uint8_t>(v8::Kind::escrow_create), kAliceKey, 2,
-              create)},
+              create, kInheritedValidUntil)},
        {"alice_deletes_the_second_escrow",
         build(signatures, ledger,
               static_cast<std::uint8_t>(v8::Kind::escrow_delete), kAliceKey, 3,
-              remove)},
+              remove, kInheritedValidUntil)},
        {"alice_assigns_a_fresh_signer",
         build(signatures, ledger, static_cast<std::uint8_t>(v8::Kind::signer_add),
-              kAliceKey, 4, add_signer)},
+              kAliceKey, 4, add_signer, kInheritedValidUntil)},
        {"alice_revokes_the_fresh_signer",
         build(signatures, ledger,
               static_cast<std::uint8_t>(v8::Kind::signer_revoke), kAliceKey, 5,
-              revoke_signer)}});
+              revoke_signer, kInheritedValidUntil)}});
 
   // Kind 17, in both directions. The opening posture is the strictest one the
   // contract admits, so the first change can only be a relaxation — and a

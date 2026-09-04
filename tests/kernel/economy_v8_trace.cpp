@@ -88,7 +88,7 @@ Bytes transfer_input(Signatures& signatures, const v8::Ledger& ledger,
   body.amount_atomic = amount;
   return build(signatures, ledger,
                static_cast<std::uint8_t>(v8::Kind::native_transfer), signer_key,
-               nonce, body);
+               nonce, body, kInheritedValidUntil);
 }
 
 Bytes confirmed_transfer_input(Signatures& signatures, const v8::Ledger& ledger,

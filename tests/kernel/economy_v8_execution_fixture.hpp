@@ -125,12 +125,19 @@ inline void agree(const pv::Values& values, const std::string& key,
 inline constexpr std::uint64_t kSupplyLimit = 5'699'395'010'000'000'000;
 inline constexpr std::uint64_t kFixedFee = 1'000;
 inline constexpr std::uint32_t kNetworkId = 8;
-// Version seven's own builders bind this expiry height.
+// Version eight's own builders bind this expiry height: the four seat
+// transactions, the challenge response, and the dispute.
 inline constexpr std::uint64_t kValidUntil = 10'000'000'000;
-// **Three builders are version six's, imported rather than restated**, and they
-// carry version six's own expiry default rather than version seven's: a fixture
-// that constructs an unchanged envelope is not a place to keep a second copy of
-// one, and the bytes a transaction commits to include the height it expires at.
+// **Every builder imported from version six carries version six's own expiry
+// default**, and the split is deliberate rather than untidy: a fixture that
+// constructs an unchanged envelope is not a place to keep a second copy of one,
+// and the bytes a transaction commits to include the height it expires at.
+//
+// **Unifying the two constants produces identical state roots and different
+// transaction roots**, which is exactly how it fails: every block's resulting
+// state matches and every header does not. The registration, the two transfers,
+// the direct issue, the four escrow and signer kinds, the posture change, and
+// the verified-user mint are all on this side of the split.
 inline constexpr std::uint64_t kInheritedValidUntil = 10'000'000;
 inline constexpr std::uint64_t kPostureMinimum = 1'000'000;
 inline constexpr std::uint64_t kTransferAmount = 1'000'000;
@@ -312,7 +319,7 @@ Bytes build(Signatures& signatures, const v8::Ledger& ledger, std::uint8_t kind,
 Bytes register_input(Signatures& signatures, const v8::Ledger& ledger,
                      const Octets32& identity, const Octets32& hub_key,
                      const Octets32& signer_key,
-                     std::uint64_t valid_until = kValidUntil);
+                     std::uint64_t valid_until = kInheritedValidUntil);
 Bytes transfer_input(Signatures& signatures, const v8::Ledger& ledger,
                      const Octets32& signer_key, std::uint64_t nonce,
                      const Octets32& recipient, std::uint64_t amount);
@@ -446,7 +453,6 @@ void verify_coverage(const pv::Values& values);
 // so the two kinds of evidence never blur.
 void verify_transitions(const pv::Values& contract);
 void verify_derivations(const pv::Values& values, const pv::Values& primitives,
-                        const pv::Values& ledger_vectors,
-                        const pv::Values& manifest, const pv::Values& version_three);
+                        const pv::Values& ledger_vectors);
 
 }  // namespace economy_v8_execution
