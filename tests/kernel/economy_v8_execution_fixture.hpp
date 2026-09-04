@@ -373,7 +373,8 @@ Bytes dispute_input(Signatures& signatures, const v8::Ledger& ledger,
                     std::uint64_t cycle_window, std::uint8_t slot_index,
                     std::uint64_t nonce,
                     const Octets32& authority_key = kDisputeAuthorityKey,
-                    std::uint8_t reason_code = kReasonCode);
+                    std::uint8_t reason_code = kReasonCode,
+                    const std::uint8_t* signed_slot = nullptr);
 
 // Execute one block of steps and record what the vectors compare against.
 //

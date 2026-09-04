@@ -321,6 +321,16 @@ add_executable(
 )
 target_link_libraries(economy_v8_codec_tests PRIVATE protocol_kernel)
 add_executable(
+  economy_v8_execution_tests
+  tests/kernel/economy_v8_execution_test.cpp
+  tests/kernel/economy_v8_trace.cpp
+  tests/kernel/economy_v8_scenarios_test.cpp
+  tests/kernel/economy_v8_execution_checks.cpp
+  tests/kernel/economy_v8_derived_test.cpp
+  tests/kernel/economy_v8_transitions_test.cpp
+)
+target_link_libraries(economy_v8_execution_tests PRIVATE protocol_kernel)
+add_executable(
   kernel_admission_tests
   tests/kernel/admission_test.cpp
 )
@@ -568,6 +578,7 @@ set(
   economy_v7_codec_tests
   economy_v7_execution_tests
   economy_v8_codec_tests
+  economy_v8_execution_tests
   kernel_admission_tests
   kernel_execution_tests
   kernel_genesis_tests
@@ -814,6 +825,15 @@ add_test(
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7.txt"
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v6.txt"
     "${PROJECT_SOURCE_DIR}/test-vectors/protocol-primitives-v1.txt"
+)
+add_test(
+  NAME economy-transition-v8-execution-cpp
+  COMMAND
+    economy_v8_execution_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v8-execution.txt"
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v8.txt"
+    "${PROJECT_SOURCE_DIR}/test-vectors/protocol-primitives-v1.txt"
+    "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
 )
 add_test(
   NAME version-seven-snapshot

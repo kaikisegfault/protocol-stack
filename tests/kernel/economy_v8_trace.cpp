@@ -275,9 +275,14 @@ Bytes dispute_input(Signatures& signatures, const v8::Ledger& ledger,
                     const Octets32& signer_key, std::uint32_t seat_id,
                     std::uint64_t cycle_window, std::uint8_t slot_index,
                     std::uint64_t nonce, const Octets32& authority_key,
-                    std::uint8_t reason_code) {
-  const auto message = v8::dispute_message(ledger.chain_id, seat_id, cycle_window,
-                                           slot_index, reason_code, kValidUntil);
+                    std::uint8_t reason_code, const std::uint8_t* signed_slot) {
+  // The signed message binds the slot, so signing one and submitting another is
+  // how a transition test reaches `UNAUTHORIZED_DISPUTE` without touching the
+  // key: the table holds no entry for the message that arrives.
+  const auto message =
+      v8::dispute_message(ledger.chain_id, seat_id, cycle_window,
+                          signed_slot != nullptr ? *signed_slot : slot_index,
+                          reason_code, kValidUntil);
   v8::Body body;
   body.seat_id = seat_id;
   body.cycle_window = cycle_window;
