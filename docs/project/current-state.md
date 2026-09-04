@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-09-03
+Last updated: 2026-09-04
 
 ## Phase
 
@@ -126,6 +126,17 @@ left to be derived. ADR 0045 records them. **M3.10c then put version six's byte
 and derivation surface into the C++20 kernel on 2026-08-17**, replacing version
 four's codec rather than adding beside it, and gave the decoders the fuzz target
 the codec should always have had. ADR 0046 records both decisions.
+
+**M3.13n opened the stack migration on 2026-09-04**, and it is the first slice
+in this repository to add a kernel beside another rather than in place of it.
+[ADR 0065](../decisions/0065-a-kernel-replacement-may-be-staged-across-a-stack-migration.md)
+amended ADR 0046 to permit that under a stated end, and the end is enumerated:
+`src/v8/` and `include/protocol/v8/` arrive at step 1 and **M3.13t deletes
+`src/v7/` and the six layers written against it at step 7**. What the codec
+slice delivers is the byte and derivation surface of `economy-transition-v8` —
+two transaction kinds, two state entry kinds, twelve result codes, one genesis
+field, and the two signed constructions — verified against 121 of that
+contract's 183 vectors. The other 62 need a ledger and are M3.13o's.
 
 **Requirement 10 is satisfied.** The kernel compiles `economy-transition-v7` in
 full: the byte and derivation surface, the ledger, all fourteen transitions,
@@ -3226,9 +3237,21 @@ slices.
   transactions, and the expiry step that clears a slot bit for a challenge nobody
   answered — and `test-vectors/economy-transition-v8-execution.txt` records 434
   vectors over four scenarios reaching all sixteen kinds. A whole 28,800-height
-  window is executed block by block in each. **No C++ kernel compiles version
-  eight yet**, and the snapshot, store, application, transport, node process, and
-  adapter all still name version seven.
+  window is executed block by block in each. **Nothing in C++ executes any of
+  it** — the bullet below is the codec alone — and the snapshot, store,
+  application, transport, node process, and adapter all still name version
+  seven.
+- **The version-eight byte and derivation surface compiles in C++20 as of
+  2026-09-04.** `src/v8/` and `include/protocol/v8/economy.hpp` hold the
+  envelope with its sixteen bodies, the six HUB messages and the dispute
+  message, challenge selection, the economy state key space with entry kinds 18
+  and 19, the economy tree and the version-eight state root, genesis with
+  `dispute_authority_key` at a 142-octet prefix, the receipt at version 8, and
+  the result-code space at 45. `economy_v8_codec_tests` reproduces the 121
+  vectors of `test-vectors/economy-transition-v8.txt` a codec can derive.
+  **Nothing executes a version-eight transition yet** — no ledger, no block
+  steps, no transitions, no schedule derivation — and every layer above the
+  kernel still names version seven.
 - **A version-seven state can be written down and read back.**
   `protocol::storage::snapshot_v7` encodes a whole `Ledger` to canonical bytes
   and restores it to a ledger that keeps executing: the summary, the ordered
@@ -3612,6 +3635,77 @@ slices.
   founder-decision gate before starting a slice and reports its result whether or
   not anything is reserved.
 
+### How M3.13n was delivered
+
+**Ten of the eleven sources are version seven's codec with three identifiers
+rebound**, and nothing else: `namespace protocol::v7` to `protocol::v8`,
+`protocol::v7::` to `protocol::v8::`, and `"protocol/v7/` to `"protocol/v8/`.
+No blanket rewrite was run. After those three, **nine literal mentions of
+version seven remained and every one was prose about history**, each kept or
+rewritten deliberately — the three that survive are correct history about
+version six's result codes, version six's retired entry kinds, and the genesis
+requirement that has stood since version six.
+
+**The eleventh source, `src/v8/economy_uptime.cpp`, is version eight's whole
+addition to the state and its derivations in one translation unit**: the two
+entry kinds, their value codecs, the window record's bitmap arithmetic, and
+challenge selection. Putting it in one file rather than spreading it across the
+other ten is what makes the difference between the two codecs auditable while
+both are compiled, and it is what M3.13t will delete alongside `src/v7/`.
+
+**The header's eight edits are the ones the plan enumerated**, and they landed
+unchanged: the version constants and the 142-octet genesis prefix; the
+measurement figures read from `uptime-measurement-v1`; twelve result codes and
+the count at 45; the three re-versioned labels plus
+`protocol-stack:v8:challenge` and `protocol-stack:v8:dispute`; two kinds and two
+entry kinds; six `Body` fields; the `Genesis` field and its round-trip
+consequence; and the new declarations. **`kFrozenUnreachableCodes` stayed at
+three**, for the reason the plan recorded: the exemption makes three codes
+unreachable for kind 20 only, and every other kind still produces all three.
+
+**One correction to the recorded 9 / 8 file split.** `economy_settlement.cpp`
+was written down as the execution half, but it implements only functions
+`economy.hpp` declares — the bounded mint walk, `window_of_height`, and the
+verified-user rate — so it is inside the codec's closure and moves with it.
+**The codec slice is eleven sources, not nine**, and a session that had trusted
+the recorded split would have found out at the linker.
+
+**Twenty mutation probes were run and three found real gaps**, all fixed in the
+same commit. Two of them are the same gap seen twice and they are worth reading
+before writing another cross-version comparison:
+
+* **A `predecessor_state_root` that wrote version eight's schema version into
+  every preimage passed uncaught.** The labels still differed, so all seven
+  predecessor roots still differed from version eight's *and from each other*,
+  and every inequality comparison passed — about an artifact no chain ever had.
+  Removing version one's economy-free preimage passed for the same reason. **An
+  inequality between two digests proves nothing about either one.** The fix pins
+  both ends of the range against the file that recorded it: version one's root
+  against `protocol-primitives-v1.txt` and version seven's chain identity and
+  root against `economy-transition-v7.txt`, over the fixture that file was
+  recorded on. Both pins survive M3.13t, which a comparison against the live
+  version-seven kernel would not. * **A `credited_slots` that ignored the
+  disputed bitmap passed uncaught**, and it is M3.13l's shape exactly: every
+  record the test built had an empty `disputed`, so the mutation never reached
+  the executed path. The fix was a better test rather than a better probe — the
+  disputed-record arithmetic is now checked, including the containment boundary
+  at the cap — because the figures that distinguish the two live in the
+  containment and kind-21 vector groups, which need a ledger and are M3.13o's.
+
+**The carried surface is checked against the file that accepted it rather than
+re-recorded.** `economy-transition-v6.txt` fixes the fourteen carried bodies,
+their schemes, the thirty-three carried result codes, and one HUB message
+reproduced as bytes; `economy-transition-v7.txt` fixes the carried entry widths
+and the version-seven genesis this prefix is measured against. Re-recording
+either under a version-eight name would have produced a file that agrees with
+the first and says nothing.
+
+**One check belongs to the port rather than to any vector group.** `src/v8/`'s
+tree is version seven's copied, so it is required to reproduce the accepted M1
+accounts tree root and empty tree root from `protocol-primitives-v1.txt`. A tree
+that drifted in the copy would still produce self-consistent version-eight roots
+and would fail there.
+
 ## Adopted founder direction
 
 - **The ecosystem AI runs on the Founder Machines and the company runs no
@@ -3721,6 +3815,30 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #244 and PR #247 are the M3.13n delivery, merged by rebase across
+  commits `2675c2f` through `f33890b` on `main`. It adds
+  `include/protocol/v8/economy.hpp` and `src/v8/`'s eleven sources plus
+  `economy_internal.hpp`, and the six `tests/kernel/economy_v8_*` translation
+  units; it adds one CMake target, `economy_v8_codec_tests`, and one ctest
+  entry, `economy-transition-v8-cpp`, so the suite goes from 158 to **159**
+  entries in the debug presets and from 166 to **167** under
+  `clang-sanitizers`. **No accepted vector file changes**: version eight's 183
+  contract vectors and 434 execution vectors, version seven's 395 and 590, and
+  every earlier file are unchanged and passing, and **no version-seven source,
+  header, or test was touched**. Run 33911161934 on head `a85c8a2` passed the
+  complete hosted matrix with all four jobs reporting every ctest entry
+  passing. **Two commits after the first candidate came from self-review.**
+  `6489c86` moved the exclusion check ahead of the selection digest, because
+  the accepted resource bound is 1,180 heights of every 1,200 and the first
+  version paid it at all 1,200; nothing consensus-visible changes, and it is
+  fixed before M3.13o's ledger calls it per seat per height. `f33890b`
+  corrected an arithmetic error in three places — the specification, the
+  model's docstring, and the kernel comment that had copied it — recorded in
+  the truncation-bias note further down. **Coverage was measured rather than
+  asserted**: a scratch build with the fixture's vector accessors instrumented
+  reads 121 of the 121 codec vectors, touches 0 of the 62 ledger vectors, and
+  reads 95 further keys from the four supporting accepted files. All 41 boolean
+  vectors are paired with a live check.
 - PR #245 is the ADR 0065 delivery, merged by rebase as commit `b0a17b0` on
   `main`. It adds
   `docs/decisions/0065-a-kernel-replacement-may-be-staged-across-a-stack-migration.md`,
@@ -4624,12 +4742,17 @@ identities — and reproduces both version-seven vector files. Requirements 10 a
 
 **As of 2026-09-03 the uptime pipeline is no longer in that list on the Python
 side.** `economy-transition-v8` is specified, modelled, and executed, and a
-recorded chain derives a cycle assignment from evidence it recorded itself. What
-is missing is the whole C++ half of it: the kernel compiles version seven, and
-following ADR 0046 `src/v8/` must *replace* `src/v7/` rather than sit beside it,
-after which the snapshot, the store, the application, the transport, the node
-process, and the adapter each carry a version number and none is optional for a
-chain that runs.
+recorded chain derives a cycle assignment from evidence it recorded itself.
+
+**As of 2026-09-04 its C++ codec exists and its C++ execution does not.** M3.13n
+added `src/v8/` beside `src/v7/` under ADR 0065's staged replacement, so the
+kernel now compiles version eight's byte and derivation surface and version
+seven's whole contract. What is missing is six of the seven enumerated steps:
+the version-eight ledger and its four ordered block steps, `snapshot_v8`,
+`SQLiteLedgerV8`, `ApplicationV8`, `protocol-application-v8` with the Go
+adapter's version-eight client, and the deletion that ends the coexistence.
+Each layer carries a version number and none is optional for a chain that
+runs.
 
 **What is missing now is everything between a block and a network.** The kernel
 executes blocks against an in-memory ledger. It is not wired to the SQLite
@@ -4684,18 +4807,23 @@ assignment record and no seat accrues anything. Requirement 13 asks for
 adversarial *economic* scenarios; four nodes agreeing on blocks that pay nobody
 would satisfy the word "four-node" and not the word "economic".
 
-**M3.13j specified the carrier that closes it and M3.13k made half of it
-executable.**
+**M3.13j specified the carrier that closes it, M3.13k and M3.13l made it
+executable in Python, and M3.13n began putting it into the kernel.**
 `economy-transition-v8` and ADR 0063 are accepted: two transaction kinds, two
 state entries, twelve result codes, one genesis field, and a block execution of
 four ordered steps in which the prologue derives the schedule from state and
-`execute_block` loses its `UptimeSchedule*` parameter. **A Python model now
-executes the codec, both transitions, the expiry step, and the schedule
-derivation**, and 177 vectors record them. **No chain runs any of it.** There is
-no version-eight execution model, no C++ kernel, and no version-eight chain
-identity anywhere a node could open, so the gap in what *runs* is exactly as
-wide as it was — what changed is that the contract is now executable by
-something and was checked rather than asserted.
+`execute_block` loses its `UptimeSchedule*` parameter. A Python model executes
+all of it and 617 vectors record it — 183 for the contract and 434 for the
+execution — and **as of 2026-09-04 the C++20 kernel compiles version eight's
+byte and derivation surface**, checked against 121 of those 183.
+
+**No chain runs any of it yet.** Nothing in C++ executes a version-eight
+transition, and no version-eight chain identity exists anywhere a node could
+open, because the ledger, the four ordered block steps, the two transitions,
+the schedule derivation, and the five layers above the kernel are M3.13o
+through M3.13s. So the gap in what *runs* is narrower than it was by exactly
+one layer of one stack: the contract is executable by something, checked rather
+than asserted, and now also compiled.
 
 **Two contracts are also still owed, and neither blocks requirement 13.** That
 was recorded the other way round at the close of M3.12b and M3.13a corrected it.
@@ -4898,25 +5026,18 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.13n: the version-eight kernel codec**, the first of the
+Milestone slice **M3.13o: the version-eight kernel execution**, step 2 of the
 seven-slice stack migration [ADR
 0065](../decisions/0065-a-kernel-replacement-may-be-staged-across-a-stack-migration.md)
-enumerates.
+enumerates. **Step 1 landed on 2026-09-04** and the repository now compiles two
+economy contracts, which ADR 0065 permits only while this migration is in
+flight and only because step 7 is a numbered slice with its content already
+written down.
 
-**The plan this document carried until 2026-09-03 said one slice, and it was
-wrong.** It read the version-eight kernel as the same atomic replacement ADR 0046
-fixed for versions four and six. That reading does not survive the dependency
-graph: when ADR 0046 was written nothing above the kernel named the kernel's
-version, and **twenty-three files outside `src/v7/` and `include/protocol/v7/`
-now name `protocol::v7`** — the snapshot, the owning store, the application, the
-transport, the node binary, two fuzz targets, and five test fixtures. Replacing
-the kernel atomically therefore means about 14,000 lines in one commit with
-nothing buildable until the last of them.
+The enumeration, with step 1 struck:
 
-**ADR 0065 amends ADR 0046 to permit a staged replacement under a stated end**,
-and the end is enumerated rather than intended:
-
-1. **M3.13n** — the version-eight kernel codec, beside version seven's.
+1. ~~**M3.13n** — the version-eight kernel codec, beside version seven's.~~
+   **Delivered 2026-09-04 as PR #247.**
 2. **M3.13o** — the version-eight kernel execution: the ledger, the four ordered
    block steps, the two transitions, and the schedule derivation.
 3. **M3.13p** — `snapshot_v8`, which must encode the two entry kinds version
@@ -4931,54 +5052,72 @@ and the end is enumerated rather than intended:
    reaches step 6 finds step 7 here as its next action**, which is the mechanism
    that makes the end real.
 
-**M3.13n's own scope, and its issue is #244.** `economy-transition-v8.txt`'s 183
-vectors split at 121 a codec can reproduce — the result-code space, the state key
-space, selection, the kind space, genesis, the version identity, the roots, and
-the manifest binding — and 62 that need a ledger: the two transitions' ordered
-conditions, the schedule derivation, the settlement claim, expiry, and
-containment. The first 121 are this slice; the rest are M3.13o. That is the split
-versions four and six were given and the atomic reading had taken away.
+**M3.13o's own scope.** `economy-transition-v8.txt`'s 183 vectors split at 121
+a codec can reproduce and **62 that need a ledger**: kind 20's positive control
+and its nine ordered refusals, kind 21's and its ten, the schedule derivation,
+the settlement claim, expiry, and containment. The 121 are done and checked by
+`economy_v8_codec_tests`; **the 62 are this slice**, and
+`test-vectors/economy-transition-v8-execution.txt`'s 434 vectors are the second
+file, on the shape of `economy_v7_execution_tests`.
 
-**The port was begun on 2026-09-03 and removed rather than committed**, because
-a `conclude` freezes scope at work already started and M3.13n is the next slice
-rather than the current one. Four things it established are worth reading before
-starting again, and none of them is in the tree:
+**What the execution half is, file for file.** `src/v7/`'s remaining eight
+sources are `economy_assignment`, `economy_block`, `economy_execution`,
+`economy_invariants`, `economy_ledger`, `economy_transitions`, and
+`economy_value_transitions`, plus `economy_ledger_internal.hpp` — and
+`include/protocol/v7/ledger.hpp` is the header to copy, `economy.hpp` having
+already been copied. The same three `sed` expressions do the rebinding:
+`namespace protocol::v7` to `protocol::v8`, `protocol::v7::` to
+`protocol::v8::`, and `"protocol/v7/` to `"protocol/v8/`. **Do not run a blanket
+`v7` to `v8` rewrite** — in the codec half exactly nine literal mentions of
+version seven survived those three, every one prose about history that had to be
+kept or rewritten deliberately, and the execution half will have its own.
 
-* **`src/v7/`'s seventeen sources split 9 / 8 at exactly the codec boundary.**
-  The codec is `economy_contract`, `economy_envelope`, `economy_body`,
-  `economy_genesis`, `economy_identity`, `economy_messages`, `economy_receipt`,
-  `economy_state`, and `economy_tree`, plus `economy_internal.hpp` — 1,506 lines.
-  The execution half is `economy_assignment`, `economy_block`,
-  `economy_execution`, `economy_invariants`, `economy_ledger`,
-  `economy_settlement`, `economy_transitions`, and `economy_value_transitions`,
-  plus `economy_ledger_internal.hpp` — 1,997 lines. `include/protocol/v7/` splits
-  the same way: `economy.hpp` is the codec's and `ledger.hpp` is the execution's,
-  so the codec slice copies one header and the execution slice copies the other.
-* **Three `sed` expressions do the whole rebinding and no more**:
-  `namespace protocol::v7` to `protocol::v8`, `protocol::v7::` to
-  `protocol::v8::`, and `"protocol/v7/` to `"protocol/v8/`. **Do not run a
-  blanket `v7` to `v8` rewrite** — after those three, exactly nine literal
-  mentions of version seven remain and every one is prose about history that a
-  reader needs to keep or to have rewritten deliberately. That is the same
-  mistake shape the CMake `sed` note further down records.
-* **The header's edits are eight and they are enumerable**: the version constants
-  and the 142-octet genesis prefix; the measurement figures; twelve result codes
-  and the count at 45; the three re-versioned labels plus the two new ones; two
-  kinds and two entry kinds; six `Body` fields; the `Genesis` field and its
-  round-trip consequence; and the new declarations — `dispute_message`, the
-  selection group, the two key builders, the two value codecs, `SeatWindowRecord`,
-  `predecessor_chain_id`, and `predecessor_state_root`.
-* **`kFrozenUnreachableCodes` stays at three.** Version eight makes
-  `FEE_LIMIT_TOO_LOW`, `DEBIT_OVERFLOW`, and `INSUFFICIENT_BALANCE` unreachable
-  **for kind 20 only**, and every other kind still produces them, so they are not
-  frozen codes and the array does not grow. The ledger enforces that, not the
-  codec, which is why it is M3.13o's rule and not this slice's.
+**One thing the recorded 9 / 8 split got wrong, corrected here so it is not
+rediscovered.** `economy_settlement.cpp` was written down as the execution half,
+but it implements only functions `economy.hpp` declares — the bounded mint walk,
+`window_of_height`, `accrues`, `last_assigned_window`, and the three
+verified-user functions — so it is inside the codec's closure and **moved with
+the codec in M3.13n**. `src/v8/` is eleven sources today, not nine, and the
+execution slice copies seven `.cpp` files plus the internal header rather than
+eight.
+
+**What version eight's ledger must add on top of version seven's.** The Python
+is the specification of the shape here and it should be read before the C++ is
+written: `ledger.py` subclasses version seven's `Ledger` and overrides four
+things — genesis binds the dispute authority key, the projection adds
+`self.uptime`, the root is version eight's, and `conservation_failures` appends
+six invariants. **`Ledger.uptime` is one raw key-to-value map holding every
+kind-18 and kind-19 entry**, handed directly to the contract model's `Context`,
+so the two transitions the 183 contract vectors were recorded against are the
+implementation rather than siblings of one. `block.py` holds the four ordered
+steps plus `run_quiet_heights`, and `Ledger.advance_to` **raises** once any seat
+is activated, because a version-eight block with no transactions still audits
+every in-scope seat.
+
+**`kFrozenUnreachableCodes` is this slice's rule to enforce and not the
+codec's.** Version eight makes `FEE_LIMIT_TOO_LOW`, `DEBIT_OVERFLOW`, and
+`INSUFFICIENT_BALANCE` unreachable **for kind 20 only**, and every other kind
+still produces all three, so the array stays at three and the ledger is what
+makes the exemption true: kind 20 charges nothing, and what its acting escrow
+must cover is zero.
+
+**One lesson from M3.13n that this slice will be in a position to repeat.**
+`predecessor_state_root` initially passed every check while writing version
+eight's schema version into every predecessor preimage — the labels differed, so
+all seven digests differed from version eight's *and from each other*, and every
+inequality comparison passed about an artifact no chain ever had. **An
+inequality between two digests proves nothing about either one.** The fix pins
+both ends of the range against the file that recorded it. Any new cross-version
+comparison this slice writes needs the same treatment.
 
 **What exists and what does not.** `simulation/economy_transition_v8/` is
 complete: the codec, both transitions, the schedule derivation, the ledger, the
-four ordered block steps, and four recorded scenarios. Nothing in C++ compiles
-version eight at all. `src/v7/` is seventeen sources and
-`include/protocol/v7/` two headers.
+four ordered block steps, and four recorded scenarios. **In C++, `src/v8/` is
+eleven codec sources and `include/protocol/v8/economy.hpp`**, verified by
+`economy_v8_codec_tests` against 121 vectors. Nothing in C++ executes a
+version-eight transition. `src/v7/` is seventeen sources and
+`include/protocol/v7/` two headers, and every layer above the kernel still names
+version seven.
 
 **What version eight adds to the kernel, and each item is a place to get it
 wrong:**
@@ -5011,10 +5150,13 @@ state entry-kind constants collide numerically, so enumerate through
 builds at the compiler's default standard and fails all four hosted jobs; and
 `python3 -B tests/tools/test_registration_test.py` must run after **any** CMake
 edit, because retargeting the kernel's ctest arguments is how a recorded vector
-file stops being read by anything.
+file stops being read by anything. **Adding an executable is four CMake edits**
+— `add_executable`, its properties where it has any, its link libraries, and
+`PROTOCOL_STACK_TARGETS` — and M3.13n's `economy_v8_codec_tests` is the worked
+example immediately above `economy-transition-v8-cpp`'s `add_test`.
 
 **Then, in order, each its own slice:**
-* steps 2 through 7 of the migration above, whose layer shapes are recorded
+* steps 3 through 7 of the migration above, whose layer shapes are recorded
   further down this document;
 * requirement 13's remaining half, the **adversarial** scenarios, which only
   become economic once a version-eight chain is measuring seats. Four replicas
@@ -5230,7 +5372,25 @@ by a bare connection. The `head_snapshot` column's `length >= 190` is the
 snapshot's own `kFixedSize`, the 126-octet prefix plus a root plus a digest, so
 the column check and the decoder cannot drift apart.
 
-**What the kernel looks like now, so a later session does not rediscover it.**
+**What the version-eight codec looks like now, so a later session does not
+rediscover it.** `src/v8/` holds eleven sources and `include/protocol/v8/` one
+header. Ten of the sources are version seven's codec with three identifiers
+rebound and nothing else, so a diff against `src/v7/` under a `protocol::vX`
+normalisation is the whole review. The eleventh, `economy_uptime.cpp`, is
+version eight's entire addition — entry kinds 18 and 19, their value codecs, the
+window record's bitmap arithmetic, and challenge selection — deliberately in one
+file so that the difference between the two codecs is one file rather than ten.
+**`economy_settlement.cpp` is in the codec half**, despite the recorded 9 / 8
+split placing it in the execution half: it implements only functions
+`economy.hpp` declares. The two predecessor constructions,
+`predecessor_chain_id` and `predecessor_state_root`, exist so that each of the
+seven non-collisions is a claim about two derived artifacts; **they are pinned
+against `protocol-primitives-v1.txt` and `economy-transition-v7.txt` at the two
+ends of their range**, because an inequality between two digests proves nothing
+about either one.
+
+**What the version-seven kernel looks like now, so a later session does not
+rediscover it.**
 `src/v7/` holds seventeen sources and `include/protocol/v7/` two headers.
 `economy_assignment.cpp` is the newest and is the only one with no version-six
 ancestor: it derives a cycle and applies it, and `execute_block` calls it as a
@@ -5295,8 +5455,18 @@ g++ -std=c++20 -O0 -I include -I src -I tests -I <shim> \
 
 links either kernel test target in about eleven seconds, and the binary takes
 the same vector-file arguments CMake passes it. **That is what made thirteen
-mutation probes affordable in M3.12b and twenty-six in M3.13a**; without it each
-probe is a hosted run.
+mutation probes affordable in M3.12b, twenty-six in M3.13a, and twenty in
+M3.13n**; without it each probe is a hosted run. The version-eight form
+substitutes `src/v8/*.cpp` and `tests/kernel/economy_v8_*.cpp`, and links in
+about four seconds because the codec pulls in no storage.
+
+**M3.13n's probe harness is worth rebuilding rather than rediscovering, and it
+answers a question the probes themselves cannot.** A shell script that copies
+the source, applies one textual substitution, refuses to run at all when the
+pattern is not found, rebuilds, runs, and restores — so a probe that never
+applied reports `PATTERN NOT FOUND` instead of a false pass. Three of M3.13n's
+twenty probes found real gaps and two of those three would have been read as
+successes without it.
 
 **M3.13a extended it to the storage tests and the pattern is worth keeping.**
 Adding `src/storage/snapshot_v7*.cpp tests/storage/snapshot_v7_*.cpp
@@ -5325,6 +5495,28 @@ that assertion and passes on the hosted matrix. **Run Clang locally before
 pushing**: it caught a structured-binding capture GCC accepts and the matrix
 rejects. **On Python sources use `python3 -B`**, because a stale bytecode cache
 can make a mutation probe appear to pass without ever compiling the mutation.
+
+**An inequality between two digests proves nothing about either one**, and
+M3.13n paid for that twice in one slice. `predecessor_state_root` was written to
+recompute an earlier version's root so that each of the seven non-collisions is
+a claim about two real artifacts. A mutation that wrote version eight's schema
+version into every predecessor preimage **passed uncaught**: the labels still
+differed, so all seven digests differed from version eight's *and from each
+other*, and every comparison the test made passed — about an artifact no chain
+ever had. Removing version one's economy-free preimage passed for the same
+reason. The fix is to pin the construction at each end of its range against the
+file that recorded it, and the pins must be recorded files rather than the live
+predecessor kernel, or they die with `src/v7/` at M3.13t.
+
+**A stated resource bound is a claim the implementation can falsify.**
+`economy-transition-v8` states that the pipeline pays one digest per in-scope
+seat at 1,180 heights in every 1,200. M3.13n's first `is_selected` derived the
+selection value and *then* checked the exclusion, which pays it at all 1,200 —
+100,000 wasted digests at twenty heights of every slot at capacity. Nothing
+about it was consensus-visible and no vector could have caught it, because the
+predicate's value is identical either way. **Read a specification's resource
+bounds as assertions about the code, not as commentary**, and put the cheap test
+before the expensive one.
 
 **And re-aim a probe that passes.** M3.11c ran a probe that flipped the default
 of `assignment_is_prologue` and it passed uncaught, because the trace passes the
@@ -5382,6 +5574,21 @@ workflow's concurrency group cancelled it, which leaves a cancelled run and a
 failed aggregate check on `main`'s history for a commit whose tree had already
 passed the matrix in full on the pull request.
 
+**One arithmetic error in an accepted specification was found and corrected in
+M3.13n, and the shape of it generalises.** `economy-transition-v8` argued for
+truncating the selection digest by saying "`2^64 mod 1200` is 1,216, so 1,216 of
+the 1,200 residues occur once more often than the rest". A remainder modulo
+1,200 is below 1,200, so the sentence refutes itself in its own second clause;
+the figure is **16**, the relative bias is 6.42e-17, and the stated bound of
+`2^54` is therefore also wrong where `2^53` holds. It had been repeated in three
+places — the specification, the model's docstring, and the kernel comment that
+copied it — and **nothing normative depended on it**, which is exactly why it
+survived a specification, a model, 183 vectors, and a review. The likeliest
+origin is `docs/project/reward-distribution-report-v1.md`, which carries an
+unrelated 1,216. **A figure no vector records is a figure nothing checks**, so
+read the arithmetic in explanatory prose rather than trusting that the gates
+would have caught it.
+
 **Two generation details.** Every version-seven and version-eight vector file is
 produced by its verifier's `--emit`, which runs the same derivations through the
 same agreement gate as the checking mode, so a file and its derivations cannot
@@ -5391,6 +5598,26 @@ its own**: `coverage.every_kind_version_eight_admits_is_executed` fails if a
 later scenario change stops reaching one.
 
 ## Blockers
+
+**M3.13n ran the founder-decision gate and passed it.** Fifteen decisions were
+enumerated before any was judged: whether `src/v8/` sits beside `src/v7/` or
+replaces it; which of version seven's sources are the codec half; the two kind
+numbers and their body layouts; the two entry kinds, their widths, and the pad
+rule; the twelve result codes and the count at 45; the ninth genesis field, its
+offset, and the 142-octet prefix; the three re-versioned labels and the two new
+ones; the selection preimage, its truncation, and its modulus; the dispute
+message's preimage; whether `kFrozenUnreachableCodes` grows; whether selection
+gets its own translation unit; the test target's name and vector arguments;
+whether the codec declares the two predecessor constructions; the encoding
+consequence of the fee exemption; and the slot-index bound. **Every one is
+already decided by an accepted document or is engineering work**: the first by
+ADR 0065, the next nine by `economy-transition-v8.md` and its recorded vectors,
+the fourteenth by the owner's own answer of 2026-09-02 as recorded in ADR 0063
+and ADR 0064, and the rest by `uptime-measurement-v1` or by this repository's
+own conventions. Nothing in the slice set or changed supply, allocation,
+beneficiaries, Founder ownership, creator hierarchy, commercial routing, AI
+institutional authority, bridge scope, content permanence, or what an end user
+must do, own, run, or receive, and **no accepted vector file changed**.
 
 **None. The one founder question this milestone raised was asked and
 answered on the same day.** M3.13j ran the founder-decision gate over twelve
