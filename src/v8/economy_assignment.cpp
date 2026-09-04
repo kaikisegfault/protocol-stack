@@ -275,7 +275,7 @@ std::vector<SeatCycle> derive_schedule(const Ledger& ledger,
     // height alone: height zero is a real activation height.
     if (!seat.is_activated) continue;
     if (!seat_in_scope(seat.activation_height, cycle_window)) continue;
-    const auto record = internal::window_record(ledger, cycle_window, seat_id);
+    const auto record = seat_window_record(ledger, cycle_window, seat_id);
     SeatCycle cycle;
     cycle.seat_id = seat_id;
     // A record that will not decode is an invariant failure the block's own

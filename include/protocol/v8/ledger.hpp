@@ -174,6 +174,16 @@ std::vector<SeatCycle> derive_schedule(const Ledger& ledger,
 // a slot is credited or it is not.
 std::uint64_t seat_uptime_seconds(const SeatWindowRecord& record);
 
+// One seat's record for one window, with **an absent record read as a fully
+// credited seat** — a slot bit begins set and evidence only ever removes credit,
+// so a machine that answers every challenge writes nothing at all.
+//
+// `nullopt` is a record in state that will not decode, which is an invariant
+// failure rather than an absence: every record here was written by this kernel.
+std::optional<SeatWindowRecord> seat_window_record(const Ledger& ledger,
+                                                   std::uint64_t cycle_window,
+                                                   std::uint32_t seat_id);
+
 // One cycle's derived outcome, before it is encoded and written.
 //
 // Every pool quantity is carried separately because each answers a different

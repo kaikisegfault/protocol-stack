@@ -15,7 +15,8 @@
 
 #include <bit>
 
-namespace protocol::v8::internal {
+namespace protocol::v8 {
+namespace internal {
 namespace {
 
 Outcome refused(Result result) { return Outcome{result, 0, 0}; }
@@ -46,9 +47,11 @@ void store_window(Ledger& ledger, std::uint64_t cycle_window,
 
 }  // namespace
 
-std::optional<SeatWindowRecord> window_record(const Ledger& ledger,
-                                              std::uint64_t cycle_window,
-                                              std::uint32_t seat_id) {
+}  // namespace internal
+
+std::optional<SeatWindowRecord> seat_window_record(const Ledger& ledger,
+                                                   std::uint64_t cycle_window,
+                                                   std::uint32_t seat_id) {
   const auto entry = ledger.uptime.find(seat_window_key(cycle_window, seat_id));
   // An absent record reads as a fully credited seat, because a slot bit begins
   // set and evidence only ever removes credit. So a machine that answers every
@@ -57,6 +60,8 @@ std::optional<SeatWindowRecord> window_record(const Ledger& ledger,
   if (entry == ledger.uptime.end()) return full_seat_window();
   return decode_seat_window_value(entry->second);
 }
+
+namespace internal {
 
 // Kind 20. Nine ordered conditions, then one state write.
 //
@@ -156,7 +161,7 @@ std::optional<Outcome> file_dispute(Ledger& ledger, const Envelope& envelope,
     return refused(Result::seat_not_in_scope);
   }
 
-  auto record = window_record(ledger, body.cycle_window, body.seat_id);
+  auto record = seat_window_record(ledger, body.cycle_window, body.seat_id);
   if (!record) return std::nullopt;
   const std::uint32_t bit = 1U << body.slot_index;
   if ((record->disputed & bit) != 0U) return refused(Result::dispute_replay);
@@ -204,7 +209,7 @@ bool expire_challenge(Ledger& ledger, std::uint64_t challenge_height,
   // slot, so that slot and this height's slot are always the same one and the
   // window this writes to is never one the prologue has already deleted.
   const auto window = window_of_height(challenge_height);
-  auto record = window_record(ledger, window, seat_id);
+  auto record = seat_window_record(ledger, window, seat_id);
   if (!record) return false;
   const std::uint32_t bit = 1U << slot_of(challenge_height);
   if ((record->credited & bit) == 0U) return true;
@@ -214,4 +219,5 @@ bool expire_challenge(Ledger& ledger, std::uint64_t challenge_height,
   return true;
 }
 
-}  // namespace protocol::v8::internal
+}  // namespace internal
+}  // namespace protocol::v8
