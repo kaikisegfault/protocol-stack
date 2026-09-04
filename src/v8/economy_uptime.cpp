@@ -177,9 +177,16 @@ std::optional<std::uint64_t> selection_value(std::span<const std::uint8_t> beaco
 // cheaper and would correlate the fate of every seat in the class.
 std::optional<bool> is_selected(std::span<const std::uint8_t> beacon,
                                 std::uint32_t seat_id, std::uint64_t height) {
+  if (beacon.size() != 32) return std::nullopt;
+  // **The exclusion is checked before the digest and not after it.** The
+  // accepted resource bound is that the pipeline pays one digest per in-scope
+  // seat at 1,180 heights in every 1,200; deriving a selection value at an
+  // excluded height and then discarding it would pay it at all 1,200. The
+  // beacon's width is judged first regardless, so a malformed beacon is a
+  // refusal at every height rather than only at a challengeable one.
+  if (!is_challengeable_height(height)) return false;
   const auto value = selection_value(beacon, seat_id, height);
   if (!value) return std::nullopt;
-  if (!is_challengeable_height(height)) return false;
   return *value % kChallengePeriodBlocks == 0;
 }
 
