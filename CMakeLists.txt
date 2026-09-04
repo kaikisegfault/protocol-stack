@@ -174,17 +174,25 @@ set(
   # ADR 0065 enumerates. `src/v7/` and the version-seven storage, application,
   # transport, and node sources are deleted by M3.13t, which is the numbered
   # slice that ends the coexistence rather than an intention to end it.
+  src/v8/economy_assignment.cpp
+  src/v8/economy_block.cpp
   src/v8/economy_body.cpp
   src/v8/economy_contract.cpp
   src/v8/economy_envelope.cpp
+  src/v8/economy_execution.cpp
   src/v8/economy_genesis.cpp
   src/v8/economy_identity.cpp
+  src/v8/economy_invariants.cpp
+  src/v8/economy_ledger.cpp
   src/v8/economy_messages.cpp
   src/v8/economy_receipt.cpp
   src/v8/economy_settlement.cpp
   src/v8/economy_state.cpp
+  src/v8/economy_transitions.cpp
   src/v8/economy_tree.cpp
   src/v8/economy_uptime.cpp
+  src/v8/economy_uptime_transitions.cpp
+  src/v8/economy_value_transitions.cpp
 )
 add_library(protocol_kernel STATIC ${PROTOCOL_STACK_KERNEL_SOURCES})
 target_include_directories(

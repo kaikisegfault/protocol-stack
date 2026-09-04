@@ -226,26 +226,44 @@ Hash accounts_root(std::span<const AccountEntry> accounts) {
   return merkle(leaves, tree_labels(kAccountsTreePrefix));
 }
 
-std::optional<Hash> state_root(const StateSummary& summary,
-                               std::span<const AccountEntry> accounts,
-                               std::vector<EconomyEntry> economy) {
+std::optional<StateRootFrame> state_root_frame(
+    const StateSummary& summary, std::span<const AccountEntry> accounts,
+    std::vector<EconomyEntry> economy) {
   const auto economy_count = economy.size();
   const auto economy_hash = economy_root(std::move(economy));
   if (!economy_hash) return std::nullopt;
   const auto accounts_hash = accounts_root(accounts);
 
+  StateRootFrame frame;
+  i::append_u16(frame.head, kStateRootSchemaVersion);
+  i::append(frame.head, summary.chain_id);
+  i::append_u64(frame.tail, summary.supply_limit);
+  i::append_u64(frame.tail, summary.total_supply);
+  i::append_u64(frame.tail, summary.fee_pool_balance);
+  i::append_u64(frame.tail, static_cast<std::uint64_t>(accounts.size()));
+  i::append(frame.tail, accounts_hash);
+  i::append_u64(frame.tail, static_cast<std::uint64_t>(economy_count));
+  i::append(frame.tail, *economy_hash);
+  return frame;
+}
+
+Hash state_root_from_frame(const StateRootFrame& frame, std::uint64_t height) {
   Bytes payload;
-  i::append_u16(payload, kStateRootSchemaVersion);
-  i::append(payload, summary.chain_id);
-  i::append_u64(payload, summary.height);
-  i::append_u64(payload, summary.supply_limit);
-  i::append_u64(payload, summary.total_supply);
-  i::append_u64(payload, summary.fee_pool_balance);
-  i::append_u64(payload, static_cast<std::uint64_t>(accounts.size()));
-  i::append(payload, accounts_hash);
-  i::append_u64(payload, static_cast<std::uint64_t>(economy_count));
-  i::append(payload, *economy_hash);
+  payload.reserve(frame.head.size() + 8 + frame.tail.size());
+  i::append(payload, frame.head);
+  i::append_u64(payload, height);
+  i::append(payload, frame.tail);
   return protocol::v1::hash(kStateRootLabel, payload);
+}
+
+// Defined through the two above rather than beside them, so the fast path and
+// the ordinary path are the same preimage by construction.
+std::optional<Hash> state_root(const StateSummary& summary,
+                               std::span<const AccountEntry> accounts,
+                               std::vector<EconomyEntry> economy) {
+  const auto frame = state_root_frame(summary, accounts, std::move(economy));
+  if (!frame) return std::nullopt;
+  return state_root_from_frame(*frame, summary.height);
 }
 
 // An earlier version's root over the same inputs, so that each of the seven

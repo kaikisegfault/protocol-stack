@@ -685,6 +685,27 @@ std::optional<Hash> state_root(const StateSummary& summary,
                                std::span<const AccountEntry> accounts,
                                std::vector<EconomyEntry> economy);
 
+// The root preimage split around its one field a quiet height changes.
+//
+// **Version eight is the first version whose block transition runs at every
+// height** whether or not a transaction was offered, because the issue step
+// needs the previous root as its beacon. A run of transaction-free heights
+// therefore recomputes this preimage once per height, and every field but the
+// height is identical across the run.
+//
+// Splitting it rather than caching a root is what keeps the fast path exact:
+// `state_root` is *defined* through these two functions, so there is one
+// preimage in this kernel and a run of quiet heights cannot drift from it.
+struct StateRootFrame {
+  Bytes head;
+  Bytes tail;
+};
+
+std::optional<StateRootFrame> state_root_frame(
+    const StateSummary& summary, std::span<const AccountEntry> accounts,
+    std::vector<EconomyEntry> economy);
+Hash state_root_from_frame(const StateRootFrame& frame, std::uint64_t height);
+
 // An earlier version's root over the same inputs, for versions 1 through 7.
 // Distinct labels are strings rather than a chain, so refusing one collision
 // implies nothing about another and version eight must prove seven separately.
