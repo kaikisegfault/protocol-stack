@@ -348,6 +348,34 @@ void check_dispute(const pv::Values& contract) {
   expect_true(contract, "kind21.refuses.dispute_cap_exceeded");
 }
 
+// Expiry: the accepted model's slot-close sweep, made incremental.
+//
+// **The expiry step is reached through `execute_block`**, which is the only way
+// a chain reaches it, so this needs a ledger a block will accept. The seat is
+// deliberately left *unactivated*: expiry does not read scope, so the sweep runs
+// exactly as it would otherwise, while the issue step selects nobody and cannot
+// add a challenge this fixture did not write.
+v8::Ledger expiry_ledger() {
+  auto opened = v8::open_ledger(trace_genesis());
+  pv::require(opened.has_value(), "the expiry genesis opens a ledger");
+  auto ledger = std::move(*opened);
+  v8::HubIdentityRecord identity;
+  identity.hub_public_key = kHolderKey;
+  identity.seat_count = 1;
+  ledger.registry.identities[kHolderIdentity] = identity;
+  const auto escrow = v8::escrow_id(kHolderIdentity, 0);
+  v8::EscrowRecord entry;
+  entry.owner_hub_identity = kHolderIdentity;
+  ledger.registry.escrows[escrow] = entry;
+  ledger.registry.accounts[escrow] = protocol::v1::Account{};
+  v8::SeatRecord seat;
+  seat.hub_identity_hash = kHolderIdentity;
+  ledger.seats[kActiveSeat] = seat;
+  pv::require(v8::conservation_failures(ledger).empty(),
+              "the expiry fixture must open conserved");
+  return ledger;
+}
+
 // The containment theorem at its boundary, over the encoded state.
 void check_containment(const pv::Values& contract) {
   const auto height = v8::kCycleBlocks * (kProbeWindow + 1) + 5;
@@ -383,34 +411,150 @@ void check_containment(const pv::Values& contract) {
                   "DISPUTE_CAP_EXCEEDED",
               "the seventh dispute is refused");
   expect_true(contract, "containment.the_seventh_dispute_is_refused");
+
+  // **The invariants name the rule, and that is checked rather than assumed.**
+  // A seventh voided slot is refused by the transition above, so the state it
+  // would produce is unreachable on-chain; written directly it must be refused
+  // by the two invariants that exist for it, and each must say which one it is.
+  // A cap widened to seven would leave a perfect seat at 61,200 seconds, which
+  // is below the founder-directed threshold, so this is the containment theorem
+  // failing in the one way the contract says it must not.
+  auto over_cap = v8::full_seat_window();
+  over_cap.disputed = (1U << (v8::kDisputeCapSlotsPerSeat + 1)) - 1U;
+  const auto encoded = v8::seat_window_value(over_cap);
+  pv::require(encoded.has_value(), "an over-cap record still encodes");
+  pv::require(v8::uptime_seconds(over_cap) < v8::kActivityThresholdSeconds,
+              "a seventh voided slot falls below the threshold");
+  auto broken = expiry_ledger();
+  broken.height = v8::kCycleBlocks * kProbeWindow;
+  broken.uptime[v8::seat_window_key(kProbeWindow, kActiveSeat)] = *encoded;
+  const auto failures = v8::conservation_failures(broken);
+  const auto reports = [&](std::string_view rule) {
+    return std::find(failures.begin(), failures.end(), rule) != failures.end();
+  };
+  pv::require(reports("a seat window record exceeds the dispute cap"),
+              "the cap invariant reports by name");
+  pv::require(reports("a maximal dispute failed a fully credited seat"),
+              "the containment invariant reports by name");
 }
 
-// Expiry: the accepted model's slot-close sweep, made incremental.
+// The two retention invariants, which no recorded scenario can reach because
+// the steps that write these entries cannot produce the states they forbid.
 //
-// **The expiry step is reached through `execute_block`**, which is the only way
-// a chain reaches it, so this needs a ledger a block will accept. The seat is
-// deliberately left *unactivated*: expiry does not read scope, so the sweep runs
-// exactly as it would otherwise, while the issue step selects nobody and cannot
-// add a challenge this fixture did not write.
-v8::Ledger expiry_ledger() {
-  auto opened = v8::open_ledger(trace_genesis());
-  pv::require(opened.has_value(), "the expiry genesis opens a ledger");
-  auto ledger = std::move(*opened);
-  v8::HubIdentityRecord identity;
-  identity.hub_public_key = kHolderKey;
-  identity.seat_count = 1;
-  ledger.registry.identities[kHolderIdentity] = identity;
-  const auto escrow = v8::escrow_id(kHolderIdentity, 0);
-  v8::EscrowRecord entry;
-  entry.owner_hub_identity = kHolderIdentity;
-  ledger.registry.escrows[escrow] = entry;
-  ledger.registry.accounts[escrow] = protocol::v1::Account{};
-  v8::SeatRecord seat;
-  seat.hub_identity_hash = kHolderIdentity;
-  ledger.seats[kActiveSeat] = seat;
-  pv::require(v8::conservation_failures(ledger).empty(),
-              "the expiry fixture must open conserved");
-  return ledger;
+// **A state no transition can reach is exactly what an invariant is for**, so
+// each is checked by writing the forbidden state directly and requiring the
+// invariant to name the rule it broke. Without this, an implementation could
+// delete either check and every recorded vector would still pass.
+void check_retention() {
+  const auto names = [](const v8::Ledger& ledger, std::string_view rule) {
+    const auto failures = v8::conservation_failures(ledger);
+    return std::find(failures.begin(), failures.end(), rule) != failures.end();
+  };
+
+  // Invariant 2: the pipeline retains no challenge whose deadline has passed.
+  // The expiry step deletes one at `challenge_height + kResponseDeadlineBlocks`,
+  // so a chain still holding one at the height after that is a chain whose
+  // expiry step did not run.
+  auto stale = expiry_ledger();
+  stale.height = kProbeChallengeHeight + v8::kResponseDeadlineBlocks + 1;
+  issue(stale, kProbeChallengeHeight, kActiveSeat);
+  pv::require(names(stale, "an open challenge outlived its response deadline"),
+              "the deadline invariant reports by name");
+  // And a challenge for a height the chain has not reached, which is the same
+  // rule from the other side.
+  auto ahead = expiry_ledger();
+  ahead.height = kProbeChallengeHeight - 1;
+  issue(ahead, kProbeChallengeHeight, kActiveSeat);
+  pv::require(names(ahead, "an open challenge outlived its response deadline"),
+              "the deadline invariant refuses a challenge from the future");
+  // The positive control, at the last height the entry is still retained.
+  // **That height is `c + kResponseDeadlineBlocks - 1` and not `c + 20`**,
+  // because the invariant runs at the *end* of a block and the expiry step at
+  // `c + 20` has already deleted the entry by then: the retained range is
+  // `[h - 19, h]`, so the entry's last block is the one before its deadline's.
+  auto live = expiry_ledger();
+  live.height = kProbeChallengeHeight + v8::kResponseDeadlineBlocks - 1;
+  issue(live, kProbeChallengeHeight, kActiveSeat);
+  pv::require(v8::conservation_failures(live).empty(),
+              "a challenge inside its deadline window is accepted");
+
+  // Invariant 5: exactly two windows are retained at every height, which is
+  // what the prologue's unconditional deletion is for. A record three windows
+  // back is one the prologue failed to delete.
+  const auto record = v8::seat_window_value(v8::full_seat_window());
+  pv::require(record.has_value(), "the retention probe's record encodes");
+  auto outlived = expiry_ledger();
+  outlived.height = v8::kCycleBlocks * (kProbeWindow + 2);
+  outlived.uptime[v8::seat_window_key(kProbeWindow, kActiveSeat)] = *record;
+  pv::require(names(outlived, "a seat window record outlived its retention"),
+              "the retention invariant reports by name");
+  // A record for a window the chain has not reached fails the same rule.
+  auto early = expiry_ledger();
+  early.height = v8::kCycleBlocks * kProbeWindow;
+  early.uptime[v8::seat_window_key(kProbeWindow + 1, kActiveSeat)] = *record;
+  pv::require(names(early, "a seat window record outlived its retention"),
+              "the retention invariant refuses a record from the future");
+  // The positive control, at both ends of the retained pair.
+  for (const auto window : {kProbeWindow, kProbeWindow + 1}) {
+    auto retained = expiry_ledger();
+    retained.height = v8::kCycleBlocks * (kProbeWindow + 1);
+    retained.uptime[v8::seat_window_key(window, kActiveSeat)] = *record;
+    pv::require(v8::conservation_failures(retained).empty(),
+                "a record inside the retained pair is accepted");
+  }
+
+  // Invariants 1 and 3, over values the codec would refuse to produce. The
+  // uptime map holds raw octets, so a value no encoder would write can be put
+  // there directly — which is the only way to reach these two, and the reason
+  // they are invariants rather than only decoder rules.
+  auto bad_state = expiry_ledger();
+  bad_state.height = kProbeChallengeHeight;
+  bad_state.uptime[v8::open_challenge_key(kProbeChallengeHeight, kActiveSeat)] =
+      v8::Bytes{2};
+  pv::require(names(bad_state, "an open challenge state is neither zero nor one"),
+              "the open challenge state invariant reports by name");
+
+  auto bad_record = expiry_ledger();
+  bad_record.height = v8::kCycleBlocks * kProbeWindow;
+  // A pad bit set in `credited`, which `seat_window_value` refuses to encode.
+  bad_record.uptime[v8::seat_window_key(kProbeWindow, kActiveSeat)] =
+      v8::Bytes{0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+  pv::require(names(bad_record, "a seat window record does not decode"),
+              "the record decoding invariant reports by name");
+
+  // And the absent-record rule the schedule rests on, read from the accessor
+  // every caller uses rather than from a derivation that defaults around it.
+  auto empty = expiry_ledger();
+  const auto absent = v8::seat_window_record(empty, kProbeWindow, kActiveSeat);
+  pv::require(absent.has_value() && absent->credited == v8::kSlotBitmapMask &&
+                  absent->disputed == 0,
+              "an absent record reads as a fully credited seat");
+
+  // **A quiet height is gated too**, which no recorded scenario can show
+  // because the issue step and the expiry step only ever write conforming
+  // state. It is checked by starting a run from a state that already breaks an
+  // invariant: the run must refuse rather than carry it forward. Without this
+  // the gate could be deleted and every recorded vector would still pass.
+  Signatures signatures;
+  auto poisoned = expiry_ledger();
+  poisoned.height = v8::kCycleBlocks * kProbeWindow + 10;
+  auto over_cap = v8::full_seat_window();
+  over_cap.disputed = (1U << (v8::kDisputeCapSlotsPerSeat + 1)) - 1U;
+  const auto encoded = v8::seat_window_value(over_cap);
+  pv::require(encoded.has_value(), "the poisoned record encodes");
+  poisoned.uptime[v8::seat_window_key(kProbeWindow, kActiveSeat)] = *encoded;
+  pv::require(!v8::run_quiet_heights(poisoned, poisoned.height + 1,
+                                     signatures.verifier())
+                   .has_value(),
+              "a quiet height refuses a state that breaks an uptime invariant");
+  // The positive control on the same shape, so the refusal is about the record
+  // rather than about the run.
+  auto clean = expiry_ledger();
+  clean.height = poisoned.height;
+  pv::require(v8::run_quiet_heights(clean, clean.height + 1,
+                                    signatures.verifier())
+                  .has_value(),
+              "a quiet height on a conforming state runs");
 }
 
 // Run the block at `challenge_height + kResponseDeadlineBlocks`, which is the
@@ -603,6 +747,7 @@ void verify_transitions(const pv::Values& contract) {
   check_expiry(contract);
   check_schedule(contract);
   check_settlement(contract);
+  check_retention();
 
   // **Every contract vector a ledger is needed for, and exactly those.** The
   // other 121 are `economy_v8_codec_tests`'s, so this claims the six groups
