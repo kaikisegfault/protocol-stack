@@ -84,9 +84,9 @@ def challenge_preimage(beacon: bytes, seat_id: int, height: int) -> bytes:
 def selection_value(beacon: bytes, seat_id: int, height: int) -> int:
     """The first eight octets of the labelled digest, big-endian.
 
-    Truncating biases selection by less than one part in `2^54`: `2^64 mod
-    1200` is 1,216, so 1,216 residues occur once more often than the rest over
-    the full range. Reducing the whole 256-bit digest would need big-integer
+    Truncating biases selection by less than one part in `2^53`: `2^64 mod
+    1200` is 16, so 16 of the 1,200 residues occur once more often than the rest
+    over the full range. Reducing the whole 256-bit digest would need big-integer
     arithmetic on a consensus path to remove a bias no observer could measure.
     """
     raw = digest(c.CHALLENGE_LABEL, challenge_preimage(beacon, seat_id, height))

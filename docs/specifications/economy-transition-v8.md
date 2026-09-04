@@ -141,10 +141,20 @@ with it, so that a selection value is unique to one height and cannot be
 presented as belonging to another.
 
 **Truncating the digest to eight octets biases selection by less than one part
-in `2^54`.** `2^64 mod 1200` is 1,216, so 1,216 of the 1,200 residues occur once
-more often than the rest over the full 64-bit range. The alternative — reducing
-the whole 256-bit digest — requires big-integer arithmetic on a consensus path
-to remove a bias no observer could measure, and version eight declines it.
+in `2^53`.** `2^64 mod 1200` is 16, so 16 of the 1,200 residues occur once more
+often than the rest over the full 64-bit range, and a favoured residue is
+reached about 6.42e-17 more often than an even split would reach it. The
+alternative — reducing the whole 256-bit digest — requires big-integer
+arithmetic on a consensus path to remove a bias no observer could measure, and
+version eight declines it.
+
+*Corrected 2026-09-04, in M3.13n.* This paragraph previously read "`2^64 mod
+1200` is 1,216, so 1,216 of the 1,200 residues", which is arithmetically
+impossible on its face — a remainder modulo 1,200 is below 1,200 — and gave the
+bound as `2^54`, which the true figure of 6.42e-17 just exceeds. **Nothing
+normative changes**: no vector, octet, digest, or decision depended on either
+number, and the corrected figures argue for the truncation more strongly than
+the wrong ones did.
 
 **The preimage is not `uptime-measurement-v1`'s.** That model digests an RFC 8785
 JSON object, as every accepted model in this repository does. A consensus kernel
