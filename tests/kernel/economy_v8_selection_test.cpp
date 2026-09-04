@@ -84,6 +84,15 @@ void verify_exclusion(const pv::Values& values) {
   }
   expect_true(values, "selection.an_excluded_height_selects_nobody");
 
+  // `is_selected` refuses an excluded height *before* deriving a digest, so
+  // that the pipeline pays its stated cost at 1,180 heights of every 1,200
+  // rather than at all 1,200. The beacon's width is still judged first, which
+  // is what stops that short-circuit from silently weakening the refusal.
+  pv::require(!v8::is_selected(v8::Bytes(31, 0), kProbeSeat, last).has_value(),
+              "a short beacon at an excluded height");
+  pv::require(!v8::is_selected(v8::Bytes(31, 0), kProbeSeat, boundary).has_value(),
+              "a short beacon at a challengeable height");
+
   // A challenge and its deadline never straddle a slot boundary, which is what
   // makes the expiry step's window arithmetic exact.
   for (auto height = window_start; height <= boundary; ++height) {
