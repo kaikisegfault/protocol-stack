@@ -2,10 +2,10 @@
 //
 // **Everything version eight adds to the economy state and its derivations is
 // in this one translation unit**, so the difference between version seven's
-// codec and version eight's is one file rather than a diff spread across nine.
-// The rest of `src/v8/` is version seven's codec with three identifiers
-// rebound, which is what makes the migration auditable while both kernels are
-// compiled.
+// codec and version eight's is one file rather than a diff spread across ten.
+// The other ten sources are version seven's codec with three identifiers
+// rebound and nothing else, which is what makes the migration auditable while
+// both kernels are compiled.
 //
 // What is *not* here is what the entries mean to a block: the issue step, the
 // expiry step, the schedule the prologue derives, and the two transitions that
@@ -153,9 +153,9 @@ std::optional<Bytes> selection_preimage(std::span<const std::uint8_t> beacon,
 
 // The digest truncated to its first eight octets, read big-endian.
 //
-// Truncating biases selection by less than one part in 2^54: `2^64 mod 1200` is
-// 1,216, so 1,216 of the 1,200 residues occur once more often than the rest
-// over the full range. Reducing the whole 256-bit digest instead would require
+// Truncating biases selection by less than one part in 2^53: `2^64 mod 1200` is
+// 16, so 16 of the 1,200 residues occur once more often than the rest over the
+// full range. Reducing the whole 256-bit digest instead would require
 // big-integer arithmetic on a consensus path to remove a bias no observer could
 // measure.
 std::optional<std::uint64_t> selection_value(std::span<const std::uint8_t> beacon,
