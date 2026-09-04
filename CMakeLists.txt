@@ -170,6 +170,21 @@ set(
   src/v7/economy_transitions.cpp
   src/v7/economy_tree.cpp
   src/v7/economy_value_transitions.cpp
+  # The version-eight codec, added beside version seven's for the six slices
+  # ADR 0065 enumerates. `src/v7/` and the version-seven storage, application,
+  # transport, and node sources are deleted by M3.13t, which is the numbered
+  # slice that ends the coexistence rather than an intention to end it.
+  src/v8/economy_body.cpp
+  src/v8/economy_contract.cpp
+  src/v8/economy_envelope.cpp
+  src/v8/economy_genesis.cpp
+  src/v8/economy_identity.cpp
+  src/v8/economy_messages.cpp
+  src/v8/economy_receipt.cpp
+  src/v8/economy_settlement.cpp
+  src/v8/economy_state.cpp
+  src/v8/economy_tree.cpp
+  src/v8/economy_uptime.cpp
 )
 add_library(protocol_kernel STATIC ${PROTOCOL_STACK_KERNEL_SOURCES})
 target_include_directories(
@@ -288,6 +303,15 @@ add_executable(
   tests/kernel/economy_v7_transitions_test.cpp
 )
 target_link_libraries(economy_v7_execution_tests PRIVATE protocol_kernel)
+add_executable(
+  economy_v8_codec_tests
+  tests/kernel/economy_v8_test.cpp
+  tests/kernel/economy_v8_kinds_test.cpp
+  tests/kernel/economy_v8_selection_test.cpp
+  tests/kernel/economy_v8_state_test.cpp
+  tests/kernel/economy_v8_version_test.cpp
+)
+target_link_libraries(economy_v8_codec_tests PRIVATE protocol_kernel)
 add_executable(
   kernel_admission_tests
   tests/kernel/admission_test.cpp
@@ -535,6 +559,7 @@ set(
   kernel_primitive_tests
   economy_v7_codec_tests
   economy_v7_execution_tests
+  economy_v8_codec_tests
   kernel_admission_tests
   kernel_execution_tests
   kernel_genesis_tests
@@ -771,6 +796,16 @@ add_test(
     "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
     "${PROJECT_SOURCE_DIR}/test-vectors/founder-economy-manifest-v3.txt"
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v3.txt"
+)
+add_test(
+  NAME economy-transition-v8-cpp
+  COMMAND
+    economy_v8_codec_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v8.txt"
+    "${PROJECT_SOURCE_DIR}/test-vectors/founder-economy-manifest-v3.txt"
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7.txt"
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v6.txt"
+    "${PROJECT_SOURCE_DIR}/test-vectors/protocol-primitives-v1.txt"
 )
 add_test(
   NAME version-seven-snapshot
