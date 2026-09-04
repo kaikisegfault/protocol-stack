@@ -23,19 +23,10 @@
 namespace economy_v8_execution {
 namespace {
 
-std::uint64_t nonce_of_ledger(const v8::Ledger& ledger, const Octets32& escrow) {
-  const auto entry = ledger.registry.accounts.find(escrow);
-  return entry == ledger.registry.accounts.end() ? 0 : entry->second.nonce;
-}
-
+// An escrow with no account entry has never acted, so its next nonce is 1.
 std::uint64_t nonce_of(const v8::Ledger& ledger, const Octets32& escrow) {
   const auto entry = ledger.registry.accounts.find(escrow);
   return entry == ledger.registry.accounts.end() ? 0 : entry->second.nonce;
-}
-
-std::uint64_t balance_of(const v8::Ledger& ledger, const Octets32& escrow) {
-  const auto entry = ledger.registry.accounts.find(escrow);
-  return entry == ledger.registry.accounts.end() ? 0 : entry->second.balance;
 }
 
 // What one labelled step's transaction issued, found by its position among the
@@ -187,7 +178,7 @@ Branch branch(Signatures& signatures, const v8::Ledger& source,
   const auto before = v8::seat_window_record(copy, window, kAliceSeat);
   const auto raw = response_input(signatures, copy, kAliceSignerKey, kAliceSeat,
                                   challenge_height,
-                                  nonce_of_ledger(copy, kAliceEscrow) + 1);
+                                  nonce_of(copy, kAliceEscrow) + 1);
   v8::BlockOrder order;
   order.expire_before_transactions = expire_first;
   const std::vector<Bytes> inputs{raw};
