@@ -10,13 +10,14 @@ namespace i = protocol::v8::internal;
 
 constexpr std::array<std::uint8_t, 4> kReceiptMagic{'P', 'S', 'R', 'C'};
 
-// The nine kinds that move no new units into existence. A transfer moves units
-// that already exist; purchase, activation, the four identity administrations,
-// and the posture change write authority rather than value.
+// The eleven kinds that move no new units into existence. A transfer moves
+// units that already exist; purchase, activation, the four identity
+// administrations, and the posture change write authority rather than value;
+// and the two version eight adds carry evidence about a machine.
 //
-// The issuing kinds are 4, 5, 6, 18, and **10**, which is new with this
-// version: a registration issues the entry airdrop.
-constexpr std::array<std::uint8_t, 9> kNonIssuingKinds{
+// The issuing kinds are 4, 5, 6, 18, and 10 — a registration issues the entry
+// airdrop.
+constexpr std::array<std::uint8_t, 11> kNonIssuingKinds{
     static_cast<std::uint8_t>(Kind::native_transfer),
     static_cast<std::uint8_t>(Kind::purchase_seat),
     static_cast<std::uint8_t>(Kind::activate_seat),
@@ -26,6 +27,8 @@ constexpr std::array<std::uint8_t, 9> kNonIssuingKinds{
     static_cast<std::uint8_t>(Kind::signer_revoke),
     static_cast<std::uint8_t>(Kind::set_security_posture),
     static_cast<std::uint8_t>(Kind::native_transfer_verified),
+    static_cast<std::uint8_t>(Kind::challenge_response),
+    static_cast<std::uint8_t>(Kind::file_dispute),
 };
 
 bool is_non_issuing(std::uint8_t kind) {
@@ -42,13 +45,19 @@ bool receipt_is_consistent(const Receipt& receipt) {
   if (failed && receipt.fee_charged != 0) return false;
   if (failed && receipt.issued_atomic != 0) return false;
   if (is_non_issuing(receipt.kind) && receipt.issued_atomic != 0) return false;
-  // A successful registration charges a zero fee, which is the one success in
-  // any version with no fee, and the receipt records it as zero rather than as
-  // the fixed fee.
-  if (receipt.kind == static_cast<std::uint8_t>(Kind::hub_register) &&
-      receipt.fee_charged != 0) {
-    return false;
-  }
+  // **The two fee-exempt kinds charge nothing on success**, and the receipt
+  // records it as zero rather than as the fixed fee. The registration is
+  // version six's exemption; the challenge response is version eight's, on the
+  // owner's answer of 2026-09-02 that answering a mandatory audit costs an
+  // operator nothing.
+  //
+  // The dispute is *not* on this list, and the asymmetry is the contract's: a
+  // response is a machine answering an audit the chain demanded of it, and a
+  // dispute is a third party relaying someone else's judgment.
+  const bool fee_exempt =
+      receipt.kind == static_cast<std::uint8_t>(Kind::hub_register) ||
+      receipt.kind == static_cast<std::uint8_t>(Kind::challenge_response);
+  if (fee_exempt && receipt.fee_charged != 0) return false;
   return true;
 }
 
