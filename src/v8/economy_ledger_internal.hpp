@@ -79,13 +79,6 @@ std::optional<Outcome> file_dispute(Ledger& ledger, const Envelope& envelope,
 // million quiet heights would not survive.
 std::vector<std::string_view> uptime_failures(const Ledger& ledger);
 
-// The seat window record for one window and seat, with an absent record read as
-// a fully credited seat. `nullopt` is a record that will not decode, which is an
-// invariant failure: every record in state was written by this kernel.
-std::optional<SeatWindowRecord> window_record(const Ledger& ledger,
-                                              std::uint64_t cycle_window,
-                                              std::uint32_t seat_id);
-
 // All sixteen kinds. Six write authority and identity; eight move or issue
 // value; two carry uptime evidence.
 std::optional<Outcome> dispatch(Ledger& ledger, const Envelope& envelope,
