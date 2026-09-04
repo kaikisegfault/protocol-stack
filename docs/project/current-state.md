@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-09-04
+Last updated: 2026-09-05
 
 ## Phase
 
@@ -137,6 +137,15 @@ slice delivers is the byte and derivation surface of `economy-transition-v8` —
 two transaction kinds, two state entry kinds, twelve result codes, one genesis
 field, and the two signed constructions — verified against 121 of that
 contract's 183 vectors. The other 62 need a ledger and are M3.13o's.
+
+**M3.13o completed the kernel on 2026-09-05**, which is step 2 of the seven the
+migration enumerates. `execute_block` loses its `UptimeSchedule*` parameter and
+derives the schedule from the seat table and the window records instead, so a
+node cannot be handed a different answer than its peers computed; the block
+gains the issue step and the expiry step and now runs at every height. **It is
+the first time the C++20 kernel has run a chain that measures its own machines
+and pays one of them**, and all 617 of `economy-transition-v8`'s recorded
+vectors — 183 contract and 434 execution — are reproduced in C++.
 
 **Requirement 10 is satisfied.** The kernel compiles `economy-transition-v7` in
 full: the byte and derivation surface, the ledger, all fourteen transitions,
@@ -3237,10 +3246,21 @@ slices.
   transactions, and the expiry step that clears a slot bit for a challenge nobody
   answered — and `test-vectors/economy-transition-v8-execution.txt` records 434
   vectors over four scenarios reaching all sixteen kinds. A whole 28,800-height
-  window is executed block by block in each. **Nothing in C++ executes any of
-  it** — the bullet below is the codec alone — and the snapshot, store,
-  application, transport, node process, and adapter all still name version
-  seven.
+  window is executed block by block in each. **The C++ kernel now runs the same
+  contract** — the bullet below — while the snapshot, store, application,
+  transport, node process, and adapter all still name version seven.
+- **A version-eight chain runs in C++20 as of 2026-09-05, and it measures its
+  own machines.** `src/v8/` compiles the whole contract: the ledger, the four
+  ordered block steps, both new transitions, the schedule derivation, and the
+  six added invariants. `economy_v8_execution_tests` reproduces every one of
+  `test-vectors/economy-transition-v8-execution.txt`'s 434 vectors and the 62
+  contract vectors a ledger is needed for. In the recorded `measured` scenario
+  one machine answers all fifty-four audits the chain issues it across a whole
+  28,800-height window and writes no window record at all, another answers none
+  of its fifty-two and fails its cycle, and the window's assignment pays the
+  first — **with nothing anywhere told that the second was offline**. What is
+  still version seven's is every layer above the kernel: the snapshot, the
+  store, the application, the transport, the node process, and the adapter.
 - **The version-eight byte and derivation surface compiles in C++20 as of
   2026-09-04.** `src/v8/` and `include/protocol/v8/economy.hpp` hold the
   envelope with its sixteen bodies, the six HUB messages and the dispute
@@ -3635,6 +3655,62 @@ slices.
   founder-decision gate before starting a slice and reports its result whether or
   not anything is reserved.
 
+### How M3.13o was delivered
+
+**The kernel now runs version eight.** `src/v8/` gained version seven's seven
+execution sources with three identifiers rebound,
+`include/protocol/v8/ledger.hpp`, and `economy_uptime_transitions.cpp` for the
+two transitions and the two block-step effects no transaction can request. The
+whole version-eight kernel is nineteen sources and two headers.
+
+**The block runs at every height, which version seven's does not**, and that one
+sentence is most of the slice. The prologue assigns the due window and then
+deletes its evidence unconditionally — which is what makes invariant 5 hold at a
+boundary height without a second rule; the issue step audits every in-scope seat
+against the block's own `previous_state_root`; the expiry step follows the
+transactions. The three demonstration flags are one `BlockOrder` struct and none
+is a configuration option a chain has.
+
+**`run_quiet_heights` is what makes the recorded scenarios affordable.** They
+run about 1.35 million heights between their recorded blocks, and the whole
+suite — four scenarios executed twice for determinism, about 2.7 million heights
+— takes 0.63 seconds. It works through a `state_root_frame` that `state_root` is
+now *defined* through, so the fast path and the ordinary path are the same
+preimage by construction rather than by agreement.
+
+**The uptime invariants are split out as `uptime_failures`**, and the split is a
+cost decision rather than a weakening: a quiet height can only break those six,
+and the full conservation gate walks every seat's assignment records once per
+seat, which ADR 0055 accepts at a block and which 1.35 million quiet heights
+would not survive.
+
+**Twenty-four mutation probes were run and five passed uncaught.** Four were the
+same shape and it is the shape worth remembering: **an invariant nothing could
+reach.** Three of the six version eight adds — the retention bound on a window
+record, the deadline bound on an open challenge, and the open-challenge state
+rule — could have been deleted outright with every recorded vector still
+passing, and so could the quiet height's own gate. A recorded scenario cannot
+reach them, because the steps that write these entries never produce the states
+they forbid; that is what an invariant is *for*, and it is also why nothing was
+testing them. Each is now checked by writing the forbidden state directly into
+the raw uptime map and requiring the invariant to name the rule it broke, with a
+positive control beside it so the refusal is about the state rather than about
+the check.
+
+**The fifth was a probe that mutated unreachable code rather than a gap**, which
+is the other half of the same lesson. `derive_schedule`'s absent-record default
+sits behind a branch `seat_window_record` never takes, so mutating it changed
+nothing; re-aimed at the accessor every caller actually uses, it fails three
+block roots.
+
+**Two recorded lessons were paid again and both are worth re-reading before the
+next layer.** The two expiry constants are not interchangeable — every builder
+imported from version six carries version six's default, and unifying them
+produces identical state roots and different transaction roots, so every block's
+state matches and every header does not. And Clang refuses what GCC accepts: an
+unused helper compiled clean under GCC 12 and would have failed two of the four
+hosted jobs.
+
 ### How M3.13n was delivered
 
 **Ten of the eleven sources are version seven's codec with three identifiers
@@ -3815,6 +3891,19 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #249 and PR #250 are the M3.13o delivery, merged by rebase across
+  commits `389e819` through `10fcc23` on `main`. It adds
+  `include/protocol/v8/ledger.hpp`, `src/v8/`'s seven execution sources plus
+  `economy_uptime_transitions.cpp` and `economy_ledger_internal.hpp`, and the
+  six `tests/kernel/economy_v8_*execution*`, `*trace*`, `*scenarios*`,
+  `*derived*`, and `*transitions*` translation units. It adds one CMake target,
+  `economy_v8_execution_tests`, and one ctest entry,
+  `economy-transition-v8-execution-cpp`, so the suite goes from 159 to **160**
+  entries in the debug presets and from 167 to **168** under
+  `clang-sanitizers`. **No accepted vector file changes** and **no
+  version-seven source, header, or test was touched**. Run 33919528555 on head
+  `7823ee7` passed the complete hosted matrix, and the merged tree is
+  byte-identical to the verified one (`ca94043`).
 - Issue #244 and PR #247 are the M3.13n delivery, merged by rebase across
   commits `2675c2f` through `f33890b` on `main`. It adds
   `include/protocol/v8/economy.hpp` and `src/v8/`'s eleven sources plus
@@ -4744,15 +4833,17 @@ identities — and reproduces both version-seven vector files. Requirements 10 a
 side.** `economy-transition-v8` is specified, modelled, and executed, and a
 recorded chain derives a cycle assignment from evidence it recorded itself.
 
-**As of 2026-09-04 its C++ codec exists and its C++ execution does not.** M3.13n
-added `src/v8/` beside `src/v7/` under ADR 0065's staged replacement, so the
-kernel now compiles version eight's byte and derivation surface and version
-seven's whole contract. What is missing is six of the seven enumerated steps:
-the version-eight ledger and its four ordered block steps, `snapshot_v8`,
+**As of 2026-09-05 the whole version-eight kernel exists and nothing above it
+does.** M3.13n added `src/v8/` beside `src/v7/` under ADR 0065's staged
+replacement and M3.13o completed it, so the kernel compiles two whole economy
+contracts and a version-eight chain runs in C++ — measuring its own machines,
+deriving a cycle from that evidence, and paying a winner from it. What is
+missing is five of the seven enumerated steps: `snapshot_v8`,
 `SQLiteLedgerV8`, `ApplicationV8`, `protocol-application-v8` with the Go
 adapter's version-eight client, and the deletion that ends the coexistence.
 Each layer carries a version number and none is optional for a chain that
-runs.
+runs, so **no version-eight state survives a restart and no two nodes agree on
+one** until they are done.
 
 **What is missing now is everything between a block and a network.** The kernel
 executes blocks against an in-memory ledger. It is not wired to the SQLite
@@ -4814,16 +4905,18 @@ state entries, twelve result codes, one genesis field, and a block execution of
 four ordered steps in which the prologue derives the schedule from state and
 `execute_block` loses its `UptimeSchedule*` parameter. A Python model executes
 all of it and 617 vectors record it — 183 for the contract and 434 for the
-execution — and **as of 2026-09-04 the C++20 kernel compiles version eight's
-byte and derivation surface**, checked against 121 of those 183.
+execution — and **as of 2026-09-05 the C++20 kernel reproduces every one of
+them**, the codec's 121 and the ledger's 496.
 
-**No chain runs any of it yet.** Nothing in C++ executes a version-eight
-transition, and no version-eight chain identity exists anywhere a node could
-open, because the ledger, the four ordered block steps, the two transitions,
-the schedule derivation, and the five layers above the kernel are M3.13o
-through M3.13s. So the gap in what *runs* is narrower than it was by exactly
-one layer of one stack: the contract is executable by something, checked rather
-than asserted, and now also compiled.
+**No chain runs any of it in production yet, and the reason is now only the
+layers above the kernel.** A version-eight chain executes in memory and
+measures its own machines; what does not exist is `snapshot_v8`,
+`SQLiteLedgerV8`, `ApplicationV8`, `protocol-application-v8`, and the Go
+adapter's version-eight client, which are M3.13p through M3.13s. **So no
+version-eight state survives a restart and no two nodes agree on one.** The gap
+in what *runs* is narrower than it was by two layers of one stack rather than
+by a promise: the contract is executable by something, checked rather than
+asserted, and now also compiled and executed.
 
 **Two contracts are also still owed, and neither blocks requirement 13.** That
 was recorded the other way round at the close of M3.12b and M3.13a corrected it.
@@ -5026,20 +5119,21 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.13o: the version-eight kernel execution**, step 2 of the
-seven-slice stack migration [ADR
+Milestone slice **M3.13p: `snapshot_v8`**, step 3 of the seven-slice stack
+migration [ADR
 0065](../decisions/0065-a-kernel-replacement-may-be-staged-across-a-stack-migration.md)
-enumerates. **Step 1 landed on 2026-09-04** and the repository now compiles two
-economy contracts, which ADR 0065 permits only while this migration is in
-flight and only because step 7 is a numbered slice with its content already
-written down.
+enumerates. **Steps 1 and 2 landed on 2026-09-04 and 2026-09-05**, so the
+repository compiles two whole economy contracts — which ADR 0065 permits only
+while this migration is in flight, and only because step 7 is a numbered slice
+with its content already written down.
 
-The enumeration, with step 1 struck:
+The enumeration, with the first two struck:
 
 1. ~~**M3.13n** — the version-eight kernel codec, beside version seven's.~~
    **Delivered 2026-09-04 as PR #247.**
-2. **M3.13o** — the version-eight kernel execution: the ledger, the four ordered
-   block steps, the two transitions, and the schedule derivation.
+2. ~~**M3.13o** — the version-eight kernel execution: the ledger, the four
+   ordered block steps, the two transitions, and the schedule derivation.~~
+   **Delivered 2026-09-05 as PR #250.**
 3. **M3.13p** — `snapshot_v8`, which must encode the two entry kinds version
    eight adds or a version-eight ledger cannot be written down.
 4. **M3.13q** — `SQLiteLedgerV8`.
@@ -5052,72 +5146,49 @@ The enumeration, with step 1 struck:
    reaches step 6 finds step 7 here as its next action**, which is the mechanism
    that makes the end real.
 
-**M3.13o's own scope.** `economy-transition-v8.txt`'s 183 vectors split at 121
-a codec can reproduce and **62 that need a ledger**: kind 20's positive control
-and its nine ordered refusals, kind 21's and its ten, the schedule derivation,
-the settlement claim, expiry, and containment. The 121 are done and checked by
-`economy_v8_codec_tests`; **the 62 are this slice**, and
-`test-vectors/economy-transition-v8-execution.txt`'s 434 vectors are the second
-file, on the shape of `economy_v7_execution_tests`.
+**M3.13p's own scope.** `snapshot_v8` must encode the two entry kinds version
+eight adds, or a version-eight ledger cannot be written down at all — which is
+why it is step 3 rather than something the store could work around. Its shape is
+recorded further down under what the snapshot looks like now: one public header
+and four translation units, a 126-octet prefix version eight has to widen for
+`dispute_authority_key`, a payload magic of version one's `PSSN` with a version
+field so an older decoder answers `unsupported_version` rather than `malformed`,
+and three gates of which the conservation gate is the only one a resealed
+forgery does not defeat.
 
-**What the execution half is, file for file.** `src/v7/`'s remaining eight
-sources are `economy_assignment`, `economy_block`, `economy_execution`,
-`economy_invariants`, `economy_ledger`, `economy_transitions`, and
-`economy_value_transitions`, plus `economy_ledger_internal.hpp` — and
-`include/protocol/v7/ledger.hpp` is the header to copy, `economy.hpp` having
-already been copied. The same three `sed` expressions do the rebinding:
-`namespace protocol::v7` to `protocol::v8`, `protocol::v7::` to
-`protocol::v8::`, and `"protocol/v7/` to `"protocol/v8/`. **Do not run a blanket
-`v7` to `v8` rewrite** — in the codec half exactly nine literal mentions of
-version seven survived those three, every one prose about history that had to be
-kept or rewritten deliberately, and the execution half will have its own.
+**Two things about the ledger it now has to write down.** `Ledger.uptime` is one
+raw key-to-value map holding every kind-18 and kind-19 entry, so the snapshot
+encodes it as entries rather than as typed records — and `dispute_authority_key`
+is a genesis field on the ledger rather than a state entry, so it belongs in the
+prefix beside `verifier_key` and not in the entry stream.
 
-**One thing the recorded 9 / 8 split got wrong, corrected here so it is not
-rediscovered.** `economy_settlement.cpp` was written down as the execution half,
-but it implements only functions `economy.hpp` declares — the bounded mint walk,
-`window_of_height`, `accrues`, `last_assigned_window`, and the three
-verified-user functions — so it is inside the codec's closure and **moved with
-the codec in M3.13n**. `src/v8/` is eleven sources today, not nine, and the
-execution slice copies seven `.cpp` files plus the internal header rather than
-eight.
+**The three `sed` expressions do the rebinding for every remaining layer**, as
+they did for both kernel halves: `namespace protocol::v7` to `protocol::v8`,
+`protocol::v7::` to `protocol::v8::`, and `"protocol/v7/` to `"protocol/v8/`.
+**Do not run a blanket `v7` to `v8` rewrite** — nine literal mentions of version
+seven survived those three in the codec half and twenty-one in the execution
+half, and every one was prose about history that had to be kept or rewritten
+deliberately. The storage layer will have its own, and **`snapshot_v7`'s name
+appears in a SQLite column check and in a schema DDL that are compared verbatim
+on every open**, so a careless rename there is a store that will not reopen.
 
-**What version eight's ledger must add on top of version seven's.** The Python
-is the specification of the shape here and it should be read before the C++ is
-written: `ledger.py` subclasses version seven's `Ledger` and overrides four
-things — genesis binds the dispute authority key, the projection adds
-`self.uptime`, the root is version eight's, and `conservation_failures` appends
-six invariants. **`Ledger.uptime` is one raw key-to-value map holding every
-kind-18 and kind-19 entry**, handed directly to the contract model's `Context`,
-so the two transitions the 183 contract vectors were recorded against are the
-implementation rather than siblings of one. `block.py` holds the four ordered
-steps plus `run_quiet_heights`, and `Ledger.advance_to` **raises** once any seat
-is activated, because a version-eight block with no transactions still audits
-every in-scope seat.
-
-**`kFrozenUnreachableCodes` is this slice's rule to enforce and not the
-codec's.** Version eight makes `FEE_LIMIT_TOO_LOW`, `DEBIT_OVERFLOW`, and
-`INSUFFICIENT_BALANCE` unreachable **for kind 20 only**, and every other kind
-still produces all three, so the array stays at three and the ledger is what
-makes the exemption true: kind 20 charges nothing, and what its acting escrow
-must cover is zero.
-
-**One lesson from M3.13n that this slice will be in a position to repeat.**
-`predecessor_state_root` initially passed every check while writing version
-eight's schema version into every predecessor preimage — the labels differed, so
-all seven digests differed from version eight's *and from each other*, and every
-inequality comparison passed about an artifact no chain ever had. **An
-inequality between two digests proves nothing about either one.** The fix pins
-both ends of the range against the file that recorded it. Any new cross-version
-comparison this slice writes needs the same treatment.
+**Two things about the ledger `snapshot_v8` now has to write down.**
+`Ledger.uptime` is one raw key-to-value map holding every kind-18 and kind-19
+entry, so the snapshot encodes it as entries rather than as typed records — and
+`dispute_authority_key` is a genesis field carried on the ledger rather than a
+state entry, so it belongs in the prefix beside `verifier_key` and not in the
+entry stream. The prefix therefore widens from 126 octets, and the encoder's own
+"wrote exactly that many" check and the store column's `length >= 190` both move
+with it.
 
 **What exists and what does not.** `simulation/economy_transition_v8/` is
-complete: the codec, both transitions, the schedule derivation, the ledger, the
-four ordered block steps, and four recorded scenarios. **In C++, `src/v8/` is
-eleven codec sources and `include/protocol/v8/economy.hpp`**, verified by
-`economy_v8_codec_tests` against 121 vectors. Nothing in C++ executes a
-version-eight transition. `src/v7/` is seventeen sources and
-`include/protocol/v7/` two headers, and every layer above the kernel still names
-version seven.
+complete. **In C++ the whole version-eight kernel is complete**: `src/v8/` is
+nineteen sources and `include/protocol/v8/` two headers, verified by
+`economy_v8_codec_tests` against 121 contract vectors and by
+`economy_v8_execution_tests` against the other 62 and all 434 execution vectors.
+`src/v7/` is seventeen sources and `include/protocol/v7/` two headers, and
+**every layer above the kernel still names version seven** — which is what steps
+3 through 6 move and step 7 deletes.
 
 **What version eight adds to the kernel, and each item is a place to get it
 wrong:**
@@ -5156,7 +5227,7 @@ file stops being read by anything. **Adding an executable is four CMake edits**
 example immediately above `economy-transition-v8-cpp`'s `add_test`.
 
 **Then, in order, each its own slice:**
-* steps 3 through 7 of the migration above, whose layer shapes are recorded
+* steps 4 through 7 of the migration above, whose layer shapes are recorded
   further down this document;
 * requirement 13's remaining half, the **adversarial** scenarios, which only
   become economic once a version-eight chain is measuring seats. Four replicas
@@ -5496,6 +5567,28 @@ pushing**: it caught a structured-binding capture GCC accepts and the matrix
 rejects. **On Python sources use `python3 -B`**, because a stale bytecode cache
 can make a mutation probe appear to pass without ever compiling the mutation.
 
+**An invariant nothing can reach is an invariant nothing is testing**, and
+M3.13o found four of them in one slice. Three of the six version eight adds —
+the retention bound on a seat window record, the deadline bound on an open
+challenge, and the open-challenge state rule — could have been deleted outright
+with every one of 434 recorded execution vectors and 62 contract vectors still
+passing, and so could the quiet height's own conservation gate. **A recorded
+scenario cannot reach them by construction**: the steps that write these entries
+never produce the states they forbid, which is what an invariant is *for* and is
+also exactly why nothing exercised them. The fix is to write the forbidden state
+directly into the raw map and require the invariant to name the rule it broke,
+with a positive control beside it so the refusal is about the state rather than
+about the check. **Every future layer that adds an invariant needs this same
+pass**, and a probe that deletes the invariant is the cheapest way to find out.
+
+**And re-aim a probe that mutated unreachable code**, which is the other half of
+the same lesson. M3.13o's absent-record probe changed a ternary's else-branch
+that `seat_window_record` never takes, so it proved nothing; re-aimed at the
+accessor every caller actually uses, it fails three block roots. A probe that
+passes has proved nothing until you have checked that it changed the code the
+test runs, and "the code the test runs" excludes a defensive branch no caller
+reaches.
+
 **An inequality between two digests proves nothing about either one**, and
 M3.13n paid for that twice in one slice. `predecessor_state_root` was written to
 recompute an earlier version's root so that each of the seven non-collisions is
@@ -5598,6 +5691,26 @@ its own**: `coverage.every_kind_version_eight_admits_is_executed` fails if a
 later scenario change stops reaching one.
 
 ## Blockers
+
+**M3.13o ran the founder-decision gate and passed it.** Fourteen decisions were
+enumerated before any was judged: whether `include/protocol/v8/ledger.hpp` is a
+copy or a new design; the two transitions' ordered rejection conditions; the
+four block steps and what each reads and writes; the schedule derivation; the
+six added invariants; kind 20's debit; whether `execute_block` keeps an uptime
+parameter; how the uptime evidence is held on the C++ ledger; where the three
+demonstration flags live; whether the uptime invariants are split from the
+conservation gate; the quiet-height runner and its beacon; the test target's
+name and vector arguments; which mutation probes to run; and where
+`kActivityThresholdSeconds` is declared. **Every one is already decided by an
+accepted document or is engineering work**: the transitions, the steps, the
+derivation, and the invariants by `economy-transition-v8.md`; kind 20's debit by
+ADR 0064's derivation from the owner's answer of 2026-09-02; the parameter's
+removal by the specification's own "what version eight changes" table; and the
+rest by this repository's conventions. Nothing in the slice set or changed
+supply, allocation, beneficiaries, Founder ownership, creator hierarchy,
+commercial routing, AI institutional authority, bridge scope, content
+permanence, or what an end user must do, own, run, or receive, and **no accepted
+vector file changed**.
 
 **M3.13n ran the founder-decision gate and passed it.** Fifteen decisions were
 enumerated before any was judged: whether `src/v8/` sits beside `src/v7/` or

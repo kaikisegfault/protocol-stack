@@ -1,8 +1,7 @@
 # Economy transition v8
 
-Status: Accepted M3 consensus transition contract; contract model, contract
-vectors, execution model, execution vectors, and the C++20 kernel codec
-recorded, kernel execution still owed
+Status: Accepted M3 consensus transition contract; model, execution, vectors,
+and C++20 kernel implementation recorded
 
 This document defines the version-eight Founder Economy consensus transition. It
 is [`economy-transition-v7`](economy-transition-v7.md) with **an on-chain
