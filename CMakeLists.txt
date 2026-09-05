@@ -220,6 +220,9 @@ add_library(
     src/storage/snapshot_v7.cpp
     src/storage/snapshot_v7_assignments.cpp
     src/storage/snapshot_v7_entries.cpp
+    src/storage/snapshot_v8.cpp
+    src/storage/snapshot_v8_assignments.cpp
+    src/storage/snapshot_v8_entries.cpp
 )
 add_library(
   protocol_application
@@ -643,6 +646,9 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       src/storage/snapshot_v7.cpp
       src/storage/snapshot_v7_assignments.cpp
       src/storage/snapshot_v7_entries.cpp
+      src/storage/snapshot_v8.cpp
+      src/storage/snapshot_v8_assignments.cpp
+      src/storage/snapshot_v8_entries.cpp
   )
   add_library(
     protocol_application_wire_fuzz
