@@ -436,6 +436,20 @@ add_executable(
   tests/kernel/economy_v7_trace.cpp
   tests/kernel/economy_v7_scenarios_test.cpp
 )
+# The two scenario translation units are the version-eight kernel execution
+# suite's own, reused for the reason version seven's are: the recorded scenarios
+# are what a snapshot is checked against, and a second copy of them would be a
+# second opinion about the states whose roots the vectors fix.
+add_executable(
+  storage_snapshot_v8_tests
+  tests/storage/snapshot_v8_test.cpp
+  tests/storage/snapshot_v8_fixture.cpp
+  tests/storage/snapshot_v8_round_trip.cpp
+  tests/storage/snapshot_v8_refusals.cpp
+  tests/storage/snapshot_v8_entry_refusals.cpp
+  tests/kernel/economy_v8_trace.cpp
+  tests/kernel/economy_v8_scenarios_test.cpp
+)
 add_executable(
   storage_archive_v1_tests
   tests/storage/archive_v1_test.cpp
@@ -523,6 +537,12 @@ target_link_libraries(
     protocol_stack_sqlite
 )
 target_link_libraries(
+  storage_snapshot_v8_tests
+  PRIVATE
+    protocol_storage
+    protocol_stack_sqlite
+)
+target_link_libraries(
   storage_sqlite_ledger_v7_tests
   PRIVATE
     protocol_storage
@@ -599,6 +619,7 @@ set(
   storage_sqlite_recovery_v7_tests
   storage_snapshot_v1_tests
   storage_snapshot_v7_tests
+  storage_snapshot_v8_tests
   storage_sqlite_ledger_v7_tests
   storage_archive_v1_tests
   application_v1_tests
@@ -679,6 +700,10 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     tests/fuzz/snapshot_v7_fuzz.cpp
   )
   add_executable(
+    storage_snapshot_v8_fuzz
+    tests/fuzz/snapshot_v8_fuzz.cpp
+  )
+  add_executable(
     storage_archive_fuzz
     tests/fuzz/archive_fuzz.cpp
   )
@@ -702,6 +727,11 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       protocol_storage_fuzz
   )
   target_link_libraries(
+    storage_snapshot_v8_fuzz
+    PRIVATE
+      protocol_storage_fuzz
+  )
+  target_link_libraries(
     application_wire_fuzz
     PRIVATE
       protocol_application_wire_fuzz
@@ -718,6 +748,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     protocol_storage_fuzz
     storage_snapshot_fuzz
     storage_snapshot_v7_fuzz
+    storage_snapshot_v8_fuzz
     storage_archive_fuzz
     protocol_application_wire_fuzz
     application_wire_fuzz
@@ -759,6 +790,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       protocol_storage_fuzz
       storage_snapshot_fuzz
       storage_snapshot_v7_fuzz
+      storage_snapshot_v8_fuzz
       storage_archive_fuzz
       protocol_application_wire_fuzz
       application_wire_fuzz
@@ -778,6 +810,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       economy_v7_fuzz
       storage_snapshot_fuzz
       storage_snapshot_v7_fuzz
+      storage_snapshot_v8_fuzz
       storage_archive_fuzz
       application_wire_fuzz
   )
@@ -846,6 +879,12 @@ add_test(
   COMMAND
     storage_snapshot_v7_tests
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7-execution.txt"
+)
+add_test(
+  NAME version-eight-snapshot
+  COMMAND
+    storage_snapshot_v8_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v8-execution.txt"
 )
 # The directory name is short because the termination cases re-exec this binary
 # and its arguments include the directory.
@@ -1954,6 +1993,15 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     NAME storage-snapshot-v7-fuzz-smoke
     COMMAND
       storage_snapshot_v7_fuzz
+      -seed=824311
+      -runs=512
+      -max_len=4096
+      -len_control=0
+  )
+  add_test(
+    NAME storage-snapshot-v8-fuzz-smoke
+    COMMAND
+      storage_snapshot_v8_fuzz
       -seed=824311
       -runs=512
       -max_len=4096
