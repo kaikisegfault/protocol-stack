@@ -147,6 +147,18 @@ the first time the C++20 kernel has run a chain that measures its own machines
 and pays one of them**, and all 617 of `economy-transition-v8`'s recorded
 vectors — 183 contract and 434 execution — are reproduced in C++.
 
+**M3.13p carried the migration into storage on 2026-09-05**, which is step 3.
+`snapshot_v8` is what lets a version-eight state leave memory at all: the ledger
+holds two entry kinds no version-seven snapshot has a place for, so no store,
+application, or node could hold a version-eight state before it existed. ADR 0066
+records it. **Its sharpest result is about version eight's own invariants rather
+than about the snapshot.** Two of the six M3.13o added — the window record's
+retention bound and the open challenge's deadline bound — are the *only* thing
+refusing a resealed payload that carries a well-formed entry in an impossible
+place; probes deleting either report "a restore accepted it". That carries
+M3.13o's finding, that three of the six were unreachable by any recorded
+scenario, one layer up into storage.
+
 **Requirement 10 is satisfied.** The kernel compiles `economy-transition-v7` in
 full: the byte and derivation surface, the ledger, all fourteen transitions,
 ordered block execution with the cycle-assignment prologue, and both
@@ -3247,8 +3259,9 @@ slices.
   answered — and `test-vectors/economy-transition-v8-execution.txt` records 434
   vectors over four scenarios reaching all sixteen kinds. A whole 28,800-height
   window is executed block by block in each. **The C++ kernel now runs the same
-  contract** — the bullet below — while the snapshot, store, application,
-  transport, node process, and adapter all still name version seven.
+  contract** — the bullet below — and `snapshot_v8` can write its state down,
+  while the store, application, transport, node process, and adapter all still
+  name version seven.
 - **A version-eight chain runs in C++20 as of 2026-09-05, and it measures its
   own machines.** `src/v8/` compiles the whole contract: the ledger, the four
   ordered block steps, both new transitions, the schedule derivation, and the
@@ -3259,8 +3272,8 @@ slices.
   28,800-height window and writes no window record at all, another answers none
   of its fifty-two and fails its cycle, and the window's assignment pays the
   first — **with nothing anywhere told that the second was offline**. What is
-  still version seven's is every layer above the kernel: the snapshot, the
-  store, the application, the transport, the node process, and the adapter.
+  still version seven's is every layer above the snapshot: the store, the
+  application, the transport, the node process, and the adapter.
 - **The version-eight byte and derivation surface compiles in C++20 as of
   2026-09-04.** `src/v8/` and `include/protocol/v8/economy.hpp` hold the
   envelope with its sixteen bodies, the six HUB messages and the dispute
@@ -3272,6 +3285,21 @@ slices.
   **Nothing executes a version-eight transition yet** — no ledger, no block
   steps, no transitions, no schedule derivation — and every layer above the
   kernel still names version seven.
+- **A version-eight state can be written down and read back, as of
+  2026-09-05.** `protocol::storage::snapshot_v8` encodes a whole version-eight
+  `Ledger` to canonical bytes and restores it to a ledger that keeps executing,
+  including the uptime carrier's two entry kinds — which it carries **raw**,
+  because the ledger holds them raw and a typed shadow would be a second
+  encoding of the key space the two version-eight transitions write.
+  `dispute_authority_key` rides in the prefix beside `verifier_key`, taking it
+  from 126 octets to 158, and joins the restore parameters: unlike the verifier
+  key it has no second copy in the payload, so that comparison is the whole of
+  what stops a restored node answering to a different dispute authority than its
+  peers. Each of the four recorded scenarios is snapshotted, restored,
+  re-encoded, and required to reproduce its *recorded* `final_state_root`.
+  **What is still version seven's is the store, the application, the transport,
+  the node process, and the adapter**, so a version-eight state can be written
+  down and still does not survive a restart.
 - **A version-seven state can be written down and read back.**
   `protocol::storage::snapshot_v7` encodes a whole `Ledger` to canonical bytes
   and restores it to a ledger that keeps executing: the summary, the ordered
@@ -3655,6 +3683,61 @@ slices.
   founder-decision gate before starting a slice and reports its result whether or
   not anything is reserved.
 
+### How M3.13p was delivered
+
+**A version-eight state can leave memory.** `protocol::storage::snapshot_v8` is
+version seven's snapshot with one subject added and one field widened: three
+translation units and two headers, of which `snapshot_v8_assignments.cpp` is
+version seven's file with three identifiers rebound and **nothing else** — the
+normalising diff against it is empty, which is the strongest available statement
+that nothing changed by accident.
+
+**The two entry kinds are carried raw, and that is the whole design decision.**
+`Ledger::uptime` is one raw key-to-value map, so the snapshot stores what
+arrived. Decoding into fields and re-encoding on the way out would be a second
+encoding of the key space the two version-eight transitions write, with nothing
+keeping the two equal — the failure ADR 0026, ADR 0029, and ADR 0046 each
+record. The entries are still *checked*: two rules are the kernel's own decoders,
+reused rather than restated, and one of them closes ADR 0056's open note that a
+later transition version should state the bitmap pad rule outright.
+
+**`dispute_authority_key` is the one parameter with no second copy.** The
+verifier key is also an economy entry, so a payload carries it twice and the
+restore requires the two to agree. The dispute authority key is a genesis field
+bound into the chain identity and appears in no economy key, so nothing in the
+state root commits to it — and whoever holds it can void a machine's uptime. The
+out-of-band comparison is the whole of what stops a restored node answering to a
+different dispute authority than its peers, and a probe removing it reports "a
+restore accepted it".
+
+**One rule has no version-seven ancestor and one bound was deliberately left
+out.** A window record equal to `full_seat_window()` is refused, because a
+dispute sets a `disputed` bit and an expiry clears a `credited` one, so neither
+writer can leave a fully credited, undisputed window behind; that value is what a
+chain records by writing *nothing at all*, and carrying it would make one state
+representable two ways under one root. A separate `kMaxSeatId` bound beside the
+seat-existence rule was written, then removed before the commit: every seat the
+chain sold is inside the capacity, so it would fire only where the existence rule
+fires too, and a rule no test can isolate is the shape M3.13a and M3.13l were
+each caught by.
+
+**The evidence found something about the kernel rather than about the
+snapshot.** Two of the six invariants M3.13o added — the window record's
+retention bound and the open challenge's deadline bound — turn out to be the
+*only* thing refusing a resealed payload that carries a well-formed entry in an
+impossible place. Probes deleting either report "a restore accepted it". M3.13o
+had already found that three of the six were unreachable by any recorded
+scenario; this is the same finding one layer up, and the general rule it
+suggests is that **every layer should ask which of its refusals survive a
+reseal**, because those are the ones with nothing behind them.
+
+**Thirteen mutation probes, and the one that passed was read rather than
+patched.** Removing the encoder's own prefix-width assertion changed nothing,
+because the prefix is in fact 158 octets — it is a tripwire for a later edit, not
+a rule with a violating input. Giving it something to catch, by dropping a prefix
+field instead, fails at "the final ledger must encode". A guard with no violating
+input is not a defect, and mistaking one for a defect and deleting it would be.
+
 ### How M3.13o was delivered
 
 **The kernel now runs version eight.** `src/v8/` gained version seven's seven
@@ -3891,6 +3974,26 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #252 and PR #253 are the M3.13p delivery, merged by rebase across
+  commits `cdf37a4` through `f0aa720` on `main`. It adds
+  `include/protocol/storage/snapshot_v8.hpp`, three translation units and an
+  internal header under `src/storage/`, five test translation units under
+  `tests/storage/`, one fuzz target, and ADR 0066. It adds one CMake target,
+  `storage_snapshot_v8_tests`, one fuzz target, `storage_snapshot_v8_fuzz`, and
+  two ctest entries —
+  `version-eight-snapshot` and `storage-snapshot-v8-fuzz-smoke` — so the suite
+  goes from 160 to **161** entries in the debug presets and from
+  168 to **170** under `clang-sanitizers`. **No accepted vector file
+  changes and no new one is added**, for ADR 0056's reason: recording a
+  snapshot's bytes would pin an operational format as though it were a
+  contract. **No version-seven source, header, or test was touched.** Run
+  33973333160 on head `6e437b1` passed the complete hosted matrix. **Thirteen
+  mutation probes** were run and each was checked to have changed the code the
+  test runs; six report "a restore accepted it" without their rule, six are
+  caught naming the rule they broke, and one passed uncaught and was read
+  rather than patched — removing the encoder's own prefix-width assertion
+  changes nothing while the prefix is in fact 158 octets, and dropping a prefix
+  field instead is what that guard is for.
 - Issue #249 and PR #250 are the M3.13o delivery, merged by rebase across
   commits `389e819` through `10fcc23` on `main`. It adds
   `include/protocol/v8/ledger.hpp`, `src/v8/`'s seven execution sources plus
@@ -4837,8 +4940,9 @@ recorded chain derives a cycle assignment from evidence it recorded itself.
 does.** M3.13n added `src/v8/` beside `src/v7/` under ADR 0065's staged
 replacement and M3.13o completed it, so the kernel compiles two whole economy
 contracts and a version-eight chain runs in C++ — measuring its own machines,
-deriving a cycle from that evidence, and paying a winner from it. What is
-missing is five of the seven enumerated steps: `snapshot_v8`,
+deriving a cycle from that evidence, and paying a winner from it. M3.13p then
+added `snapshot_v8`, so a version-eight state can be written down. What is
+missing is four of the seven enumerated steps:
 `SQLiteLedgerV8`, `ApplicationV8`, `protocol-application-v8` with the Go
 adapter's version-eight client, and the deletion that ends the coexistence.
 Each layer carries a version number and none is optional for a chain that
@@ -4910,9 +5014,9 @@ them**, the codec's 121 and the ledger's 496.
 
 **No chain runs any of it in production yet, and the reason is now only the
 layers above the kernel.** A version-eight chain executes in memory and
-measures its own machines; what does not exist is `snapshot_v8`,
+measures its own machines and can write that state down; what does not exist is
 `SQLiteLedgerV8`, `ApplicationV8`, `protocol-application-v8`, and the Go
-adapter's version-eight client, which are M3.13p through M3.13s. **So no
+adapter's version-eight client, which are M3.13q through M3.13s. **So no
 version-eight state survives a restart and no two nodes agree on one.** The gap
 in what *runs* is narrower than it was by two layers of one stack rather than
 by a promise: the contract is executable by something, checked rather than
@@ -5119,24 +5223,26 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.13p: `snapshot_v8`**, step 3 of the seven-slice stack
+Milestone slice **M3.13q: `SQLiteLedgerV8`**, step 4 of the seven-slice stack
 migration [ADR
 0065](../decisions/0065-a-kernel-replacement-may-be-staged-across-a-stack-migration.md)
-enumerates. **Steps 1 and 2 landed on 2026-09-04 and 2026-09-05**, so the
-repository compiles two whole economy contracts — which ADR 0065 permits only
-while this migration is in flight, and only because step 7 is a numbered slice
-with its content already written down.
+enumerates. **Steps 1, 2, and 3 landed on 2026-09-04 and 2026-09-05**, so the
+repository compiles two whole economy contracts and two snapshot formats — which
+ADR 0065 permits only while this migration is in flight, and only because step 7
+is a numbered slice with its content already written down.
 
-The enumeration, with the first two struck:
+The enumeration, with the first three struck:
 
 1. ~~**M3.13n** — the version-eight kernel codec, beside version seven's.~~
    **Delivered 2026-09-04 as PR #247.**
 2. ~~**M3.13o** — the version-eight kernel execution: the ledger, the four
    ordered block steps, the two transitions, and the schedule derivation.~~
    **Delivered 2026-09-05 as PR #250.**
-3. **M3.13p** — `snapshot_v8`, which must encode the two entry kinds version
-   eight adds or a version-eight ledger cannot be written down.
-4. **M3.13q** — `SQLiteLedgerV8`.
+3. ~~**M3.13p** — `snapshot_v8`, which must encode the two entry kinds version
+   eight adds or a version-eight ledger cannot be written down.~~
+   **Delivered 2026-09-05 as PR #253.**
+4. **M3.13q** — `SQLiteLedgerV8`, which makes a version-eight state survive the
+   process that produced it.
 5. **M3.13r** — `ApplicationV8` and the version-eight transport responses.
 6. **M3.13s** — `protocol-application-v8` and the Go adapter's version-eight
    client.
@@ -5146,49 +5252,62 @@ The enumeration, with the first two struck:
    reaches step 6 finds step 7 here as its next action**, which is the mechanism
    that makes the end real.
 
-**M3.13p's own scope.** `snapshot_v8` must encode the two entry kinds version
-eight adds, or a version-eight ledger cannot be written down at all — which is
-why it is step 3 rather than something the store could work around. Its shape is
-recorded further down under what the snapshot looks like now: one public header
-and four translation units, a 126-octet prefix version eight has to widen for
-`dispute_authority_key`, a payload magic of version one's `PSSN` with a version
-field so an older decoder answers `unsupported_version` rather than `malformed`,
-and three gates of which the conservation gate is the only one a resealed
-forgery does not defeat.
+**M3.13q's own scope.** `SQLiteLedgerV8` makes a version-eight state survive the
+process that produced it. `snapshot_v8` gave it a canonical payload to persist,
+so this slice is the store around that payload rather than a serialisation
+problem: the schema, the open path with every validation step, the exclusive
+write, the seven fault points, and recovery. Its shape is recorded further down
+under what the store looks like now — one public header, three translation units,
+two internal headers, two `STRICT, WITHOUT ROWID` tables whose DDL is stored and
+compared verbatim on every open, and heights as fixed-width big-endian octets so
+`ORDER BY height` over a blob column is numeric order.
 
-**Two things about the ledger it now has to write down.** `Ledger.uptime` is one
-raw key-to-value map holding every kind-18 and kind-19 entry, so the snapshot
-encodes it as entries rather than as typed records — and `dispute_authority_key`
-is a genesis field on the ledger rather than a state entry, so it belongs in the
-prefix beside `verifier_key` and not in the entry stream.
+**Four figures move with the version and each is a place to get it wrong.** The
+`head_snapshot` column check goes from `length >= 190` to **`length >= 222`**,
+which is `snapshot_v8`'s own `kFixedSize` — the 158-octet prefix plus a root plus
+a digest — so the column check and the decoder cannot drift apart. The stored
+canonical genesis is **142 octets** rather than 110. `SnapshotParametersV8` has a
+**fifth** field, `dispute_authority_key`, so whatever the store hands the restore
+must carry it. And `execute_block` **takes no uptime schedule**, so the store's
+apply path loses a parameter rather than passing a null one.
 
-**The three `sed` expressions do the rebinding for every remaining layer**, as
-they did for both kernel halves: `namespace protocol::v7` to `protocol::v8`,
-`protocol::v7::` to `protocol::v8::`, and `"protocol/v7/` to `"protocol/v8/`.
+**`snapshot_v7`'s name appears in a SQLite column check and in a schema DDL that
+are compared verbatim on every open**, so a careless rename there is a store that
+will not reopen. The table names are `ledger_meta_v7` and `blocks_v7`, and the
+`application_id` and `user_version` are pinned.
+
+**The rebinding expressions, extended by what M3.13p needed.** Three do the
+namespace work, as they did for both kernel halves: `namespace protocol::v7` to
+`protocol::v8`, `protocol::v7::` to `protocol::v8::`, and `"protocol/v7/` to
+`"protocol/v8/`. The storage layer needs its own on top — for the snapshot they
+were `snapshot_v7`, `SnapshotV7`, `SnapshotParametersV7`, `EncodedSnapshotV7`,
+`DecodedSnapshotV7`, `encode_snapshot_v7`, `decode_snapshot_v7`, `snapshot-v7`,
+and the alias line `namespace v7 = protocol::v7;`, **which the three namespace
+expressions miss because they match `protocol::v7::` with a trailing pair of
+colons and the alias ends in a semicolon.** M3.13q's set is `sqlite_ledger_v7`,
+`SQLiteLedgerV7`, `sqlite_schema_v7`, and the same alias line.
+
 **Do not run a blanket `v7` to `v8` rewrite** — nine literal mentions of version
-seven survived those three in the codec half and twenty-one in the execution
-half, and every one was prose about history that had to be kept or rewritten
-deliberately. The storage layer will have its own, and **`snapshot_v7`'s name
-appears in a SQLite column check and in a schema DDL that are compared verbatim
-on every open**, so a careless rename there is a store that will not reopen.
-
-**Two things about the ledger `snapshot_v8` now has to write down.**
-`Ledger.uptime` is one raw key-to-value map holding every kind-18 and kind-19
-entry, so the snapshot encodes it as entries rather than as typed records — and
-`dispute_authority_key` is a genesis field carried on the ledger rather than a
-state entry, so it belongs in the prefix beside `verifier_key` and not in the
-entry stream. The prefix therefore widens from 126 octets, and the encoder's own
-"wrote exactly that many" check and the store column's `length >= 190` both move
-with it.
+seven survived in the codec half, twenty-one in the execution half, and eight in
+the snapshot, and every one was prose about history that had to be kept or
+rewritten deliberately. **A normalising diff is the whole review**: rendering both
+versions with `sed 's/v7/vX/g;s/V7/VX/g'` and `sed 's/v8/vX/g;s/V8/VX/g'` and
+diffing them shows exactly the intended deltas and nothing else. For the
+snapshot's assignment translation unit that diff was empty, which is the
+strongest possible statement that nothing was changed by accident.
 
 **What exists and what does not.** `simulation/economy_transition_v8/` is
 complete. **In C++ the whole version-eight kernel is complete**: `src/v8/` is
 nineteen sources and `include/protocol/v8/` two headers, verified by
 `economy_v8_codec_tests` against 121 contract vectors and by
 `economy_v8_execution_tests` against the other 62 and all 434 execution vectors.
-`src/v7/` is seventeen sources and `include/protocol/v7/` two headers, and
-**every layer above the kernel still names version seven** — which is what steps
-3 through 6 move and step 7 deletes.
+`src/v7/` is seventeen sources and `include/protocol/v7/` two headers.
+**`snapshot_v8` is complete as of 2026-09-05** — one public header, one internal
+header, and three translation units, verified by `storage_snapshot_v8_tests`
+against the four recorded scenarios' own `final_state_root` figures and by
+`storage_snapshot_v8_fuzz`. **Every layer above the snapshot still names version
+seven** — the store, the application, the transport, the node process, and the
+adapter — which is what steps 4 through 6 move and step 7 deletes.
 
 **What version eight adds to the kernel, and each item is a place to get it
 wrong:**
@@ -5345,7 +5464,36 @@ a beacon built from `state.state_root_frame` — the same preimage `state_root` 
 **raises** once any seat is activated, because a version-eight block with no
 transactions still audits every in-scope seat.
 
-**What the snapshot looks like now, so a later session does not rediscover it.**
+**What the version-eight snapshot looks like now, so a later session does not
+rediscover it.** `protocol::storage::snapshot_v8` is one public header, one
+internal header, and three translation units, on version seven's shape with a
+single subject added: `snapshot_v8_entries.cpp` carries `apply_open_challenge`
+and `apply_seat_window` beside the twelve fixed-width decoders, and
+`snapshot_v8_assignments.cpp` is version seven's file with three identifiers
+rebound and **nothing else at all** — the normalising diff against it is empty.
+The prefix is **158 octets** and `kFixedSize` **222**. The two uptime kinds are
+stored raw and checked rather than decoded into fields, `dispute_authority_key`
+is prefix field nine and restore parameter five, and the seat-existence rule runs
+in `complete()` so no value decoder depends on kind 1 sorting before kinds 18 and
+19.
+
+**Four rules the version-eight decoder enforces and where each is caught.** A
+challenge state that is not `0` or `1` and a window record with a pad bit or a
+dispute of an uncredited slot are the kernel's own decoders, reused so the
+snapshot and the invariant that re-reads the entry cannot disagree; each is also
+refused by `conservation_failures` a step later, so what the decoder buys is a
+named subject. **The other two have nothing behind them.** A record equal to
+`full_seat_window()` and an uptime entry naming an unsold seat both survive a
+reseal and both root gates, and the conservation invariants say nothing about
+either — so the decoder rule is the only refusal there is, which is why those
+tests reseal and why deleting either rule reports "a restore accepted it".
+
+**And a separate `kMaxSeatId` bound was considered and deliberately left out.**
+Every seat the chain sold is inside the capacity, so it would fire only where the
+existence rule fires too, and a rule no test can isolate is the shape this
+project has twice been caught by. ADR 0066 records the reasoning.
+
+**What the version-seven snapshot looks like, which step 7 deletes.**
 `protocol::storage::snapshot_v7` is one public header and four translation
 units: `snapshot_v7.cpp` owns the framing and the three gates,
 `snapshot_v7_entries.cpp` the fixed-width value decoders and the dispatch,
@@ -5441,7 +5589,9 @@ fixed-width big-endian octets **on purpose**: `ORDER BY height` over a blob colu
 is then numeric order, which is what lets the history be read back in block order
 by a bare connection. The `head_snapshot` column's `length >= 190` is the
 snapshot's own `kFixedSize`, the 126-octet prefix plus a root plus a digest, so
-the column check and the decoder cannot drift apart.
+the column check and the decoder cannot drift apart. **Under version eight that
+figure is 222**, because the prefix is 158, and the stored canonical genesis is
+142 octets rather than 110.
 
 **What the version-eight codec looks like now, so a later session does not
 rediscover it.** `src/v8/` holds eleven sources and `include/protocol/v8/` one
@@ -5538,6 +5688,15 @@ pattern is not found, rebuilds, runs, and restores — so a probe that never
 applied reports `PATTERN NOT FOUND` instead of a false pass. Three of M3.13n's
 twenty probes found real gaps and two of those three would have been read as
 successes without it.
+
+**The version-eight snapshot suite links with no SQLite at all**, because the
+snapshot touches none: `src/v8/*.cpp src/v1/*.cpp src/storage/snapshot_v8*.cpp
+tests/storage/snapshot_v8_*.cpp tests/kernel/economy_v8_trace.cpp
+tests/kernel/economy_v8_scenarios_test.cpp` builds from cold in about
+twenty-five seconds, and **compiling the stable translation units to objects in
+parallel once takes a probe relink to about four**. That is what made thirteen
+probes affordable in M3.13p. The whole suite runs in 2.7 seconds because
+`run_quiet_heights` executes the scenarios' 1.35 million heights.
 
 **M3.13a extended it to the storage tests and the pattern is worth keeping.**
 Adding `src/storage/snapshot_v7*.cpp tests/storage/snapshot_v7_*.cpp
@@ -5642,6 +5801,26 @@ because both identities were checked by the settlement test's own arithmetic and
 nowhere else. The fix was not a better probe but a better test: each identity is
 now broken on purpose and the kernel's invariant is required to report it by
 name. A probe that passes is a question about the tests, not only about itself.
+
+**The strongest probe result is "a restore accepted it", and it is worth
+building tests that can produce it.** M3.13p ran thirteen probes and six report
+exactly that, because the test that catches them reseals the payload first. A
+resealed forgery defeats both root gates by construction, so a probe against a
+resealed case answers a sharper question than "is this rule enforced": it answers
+"is this rule the only thing enforcing it". Two of the six were about version
+eight's *added invariants* rather than about the snapshot — the window record's
+retention bound and the challenge's deadline bound — which is M3.13o's finding
+about unreachable invariants carried one layer up. **Every layer that adds a rule
+should ask which of its refusals survive a reseal**, because those are the ones
+with nothing behind them.
+
+**And one probe that "passed uncaught" was read rather than patched.** Removing
+the encoder's own prefix-width assertion changed nothing, because the prefix is
+in fact 158 octets: it is a tripwire for a later edit, not a rule with a
+violating input. The way to test such a guard is to give it something to catch —
+dropping a prefix field instead, which fails at "the final ledger must encode".
+**A guard with no violating input is not a defect; mistaking it for one and
+deleting it is.**
 
 **A probe caught by an invariant rather than by a vector is a stronger result,
 not a weaker one.** Two of M3.13l's nine are refused before any comparison
