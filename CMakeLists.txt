@@ -503,6 +503,22 @@ add_executable(
   tests/kernel/economy_v7_trace.cpp
   tests/kernel/economy_v7_scenarios_test.cpp
 )
+# The two scenario translation units are the version-eight kernel execution
+# suite's own, for the reason version seven's application suite reuses its own:
+# the recorded scenarios are the third source a block driven through the
+# application is checked against.
+add_executable(
+  application_v8_tests
+  tests/application/application_v8_test.cpp
+  tests/kernel/economy_v8_trace.cpp
+  tests/kernel/economy_v8_scenarios_test.cpp
+)
+add_executable(
+  application_transport_v8_tests
+  tests/application/transport_v8_test.cpp
+  tests/kernel/economy_v8_trace.cpp
+  tests/kernel/economy_v8_scenarios_test.cpp
+)
 add_executable(
   application_wire_v1_tests
   tests/application/wire_v1_test.cpp
@@ -611,6 +627,18 @@ target_link_libraries(
     protocol_stack_sqlite
 )
 target_link_libraries(
+  application_v8_tests
+  PRIVATE
+    protocol_application
+    protocol_stack_sqlite
+)
+target_link_libraries(
+  application_transport_v8_tests
+  PRIVATE
+    protocol_application
+    protocol_stack_sqlite
+)
+target_link_libraries(
   application_wire_v1_tests
   PRIVATE
     protocol_application
@@ -666,6 +694,8 @@ set(
   application_v1_tests
   application_v7_tests
   application_transport_v7_tests
+  application_v8_tests
+  application_transport_v8_tests
   application_wire_v1_tests
   application_response_v1_tests
   application_unix_server_v1_tests
@@ -1108,6 +1138,23 @@ add_test(
     application_transport_v7_tests
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7-execution.txt"
     "${CMAKE_CURRENT_BINARY_DIR}/at-v7"
+)
+add_test(
+  NAME version-eight-application
+  COMMAND
+    application_v8_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v8-execution.txt"
+    "${CMAKE_CURRENT_BINARY_DIR}/version-eight-application"
+)
+# The directory name is deliberately short for the reason version seven's is:
+# this entry binds a Unix socket inside it, and `sun_path` caps a socket
+# pathname near 108 octets.
+add_test(
+  NAME version-eight-transport
+  COMMAND
+    application_transport_v8_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v8-execution.txt"
+    "${CMAKE_CURRENT_BINARY_DIR}/at-v8"
 )
 add_test(
   NAME application-wire-v1
