@@ -131,6 +131,32 @@ translation unit.
 and an added overload is the kind of change that can move overload resolution
 somewhere else. It passes unchanged.
 
+**Seven mutation probes, each checked to have changed the code the test runs.**
+Six are caught and each names its own subject: the protocol version left at 7
+fails the `static_assert`; the app state left at version seven's on **both**
+sides — the realistic blanket-rebinding error, where the happy path still agrees
+with itself — is caught *only* by the new version-seven refusal case; the app
+state left at version seven's on the implementation side alone is caught by the
+happy path; the receipt prefix restated as a literal 7 fails the first finalized
+block; a refusal that does not latch is caught by "init_chain after a refusal";
+and a repeated finalize that returns the stage whatever was asked is caught by
+"finalizing a second, different block at one height".
+
+**The seventh passed uncaught, and it is worth stating plainly rather than
+burying.** Removing `commit`'s requirement that the store's commit record equal
+the staged one changes nothing any test observes — **the equality ADR 0058 calls
+"the whole safety argument" has no test that can fail it.** That is inherited
+from version seven rather than introduced here, and it is a guard with no
+constructible violating input rather than a defect: making the store disagree
+with the kernel about a block both just accepted, on the same head, would take a
+fault-injection seam that returns a corrupted commit record, and adding one would
+be test-only machinery in production code — the thing ADR 0057 and ADR 0067 each
+rejected. It is recorded here so a later session finds it written down instead of
+rediscovering it, and so that a reader of ADR 0058 knows the argument rests on
+inspection rather than on a failing test. **Do not delete the guard**: M3.13p's
+prefix-width assertion was the same shape, and the lesson there was that a guard
+with no violating input is not a defect.
+
 ## Consequences
 
 - **A version-eight chain can be driven by a consensus engine.** What remains
