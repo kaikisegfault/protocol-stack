@@ -215,6 +215,9 @@ add_library(
     src/storage/sqlite_ledger_v7.cpp
     src/storage/sqlite_ledger_v7_open.cpp
     src/storage/sqlite_schema_v7.cpp
+    src/storage/sqlite_ledger_v8.cpp
+    src/storage/sqlite_ledger_v8_open.cpp
+    src/storage/sqlite_schema_v8.cpp
     src/storage/sqlite_snapshot_v1.cpp
     src/storage/snapshot_v1.cpp
     src/storage/snapshot_v7.cpp
