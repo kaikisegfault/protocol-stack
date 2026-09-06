@@ -411,6 +411,16 @@ add_executable(
   tests/kernel/economy_v7_trace.cpp
   tests/kernel/economy_v7_scenarios_test.cpp
 )
+# The scenario translation units are the version-eight kernel execution suite's
+# own, for the reason version seven's recovery suite reuses its own: a recovered
+# head is checked against the recorded roots, not against the store.
+add_executable(
+  storage_sqlite_recovery_v8_tests
+  tests/storage/sqlite_recovery_v8_test.cpp
+  tests/storage/sqlite_fault_vfs.cpp
+  tests/kernel/economy_v8_trace.cpp
+  tests/kernel/economy_v8_scenarios_test.cpp
+)
 add_executable(
   storage_snapshot_v1_tests
   tests/storage/snapshot_v1_test.cpp
@@ -450,6 +460,16 @@ add_executable(
   tests/storage/snapshot_v8_round_trip.cpp
   tests/storage/snapshot_v8_refusals.cpp
   tests/storage/snapshot_v8_entry_refusals.cpp
+  tests/kernel/economy_v8_trace.cpp
+  tests/kernel/economy_v8_scenarios_test.cpp
+)
+# The two scenario translation units are the version-eight kernel execution
+# suite's own, for the reason version seven's store reuses its own: the recorded
+# scenarios are the third source a store is checked against.
+add_executable(
+  storage_sqlite_ledger_v8_tests
+  tests/storage/sqlite_ledger_v8_test.cpp
+  tests/storage/sqlite_ledger_v8_refusals.cpp
   tests/kernel/economy_v8_trace.cpp
   tests/kernel/economy_v8_scenarios_test.cpp
 )
@@ -522,6 +542,12 @@ target_link_libraries(
     protocol_stack_sqlite
 )
 target_link_libraries(
+  storage_sqlite_recovery_v8_tests
+  PRIVATE
+    protocol_storage
+    protocol_stack_sqlite
+)
+target_link_libraries(
   storage_sqlite_vfs_failure_tests
   PRIVATE
     protocol_storage
@@ -547,6 +573,12 @@ target_link_libraries(
 )
 target_link_libraries(
   storage_sqlite_ledger_v7_tests
+  PRIVATE
+    protocol_storage
+    protocol_stack_sqlite
+)
+target_link_libraries(
+  storage_sqlite_ledger_v8_tests
   PRIVATE
     protocol_storage
     protocol_stack_sqlite
@@ -620,10 +652,12 @@ set(
   storage_sqlite_sequence_tests
   storage_sqlite_vfs_failure_tests
   storage_sqlite_recovery_v7_tests
+  storage_sqlite_recovery_v8_tests
   storage_snapshot_v1_tests
   storage_snapshot_v7_tests
   storage_snapshot_v8_tests
   storage_sqlite_ledger_v7_tests
+  storage_sqlite_ledger_v8_tests
   storage_archive_v1_tests
   application_v1_tests
   application_v7_tests
@@ -904,6 +938,23 @@ add_test(
     storage_sqlite_ledger_v7_tests
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7-execution.txt"
     "${CMAKE_CURRENT_BINARY_DIR}/version-seven-owning-store"
+)
+# The directory name is short for the reason version seven's recovery entry is:
+# the termination cases re-exec this binary and its arguments include the
+# directory.
+add_test(
+  NAME version-eight-store-recovery
+  COMMAND
+    storage_sqlite_recovery_v8_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v8-execution.txt"
+    "${CMAKE_CURRENT_BINARY_DIR}/sr-v8"
+)
+add_test(
+  NAME version-eight-owning-store
+  COMMAND
+    storage_sqlite_ledger_v8_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v8-execution.txt"
+    "${CMAKE_CURRENT_BINARY_DIR}/version-eight-owning-store"
 )
 add_test(
   NAME ledger-transition-cpp
