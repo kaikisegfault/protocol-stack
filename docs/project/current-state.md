@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-09-05
+Last updated: 2026-09-06
 
 ## Phase
 
@@ -158,6 +158,22 @@ refusing a resealed payload that carries a well-formed entry in an impossible
 place; probes deleting either report "a restore accepted it". That carries
 M3.13o's finding, that three of the six were unreachable by any recorded
 scenario, one layer up into storage.
+
+**M3.13q made a version-eight state durable on 2026-09-06**, which is step 4.
+`SQLiteLedgerV8` is the store around the payload `snapshot_v8` produces, so a
+version-eight chain can now be stopped and resumed without changing where it is
+going. ADR 0067 records it. **Its sharpest result is about how a width fails
+rather than about the store.** Two literals moved with the version and they
+fail differently: a stale `canonical_genesis` width is caught by the very first
+insert, and a stale `head_snapshot` minimum is caught by *nothing* — a short
+blob would simply reach `decode_snapshot_v8` and come back `invalid_snapshot`
+instead of never being stored, which is a weaker refusal rather than a wrong
+one. The suite as version seven wrote it passes with the stale value in place;
+that was checked by running it. `check_column_bounds` pins the figure at its
+boundary instead, and it is the general lesson of the slice: **a figure that
+moves with a version needs a test at its boundary, because a figure that
+degrades a refusal rather than admitting a state is invisible to every test
+that only asks whether the refusal happened.**
 
 **Requirement 10 is satisfied.** The kernel compiles `economy-transition-v7` in
 full: the byte and derivation surface, the ledger, all fourteen transitions,
@@ -3259,9 +3275,10 @@ slices.
   answered — and `test-vectors/economy-transition-v8-execution.txt` records 434
   vectors over four scenarios reaching all sixteen kinds. A whole 28,800-height
   window is executed block by block in each. **The C++ kernel now runs the same
-  contract** — the bullet below — and `snapshot_v8` can write its state down,
-  while the store, application, transport, node process, and adapter all still
-  name version seven.
+  contract** — the bullet below — `snapshot_v8` can write its state down, and
+  `SQLiteLedgerV8` makes that state survive the process that produced it, while
+  the application, transport, node process, and adapter all still name version
+  seven.
 - **A version-eight chain runs in C++20 as of 2026-09-05, and it measures its
   own machines.** `src/v8/` compiles the whole contract: the ledger, the four
   ordered block steps, both new transitions, the schedule derivation, and the
@@ -3272,8 +3289,8 @@ slices.
   28,800-height window and writes no window record at all, another answers none
   of its fifty-two and fails its cycle, and the window's assignment pays the
   first — **with nothing anywhere told that the second was offline**. What is
-  still version seven's is every layer above the snapshot: the store, the
-  application, the transport, the node process, and the adapter.
+  still version seven's is every layer above the store: the application, the
+  transport, the node process, and the adapter.
 - **The version-eight byte and derivation surface compiles in C++20 as of
   2026-09-04.** `src/v8/` and `include/protocol/v8/economy.hpp` hold the
   envelope with its sixteen bodies, the six HUB messages and the dispute
@@ -3297,9 +3314,19 @@ slices.
   what stops a restored node answering to a different dispute authority than its
   peers. Each of the four recorded scenarios is snapshotted, restored,
   re-encoded, and required to reproduce its *recorded* `final_state_root`.
-  **What is still version seven's is the store, the application, the transport,
-  the node process, and the adapter**, so a version-eight state can be written
-  down and still does not survive a restart.
+- **A version-eight state survives the process that produced it, as of
+  2026-09-06.** `protocol::storage::SQLiteLedgerV8` executes a block against a
+  candidate copy of the durable head and commits the new head and the block row
+  in one exclusive transaction, or leaves both heads exactly as they were. The
+  `carried` scenario's four contiguous blocks are replayed through a database
+  **closed and reopened between each pair**, and every block reproduces its
+  *recorded* `block_id`, `resulting_state_root`, and `transaction_root`. A fault
+  anywhere in the write path leaves the durable head at the pre-block root or
+  the post-block root and never at anything between, including when the process
+  is **killed** between the commit and the publication. **What is still version
+  seven's is the application, the transport, the node process, and the
+  adapter**, so a version-eight state now survives a restart and still cannot be
+  served to a consensus engine.
 - **A version-seven state can be written down and read back.**
   `protocol::storage::snapshot_v7` encodes a whole `Ledger` to canonical bytes
   and restores it to a ledger that keeps executing: the summary, the ordered
@@ -3683,6 +3710,76 @@ slices.
   founder-decision gate before starting a slice and reports its result whether or
   not anything is reserved.
 
+### How M3.13q was delivered
+
+**A version-eight state survives its own process.** `SQLiteLedgerV8` is version
+seven's store with four figures moved and one parameter dropped: one public
+header, three translation units, and two internal headers, of which the schema
+header, the internal header, and the open translation unit are version seven's
+files with identifiers rebound and **nothing else at all** — the normalising
+diff against each is empty.
+
+**The four figures, and why one of them needed a test of its own.** The stored
+canonical genesis is 142 octets rather than 110, `head_snapshot`'s minimum is
+`snapshot_v8`'s own `kFixedSize` of 222 rather than 190, the pinned
+`application_id` is `0x50534c38` with a `user_version` of 8, and the tables are
+`ledger_meta_v8` and `blocks_v8`. The DDL is compared verbatim on every open,
+so none of them is a comment about a width — each *is* the width. **They do not
+fail the same way.** A stale genesis width fails the very first insert and
+cannot reach a file. A stale `head_snapshot` minimum fails nothing: a short
+blob reaches `decode_snapshot_v8` and comes back `invalid_snapshot` instead of
+never being stored. That is a *weaker* refusal rather than a wrong one, and the
+whole suite as version seven wrote it passes with the stale value in place —
+which was established by running it, not argued. `check_column_bounds` pins the
+boundary instead: 221 octets refused by SQLite's own CHECK and 222 admitted,
+110 refused and 142 admitted, and the two admitted writes then leaving a file
+the store must still refuse.
+
+**`apply_block` lost a parameter rather than passing a null one.** Version
+eight's prologue derives the uptime schedule from the seat table and the window
+records, so there is nothing to hand over and **a node cannot be given a
+different answer than its peers computed**. The three `BlockOrder` flags are not
+exposed either: `ledger.hpp` states that none of them is a configuration a chain
+has, so a store that surfaced them would be offering an operator a way to leave
+consensus.
+
+**One objection hardened from a preference into a rule.** ADR 0057 refused to
+give the store a "jump to height" operation because it would be test-only
+machinery answering to no chain rule. Under version eight it answers to a chain
+rule and contradicts it — every height audits every in-scope seat, so a skipped
+height is an audit that was owed and never performed. The `carried` scenario is
+still the only recorded one with a contiguous run, and the entry point now
+**requires** what makes it replayable rather than assuming it: no block in
+heights 1 through 4 opens a window, audits a seat, or expires a challenge, and
+the chain writes no uptime state at all.
+
+**Fourteen mutation probes, each checked to have changed the code the test
+runs, and all fourteen caught.** Two of them said something the others did not.
+The first was re-run with `check_column_bounds` removed and the suite
+**passed**, which is the proof behind the paragraph above. And the probe that
+disables the `application_id` comparison disables only that half — `&&` binds
+tighter than `||` — so the pre-existing `user_version` tamper case still passes
+and the *only* thing catching it is the tamper case this slice added, which is
+how a new case was shown not to be redundant with the one beside it.
+
+**The local probe harness now covers a SQLite-dependent layer, which it did not
+before.** M3.13p recorded that the snapshot suite links with no SQLite at all;
+the store cannot. The amalgamation already present on this machine compiles once
+at `-O0` in **3.4 seconds** into a 1.5 MB object, the 34 unchanged translation
+units precompile in **11 seconds** across four jobs, and a probe relink is then
+about four. No download, no dependency graph, and every artifact written outside
+the repository and removed afterwards. That is what made fourteen probes
+affordable, and it is worth rebuilding rather than rediscovering.
+
+**One stale comment was found in version seven's header and deliberately left
+alone.** It says the genesis is taken as a struct "because version seven
+publishes `encode_genesis` and no inverse"; version seven has published
+`decode_genesis` since the node process needed it. Version eight's header states
+the actual reason instead, and version seven's text is left as it is because
+ADR 0065's step 7 deletes the file. **A stale comment in a file scheduled for
+deletion is not worth a commit, but carrying it forward into its replacement
+is.**
+
 ### How M3.13p was delivered
 
 **A version-eight state can leave memory.** `protocol::storage::snapshot_v8` is
@@ -3974,6 +4071,25 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #255 and PR #256 are the M3.13q delivery, merged by rebase across
+  commits `2b56c6a` through `95be298` on `main`. It adds
+  `include/protocol/storage/sqlite_ledger_v8.hpp`, three translation units and
+  two internal headers under `src/storage/`, four test translation units under
+  `tests/storage/`, and ADR 0067. It adds two CMake targets,
+  `storage_sqlite_ledger_v8_tests` and `storage_sqlite_recovery_v8_tests`, and
+  two ctest entries — `version-eight-owning-store` and
+  `version-eight-store-recovery` — so the suite goes from 161 to **163** entries
+  in the debug presets and from 170 to **172** under `clang-sanitizers`. **No
+  accepted vector file changes and no new one is added**, for ADR 0057's reason:
+  a storage schema is operational data rather than a contract. **No
+  version-seven source, header, or test was touched.** Run 34059985762 on head
+  `7d80e64` passed the complete hosted matrix and both new entries are confirmed
+  running and passing in the job logs. **Fourteen mutation probes** were run and
+  each was checked to have changed the code the test runs; all fourteen are
+  caught and each names its own subject. Two say more than that: the stale
+  `head_snapshot` width probe was re-run with `check_column_bounds` removed and
+  the suite passed, and the `application_id` probe is caught only by the tamper
+  case this slice added.
 - Issue #252 and PR #253 are the M3.13p delivery, merged by rebase across
   commits `cdf37a4` through `f0aa720` on `main`. It adds
   `include/protocol/storage/snapshot_v8.hpp`, three translation units and an
@@ -4941,18 +5057,19 @@ does.** M3.13n added `src/v8/` beside `src/v7/` under ADR 0065's staged
 replacement and M3.13o completed it, so the kernel compiles two whole economy
 contracts and a version-eight chain runs in C++ — measuring its own machines,
 deriving a cycle from that evidence, and paying a winner from it. M3.13p then
-added `snapshot_v8`, so a version-eight state can be written down. What is
-missing is four of the seven enumerated steps:
-`SQLiteLedgerV8`, `ApplicationV8`, `protocol-application-v8` with the Go
+added `snapshot_v8`, so a version-eight state can be written down, and M3.13q
+added `SQLiteLedgerV8`, so one survives the process that produced it. What is
+missing is three of the seven enumerated steps:
+`ApplicationV8`, `protocol-application-v8` with the Go
 adapter's version-eight client, and the deletion that ends the coexistence.
 Each layer carries a version number and none is optional for a chain that
-runs, so **no version-eight state survives a restart and no two nodes agree on
-one** until they are done.
+runs, so **a version-eight state now survives a restart and no two nodes agree
+on one** until they are done.
 
-**What is missing now is everything between a block and a network.** The kernel
-executes blocks against an in-memory ledger. It is not wired to the SQLite
-owning store, to the archive, or to the CometBFT adapter, so no state it produces
-survives a restart and no two nodes agree on one. That wiring is requirement 13's
+**What is missing now is everything between a durable head and a network.** The
+version-eight kernel is wired to a SQLite owning store as of 2026-09-06, so a
+state it produces survives a restart. It is not wired to the archive or to the
+CometBFT adapter, so no two nodes agree on one. That wiring is requirement 13's
 four-node adversarial scenarios, which have not started, and it is the largest
 single remaining piece of `first-goal.md`.
 
@@ -5013,13 +5130,13 @@ execution — and **as of 2026-09-05 the C++20 kernel reproduces every one of
 them**, the codec's 121 and the ledger's 496.
 
 **No chain runs any of it in production yet, and the reason is now only the
-layers above the kernel.** A version-eight chain executes in memory and
-measures its own machines and can write that state down; what does not exist is
-`SQLiteLedgerV8`, `ApplicationV8`, `protocol-application-v8`, and the Go
-adapter's version-eight client, which are M3.13q through M3.13s. **So no
-version-eight state survives a restart and no two nodes agree on one.** The gap
-in what *runs* is narrower than it was by two layers of one stack rather than
-by a promise: the contract is executable by something, checked rather than
+layers above the store.** A version-eight chain executes, measures its own
+machines, writes that state down, and survives the process that produced it;
+what does not exist is `ApplicationV8`, `protocol-application-v8`, and the Go
+adapter's version-eight client, which are M3.13r and M3.13s. **So a
+version-eight state now survives a restart and no two nodes agree on one.** The
+gap in what *runs* is narrower than it was by three layers of one stack rather
+than by a promise: the contract is executable by something, checked rather than
 asserted, and now also compiled and executed.
 
 **Two contracts are also still owed, and neither blocks requirement 13.** That
@@ -5223,15 +5340,16 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.13q: `SQLiteLedgerV8`**, step 4 of the seven-slice stack
-migration [ADR
+Milestone slice **M3.13r: `ApplicationV8` and the version-eight transport
+responses**, step 5 of the seven-slice stack migration [ADR
 0065](../decisions/0065-a-kernel-replacement-may-be-staged-across-a-stack-migration.md)
-enumerates. **Steps 1, 2, and 3 landed on 2026-09-04 and 2026-09-05**, so the
-repository compiles two whole economy contracts and two snapshot formats — which
-ADR 0065 permits only while this migration is in flight, and only because step 7
-is a numbered slice with its content already written down.
+enumerates. **Steps 1 through 4 landed between 2026-09-04 and 2026-09-06**, so
+the repository compiles two whole economy contracts, two snapshot formats, and
+two owning stores — which ADR 0065 permits only while this migration is in
+flight, and only because step 7 is a numbered slice with its content already
+written down.
 
-The enumeration, with the first three struck:
+The enumeration, with the first four struck:
 
 1. ~~**M3.13n** — the version-eight kernel codec, beside version seven's.~~
    **Delivered 2026-09-04 as PR #247.**
@@ -5241,8 +5359,8 @@ The enumeration, with the first three struck:
 3. ~~**M3.13p** — `snapshot_v8`, which must encode the two entry kinds version
    eight adds or a version-eight ledger cannot be written down.~~
    **Delivered 2026-09-05 as PR #253.**
-4. **M3.13q** — `SQLiteLedgerV8`, which makes a version-eight state survive the
-   process that produced it.
+4. ~~**M3.13q** — `SQLiteLedgerV8`, which makes a version-eight state survive
+   the process that produced it.~~ **Delivered 2026-09-06 as PR #256.**
 5. **M3.13r** — `ApplicationV8` and the version-eight transport responses.
 6. **M3.13s** — `protocol-application-v8` and the Go adapter's version-eight
    client.
@@ -5252,49 +5370,85 @@ The enumeration, with the first three struck:
    reaches step 6 finds step 7 here as its next action**, which is the mechanism
    that makes the end real.
 
-**M3.13q's own scope.** `SQLiteLedgerV8` makes a version-eight state survive the
-process that produced it. `snapshot_v8` gave it a canonical payload to persist,
-so this slice is the store around that payload rather than a serialisation
-problem: the schema, the open path with every validation step, the exclusive
-write, the seven fault points, and recovery. Its shape is recorded further down
-under what the store looks like now — one public header, three translation units,
-two internal headers, two `STRICT, WITHOUT ROWID` tables whose DDL is stored and
-compared verbatim on every open, and heights as fixed-width big-endian octets so
-`ORDER BY height` over a blob column is numeric order.
+**M3.13r's own scope.** `ApplicationV8` is what lets a consensus engine drive a
+version-eight chain. The store made a version-eight state durable; this makes it
+*reachable*, which is the last layer before the node process and the adapter.
+Its shape is recorded further down under what the application looks like now —
+one public header, two translation units, and one internal header, reusing
+version one's `ApplicationError`, `TransactionResult`, and `PreparedProposal`
+unchanged because none of those six codes or two shapes names a ledger version.
+The stage holds the candidate **root** and not the candidate ledger, on purpose,
+and `init_chain` is idempotent at genesis because CometBFT calls it again on a
+node that crashed before its first block.
 
-**Four figures move with the version and each is a place to get it wrong.** The
-`head_snapshot` column check goes from `length >= 190` to **`length >= 222`**,
-which is `snapshot_v8`'s own `kFixedSize` — the 158-octet prefix plus a root plus
-a digest — so the column check and the decoder cannot drift apart. The stored
-canonical genesis is **142 octets** rather than 110. `SnapshotParametersV8` has a
-**fifth** field, `dispute_authority_key`, so whatever the store hands the restore
-must carry it. And `execute_block` **takes no uptime schedule**, so the store's
-apply path loses a parameter rather than passing a null one.
+**The transport half is smaller than it looks. There is no version-seven wire
+and there will be no version-eight one**: `wire_v1` decodes every request for
+both versions, and version seven added `response_v7.cpp` and
+`dispatcher_v7.cpp` only. The one response shape that differs from version
+one's is `finalize_block`, which carries the state root, **then the block
+identifier**, then one `{code, receipt}` pair per raw input.
 
-**`snapshot_v7`'s name appears in a SQLite column check and in a schema DDL that
-are compared verbatim on every open**, so a careless rename there is a store that
-will not reopen. The table names are `ledger_meta_v7` and `blocks_v7`, and the
-`application_id` and `user_version` are pinned.
+**The files, so the slice is not re-surveyed.** Public: `application_v7.hpp`
+(137 lines), `dispatcher_v7.hpp` (16), `response_v7.hpp` (35). Private:
+`application_v7.cpp` (205), `application_block_v7.cpp` (167),
+`application_v7_internal.hpp` (66), `dispatcher_v7.cpp` (103),
+`response_v7.cpp` (217). Tests: `application_v7_test.cpp` (442),
+`transport_v7_test.cpp` (678), and
+`tests/application/headless_process_v7_test.py`. **The rebinding set is
+`application_v7`, `ApplicationV7`, `dispatcher_v7`, `DispatcherV7`,
+`response_v7`, `ResponseV7`, `TransactionCheckResultV7`, `sqlite_ledger_v7`,
+`SQLiteLedgerV7`, and the alias line**, on top of the three namespace
+expressions below.
 
-**The rebinding expressions, extended by what M3.13p needed.** Three do the
-namespace work, as they did for both kernel halves: `namespace protocol::v7` to
-`protocol::v8`, `protocol::v7::` to `protocol::v8::`, and `"protocol/v7/` to
-`"protocol/v8/`. The storage layer needs its own on top — for the snapshot they
-were `snapshot_v7`, `SnapshotV7`, `SnapshotParametersV7`, `EncodedSnapshotV7`,
-`DecodedSnapshotV7`, `encode_snapshot_v7`, `decode_snapshot_v7`, `snapshot-v7`,
-and the alias line `namespace v7 = protocol::v7;`, **which the three namespace
-expressions miss because they match `protocol::v7::` with a trailing pair of
-colons and the alias ends in a semicolon.** M3.13q's set is `sqlite_ledger_v7`,
-`SQLiteLedgerV7`, `sqlite_schema_v7`, and the same alias line.
+**This layer needs no figure moved, and that is worth knowing before the slice
+starts.** `application_block_v7.cpp` already calls
+`apply_block(stage.height, stage.transactions)` with two arguments, so the
+version-eight store's dropped parameter costs it nothing. Nothing in
+`src/application/*_v7*` mentions an uptime schedule, a seat, or a window at all.
+
+**M3.13r closes an owed item rather than fixing one.**
+[ADR 0058](../decisions/0058-the-version-seven-application-layer.md) records
+that the uptime schedule is `nullptr`, so "a chain driven entirely through
+`ApplicationV7` writes **no cycle assignment record and accrues nothing to any
+seat**", and names wiring a measurement in as the dependency between that layer
+and a chain that pays anyone. **Version eight removes the parameter**: the
+prologue derives the schedule from the seat table and the window records, so
+there is nothing left to supply and the owed item disappears rather than being
+satisfied. That is the step that unblocks requirement 13's *economic* scenarios,
+and the reason the adversarial half was ordered after the kernel.
+
+**A version-eight genesis file is 142 octets**, which matters at step 6 rather
+than here: `src/application/main_v7.cpp` bounds its read at 110 and the validity
+rule lives only in `decode_genesis`.
 
 **Do not run a blanket `v7` to `v8` rewrite** — nine literal mentions of version
-seven survived in the codec half, twenty-one in the execution half, and eight in
-the snapshot, and every one was prose about history that had to be kept or
-rewritten deliberately. **A normalising diff is the whole review**: rendering both
-versions with `sed 's/v7/vX/g;s/V7/VX/g'` and `sed 's/v8/vX/g;s/V8/VX/g'` and
-diffing them shows exactly the intended deltas and nothing else. For the
-snapshot's assignment translation unit that diff was empty, which is the
-strongest possible statement that nothing was changed by accident.
+seven survived in the codec half, twenty-one in the execution half, eight in the
+snapshot, and eighteen in the store, and every one was prose about history that
+had to be kept or rewritten deliberately. **A normalising diff is the whole
+review**: rendering both versions with `sed 's/v7/vX/g;s/V7/VX/g'` and
+`sed 's/v8/vX/g;s/V8/VX/g'` and diffing them shows exactly the intended deltas
+and nothing else. In M3.13p the snapshot's assignment translation unit diffed
+empty; in M3.13q three of five store files did — the schema header, the internal
+header, and the open translation unit — which is the strongest available
+statement that nothing in them changed by accident.
+
+**The rebinding expressions.** Three do the namespace work, as they did for both
+kernel halves, the snapshot, and the store: `namespace protocol::v7` to
+`protocol::v8`, `protocol::v7::` to `protocol::v8::`, and `"protocol/v7/` to
+`"protocol/v8/`. Every layer needs its own on top, and **the alias line
+`namespace v7 = protocol::v7;` is missed by all three**, because they match
+`protocol::v7::` with a trailing pair of colons and the alias ends in a
+semicolon.
+
+**One lesson M3.13q added and the next layer should apply.** A figure that
+moves with a version needs a test at its *boundary*, not merely a test that the
+refusal happens. The store's `head_snapshot` minimum moved from 190 to 222, and
+every test that existed would have passed with the stale 190 in place — because
+a stale minimum does not admit a bad state, it merely lets the refusal happen
+one layer later. That was established by running the suite with the stale
+value, not argued. **Ask of every moved figure: if this were still the old
+value, what would fail?** If the answer is "nothing, it would just be caught
+somewhere else", the figure needs a boundary case.
 
 **What exists and what does not.** `simulation/economy_transition_v8/` is
 complete. **In C++ the whole version-eight kernel is complete**: `src/v8/` is
@@ -5305,9 +5459,14 @@ nineteen sources and `include/protocol/v8/` two headers, verified by
 **`snapshot_v8` is complete as of 2026-09-05** — one public header, one internal
 header, and three translation units, verified by `storage_snapshot_v8_tests`
 against the four recorded scenarios' own `final_state_root` figures and by
-`storage_snapshot_v8_fuzz`. **Every layer above the snapshot still names version
-seven** — the store, the application, the transport, the node process, and the
-adapter — which is what steps 4 through 6 move and step 7 deletes.
+`storage_snapshot_v8_fuzz`. **`SQLiteLedgerV8` is complete as of 2026-09-06** —
+one public header, three translation units, and two internal headers, verified
+by `version-eight-owning-store` against the `carried` scenario's recorded
+`block_id`, `resulting_state_root`, and `transaction_root` across three restarts
+and by `version-eight-store-recovery` against the seven fault points and two
+process terminations. **Every layer above the store still names version seven**
+— the application, the transport, the node process, and the adapter — which is
+what steps 5 and 6 move and step 7 deletes.
 
 **What version eight adds to the kernel, and each item is a place to get it
 wrong:**
@@ -5346,7 +5505,7 @@ file stops being read by anything. **Adding an executable is four CMake edits**
 example immediately above `economy-transition-v8-cpp`'s `add_test`.
 
 **Then, in order, each its own slice:**
-* steps 4 through 7 of the migration above, whose layer shapes are recorded
+* steps 5 through 7 of the migration above, whose layer shapes are recorded
   further down this document;
 * requirement 13's remaining half, the **adversarial** scenarios, which only
   become economic once a version-eight chain is measuring seats. Four replicas
@@ -5534,13 +5693,16 @@ and `consensus/replay.go` is where the replay handshake is decided.
 
 **What the store's failure contract looks like now, so a later session does not
 rediscover it.** All seven of version one's fault points are live in
-`SQLiteLedgerV7::apply_block`. The four before the commit **throw** and roll
-back, and the store is left usable; the two after it are **invoked and ignored**
-so a test can terminate the process there; `before_recovery_open` fires only
-during recovery. A commit failure sets `poisoned` and immediately calls
+`SQLiteLedgerV8::apply_block`, and in version seven's beside it until ADR
+0065's step 7. The four before the commit **throw** and roll back, and the
+store is left usable; the two after it are **invoked and ignored** so a test
+can terminate the process there; `before_recovery_open` fires only during
+recovery. A commit failure sets `poisoned` and immediately calls
 `Impl::recover_durable_head`, which clears it on success. **Do not "simplify"
 that into poisoning on every write failure** — that is what it was, and it made
-an ordinary rolled-back refusal permanent.
+an ordinary rolled-back refusal permanent. **None of this contract is
+version-specific**, which is why ADR 0067 re-establishes it against a
+version-eight chain rather than restating it.
 
 **What the node process looks like now, so a later session does not rediscover
 it.** `src/application/main_v7.cpp` is the `protocol-application-v7` target and
@@ -5577,21 +5739,26 @@ that crashed before its first block, and an application opened on a store alread
 past genesis comes back ready without it.
 
 **What the store looks like now, so a later session does not rediscover it.**
-`protocol::storage::SQLiteLedgerV7` is one public header and three translation
-units with two internal headers: `sqlite_ledger_v7.cpp` owns what a live store
-does, `sqlite_ledger_v7_open.cpp` owns how one comes into existence and holds
-every validation step, `sqlite_schema_v7.cpp` owns the DDL and the two rows a
-commit writes, `sqlite_ledger_v7_internal.hpp` is the seam between the first two,
-and `sqlite_schema_v7.hpp` declares the schema surface. The schema is two tables
-— `ledger_meta_v7`, a singleton, and `blocks_v7` — both `STRICT, WITHOUT ROWID`,
-with the DDL stored and compared verbatim on every open. Heights are stored as
-fixed-width big-endian octets **on purpose**: `ORDER BY height` over a blob column
-is then numeric order, which is what lets the history be read back in block order
-by a bare connection. The `head_snapshot` column's `length >= 190` is the
-snapshot's own `kFixedSize`, the 126-octet prefix plus a root plus a digest, so
-the column check and the decoder cannot drift apart. **Under version eight that
-figure is 222**, because the prefix is 158, and the stored canonical genesis is
-142 octets rather than 110.
+`protocol::storage::SQLiteLedgerV8` is one public header and three translation
+units with two internal headers: `sqlite_ledger_v8.cpp` owns what a live store
+does, `sqlite_ledger_v8_open.cpp` owns how one comes into existence and holds
+every validation step, `sqlite_schema_v8.cpp` owns the DDL and the two rows a
+commit writes, `sqlite_ledger_v8_internal.hpp` is the seam between the first
+two, and `sqlite_schema_v8.hpp` declares the schema surface. `src/storage/`
+holds version seven's five files beside them until ADR 0065's step 7. The
+schema is two tables — `ledger_meta_v8`, a singleton, and `blocks_v8` — both
+`STRICT, WITHOUT ROWID`, with the DDL stored and compared verbatim on every
+open. Heights are stored as fixed-width big-endian octets **on purpose**:
+`ORDER BY height` over a blob column is then numeric order, which is what lets
+the history be read back in block order by a bare connection. The
+`head_snapshot` column's `length >= 222` is the snapshot's own `kFixedSize`,
+the 158-octet prefix plus a root plus a digest; the stored canonical genesis is
+142 octets; the pinned `application_id` is `0x50534c38` and the `user_version`
+8; and the block header column stays 146 octets, because version eight inherits
+version one's header unchanged. **`apply_block` takes a height and raw
+transactions and nothing else** — no uptime schedule, because version eight's
+prologue derives it, and no `BlockOrder`, because those flags are not a
+configuration a chain has.
 
 **What the version-eight codec looks like now, so a later session does not
 rediscover it.** `src/v8/` holds eleven sources and `include/protocol/v8/` one
@@ -5697,6 +5864,33 @@ twenty-five seconds, and **compiling the stable translation units to objects in
 parallel once takes a probe relink to about four**. That is what made thirteen
 probes affordable in M3.13p. The whole suite runs in 2.7 seconds because
 `run_quiet_heights` executes the scenarios' 1.35 million heights.
+
+**The store suites need SQLite and it is already on this machine, which M3.13q
+established rather than assumed.** The repository fetches SQLite through an
+ExternalProject, which the resource rules forbid locally — but a 3.53.0
+amalgamation is present at
+`~/.bun/install/cache/better-sqlite3@12.9.0@@@1/deps/sqlite3/sqlite3.c`, and
+`gcc -O0 -w -DSQLITE_DQS=0 -DSQLITE_TRUSTED_SCHEMA=0 -DSQLITE_ENABLE_API_ARMOR
+-DSQLITE_THREADSAFE=1 -c` turns it into a 1.5 MB object in **3.4 seconds**. No
+download and no dependency graph. With it, `src/v1/*.cpp src/v8/*.cpp
+src/storage/snapshot_v8*.cpp src/storage/sqlite_connection.cpp
+src/storage/sqlite_fault_injection.cpp src/storage/sqlite_*_v8*.cpp
+tests/storage/sqlite_ledger_v8_*.cpp tests/kernel/economy_v8_trace.cpp
+tests/kernel/economy_v8_scenarios_test.cpp` links in 28 seconds cold; the 34
+unchanged translation units precompile in 11 across four parallel jobs, which
+puts a probe relink at about four. **The shim also needs Ed25519**, which the
+snapshot suite does not: `crypto_sign_verify_detached` over
+`EVP_PKEY_new_raw_public_key(EVP_PKEY_ED25519, ...)` and `EVP_DigestVerify`,
+plus `crypto_sign_PUBLICKEYBYTES` and `crypto_sign_BYTES`. The pinned version is
+3.53.3 and the cached one 3.53.0; that is fine for a probe harness and the
+hosted matrix remains the authority.
+
+**One probe-writing trap M3.13q hit and used.** Disabling a condition by
+prefixing `false && ` disables **only the first conjunct** of an
+`A != B || C != D`, because `&&` binds tighter than `||`. That made the probe
+*more* precise than intended — it isolated one half of the schema comparison and
+proved which tamper case catches it — but a probe written that way and read as
+covering the whole condition would be a false negative.
 
 **M3.13a extended it to the storage tests and the pattern is worth keeping.**
 Adding `src/storage/snapshot_v7*.cpp tests/storage/snapshot_v7_*.cpp
@@ -5870,6 +6064,35 @@ its own**: `coverage.every_kind_version_eight_admits_is_executed` fails if a
 later scenario change stops reaching one.
 
 ## Blockers
+
+**M3.13q ran the founder-decision gate and passed it.** Twelve decisions were
+enumerated before any was judged: the SQLite `application_id` and
+`user_version`; the two table names; the `canonical_genesis` width; the
+`head_snapshot` minimum; the block header column's width; whether `apply_block`
+keeps an uptime parameter; whether the store exposes `BlockOrder`; whether it
+gains a jump-to-height operation; the error enumeration's numbers and meanings;
+the four validation steps and their order; the seven fault points and the
+recovery contract; and whether the slice records an ADR or a transition
+specification. **Every one is already decided by an accepted document or is
+engineering work**: the schema figures by ADR 0007, which classifies storage
+rows, files, schemas, and snapshot formats as operational compatibility data
+that "never define transaction, receipt, state-root, or block meaning"; the two
+widths derived from `v8::kGenesisPrefixBytes` and `snapshot_v8`'s `kFixedSize`
+rather than chosen; the dropped parameter by `v8::execute_block`'s own signature
+under ADR 0064; the absent `BlockOrder` by `ledger.hpp`'s statement that none of
+those flags is a configuration a chain has; and the rest by ADR 0057. Nothing in
+the slice set or changed supply, allocation, beneficiaries, Founder ownership,
+creator hierarchy, commercial routing, AI institutional authority, bridge scope,
+content permanence, or what an end user must do, own, run, or receive, and **no
+accepted vector file changed**.
+
+**M3.13p's gate result is not recorded here and should have been.** The slice
+touched no reserved surface — a snapshot format is operational data by the same
+ADR 0007 clause — so the omission is a reporting gap rather than a skipped
+check, and it is recorded as a gap rather than back-filled from memory. The
+repository is the source of truth, and what the repository can show is that no
+accepted vector file changed in PR #253 and that ADR 0066 records only
+mechanism.
 
 **M3.13o ran the founder-decision gate and passed it.** Fourteen decisions were
 enumerated before any was judged: whether `include/protocol/v8/ledger.hpp` is a
