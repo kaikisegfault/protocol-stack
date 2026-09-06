@@ -232,12 +232,16 @@ add_library(
   STATIC
     src/application/application_block_v1.cpp
     src/application/application_block_v7.cpp
+    src/application/application_block_v8.cpp
     src/application/application_v1.cpp
     src/application/application_v7.cpp
+    src/application/application_v8.cpp
     src/application/dispatcher_v1.cpp
     src/application/dispatcher_v7.cpp
+    src/application/dispatcher_v8.cpp
     src/application/response_v1.cpp
     src/application/response_v7.cpp
+    src/application/response_v8.cpp
     src/application/unix_connection_v1.cpp
     src/application/unix_server_v1.cpp
     src/application/wire_v1.cpp
