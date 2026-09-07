@@ -252,12 +252,13 @@ func hexString(value []byte) string {
 }
 
 // The genesis application state is what refuses a node started against a
-// version-one genesis and a version-seven engine, so it must be the one thing
-// a home initialized for version seven differs by.
+// version-one genesis and a version-eight engine, so it must be the one thing
+// a home initialized for a given version differs by.
 func TestProtocolVersionSelectsTheGenesisApplicationState(t *testing.T) {
 	for protocol, expected := range map[ProtocolVersion]string{
 		ProtocolV1: appStateV1,
 		ProtocolV7: appStateV7,
+		ProtocolV8: appStateV8,
 	} {
 		state, err := protocol.appState()
 		if err != nil || state != expected {
@@ -284,11 +285,57 @@ func TestProtocolVersionSelectsTheGenesisApplicationState(t *testing.T) {
 		t.Fatalf("version-seven genesis application state = %q",
 			document.AppState)
 	}
-	// The same home re-ensured for the other version is a different genesis,
+	// The same home re-ensured for another version is a different genesis,
 	// and an exact-validating initializer must say so rather than adopt it.
+	for _, other := range []ProtocolVersion{ProtocolV1, ProtocolV8} {
+		if err := Ensure(
+			home, identity, testEndpoints(), other); err == nil {
+			t.Fatalf("a version-%d genesis replaced a version-seven home",
+				uint8(other))
+		}
+	}
+}
+
+// The three application states must be three distinct strings. Nothing above
+// would catch two versions sharing one: every check there compares a version's
+// state against the same constant `appState` returned for it, so a rebound
+// copy that forgot its own constant would agree with itself.
+func TestTheThreeApplicationStatesAreDistinct(t *testing.T) {
+	expected := map[ProtocolVersion]string{
+		ProtocolV1: `"protocol-stack-v1"`,
+		ProtocolV7: `"protocol-stack-v7"`,
+		ProtocolV8: `"protocol-stack-v8"`,
+	}
+	for protocol, want := range expected {
+		state, err := protocol.appState()
+		if err != nil || state != want {
+			t.Fatalf("version %d application state = %q, %v, want %q",
+				uint8(protocol), state, err, want)
+		}
+	}
+}
+
+// A home initialized for version eight carries version eight's application
+// state, which is the string `ApplicationV8::init_chain` accepts and the one
+// it refuses version seven's in favour of.
+func TestAVersionEightHomeCarriesVersionEightsApplicationState(t *testing.T) {
+	home := filepath.Join(t.TempDir(), "node")
+	identity := testIdentity()
+	if err := Ensure(home, identity, testEndpoints(), ProtocolV8); err != nil {
+		t.Fatalf("fresh version-eight ensure: %v", err)
+	}
+	document, err := readGenesis(filepath.Join(
+		home, cfg.DefaultConfigDir, cfg.DefaultGenesisJSONName))
+	if err != nil {
+		t.Fatalf("read generated genesis: %v", err)
+	}
+	if !bytes.Equal(document.AppState, []byte(appStateV8)) {
+		t.Fatalf("version-eight genesis application state = %q",
+			document.AppState)
+	}
 	if err := Ensure(
-		home, identity, testEndpoints(), ProtocolV1); err == nil {
-		t.Fatal("a version-one genesis replaced a version-seven home")
+		home, identity, testEndpoints(), ProtocolV7); err == nil {
+		t.Fatal("a version-seven genesis replaced a version-eight home")
 	}
 }
 
@@ -296,14 +343,16 @@ func TestParseProtocolVersion(t *testing.T) {
 	for value, expected := range map[uint]ProtocolVersion{
 		1: ProtocolV1,
 		7: ProtocolV7,
+		8: ProtocolV8,
 	} {
 		parsed, err := ParseProtocolVersion(value)
 		if err != nil || parsed != expected {
 			t.Fatalf("ParseProtocolVersion(%d) = %d, %v", value, parsed, err)
 		}
 	}
-	// 257 truncates to one in a byte, and must not be admitted as version one.
-	for _, value := range []uint{0, 2, 6, 8, 256, 257, 263} {
+	// 257 truncates to one in a byte and 264 to eight; neither may be
+	// admitted as the version it truncates to.
+	for _, value := range []uint{0, 2, 6, 9, 256, 257, 263, 264} {
 		if _, err := ParseProtocolVersion(value); err == nil {
 			t.Fatalf("ParseProtocolVersion(%d) was accepted", value)
 		}
