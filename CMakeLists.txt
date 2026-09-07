@@ -1658,6 +1658,14 @@ add_test(
     "${PROTOCOL_STACK_SODIUM_SHARED_LIBRARY}"
 )
 add_test(
+  NAME version-eight-chain-fixture
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/integration/version_eight_chain_test.py"
+    --libsodium
+    "${PROTOCOL_STACK_SODIUM_SHARED_LIBRARY}"
+)
+add_test(
   NAME economy-transition-v7-execution-vectors
   COMMAND
     "${Python3_EXECUTABLE}"
