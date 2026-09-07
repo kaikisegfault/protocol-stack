@@ -284,6 +284,20 @@ target_link_libraries(
   PRIVATE
     protocol_application
 )
+add_executable(
+  protocol_application_server_v8
+  src/application/main_v8.cpp
+)
+set_target_properties(
+  protocol_application_server_v8
+  PROPERTIES
+    OUTPUT_NAME protocol-application-v8
+)
+target_link_libraries(
+  protocol_application_server_v8
+  PRIVATE
+    protocol_application
+)
 target_include_directories(
   protocol_storage
   PUBLIC
@@ -664,6 +678,7 @@ set(
   protocol_application
   protocol_application_server
   protocol_application_server_v7
+  protocol_application_server_v8
   kernel_primitive_tests
   economy_v7_codec_tests
   economy_v7_execution_tests
