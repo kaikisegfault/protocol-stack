@@ -22,15 +22,17 @@ const (
 	applicationVersion = "1.0.0"
 	// The result codes an executed transaction can carry are the ledger
 	// version's, so the codespace that names them is too: version one has
-	// eight and version seven has thirty-three.
+	// eight, version seven thirty-three, and version eight forty-five.
 	codespaceV1 = "protocol-stack-v1"
 	codespaceV7 = "protocol-stack-v7"
+	codespaceV8 = "protocol-stack-v8"
 )
 
 // FinalizedBlock is what this bridge needs out of a finalized block, whichever
-// ledger version produced it. **Version seven names the block it executed and
-// version one has nothing to name it with**, so the identifier is a pointer:
-// absent is unmistakable, where a zero hash could be read as a real one.
+// ledger version produced it. **Versions seven and eight name the block they
+// executed and version one has nothing to name it with**, so the identifier is
+// a pointer: absent is unmistakable, where a zero hash could be read as a real
+// one.
 type FinalizedBlock struct {
 	StateRoot          localapp.Hash
 	BlockID            *localapp.Hash
@@ -73,6 +75,13 @@ func New(local localApplication) *Application {
 // belong to and the block identifier its finalized block carries.
 func NewV7(local localApplication) *Application {
 	return &Application{local: local, codespace: codespaceV7}
+}
+
+// NewV8 bridges a version-eight local application. It differs from NewV7 in
+// the codespace alone: version eight's finalized block has version seven's
+// shape, so the identifier reaches this type by the same route.
+func NewV8(local localApplication) *Application {
+	return &Application{local: local, codespace: codespaceV8}
 }
 
 func (a *Application) Info(
