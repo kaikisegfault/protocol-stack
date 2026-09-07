@@ -1210,6 +1210,15 @@ add_test(
     "${CMAKE_CURRENT_BINARY_DIR}/ah-v7"
 )
 add_test(
+  NAME version-eight-headless-process
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/application/headless_process_v8_test.py"
+    "$<TARGET_FILE:protocol_application_server_v8>"
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v8-execution.txt"
+    "${CMAKE_CURRENT_BINARY_DIR}/ah-v8"
+)
+add_test(
   NAME cometbft-port-allocation
   COMMAND
     "${Python3_EXECUTABLE}"
