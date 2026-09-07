@@ -24,7 +24,7 @@ func run() error {
 		"absolute path to the C++ application Unix socket")
 	protocolVersion := flag.Uint(
 		"protocol-version", 1,
-		"protocol ledger version to bridge (1 or 7)")
+		"protocol ledger version to bridge (1, 7, or 8)")
 	flag.Parse()
 	if *applicationSocket == "" {
 		return errors.New("-application-socket is required")
@@ -76,6 +76,13 @@ func dial(
 			return nil, nil, err
 		}
 		return bridge.NewV7(bridge.LocalV7{ClientV7: client}),
+			func() { _ = client.Close() }, nil
+	case 8:
+		client, err := localapp.DialV8(socketPath)
+		if err != nil {
+			return nil, nil, err
+		}
+		return bridge.NewV8(bridge.LocalV8{ClientV8: client}),
 			func() { _ = client.Close() }, nil
 	}
 	return nil, nil, fmt.Errorf(

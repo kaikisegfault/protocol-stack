@@ -21,19 +21,26 @@ import (
 const (
 	appStateV1 = `"protocol-stack-v1"`
 	appStateV7 = `"protocol-stack-v7"`
+	appStateV8 = `"protocol-stack-v8"`
 	// CometBFTVersion is the exact accepted module release.
 	CometBFTVersion = "0.39.4"
 )
 
 // ProtocolVersion is the ledger version a home is initialised for. It reaches
 // the application as the genesis application state, and **that is what stops a
-// node started against a version-one genesis and a version-seven engine**: the
+// node started against a version-one genesis and a version-eight engine**: the
 // application refuses at InitChain rather than at the first block.
+//
+// The refusal is exact rather than a range. `ApplicationV8::init_chain` names
+// version seven's app state as a case of its own, because that is the string a
+// stale deployment would still be sending, so a home initialised at the wrong
+// version fails at the handshake with the version it was initialised for.
 type ProtocolVersion uint8
 
 const (
 	ProtocolV1 ProtocolVersion = 1
 	ProtocolV7 ProtocolVersion = 7
+	ProtocolV8 ProtocolVersion = 8
 )
 
 // ParseProtocolVersion accepts only the versions this adapter bridges, so an
@@ -46,6 +53,8 @@ func ParseProtocolVersion(value uint) (ProtocolVersion, error) {
 		return ProtocolV1, nil
 	case uint(ProtocolV7):
 		return ProtocolV7, nil
+	case uint(ProtocolV8):
+		return ProtocolV8, nil
 	}
 	return 0, fmt.Errorf("unsupported protocol version %d", value)
 }
@@ -56,6 +65,8 @@ func (p ProtocolVersion) appState() (string, error) {
 		return appStateV1, nil
 	case ProtocolV7:
 		return appStateV7, nil
+	case ProtocolV8:
+		return appStateV8, nil
 	}
 	return "", fmt.Errorf("unsupported protocol version %d", uint8(p))
 }

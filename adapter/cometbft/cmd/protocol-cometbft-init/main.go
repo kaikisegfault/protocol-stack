@@ -23,7 +23,7 @@ func main() {
 	flag.StringVar(&rpcListen, "rpc-listen", "", "CometBFT RPC listen address")
 	flag.StringVar(&p2pListen, "p2p-listen", "", "CometBFT P2P listen address")
 	flag.UintVar(&protocolVersion, "protocol-version", 1,
-		"protocol ledger version this home is initialized for (1 or 7)")
+		"protocol ledger version this home is initialized for (1, 7, or 8)")
 	flag.Parse()
 	if flag.NArg() != 0 {
 		exitWithError(fmt.Errorf("unexpected positional arguments"))
