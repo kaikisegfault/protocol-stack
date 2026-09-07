@@ -196,6 +196,33 @@ either checked on the happy path or it needs a boundary case, and there is no
 third kind** — knowing which one you have is the question worth asking before
 the tests are written rather than after.
 
+**M3.13s ran a version-eight chain end to end on 2026-09-07**, which is step 6
+and the first time anything in this repository executed a version-eight block
+under a real consensus engine. `protocol-application-v8` serves `ApplicationV8`
+on a socket, `ClientV8` speaks to it, and `-protocol-version 8` selects the pair
+in the bridge, the initializer, and the devnet supervisor. ADR 0069 records it.
+**Four independent replicas now agree on version-eight roots through a full
+restart**, with three transactions entering through three different nodes.
+
+**It found the third kind the previous slice said did not exist.** ADR 0067's
+rule — happy path or boundary case, no third kind — holds for the genesis width,
+the app state, and the receipt version, all of which break the happy path if
+left stale. It does not hold for the **result-code count**, which moves from 33
+to 45 while every test that uses it compares the constant to itself, and whose
+new codes appear in no fixture. So the third kind is a figure **checked
+everywhere and pinned nowhere**, and the test for it is an assertion against the
+literal plus one input on each side, written out rather than derived. A probe
+setting it back to 33 passes the entire inherited suite and fails only the new
+assertion.
+
+**A fifth figure of that kind is not a constant at all.** The two genesis keys
+must be two keys, and a genesis carrying the verifier key twice encodes, derives
+an identity, and executes every block — so the fixture requires the pair to
+appear adjacent in the encoded genesis exactly once. The probe that passed the
+verifier key twice was caught by that adjacency check and **not** by the
+inequality beside it, because the session still held two distinct keys and only
+the encoding was wrong.
+
 **Requirement 10 is satisfied.** The kernel compiles `economy-transition-v7` in
 full: the byte and derivation surface, the ledger, all fourteen transitions,
 ordered block execution with the cycle-assignment prologue, and both
@@ -3360,9 +3387,24 @@ slices.
   which closes ADR 0058's owed item rather than satisfying it — the prologue
   derives the schedule, so a chain driven entirely through this layer now writes
   cycle assignment records and accrues to seats where version seven's wrote
-  none. **What is still version seven's is the node process and the adapter**,
-  so a version-eight chain can be driven by an engine and no engine is wired to
-  one yet.
+  none.
+- **A version-eight chain runs under a real consensus engine, as of
+  2026-09-07.** `protocol-application-v8` reads a canonical 142-octet genesis,
+  opens or creates its store, binds a private Unix socket at mode 0600, and
+  serves until `SIGTERM`; `--genesis-identity` prints the two figures an
+  operator configures. `ClientV8` reads a version-eight finalized block over
+  version one's frames and `bridge.NewV8` turns it into ABCI responses under the
+  `protocol-stack-v8` codespace. `tests/integration/version_eight_chain.py`
+  signs for real, and three contiguous blocks — two registrations and a
+  confirmed transfer — are broadcast to a CometBFT v0.39.4 node and committed,
+  with the third committed by a process that did not execute the first two.
+  **Four independent replicas agree on those roots through a full restart**,
+  with three transactions entering through three different nodes and all four
+  databases opened directly after every stop. **The chain sells no seat**, so
+  the issue and expiry steps evaluate nothing: what runs under the engine is the
+  version-eight code path at every height, not the audit it would perform.
+  **What is still version seven's is nothing above the kernel that a chain
+  needs** — both stacks are complete and step 7 deletes one.
 - **A version-seven state can be written down and read back.**
   `protocol::storage::snapshot_v7` encodes a whole `Ledger` to canonical bytes
   and restores it to a ledger that keeps executing: the summary, the ordered
@@ -3745,6 +3787,61 @@ slices.
   deliver, and report repository state. `proceed` runs an explicit
   founder-decision gate before starting a slice and reports its result whether or
   not anything is reserved.
+
+### How M3.13s was delivered
+
+**Two halves and an end-to-end run.** `protocol-application-v8` is version
+seven's binary with the version rebound and the genesis allocation bound moved
+from 110 octets to 142; the normalising diff against `main_v7.cpp` is the
+rebinding and the prose. `ClientV8`, `LocalV8`, `NewV8`, `ProtocolV8`, and
+`-protocol-version 8` are the Go half. `version_eight_chain.py` and the two
+CometBFT integrations are what make it a chain rather than two components.
+
+**The bound moved, and so did two error messages that were not figures.** "not
+the canonical 110 octets" became "not the canonical version-eight width". A
+message is compiled against nothing, so a stale literal there survives every
+test and lies to the first operator who reads it. Deleting the number rather
+than updating it is what stops the next rebinding inheriting the problem; the
+bound itself reads `v8::kGenesisPrefixBytes` and the file states no width.
+
+**The finalized-block shape did not move, and that is a finding rather than an
+omission.** Version eight changed what a block *does* — a prologue, an issue
+step, an expiry step, two entry kinds, a per-seat digest — and changed nothing
+about what a finalized block *is*. So `LocalV8` and `NewV8` differ from version
+seven's by the codespace alone, and the identifier reaches the bridge by the
+same route.
+
+**ADR 0067's rule needed a third kind.** Four figures were on the list and three
+behave as the rule predicts: the genesis bound, the app state, and the receipt
+version all break the happy path if left stale — nothing starts, `init_chain`
+refuses, no block decodes. **The result-code count does not.** It moves from 33
+to 45, every test that uses it compares the constant to itself, and codes 33
+through 44 appear in no fixture in this repository, so a stale 33 narrows the
+accepted range silently. The third kind is a figure **checked everywhere and
+pinned nowhere**, and its test is an assertion against the literal plus one
+input on each side of the boundary, written out rather than derived.
+
+**A fifth figure of that kind is not a constant.** The two genesis keys must be
+two keys; a genesis carrying the verifier key twice encodes, derives an
+identity, and executes every block, and the fixture, the node, the adapter, and
+the engine all agree about it. `check_the_dispute_authority_is_its_own_key`
+requires the pair adjacent in the encoded genesis exactly once, which also pins
+the adjacency the specification states.
+
+**Versions seven and eight must refuse each other's finalized blocks.** Versions
+one and seven fail closed because their shapes differ; seven and eight share a
+shape, so on a well-formed successful block the **only** octet separating them
+is the receipt's version. Without that pair, `-protocol-version` set wrong would
+misread a chain rather than fail to read it.
+
+**Six mutation probes ran and each was checked to have changed the code the test
+runs.** `resultCodeCountV8` at 33 is caught only by the new literal assertion;
+`receiptVersionV8` at 7 is caught by that assertion **and** independently by the
+cross-version pair; the fixture passing the verifier key twice is caught by the
+adjacency check and **not** by the inequality beside it, because the session
+still held two distinct keys and only the encoding was wrong; `GENESIS_BYTES` at
+110 and the fixture's receipt prefix at version seven's are both caught
+immediately. Every restored tree was re-run to green.
 
 ### How M3.13r was delivered
 
@@ -4166,6 +4263,33 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #261 and PR #262 are the M3.13s delivery, merged by rebase across
+  commits `3df3d81` through `47d0a8c` on `main`. It adds
+  `src/application/main_v8.cpp`, `tests/application/headless_process_v8_test.py`,
+  four files under `adapter/cometbft/internal/localapp/`, one test translation
+  unit under `adapter/cometbft/internal/bridge/`, four Python files under
+  `tests/integration/`, and ADR 0069. It adds one CMake target,
+  `protocol_application_server_v8`, and two ctest entries —
+  `version-eight-headless-process` and `version-eight-chain-fixture` — so the
+  suite goes from 165 to **167** entries in the debug presets and from 174 to
+  **176** under `clang-sanitizers`. It adds **two hosted integrations** to
+  `tools/verify.sh`, which now runs five: version one single-node and
+  four-validator, version seven single-node and four-validator, and version
+  eight single-node and four-validator. **Six shared files change**:
+  `bridge/local.go`, `bridge/application.go`, `nodeconfig/config.go`, and the
+  three `cmd/` binaries' `-protocol-version` handling, none of which alters
+  version one's or version seven's behavior. **No accepted vector file
+  changes**, and no version-seven source, header, or test was touched. Run
+  34088805350 on head `e136ab8` passed the complete hosted matrix; the job logs
+  confirm `version-eight-headless-process` and `version-eight-chain-fixture`
+  running and passing, `CometBFT version-eight integration: passed (2
+  registrations, 1 confirmed transfer, restart at height 2, durable height 3)`,
+  and `CometBFT four-validator version-eight integration: passed (4 independent
+  replicas, 2 registrations and 1 confirmed transfer through 3 different nodes,
+  full restart, 4 durable C++ audits per stop)`. **Six mutation probes** were
+  run and each was checked to have changed the code the test runs; all six are
+  caught, and two of them are caught by checks this slice added and nothing else
+  would have.
 - Issue #258 and PR #259 are the M3.13r delivery, merged by rebase across
   commits `f92c402` through `ac7f831` on `main`. It adds three headers under
   `include/protocol/application/`, four translation units and an internal header
@@ -5228,11 +5352,13 @@ produce a fixture no chain can accept, so what is owed is a fixture that **signs
 for real** — which is what version one has in `tests/differential/cases.py` and
 `pinned_sodium`, and what version seven has never needed until now.
 
-**And one gap inside the stack is larger than the adapter.** Every layer hands
-`execute_block` a null uptime schedule, so a chain run end to end writes no cycle
-assignment record and no seat accrues anything. Requirement 13 asks for
-adversarial *economic* scenarios; four nodes agreeing on blocks that pay nobody
-would satisfy the word "four-node" and not the word "economic".
+**And one gap inside the stack was larger than the adapter, and is now closed.**
+Every version-seven layer hands `execute_block` a null uptime schedule, so a
+chain run end to end through *that* stack writes no cycle assignment record and
+no seat accrues anything: four nodes agreeing on blocks that pay nobody would
+satisfy the word "four-node" and not the word "economic". Version eight removed
+the parameter rather than supplying it, and as of M3.13s the whole version-eight
+stack is wired.
 
 **M3.13j specified the carrier that closes it, M3.13k and M3.13l made it
 executable in Python, and M3.13n began putting it into the kernel.**
@@ -5244,15 +5370,25 @@ all of it and 617 vectors record it — 183 for the contract and 434 for the
 execution — and **as of 2026-09-05 the C++20 kernel reproduces every one of
 them**, the codec's 121 and the ledger's 496.
 
-**No chain runs any of it in production yet, and the reason is now only the
-node process and the adapter.** A version-eight chain executes, measures its
-own machines, writes that state down, survives the process that produced it,
-and answers the seven operations a consensus engine calls; what does not exist
-is `protocol-application-v8` and the Go adapter's version-eight client, which
-are M3.13s. **So a version-eight chain can be driven by an engine and no engine
-is wired to one.** The gap in what *runs* is narrower than it was by four
-layers of one stack rather than by a promise: the contract is executable by
-something, checked rather than asserted, and now also compiled and executed.
+**As of 2026-09-07 a version-eight chain runs under a real consensus engine, and
+the stack gap is closed.** M3.13s added `protocol-application-v8` and the Go
+adapter's version-eight client, so every layer between a signed version-eight
+transaction and CometBFT v0.39.4 exists and is exercised: one node commits three
+blocks through a restart, and four independent replicas agree on the roots
+through a full restart with three transactions entering through three different
+nodes.
+
+**What remains is not a layer but a scenario.** M3.13s's fixture sells no seat,
+so the issue and expiry steps evaluate nothing at any height — the version-eight
+code path runs, the audit it would perform has nothing in scope. Requirement 13
+asks for adversarial *economic* scenarios, and both halves of that are still
+owed: **an economic chain** that sells and activates a seat so the pipeline has
+subjects, and **disagreement** — a replica fed a block the others refuse, a
+partition, a node restarted mid-block. Neither is blocked any more. The
+`execute_block` parameter that made an economic chain impossible through the
+ABCI path is gone: version eight's prologue derives the schedule, so a chain
+driven end to end writes cycle assignment records where version seven's wrote
+none.
 
 **Two contracts are also still owed, and neither blocks requirement 13.** That
 was recorded the other way round at the close of M3.12b and M3.13a corrected it.
@@ -5455,20 +5591,23 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.13s: `protocol-application-v8` and the Go adapter's
-version-eight client**, step 6 of the seven-slice stack migration [ADR
+Milestone slice **M3.13t: the deletion**, step 7 and the **last** step of the
+seven-slice stack migration [ADR
 0065](../decisions/0065-a-kernel-replacement-may-be-staged-across-a-stack-migration.md)
-enumerates. **Steps 1 through 5 landed between 2026-09-04 and 2026-09-06**, so
-the repository compiles two whole economy contracts, two snapshot formats, two
-owning stores, and two application layers — which ADR 0065 permits only while
-this migration is in flight, and only because step 7 is a numbered slice with
-its content already written down.
+enumerates. **Steps 1 through 6 landed between 2026-09-04 and 2026-09-07.** The
+repository currently compiles and runs two whole stacks — two economy contracts,
+two snapshot formats, two owning stores, two application layers, two node
+processes, and two adapter clients — which ADR 0065 permits **only while this
+migration is in flight**, and only because this step was a numbered slice with
+its content written down before the first one landed.
 
-**A session that finishes step 6 finds step 7 here as its next action.** That is
-the mechanism that makes the end real, and it is worth reading before starting
-step 6 rather than after.
+**This is the step that makes the coexistence legitimate retrospectively.** ADR
+0065 says outright that if the migration were abandoned part-way, step 7 still
+runs, deleting `src/v8/` instead, "because the outcome this ADR refuses is a
+repository that compiles two economy contracts with no decided end." Nothing in
+this slice is optional and nothing in it is a judgement call about what to keep.
 
-The enumeration, with the first five struck:
+The enumeration, with the first six struck:
 
 1. ~~**M3.13n** — the version-eight kernel codec, beside version seven's.~~
    **Delivered 2026-09-04 as PR #247.**
@@ -5482,106 +5621,100 @@ The enumeration, with the first five struck:
    the process that produced it.~~ **Delivered 2026-09-06 as PR #256.**
 5. ~~**M3.13r** — `ApplicationV8` and the version-eight transport responses.~~
    **Delivered 2026-09-06 as PR #259.**
-6. **M3.13s** — `protocol-application-v8` and the Go adapter's version-eight
-   client.
+6. ~~**M3.13s** — `protocol-application-v8` and the Go adapter's version-eight
+   client.~~ **Delivered 2026-09-07 as PR #262.**
 7. **M3.13t** — **the deletion.** Version seven's kernel, storage, application,
    transport, node sources, tests, and CTest entries are removed and the
-   repository compiles exactly one economy contract again. **A session that
-   reaches step 6 finds step 7 here as its next action**, which is the mechanism
-   that makes the end real.
+   repository compiles exactly one economy contract again.
 
-**M3.13s's own scope.** Two halves that must land together, because neither is
-useful alone: the C++ node process that serves `ApplicationV8` on a socket, and
-the Go client that speaks to it. **This is the slice that first runs a
-version-eight chain end to end**, so it is also the first that can fail for a
-reason no unit test reaches.
+**M3.13t's own scope, layer by layer.** Every one of these has a version-eight
+counterpart already carrying its evidence, and each counterpart's shape is
+recorded further down this document under "what X looks like now".
 
-**The C++ half.** `src/application/main_v7.cpp` is 210 lines and the
-`protocol-application-v7` target; it takes `<absolute-database>
-<absolute-genesis> <absolute-socket>`, or `--genesis-identity
-<absolute-genesis>`. **Its one moved figure is the genesis width**: the file is
-exactly 110 octets today and a version-eight genesis file is **142**. The size
-check in the binary is an *allocation bound* and the validity rule lives only
-in `decode_genesis`, so moving the bound is necessary and not sufficient.
-Opening the store is attempted before creating it. A `connection_failure` or a
-`protocol_failure` continues the serve loop; only the application's own
-terminal latch stops a node that has contradicted itself.
-`tests/application/headless_process_v7_test.py` is 312 lines and drives the
-binary.
+* **The kernel.** `src/v7/` (seventeen sources) and `include/protocol/v7/` (two
+  headers), and the `PROTOCOL_STACK_KERNEL_SOURCES` entries that name them.
+* **Storage.** `snapshot_v7.cpp`, `snapshot_v7_assignments.cpp`,
+  `snapshot_v7_entries.cpp`, `snapshot_v7_internal.hpp`,
+  `include/protocol/storage/snapshot_v7.hpp`, `sqlite_ledger_v7.cpp`,
+  `sqlite_ledger_v7_open.cpp`, `sqlite_schema_v7.cpp`, their internal headers,
+  and `include/protocol/storage/sqlite_ledger_v7.hpp`.
+* **Application and transport.** `application_v7.cpp`,
+  `application_block_v7.cpp`, `application_v7_internal.hpp`,
+  `dispatcher_v7.cpp`, `response_v7.cpp`, their three public headers, and
+  **the `serve_connection(ApplicationV7&)` overload** in
+  `unix_server_v1.hpp` and `unix_connection_v1.cpp` — which is the one place
+  the deletion touches a shared version-one file.
+* **The node process.** `src/application/main_v7.cpp` and the
+  `protocol_application_server_v7` target's four CMake edits.
+* **The adapter.** `wire_v7.go`, `client_v7.go`, `wire_v7_test.go`,
+  `client_v7_test.go`, `application_v7_test.go`, `LocalV7`, `NewV7`,
+  `codespaceV7`, `ProtocolV7`, `appStateV7`, and the `case 7:` arms in
+  `ParseProtocolVersion`, `appState`, and the bridge binary's `dial`.
+* **Tests and entries.** Every `tests/kernel/economy_v7_*`,
+  `tests/storage/*_v7_*`, `tests/application/*_v7*`, and
+  `tests/integration/*version_seven*` / `*_v7_test.py` file, their CMake
+  targets, their `PROTOCOL_STACK_TARGETS` lines, their `add_test` entries, and
+  the two version-seven integrations in `tools/verify.sh`.
+* **The fuzz target.** `economy_v7_fuzz` and `tests/fuzz/economy_v7_fuzz.cpp`,
+  under the `PROTOCOL_STACK_ENABLE_FUZZING` guard.
 
-**The Go half.** `adapter/cometbft/internal/localapp` gained two files for
-version seven and no wire: `wire_v7.go` holds the finalized-block decoder and
-its receipt rule, and `client_v7.go` holds `ClientV7`, which **embeds `Client`
-and declares exactly one method**. `internal/bridge/local.go` holds `LocalV1`
-and `LocalV7` — two embeddings that give each client the shape the bridge
-consumes — and `application.go` gained `NewV7`, a `codespace` field, and a
-`committedHeight`. **That height is never counted in the bridge**: it is raised
-only by the application's own answers to `Info` and `Commit`, which is what
-makes the finalize guard incapable of refusing a legitimate block. Do not
-"simplify" the bridge's `FinalizedBlock` by giving version one a zero `BlockID`
-instead of a nil pointer — the pointer is what stops a zero hash being emitted
-and indexed as though it named a block. `cmd/protocol-cometbft-bridge/main.go`
-selects the version, and `cmd/protocol-cometbft-devnet` is what the
-four-validator integration drives.
+**Three things the deletion must not take with it, and each is a real risk.**
 
-**The receipt is the Go half's moved figure, and M3.13r says exactly where to
-look.** `wire_v7.go` decodes a finalized block's per-transaction receipts, and
-a receipt's magic prefix carries the receipt version as its last octet — the
-figure that broke M3.13r's first build. Check whether `wire_v7.go` restates it
-as a literal before rebinding, and derive it if it does.
+1. **The accepted version-seven vector files.** `economy-transition-v7.txt` and
+   `economy-transition-v7-execution.txt` are *accepted contracts* and the
+   version-eight kernel's predecessor constructions are **pinned against
+   `economy-transition-v7.txt`** — an inequality between two digests proves
+   nothing about either one unless both ends are pinned. Their Python
+   verifiers and simulation models stay. `tests/tools/test_registration_test.py`
+   fails closed if a recorded vector file stops being read by anything, so run
+   it after **every** CMake edit; it is the guard that catches exactly this.
+2. **`simulation/economy_transition_v7/`.** Version eight's model *subclasses*
+   it — `ledger.py` overrides four things on version seven's `Ledger`, and
+   `block.py` imports `derive_assignment` from `economy_transition_v7.settlement`
+   and six names from `economy_transition_v6.block`. Deleting the Python
+   package would break the version-eight model. **Only the C++ is deleted.**
+3. **Version one.** `main.cpp`, `ApplicationV1`, `SQLiteLedger`, `snapshot_v1`,
+   `wire_v1`, `Client`, `LocalV1`, `New`, `ProtocolV1`, and the two version-one
+   integrations are **not** in scope. ADR 0065 enumerates version seven's
+   removal and says nothing about version one's, and `wire_v1` is the frame
+   format both live versions use.
 
-**One local check that is worth rebuilding rather than rediscovering.**
-`internal/localapp` imports no third-party code, so copying its `*.go` into a
-scratch module with `go 1.23` and running `go vet ./...` and `go test`
-type-checks and exercises the whole package under this machine's own Go in
-under a second — no CometBFT module graph, which the repository's resource
-rules forbid pulling locally. `internal/bridge` and `internal/nodeconfig`
-import CometBFT and can only be verified on the hosted matrix, so **write those
-two carefully the first time**: a compile error there costs a full matrix round
-trip. The engine's own source is worth reading the same way — `curl` one file
-from `raw.githubusercontent.com/cometbft/cometbft/v0.39.4/` beats a module
-download, and `consensus/replay.go` is where the replay handshake is decided.
+**What the deletion is evidence for.** The suite should lose every
+version-seven entry and keep every version-eight one; the four hosted jobs
+should pass with the smaller set; and both remaining integrations — version one
+and version eight — should still run in `tools/verify.sh`. **A grep for `v7`,
+`V7`, and `version seven` across `src/`, `include/`, `tests/` (excluding
+`tests/simulation/` and the vector files), and `adapter/` should return only
+prose about history in ADRs and this document.** That grep is the review.
 
-**Two figures step 6 must move and one it must not.** The genesis allocation
-bound goes from 110 to 142. The app state a node initialises a home with becomes
-`"protocol-stack-v8"`, which `internal/nodeconfig` writes and
-`ApplicationV8::init_chain` now refuses at any other value — including
-`"protocol-stack-v7"`, which M3.13r added a case for precisely because it is the
-string a stale deployment would still be sending. **The wire does not move**:
-`wire_v1` decodes every request for both versions and there is no version-eight
-frame format.
+**One thing worth deciding before starting rather than during.** The
+version-seven *prose* in existing ADRs and in this document is history and stays
+— ADR 0056 through ADR 0062 record decisions that were correct when made, and
+ADR 0065 is the record of why two contracts coexisted at all. Do not rewrite
+them to pretend version seven never existed; strike step 7 in the enumeration
+above and record the deletion as its own ADR.
 
-**Do not run a blanket `v7` to `v8` rewrite** — nine literal mentions of version
-seven survived in the codec half, twenty-one in the execution half, eight in the
-snapshot, eighteen in the store, and twenty-four in the application, and every
-one was prose about history that had to be kept or rewritten deliberately. **A
-normalising diff is the whole review**: rendering both versions with
-`sed 's/v7/vX/g;s/V7/VX/g'` and `sed 's/v8/vX/g;s/V8/VX/g'` and diffing them
-shows exactly the intended deltas and nothing else. In M3.13p the snapshot's
-assignment translation unit diffed empty; in M3.13q three of five store files
-did; in M3.13r four of ten application files did — the dispatcher header, the
-response header, the internal header, and the dispatcher translation unit.
+**The rule three slices arrived at, corrected by the fourth.** Ask of each
+moved figure: **if this were still the old value, what fails?** There are three
+answers, not the two ADR 0067 recorded.
 
-**The rebinding expressions.** Three do the namespace work, as they did for
-both kernel halves, the snapshot, the store, and the application: `namespace
-protocol::v7` to `protocol::v8`, `protocol::v7::` to `protocol::v8::`, and
-`"protocol/v7/` to `"protocol/v8/`. Every layer needs its own on top, and **the
-alias line `namespace v7 = protocol::v7;` is missed by all three**, because
-they match `protocol::v7::` with a trailing pair of colons and the alias ends
-in a semicolon. Note also that a lowercase `s/version seven/` rewrite misses
-`Version seven` at the start of a sentence, which is how two stale comments
-reached M3.13r's first build.
+1. **The happy path fails.** M3.13r's receipt prefix: left stale it broke the
+   first finalized block and an inherited test caught it the moment it
+   compiled. Nothing more is needed.
+2. **A refusal moves and nothing notices.** M3.13q's `head_snapshot` minimum:
+   left stale it moved a refusal one layer later, which every existing test
+   accepted, so it needed `check_column_bounds` at the boundary.
+3. **Nothing fails, because every test compares the constant to itself.**
+   M3.13s's `resultCodeCountV8`: it moves from 33 to 45, the codes it would cut
+   off appear in no fixture, and the whole inherited suite passes at either
+   value. **This kind is invisible to a boundary case too**, because the
+   boundary is computed from the same constant. Its test is an assertion
+   against the **literal**, plus one input on each side written out by hand.
 
-**The rule the last two slices arrived at, and the one to apply here.** A
-figure that moves with a version is **either checked on the happy path or it
-needs a boundary case, and there is no third kind.** M3.13q's `head_snapshot`
-minimum was the first kind's opposite: left stale it moved a refusal one layer
-later, which every existing test accepted, so it needed `check_column_bounds`.
-M3.13r's receipt prefix was the first kind: left stale it broke the first
-finalized block and an inherited test caught it the moment it compiled. **Ask
-of each moved figure: if this were still the old value, what fails?** If the
-honest answer is "nothing, it would just be caught somewhere else", write the
-boundary case.
+The third kind is the one a survey misses, and it is not always a constant:
+M3.13s's other instance was two genesis keys that must be two keys, which
+nothing in the fixture, the node, the adapter, or the engine would notice were
+they one.
 
 **What exists and what does not.** `simulation/economy_transition_v8/` is
 complete. **In C++ the whole version-eight kernel is complete**: `src/v8/` is
@@ -5602,9 +5735,13 @@ complete as of 2026-09-06** — three public headers, four translation units, an
 an internal header, verified by `version-eight-application` against the recorded
 roots across three restarts and every refusal, and by
 `version-eight-transport` against the same blocks as request and response frames
-over a real Unix socket. **Every layer above the application still names version
-seven** — the node process and the adapter — which is what step 6 moves and step
-7 deletes.
+over a real Unix socket. **`protocol-application-v8` and the adapter's
+version-eight client are complete as of 2026-09-07** — one translation unit and
+four CMake edits in C++, `wire_v8.go` and `client_v8.go` plus `LocalV8`,
+`NewV8`, and `ProtocolV8` in Go — verified by `version-eight-headless-process`,
+`version-eight-chain-fixture`, and the two hosted CometBFT integrations.
+**Nothing above the kernel still needs version seven**: both stacks are
+complete, top to bottom, and step 7 deletes one of them.
 
 **What version eight adds to the kernel, and each item is a place to get it
 wrong:**
@@ -5643,19 +5780,18 @@ file stops being read by anything. **Adding an executable is four CMake edits**
 example immediately above `economy-transition-v8-cpp`'s `add_test`.
 
 **Then, in order, each its own slice:**
-* steps 6 and 7 of the migration above, whose layer shapes are recorded
-  further down this document;
-* requirement 13's remaining half, the **adversarial** scenarios, which only
-  become economic once a version-eight chain is measuring seats. Four replicas
-  agree on version-seven roots through a restart, which is the requirement's
-  central claim; what is untested is disagreement — a replica fed a block the
-  others refuse, a partition, a node restarted mid-block. **Its ordering after
-  the kernel was doubted on 2026-09-03 and the doubt resolved against itself**:
-  a disagreement test needs no version eight, but requirement 13 says
-  *economic*, and the version-seven ABCI path hands `execute_block` a null
-  uptime schedule — so a chain driven through it writes no cycle assignment and
-  accrues nothing to any seat. Version eight is what removes the parameter, so
-  the stack cannot run an economic scenario until the stack is version eight;
+* step 7 of the migration above, whose layer shapes are recorded further down
+  this document;
+* requirement 13's remaining half, the **adversarial and economic** scenarios.
+  **Its blocker is now gone.** Four replicas agree on version-*eight* roots
+  through a restart as of M3.13s, and version eight's prologue derives the
+  schedule, so a chain driven through the ABCI path writes cycle assignment
+  records rather than none — which is what the version-seven path could not do
+  and why this waited for the kernel. Two things remain untested: **disagreement**
+  — a replica fed a block the others refuse, a partition, a node restarted
+  mid-block — and **an economic chain**, one that sells and activates a seat so
+  the issue and expiry steps have something in scope. M3.13s's fixture sells
+  none, deliberately: it establishes the code path, not the audit;
 * `calendar-v1`, which must fix the consensus timestamp's monotonicity rule and
   acceptance tolerance and the calendar-month boundary derived from them. **The
   tolerance is consensus-visible**: a proposer can move a month boundary within
@@ -5808,18 +5944,29 @@ wrote exactly that many, because the decoder reads every prefix field at a
 literal offset.
 
 **What the Go adapter looks like now, so a later session does not rediscover
-it.** `internal/localapp` gained two files and no wire: `wire_v7.go` holds the
-version-seven finalized-block decoder and its receipt rule, and `client_v7.go`
-holds `ClientV7`, which **embeds `Client` and declares exactly one method**.
-`internal/bridge` gained `local.go`, holding `LocalV1` and `LocalV7` — two
+it.** `internal/localapp` holds **two files per ledger version and no wire**:
+`wire_v7.go` / `wire_v8.go` hold each finalized-block decoder and its receipt
+rule, and `client_v7.go` / `client_v8.go` hold `ClientV7` and `ClientV8`, each
+of which **embeds `Client` and declares exactly one method**.
+`internal/bridge/local.go` holds `LocalV1`, `LocalV7`, and `LocalV8` — three
 embeddings that give each client the shape the bridge consumes — and
-`application.go` gained `NewV7`, a `codespace` field, and a `committedHeight`.
-**That height is never counted here**: it is raised only by the application's own
-answers to `Info` and `Commit`, which is what makes the finalize guard incapable
-of refusing a legitimate block. Do not "simplify" the bridge's `FinalizedBlock`
-by giving version one a zero `BlockID` instead of a nil pointer — the pointer
-is what stops a zero hash being emitted and indexed as though it named a
-block.
+`application.go` holds `New`, `NewV7`, `NewV8`, a `codespace` field, and a
+`committedHeight`. **That height is never counted here**: it is raised only by
+the application's own answers to `Info` and `Commit`, which is what makes the
+finalize guard incapable of refusing a legitimate block. Do not "simplify" the
+bridge's `FinalizedBlock` by giving version one a zero `BlockID` instead of a
+nil pointer — the pointer is what stops a zero hash being emitted and indexed as
+though it named a block.
+
+**Three figures live in the Go half and one of them has no constant behind it.**
+`receiptVersionV8` is 8 and is **named rather than written into the prefix
+array**, which is what version seven's file does not do; `resultCodeCountV8` is
+45; and `appStateV8` is `"protocol-stack-v8"`. Only the middle one can go stale
+quietly — the other two break the first block or the handshake — so it is pinned
+to its literal, with results 44 and 45 exercised by hand. **Versions seven and
+eight share a finalized-block shape**, so the only octet separating them on a
+well-formed block is the receipt's version, which is why each decoder is
+required to refuse the other's payload rather than merely to accept its own.
 
 **One local check that is worth rebuilding rather than rediscovering.**
 `internal/localapp` imports no third-party code, so copying its `*.go` into a
@@ -5848,15 +5995,19 @@ version-specific**, which is why ADR 0067 re-establishes it against a
 version-eight chain rather than restating it.
 
 **What the node process looks like now, so a later session does not rediscover
-it.** `src/application/main_v7.cpp` is the `protocol-application-v7` target and
-takes `<absolute-database> <absolute-genesis> <absolute-socket>`, or
-`--genesis-identity <absolute-genesis>`. The genesis file is exactly 110 octets
-and nothing else; the size check in the binary is an **allocation bound**, and
-the validity rule lives only in `decode_genesis`. Opening the store is attempted
-before creating it. A `connection_failure` or a `protocol_failure` continues the
-serve loop; only the application's own terminal latch stops a node that has
-contradicted itself. **A version-eight genesis file is 142 octets**, so that
-bound moves with the version.
+it.** `src/application/main_v8.cpp` is the `protocol-application-v8` target and
+`main_v7.cpp` is version seven's beside it until ADR 0065's step 7. Each takes
+`<absolute-database> <absolute-genesis> <absolute-socket>`, or
+`--genesis-identity <absolute-genesis>`. The genesis file is exactly
+`kGenesisPrefixBytes` octets and nothing else — **142 for version eight, 110 for
+version seven** — and the size check in the binary is an **allocation bound**
+while the validity rule lives only in `decode_genesis`. Version eight's file
+**states no width at all**: the bound reads the constant and the two error
+messages name the rule rather than a number, because a message is compiled
+against nothing and a stale literal in one survives every test. Opening the
+store is attempted before creating it. A `connection_failure` or a
+`protocol_failure` continues the serve loop; only the application's own terminal
+latch stops a node that has contradicted itself.
 
 **What the transport looks like now, so a later session does not rediscover it.**
 There is no version-seven wire. `wire_v1` decodes every request for both
@@ -6241,6 +6392,31 @@ its own**: `coverage.every_kind_version_eight_admits_is_executed` fails if a
 later scenario change stops reaching one.
 
 ## Blockers
+
+**M3.13s ran the founder-decision gate and passed it.** Eleven decisions were
+enumerated before any was judged: the genesis allocation bound of 142 octets;
+the binary's name and its two argument forms; the app state string a home is
+initialised with; the codespace name for version eight's result codes; the
+`ProtocolV8` value and whether version seven stays selectable while the
+migration is in flight; the receipt version octet and the result-code count in
+the Go decoder; whether `FinalizedBlockV8` carries a block identifier; the
+`-protocol-version 8` flag value; which scenarios the two integrations run;
+the fixture's key labels and transaction set; and whether the version-eight
+fixture needs a second genesis authority key of its own. **Every one is already
+decided by an accepted document or is engineering work**: the bound, the receipt
+figures, and the result count by `include/protocol/v8/economy.hpp` and the
+accepted `economy-transition-v8` contract; the app state by ADR 0068, which
+`ApplicationV8::init_chain` already enforces; the finalized-block shape by ADR
+0059 and ADR 0068, since version eight adds no field to it; version seven
+remaining selectable by ADR 0065, which permits coexistence exactly until step
+7; and the naming, flag values, and test scenarios by the founder constitution's
+placement of packaging, operational, and testing choices outside the reserved
+set. The dispute authority key is a *genesis field the accepted contract already
+decided*; this slice writes one into a fixture and never chooses what it
+authorizes. Nothing in the slice set or changed supply, allocation,
+beneficiaries, Founder ownership, creator hierarchy, commercial routing, AI
+institutional authority, bridge scope, content permanence, or what an end user
+must do, own, run, or receive, and **no accepted vector file changed**.
 
 **M3.13r ran the founder-decision gate and passed it.** Thirteen decisions were
 enumerated before any was judged: `kApplicationProtocolVersionV8`; the expected
