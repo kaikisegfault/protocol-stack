@@ -16,6 +16,10 @@ type FinalizedBlockV8 struct {
 
 const (
 	receiptBytesV8 = 56
+	// The result byte's position in the receipt. Version eight keeps version
+	// seven's receipt layout unchanged, so this offset is the predecessor's;
+	// it moved here from `wire_v7.go` when that file was deleted.
+	receiptResultOffset = 39
 	// The receipt version, which is the last octet of the magic prefix below.
 	// **It is named rather than written into the array**, because it is the
 	// figure that moves with the ledger version while looking like framing:
