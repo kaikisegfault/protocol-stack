@@ -3,7 +3,6 @@
 #include "unix_server_v1_internal.hpp"
 
 #include "protocol/application/dispatcher_v1.hpp"
-#include "protocol/application/dispatcher_v7.hpp"
 #include "protocol/application/dispatcher_v8.hpp"
 #include "protocol/application/wire_v1.hpp"
 
@@ -199,16 +198,6 @@ ServeConnectionResult UnixSocketServerV1::serve_connection(
       implementation_->listener, shutdown_descriptor,
       [&application](const DecodedRequest& request) {
         return dispatch_request(application, request);
-      });
-}
-
-ServeConnectionResult UnixSocketServerV1::serve_connection(
-    ApplicationV7& application,
-    int shutdown_descriptor) {
-  return serve_with(
-      implementation_->listener, shutdown_descriptor,
-      [&application](const DecodedRequest& request) {
-        return dispatch_request_v7(application, request);
       });
 }
 

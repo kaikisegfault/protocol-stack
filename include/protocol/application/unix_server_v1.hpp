@@ -9,7 +9,6 @@
 // **That is why a new ledger version adds an overload here and not a wire.**
 
 #include "protocol/application/application_v1.hpp"
-#include "protocol/application/application_v7.hpp"
 #include "protocol/application/application_v8.hpp"
 
 #include <filesystem>
@@ -45,9 +44,6 @@ class UnixSocketServerV1 {
 
   ServeConnectionResult serve_connection(
       ApplicationV1& application,
-      int shutdown_descriptor = -1);
-  ServeConnectionResult serve_connection(
-      ApplicationV7& application,
       int shutdown_descriptor = -1);
   ServeConnectionResult serve_connection(
       ApplicationV8& application,

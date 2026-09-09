@@ -305,7 +305,7 @@ def initialize_home(
     """Initialize or exact-validate a CometBFT home.
 
     `protocol_version` selects the genesis application state, which is what a
-    version-seven application requires at InitChain: a home written for one
+    version-eight application requires at InitChain: a home written for one
     ledger version and a bridge started for the other is refused there rather
     than at the first block.
     """

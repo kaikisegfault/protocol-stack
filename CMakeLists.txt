@@ -153,27 +153,9 @@ set(
   src/v1/execution.cpp
   src/v1/genesis.cpp
   src/v1/ledger.cpp
-  src/v7/economy_assignment.cpp
-  src/v7/economy_block.cpp
-  src/v7/economy_body.cpp
-  src/v7/economy_contract.cpp
-  src/v7/economy_envelope.cpp
-  src/v7/economy_execution.cpp
-  src/v7/economy_genesis.cpp
-  src/v7/economy_identity.cpp
-  src/v7/economy_invariants.cpp
-  src/v7/economy_ledger.cpp
-  src/v7/economy_messages.cpp
-  src/v7/economy_receipt.cpp
-  src/v7/economy_settlement.cpp
-  src/v7/economy_state.cpp
-  src/v7/economy_transitions.cpp
-  src/v7/economy_tree.cpp
-  src/v7/economy_value_transitions.cpp
-  # The version-eight codec, added beside version seven's for the six slices
-  # ADR 0065 enumerates. `src/v7/` and the version-seven storage, application,
-  # transport, and node sources are deleted by M3.13t, which is the numbered
-  # slice that ends the coexistence rather than an intention to end it.
+  # The one economy contract the repository compiles. Version seven's kernel
+  # stood beside this one for the six slices ADR 0065 enumerates and was deleted
+  # by its step 7, which restores ADR 0046's rule unamended.
   src/v8/economy_assignment.cpp
   src/v8/economy_block.cpp
   src/v8/economy_body.cpp
@@ -212,17 +194,11 @@ add_library(
     src/storage/sqlite_history_replay_v1.cpp
     src/storage/sqlite_ledger.cpp
     src/storage/sqlite_schema_v1.cpp
-    src/storage/sqlite_ledger_v7.cpp
-    src/storage/sqlite_ledger_v7_open.cpp
-    src/storage/sqlite_schema_v7.cpp
     src/storage/sqlite_ledger_v8.cpp
     src/storage/sqlite_ledger_v8_open.cpp
     src/storage/sqlite_schema_v8.cpp
     src/storage/sqlite_snapshot_v1.cpp
     src/storage/snapshot_v1.cpp
-    src/storage/snapshot_v7.cpp
-    src/storage/snapshot_v7_assignments.cpp
-    src/storage/snapshot_v7_entries.cpp
     src/storage/snapshot_v8.cpp
     src/storage/snapshot_v8_assignments.cpp
     src/storage/snapshot_v8_entries.cpp
@@ -231,16 +207,12 @@ add_library(
   protocol_application
   STATIC
     src/application/application_block_v1.cpp
-    src/application/application_block_v7.cpp
     src/application/application_block_v8.cpp
     src/application/application_v1.cpp
-    src/application/application_v7.cpp
     src/application/application_v8.cpp
     src/application/dispatcher_v1.cpp
-    src/application/dispatcher_v7.cpp
     src/application/dispatcher_v8.cpp
     src/application/response_v1.cpp
-    src/application/response_v7.cpp
     src/application/response_v8.cpp
     src/application/unix_connection_v1.cpp
     src/application/unix_server_v1.cpp
@@ -267,20 +239,6 @@ set_target_properties(
 )
 target_link_libraries(
   protocol_application_server
-  PRIVATE
-    protocol_application
-)
-add_executable(
-  protocol_application_server_v7
-  src/application/main_v7.cpp
-)
-set_target_properties(
-  protocol_application_server_v7
-  PROPERTIES
-    OUTPUT_NAME protocol-application-v7
-)
-target_link_libraries(
-  protocol_application_server_v7
   PRIVATE
     protocol_application
 )
@@ -315,26 +273,6 @@ add_executable(
   tests/kernel/primitives_test.cpp
 )
 target_link_libraries(kernel_primitive_tests PRIVATE protocol_kernel)
-add_executable(
-  economy_v7_codec_tests
-  tests/kernel/economy_v7_test.cpp
-  tests/kernel/economy_v7_encoding_test.cpp
-  tests/kernel/economy_v7_identity_test.cpp
-  tests/kernel/economy_v7_settlement_test.cpp
-  tests/kernel/economy_v7_state_test.cpp
-  tests/kernel/economy_v7_version_test.cpp
-)
-target_link_libraries(economy_v7_codec_tests PRIVATE protocol_kernel)
-add_executable(
-  economy_v7_execution_tests
-  tests/kernel/economy_v7_execution_test.cpp
-  tests/kernel/economy_v7_trace.cpp
-  tests/kernel/economy_v7_scenarios_test.cpp
-  tests/kernel/economy_v7_execution_checks.cpp
-  tests/kernel/economy_v7_derived_test.cpp
-  tests/kernel/economy_v7_transitions_test.cpp
-)
-target_link_libraries(economy_v7_execution_tests PRIVATE protocol_kernel)
 add_executable(
   economy_v8_codec_tests
   tests/kernel/economy_v8_test.cpp
@@ -423,16 +361,6 @@ add_executable(
 # The scenario translation units are the kernel execution suite's own: a
 # recovered head is checked against the recorded roots, not against the store.
 add_executable(
-  storage_sqlite_recovery_v7_tests
-  tests/storage/sqlite_recovery_v7_test.cpp
-  tests/storage/sqlite_fault_vfs.cpp
-  tests/kernel/economy_v7_trace.cpp
-  tests/kernel/economy_v7_scenarios_test.cpp
-)
-# The scenario translation units are the version-eight kernel execution suite's
-# own, for the reason version seven's recovery suite reuses its own: a recovered
-# head is checked against the recorded roots, not against the store.
-add_executable(
   storage_sqlite_recovery_v8_tests
   tests/storage/sqlite_recovery_v8_test.cpp
   tests/storage/sqlite_fault_vfs.cpp
@@ -447,30 +375,6 @@ add_executable(
 # rather than restated: the recorded scenarios are what a snapshot is checked
 # against, and a second copy of them would be a second opinion about the states
 # whose roots the vectors fix.
-# The two scenario translation units are the kernel execution suite's own, for
-# the reason the snapshot tests reuse them: the recorded scenarios are the third
-# source a store is checked against.
-add_executable(
-  storage_sqlite_ledger_v7_tests
-  tests/storage/sqlite_ledger_v7_test.cpp
-  tests/storage/sqlite_ledger_v7_refusals.cpp
-  tests/kernel/economy_v7_trace.cpp
-  tests/kernel/economy_v7_scenarios_test.cpp
-)
-add_executable(
-  storage_snapshot_v7_tests
-  tests/storage/snapshot_v7_test.cpp
-  tests/storage/snapshot_v7_fixture.cpp
-  tests/storage/snapshot_v7_round_trip.cpp
-  tests/storage/snapshot_v7_refusals.cpp
-  tests/storage/snapshot_v7_entry_refusals.cpp
-  tests/kernel/economy_v7_trace.cpp
-  tests/kernel/economy_v7_scenarios_test.cpp
-)
-# The two scenario translation units are the version-eight kernel execution
-# suite's own, reused for the reason version seven's are: the recorded scenarios
-# are what a snapshot is checked against, and a second copy of them would be a
-# second opinion about the states whose roots the vectors fix.
 add_executable(
   storage_snapshot_v8_tests
   tests/storage/snapshot_v8_test.cpp
@@ -481,9 +385,9 @@ add_executable(
   tests/kernel/economy_v8_trace.cpp
   tests/kernel/economy_v8_scenarios_test.cpp
 )
-# The two scenario translation units are the version-eight kernel execution
-# suite's own, for the reason version seven's store reuses its own: the recorded
-# scenarios are the third source a store is checked against.
+# The two scenario translation units are the kernel execution suite's own, for
+# the reason the snapshot tests reuse them: the recorded scenarios are the third
+# source a store is checked against.
 add_executable(
   storage_sqlite_ledger_v8_tests
   tests/storage/sqlite_ledger_v8_test.cpp
@@ -503,30 +407,14 @@ add_executable(
 # the reason the snapshot and store tests reuse them: the recorded scenarios are
 # the third source a block driven through the application is checked against.
 add_executable(
-  application_v7_tests
-  tests/application/application_v7_test.cpp
-  tests/kernel/economy_v7_trace.cpp
-  tests/kernel/economy_v7_scenarios_test.cpp
-)
-# The scenario translation units are the kernel execution suite's own: the
-# recorded scenarios are the third source a block driven over the wire is
-# checked against.
-add_executable(
-  application_transport_v7_tests
-  tests/application/transport_v7_test.cpp
-  tests/kernel/economy_v7_trace.cpp
-  tests/kernel/economy_v7_scenarios_test.cpp
-)
-# The two scenario translation units are the version-eight kernel execution
-# suite's own, for the reason version seven's application suite reuses its own:
-# the recorded scenarios are the third source a block driven through the
-# application is checked against.
-add_executable(
   application_v8_tests
   tests/application/application_v8_test.cpp
   tests/kernel/economy_v8_trace.cpp
   tests/kernel/economy_v8_scenarios_test.cpp
 )
+# The scenario translation units are the kernel execution suite's own: the
+# recorded scenarios are the third source a block driven over the wire is
+# checked against.
 add_executable(
   application_transport_v8_tests
   tests/application/transport_v8_test.cpp
@@ -570,12 +458,6 @@ target_link_libraries(
     protocol_stack_sqlite
 )
 target_link_libraries(
-  storage_sqlite_recovery_v7_tests
-  PRIVATE
-    protocol_storage
-    protocol_stack_sqlite
-)
-target_link_libraries(
   storage_sqlite_recovery_v8_tests
   PRIVATE
     protocol_storage
@@ -594,19 +476,7 @@ target_link_libraries(
     protocol_stack_sqlite
 )
 target_link_libraries(
-  storage_snapshot_v7_tests
-  PRIVATE
-    protocol_storage
-    protocol_stack_sqlite
-)
-target_link_libraries(
   storage_snapshot_v8_tests
-  PRIVATE
-    protocol_storage
-    protocol_stack_sqlite
-)
-target_link_libraries(
-  storage_sqlite_ledger_v7_tests
   PRIVATE
     protocol_storage
     protocol_stack_sqlite
@@ -627,18 +497,6 @@ target_link_libraries(
   application_v1_tests
   PRIVATE
     protocol_application
-)
-target_link_libraries(
-  application_v7_tests
-  PRIVATE
-    protocol_application
-    protocol_stack_sqlite
-)
-target_link_libraries(
-  application_transport_v7_tests
-  PRIVATE
-    protocol_application
-    protocol_stack_sqlite
 )
 target_link_libraries(
   application_v8_tests
@@ -677,11 +535,8 @@ set(
   protocol_storage
   protocol_application
   protocol_application_server
-  protocol_application_server_v7
   protocol_application_server_v8
   kernel_primitive_tests
-  economy_v7_codec_tests
-  economy_v7_execution_tests
   economy_v8_codec_tests
   economy_v8_execution_tests
   kernel_admission_tests
@@ -698,17 +553,12 @@ set(
   storage_sqlite_recovery_tests
   storage_sqlite_sequence_tests
   storage_sqlite_vfs_failure_tests
-  storage_sqlite_recovery_v7_tests
   storage_sqlite_recovery_v8_tests
   storage_snapshot_v1_tests
-  storage_snapshot_v7_tests
   storage_snapshot_v8_tests
-  storage_sqlite_ledger_v7_tests
   storage_sqlite_ledger_v8_tests
   storage_archive_v1_tests
   application_v1_tests
-  application_v7_tests
-  application_transport_v7_tests
   application_v8_tests
   application_transport_v8_tests
   application_wire_v1_tests
@@ -737,10 +587,10 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
   )
   target_link_libraries(kernel_address_fuzz PRIVATE protocol_kernel_fuzz)
   add_executable(
-    economy_v7_fuzz
-    tests/fuzz/economy_v7_fuzz.cpp
+    economy_v8_fuzz
+    tests/fuzz/economy_v8_fuzz.cpp
   )
-  target_link_libraries(economy_v7_fuzz PRIVATE protocol_kernel_fuzz)
+  target_link_libraries(economy_v8_fuzz PRIVATE protocol_kernel_fuzz)
   add_executable(
     kernel_genesis_fuzz
     tests/fuzz/genesis_fuzz.cpp
@@ -750,9 +600,6 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     STATIC
       src/storage/archive_v1.cpp
       src/storage/snapshot_v1.cpp
-      src/storage/snapshot_v7.cpp
-      src/storage/snapshot_v7_assignments.cpp
-      src/storage/snapshot_v7_entries.cpp
       src/storage/snapshot_v8.cpp
       src/storage/snapshot_v8_assignments.cpp
       src/storage/snapshot_v8_entries.cpp
@@ -782,10 +629,6 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     tests/fuzz/snapshot_fuzz.cpp
   )
   add_executable(
-    storage_snapshot_v7_fuzz
-    tests/fuzz/snapshot_v7_fuzz.cpp
-  )
-  add_executable(
     storage_snapshot_v8_fuzz
     tests/fuzz/snapshot_v8_fuzz.cpp
   )
@@ -808,11 +651,6 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       protocol_storage_fuzz
   )
   target_link_libraries(
-    storage_snapshot_v7_fuzz
-    PRIVATE
-      protocol_storage_fuzz
-  )
-  target_link_libraries(
     storage_snapshot_v8_fuzz
     PRIVATE
       protocol_storage_fuzz
@@ -830,10 +668,9 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     kernel_admission_fuzz
     kernel_address_fuzz
     kernel_genesis_fuzz
-    economy_v7_fuzz
+    economy_v8_fuzz
     protocol_storage_fuzz
     storage_snapshot_fuzz
-    storage_snapshot_v7_fuzz
     storage_snapshot_v8_fuzz
     storage_archive_fuzz
     protocol_application_wire_fuzz
@@ -872,10 +709,9 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       kernel_admission_fuzz
       kernel_address_fuzz
       kernel_genesis_fuzz
-      economy_v7_fuzz
+      economy_v8_fuzz
       protocol_storage_fuzz
       storage_snapshot_fuzz
-      storage_snapshot_v7_fuzz
       storage_snapshot_v8_fuzz
       storage_archive_fuzz
       protocol_application_wire_fuzz
@@ -893,9 +729,8 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       kernel_admission_fuzz
       kernel_address_fuzz
       kernel_genesis_fuzz
-      economy_v7_fuzz
+      economy_v8_fuzz
       storage_snapshot_fuzz
-      storage_snapshot_v7_fuzz
       storage_snapshot_v8_fuzz
       storage_archive_fuzz
       application_wire_fuzz
@@ -922,26 +757,6 @@ add_test(
     "${PROJECT_SOURCE_DIR}/test-vectors/protocol-primitives-v1.txt"
 )
 add_test(
-  NAME economy-transition-v7-cpp
-  COMMAND
-    economy_v7_codec_tests
-    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7.txt"
-    "${PROJECT_SOURCE_DIR}/test-vectors/protocol-primitives-v1.txt"
-    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v3.txt"
-    "${PROJECT_SOURCE_DIR}/test-vectors/founder-economy-manifest-v3.txt"
-    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v6.txt"
-)
-add_test(
-  NAME economy-transition-v7-execution-cpp
-  COMMAND
-    economy_v7_execution_tests
-    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7-execution.txt"
-    "${PROJECT_SOURCE_DIR}/test-vectors/protocol-primitives-v1.txt"
-    "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
-    "${PROJECT_SOURCE_DIR}/test-vectors/founder-economy-manifest-v3.txt"
-    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v3.txt"
-)
-add_test(
   NAME economy-transition-v8-cpp
   COMMAND
     economy_v8_codec_tests
@@ -961,12 +776,6 @@ add_test(
     "${PROJECT_SOURCE_DIR}/test-vectors/ledger-transition-v1.txt"
 )
 add_test(
-  NAME version-seven-snapshot
-  COMMAND
-    storage_snapshot_v7_tests
-    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7-execution.txt"
-)
-add_test(
   NAME version-eight-snapshot
   COMMAND
     storage_snapshot_v8_tests
@@ -974,23 +783,6 @@ add_test(
 )
 # The directory name is short because the termination cases re-exec this binary
 # and its arguments include the directory.
-add_test(
-  NAME version-seven-store-recovery
-  COMMAND
-    storage_sqlite_recovery_v7_tests
-    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7-execution.txt"
-    "${CMAKE_CURRENT_BINARY_DIR}/sr-v7"
-)
-add_test(
-  NAME version-seven-owning-store
-  COMMAND
-    storage_sqlite_ledger_v7_tests
-    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7-execution.txt"
-    "${CMAKE_CURRENT_BINARY_DIR}/version-seven-owning-store"
-)
-# The directory name is short for the reason version seven's recovery entry is:
-# the termination cases re-exec this binary and its arguments include the
-# directory.
 add_test(
   NAME version-eight-store-recovery
   COMMAND
@@ -1139,31 +931,14 @@ add_test(
     "${CMAKE_CURRENT_BINARY_DIR}/application-v1-test"
 )
 add_test(
-  NAME version-seven-application
-  COMMAND
-    application_v7_tests
-    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7-execution.txt"
-    "${CMAKE_CURRENT_BINARY_DIR}/version-seven-application"
-)
-# The directory name is deliberately short: this entry binds a Unix socket
-# inside it, and `sun_path` caps a socket pathname near 108 octets.
-add_test(
-  NAME version-seven-transport
-  COMMAND
-    application_transport_v7_tests
-    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7-execution.txt"
-    "${CMAKE_CURRENT_BINARY_DIR}/at-v7"
-)
-add_test(
   NAME version-eight-application
   COMMAND
     application_v8_tests
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v8-execution.txt"
     "${CMAKE_CURRENT_BINARY_DIR}/version-eight-application"
 )
-# The directory name is deliberately short for the reason version seven's is:
-# this entry binds a Unix socket inside it, and `sun_path` caps a socket
-# pathname near 108 octets.
+# The directory name is deliberately short: this entry binds a Unix socket
+# inside it, and `sun_path` caps a socket pathname near 108 octets.
 add_test(
   NAME version-eight-transport
   COMMAND
@@ -1200,15 +975,6 @@ add_test(
 )
 # The directory name is short because this entry binds a Unix socket inside it
 # and `sun_path` caps a socket pathname near 108 octets.
-add_test(
-  NAME version-seven-headless-process
-  COMMAND
-    "${Python3_EXECUTABLE}"
-    "${PROJECT_SOURCE_DIR}/tests/application/headless_process_v7_test.py"
-    "$<TARGET_FILE:protocol_application_server_v7>"
-    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7-execution.txt"
-    "${CMAKE_CURRENT_BINARY_DIR}/ah-v7"
-)
 add_test(
   NAME version-eight-headless-process
   COMMAND
@@ -1648,14 +1414,6 @@ add_test(
   COMMAND
     "${Python3_EXECUTABLE}"
     "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_v7_block_test.py"
-)
-add_test(
-  NAME version-seven-chain-fixture
-  COMMAND
-    "${Python3_EXECUTABLE}"
-    "${PROJECT_SOURCE_DIR}/tests/integration/version_seven_chain_test.py"
-    --libsodium
-    "${PROTOCOL_STACK_SODIUM_SHARED_LIBRARY}"
 )
 add_test(
   NAME version-eight-chain-fixture
@@ -2109,9 +1867,9 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       -len_control=0
   )
   add_test(
-    NAME economy-transition-v7-fuzz-smoke
+    NAME economy-transition-v8-fuzz-smoke
     COMMAND
-      economy_v7_fuzz
+      economy_v8_fuzz
       -seed=824311
       -runs=512
       -max_len=512
@@ -2121,15 +1879,6 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     NAME storage-snapshot-fuzz-smoke
     COMMAND
       storage_snapshot_fuzz
-      -seed=824311
-      -runs=512
-      -max_len=4096
-      -len_control=0
-  )
-  add_test(
-    NAME storage-snapshot-v7-fuzz-smoke
-    COMMAND
-      storage_snapshot_v7_fuzz
       -seed=824311
       -runs=512
       -max_len=4096
@@ -2166,8 +1915,9 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     kernel-admission-fuzz-smoke
     kernel-address-fuzz-smoke
     kernel-genesis-fuzz-smoke
-    economy-transition-v7-fuzz-smoke
+    economy-transition-v8-fuzz-smoke
     storage-snapshot-fuzz-smoke
+    storage-snapshot-v8-fuzz-smoke
     storage-archive-fuzz-smoke
     application-wire-fuzz-smoke
     PROPERTIES
