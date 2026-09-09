@@ -24,7 +24,7 @@ func run() error {
 		"absolute path to the C++ application Unix socket")
 	protocolVersion := flag.Uint(
 		"protocol-version", 1,
-		"protocol ledger version to bridge (1, 7, or 8)")
+		"protocol ledger version to bridge (1 or 8)")
 	flag.Parse()
 	if *applicationSocket == "" {
 		return errors.New("-application-socket is required")
