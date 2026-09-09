@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-09-07
+Last updated: 2026-09-09
 
 ## Phase
 
@@ -195,6 +195,38 @@ later and was invisible to every test. **A figure that moves with a version is
 either checked on the happy path or it needs a boundary case, and there is no
 third kind** — knowing which one you have is the question worth asking before
 the tests are written rather than after.
+
+**M3.13t deleted the version-seven stack on 2026-09-09**, which is step 7, the
+last step ADR 0065 enumerates, and the slice that makes six slices of
+coexistence legitimate retrospectively. `src/v7/`, `include/protocol/v7/`, the
+version-seven snapshot, owning store, application, transport, and node process,
+their tests and CTest entries, the Go adapter's version-seven client, and the
+`serve_connection(ApplicationV7&)` overload are gone. **The repository compiles
+exactly one economy contract again** and ADR 0046's rule applies unamended. ADR
+0070 records it and ADR 0065 is expired.
+
+**The enumeration was wrong about exactly one item, and a deletion slice found
+it.** ADR 0065 listed `economy_v7_fuzz` for removal, and the handoff asserted
+every deleted item had a version-eight counterpart already carrying its
+evidence. That held for every item but this one: no `economy_v8_fuzz` was ever
+added, so deleting version seven's as listed would have left the live contract
+with **no economy-codec fuzz target at all**. ADR 0065's own cost section rules
+that out — dropping coverage is the thing it says not to do — so the harness was
+migrated rather than deleted, and the two uptime values version eight adds were
+added to it. **The lesson is that a deletion enumerated in advance still has to
+be re-checked against what actually exists when it runs**, because the
+enumeration was written before three of the six slices it depends on had landed.
+
+**A cross-version refusal test needs rewriting rather than halving when one
+version goes.** `TestVersionsSevenAndEightRefuseEachOther` checked both
+directions through two live decoders. One direction lost its implementation; the
+other — a bridge pointed at a stale version-seven node must fail closed on the
+first block — is the one that matters, and it survives with the version-seven
+receipt written as a **literal** rather than read from a sibling, plus a
+positive
+control. This is M3.13n's rule one layer up: a pin that dies with the artifact
+it
+pins proves nothing afterwards.
 
 **M3.13s ran a version-eight chain end to end on 2026-09-07**, which is step 6
 and the first time anything in this repository executed a version-eight block
@@ -3336,9 +3368,11 @@ slices.
   one machine answers all fifty-four audits the chain issues it across a whole
   28,800-height window and writes no window record at all, another answers none
   of its fifty-two and fails its cycle, and the window's assignment pays the
-  first — **with nothing anywhere told that the second was offline**. What is
-  still version seven's is every layer above the store: the application, the
-  transport, the node process, and the adapter.
+  first — **with nothing anywhere told that the second was offline**. At that
+  date every layer above the
+  store was still version seven's — the application, the transport, the node
+  process, and the adapter — and all four were version eight's by M3.13s and
+  version seven's were deleted by M3.13t.
 - **The version-eight byte and derivation surface compiles in C++20 as of
   2026-09-04.** `src/v8/` and `include/protocol/v8/economy.hpp` hold the
   envelope with its sixteen bodies, the six HUB messages and the dispute
@@ -3347,9 +3381,10 @@ slices.
   `dispute_authority_key` at a 142-octet prefix, the receipt at version 8, and
   the result-code space at 45. `economy_v8_codec_tests` reproduces the 121
   vectors of `test-vectors/economy-transition-v8.txt` a codec can derive.
-  **Nothing executes a version-eight transition yet** — no ledger, no block
-  steps, no transitions, no schedule derivation — and every layer above the
-  kernel still names version seven.
+  At that date **nothing executed a version-eight transition** — no ledger, no
+  block steps, no transitions, no schedule derivation — and every layer above
+  the kernel still named version seven. M3.13o supplied the execution and
+  M3.13p through M3.13s the layers.
 - **A version-eight state can be written down and read back, as of
   2026-09-05.** `protocol::storage::snapshot_v8` encodes a whole version-eight
   `Ledger` to canonical bytes and restores it to a ledger that keeps executing,
@@ -3403,113 +3438,8 @@ slices.
   databases opened directly after every stop. **The chain sells no seat**, so
   the issue and expiry steps evaluate nothing: what runs under the engine is the
   version-eight code path at every height, not the audit it would perform.
-  **What is still version seven's is nothing above the kernel that a chain
-  needs** — both stacks are complete and step 7 deletes one.
-- **A version-seven state can be written down and read back.**
-  `protocol::storage::snapshot_v7` encodes a whole `Ledger` to canonical bytes
-  and restores it to a ledger that keeps executing: the summary, the ordered
-  account map, and the ordered economy map, with `assigned_permissions`
-  re-derived from the assignment records rather than encoded. A restore hands
-  back a state some sequence of blocks could have produced or it hands back
-  nothing, and the conservation gate is the only one a resealed forgery does not
-  defeat. The payload is what the owning store below makes durable.
-- **A version-seven chain survives the process that ran it.**
-  `protocol::storage::SQLiteLedgerV7` keeps the head as one snapshot payload
-  inside a SQLite database, executes each block against a candidate copy, and
-  writes the new head and the block's row in one exclusive transaction, so a
-  reader can never see a state no block produced. A reopen runs
-  `PRAGMA integrity_check` first, then the pinned `application_id` and
-  `user_version` with the DDL compared verbatim, then the stored canonical
-  genesis, then the snapshot's own three gates and the conservation invariants,
-  and finally requires the height and root columns to agree with what the payload
-  restored to. Its evidence is the `carried` scenario's four contiguous blocks
-  replayed through a database **closed and reopened between each pair**, every
-  block reproducing its recorded `block_id`, `resulting_state_root`, and
-  `transaction_root`, with the rows read back through a bare SQLite connection.
-  **It is a store rather than a node**: nothing yet carries version-seven
-  transactions over consensus.
-- **That store survives a fault in its own write path.** Everything before the
-  commit rolls back and is an ordinary refusal that leaves the store usable; a
-  commit that fails poisons the store and then makes it read the file again,
-  recovering to the block's root or its predecessor's; and a recovery that itself
-  fails leaves the store refusing every later call rather than guessing. Its
-  evidence drives all seven fault points, fails a commit through the fault VFS,
-  and **kills the process at both post-commit points from a re-executed child**,
-  requiring the durable head to be the recorded one and the chain to continue.
-  That is requirement 13's "through restart **and recovery**" on the storage
-  side.
-- **A consensus engine's block pipeline can drive that store.**
-  `protocol::application::ApplicationV7` has the seven operations an ABCI adapter
-  needs. `finalize_block` copies the durable head, executes the block against the
-  copy, writes nothing, and stages what it produced; `commit` replays the same
-  block through the store and requires the store to reproduce exactly what was
-  staged, then requires the durable head to be at the root the network was told.
-  `process_proposal` executes the block against a candidate and votes against one
-  this node cannot execute, rather than meeting it at `finalize_block` where the
-  refusal would halt the node. Its evidence is the `carried` scenario's four
-  contiguous blocks driven as `process_proposal` → `finalize_block` → `commit`,
-  **with the application and its store destroyed and reopened between every
-  pair**, against the recorded roots and block identifiers. **Nothing yet speaks
-  to CometBFT**, and **the uptime schedule is `nullptr`**, so a chain driven
-  through it writes no cycle assignment and accrues nothing to any seat.
-- **That pipeline answers over a Unix socket.** Version seven's responses are
-  encoded over version one's frame format, reused unchanged because its header
-  and all five request payloads carry no ledger-version meaning, and
-  `UnixSocketServerV1::serve_connection` has an overload that hands a decoded
-  request to the version-seven dispatcher. Its evidence is the recorded blocks
-  driven through the whole frame pipeline as the octets an adapter would send,
-  and one of them driven over a real socket, against the recorded roots and block
-  identifiers.
-- **A version-seven node is a process.** `protocol-application-v7` reads a
-  canonical genesis file, decodes it, opens or creates its store, binds a private
-  Unix socket at mode 0600, and serves until `SIGTERM`, and
-  `--genesis-identity` prints the chain identity and height-zero application hash
-  an operator puts into a consensus engine's configuration. It is checked as a
-  process — started, connected to, restarted, shut down — against the recorded
-  chain identity and a genesis root read out of a recorded block header.
-  `decode_genesis` is what made it possible and is defined as `encode_genesis`'s
-  inverse, checking itself by re-encoding.
-- **A consensus engine can be pointed at that process.** `adapter/cometbft` reads
-  a version-seven finalized block over version one's frames — `ClientV7` embeds
-  the version-one client and declares one method — and `bridge.NewV7` turns it
-  into ABCI responses under the `protocol-stack-v7` codespace, emitting the block
-  identifier ABCI has no field for as an indexed block event. **The two finalized
-  shapes refuse each other**, so a client started at the wrong version fails
-  closed rather than misreading a block. `protocol-cometbft-init` and
-  `protocol-cometbft-bridge` take `-protocol-version`, and the genesis
-  application state is what refuses a mismatched pair at `InitChain` rather than
-  at the first block. **The replay handshake ADR 0058 owed is a guard rather than
-  a reconciliation**: CometBFT v0.39.4 replays an already-committed height
-  against a mock built from its own saved response, so the real application is
-  never asked, and the adapter refuses to forward such a request using a height
-  taken only from the application's own answers. **Nothing has yet spoken to a
-  real engine**, and no recorded transaction could be broadcast to one: every
-  version-seven vector is signed with a stand-in the model verifies by lookup,
-  while a node runs `ed25519_verifier()`.
-- **A version-seven chain runs under a real consensus engine.**
-  `tests/integration/version_seven_chain.py` is the first version-seven fixture
-  that signs for real — labelled seeds through the pinned libsodium, the model's
-  own envelope encoding, and the independent Python model run over the same
-  octets to learn each block's root. Three contiguous blocks, one transaction
-  each, are broadcast to a CometBFT node and committed: two registrations and a
-  confirmed transfer that moves value and charges the fee. **Every comparison is
-  one implementation against another** — the model's roots, the binary's
-  `--genesis-identity`, and the node's executed root — and three RPC claims are
-  checked at every height, including `block_results` publishing the recorded
-  block identifier as the `protocol_block` event the bridge emits. **The third
-  block is committed by a process that did not execute the first two**, so its
-  root comes from a state read back out of SQLite. The uptime schedule is still
-  `nullptr`: the chain executes correctly and pays nobody.
-- **Four independent version-seven replicas agree on those roots through a
-  restart.** The devnet runs at a chosen ledger version — `devnet.Run` hands it
-  to both the genesis and every bridge from one place, because a home written
-  for one version and bridges started for the other is refused at `InitChain` —
-  and `cometbft_four_validator_v7_test.py` submits **three transactions through
-  three different replicas**, since a node that agreed only with the peer it
-  heard from would pass a single-submitter run. After every stop all four
-  databases are opened directly and required to report the same head, which asks
-  requirement 13's claim of the store rather than of the engine. It passes under
-  both sanitizers, so each replica's roots came out of an instrumented kernel.
+  **Nothing in the repository is version seven's any more**: step 7 landed on
+  2026-09-09 and one stack remains.
 - The accepted `economy-transition-v7` contract is version six with the
   per-channel carry deleted from state and replaced by a recovery pool. Its
   independent Python model runs the respecified settlement — a zero-winner
@@ -3738,28 +3668,15 @@ slices.
   kind-1 byte identity, the shared envelope, the admission order, the genesis
   field table, the receipt layout, result codes 0 through 23, and the whole
   settlement carry over. Kind 6 is still specified and refused.
-- **The C++20 kernel implements `economy-transition-v7` in full**, and it is the
-  only economy contract the kernel compiles. `protocol::v7` encodes and decodes
-  all fourteen transaction kinds and refuses the five retired numbers, builds all
-  six HUB messages, derives escrow and signer identifiers, evaluates the posture's
-  two predicates, derives every state key and value including the recovery pool
-  and the extended cycle assignment record, computes the economy tree and the
-  version-seven state root, encodes genesis and derives the chain identifier, and
-  encodes and decodes the receipt.
-  **It also runs the contract.** All fourteen transitions execute in their
-  accepted rejection orders; `execute_block` writes the due cycle assignment as a
-  prologue, reading the pool and each measured seat's mark and recorded referrer
-  from the chain rather than from the measurement; and every accepted state
-  satisfies both the channel identity and the backing identity. It reproduces
-  `test-vectors/economy-transition-v7.txt` and
-  `test-vectors/economy-transition-v7-execution.txt` in full, consulting every
-  vector in the second, and reaches four third sources: the kind-1 identity, the
-  signer derivation, and the accounts tree against the accepted M1 file; the
-  ordered transaction tree, the block header, and the block identifier against
-  `ledger-transition-v1.txt`; the ten channel caps and five base permission legs
-  against `founder-economy-manifest-v3.txt`; and the referral leg against version
-  three's. **What it still does not do is persist or gossip**: it executes blocks
-  against an in-memory ledger, so no chain runs on it yet.
+- **Version seven's codec is gone from the kernel and its Python evidence is
+  intact.** `src/v7/`, `include/protocol/v7/`, and the version-seven storage,
+  application, transport, and node sources are removed by ADR 0070, restoring
+  ADR 0046's rule that the kernel compiles exactly one economy contract;
+  `simulation/economy_transition_v7/`, both accepted version-seven vector files,
+  their verifiers, and their eight CTest entries remain in place, passing, and
+  unedited. **`economy-transition-v8-cpp` still reads
+  `economy-transition-v7.txt`**, because version eight's predecessor
+  constructions are pinned against it.
 - **Version six's codec is gone from the kernel and its Python evidence is
   intact.** `src/v6/` and `include/protocol/v6/` are removed under ADR 0046's
   rule that the kernel compiles exactly one economy contract;
@@ -4263,6 +4180,61 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #264 and PR #265 are the M3.13t delivery, merged by rebase across
+  commits `0463fd6` through `13d6e9c` on `main`. It is the seventh and last step
+  of
+  ADR 0065's stack migration and it is **a deletion**: 99 files changed, 443
+  insertions and **17,012 deletions** — 79 files removed, two added
+  (`tests/fuzz/economy_v8_fuzz.cpp` and ADR 0070), and 18 modified.
+  It removes `src/v7/` (17 sources), `include/protocol/v7/` (2 headers), the
+  version-seven snapshot, owning store, schema, application, dispatcher,
+  responses, and node process with their five public headers; every
+  `tests/kernel/economy_v7_*`, `tests/storage/*_v7_*`, and
+  `tests/application/*_v7*` file; the four version-seven integration Python
+  files; both version-seven fuzz harnesses; and the Go adapter's `wire_v7.go`,
+  `client_v7.go`, their tests, and `application_v7_test.go`. **It removes eight
+  CMake targets and eleven ctest entries and adds one**, so the suite goes from
+  167 to **158** in the debug presets and from 176 to **166** under
+  `clang-sanitizers`. Nine of the eleven removals are non-fuzz, which is why the
+  debug presets fall by nine and the fuzzing preset by ten. It removes **two
+  hosted integrations** from `tools/verify.sh`, which now runs four: version one
+  single-node and
+  four-validator, and version eight single-node and four-validator.
+  **Five shared files change**: `unix_server_v1.hpp` and
+  `unix_connection_v1.cpp`
+  lose the `serve_connection(ApplicationV7&)` overload, which is the one place
+  the deletion touches version one; `bridge/local.go`, `bridge/application.go`,
+  and `nodeconfig/config.go` lose their version-seven members. **No accepted
+  vector file changes**, and both version-seven vector files, their verifiers,
+  `simulation/economy_transition_v7/`, and the eight CTest entries that read
+  them are deliberately untouched — `economy-transition-v8-cpp` still passes
+  `economy-transition-v7.txt`, because version eight's predecessor constructions
+  are pinned against it.
+  **One item in ADR 0065's enumeration was wrong and the slice caught it**:
+  `economy_v7_fuzz` was listed for removal on the stated precondition that every
+  deleted item had a version-eight counterpart, and it was the one item with
+  none, so the harness was migrated to `economy_v8_fuzz` — gaining the two
+  uptime entry points version eight adds — rather than deleted. Two snapshot
+  smoke entries were also found missing from `set_tests_properties`, which had
+  cost them the 60-second bound.
+  Run 34387349756 on head `13d6e9c` passed the complete hosted matrix: 158 ctest
+  entries under
+  `gcc-debug`, `clang-debug`, and `gcc-sanitizers` and 166 under
+  `clang-sanitizers`, with all four integrations passing — `CometBFT
+  single-node`, `CometBFT version-eight`, `CometBFT four-validator`, and
+  `CometBFT four-validator version-eight integration: passed (4 independent
+  replicas, 2 registrations and 1 confirmed transfer through 3 different nodes,
+  full restart, 4 durable C++ audits per stop)`.
+  **The first attempt on this branch failed all four jobs at `Install host
+  prerequisites` with apt's exit code 100**, roughly twenty seconds in and
+  before any compilation, which is an infrastructure failure a deletion cannot
+  cause; re-running the failed jobs was the correct response and is the second
+  recorded instance of a hosted-runner failure unrelated to the change.
+  Local evidence: `python3 -B tests/tools/test_registration_test.py` (14 tests,
+  OK) after every CMake edit, `-fsyntax-only` at `-Werror` on the new harness
+  and both edited transport files, `go vet` and `go test` on `internal/localapp`
+  in a scratch module, and a probe that weakens version eight's receipt prefix
+  check to ignore the version octet, which fails the new refusal test by name.
 - Issue #261 and PR #262 are the M3.13s delivery, merged by rebase across
   commits `3df3d81` through `47d0a8c` on `main`. It adds
   `src/application/main_v8.cpp`, `tests/application/headless_process_v8_test.py`,
@@ -5297,13 +5269,10 @@ contracts and a version-eight chain runs in C++ — measuring its own machines,
 deriving a cycle from that evidence, and paying a winner from it. M3.13p then
 added `snapshot_v8`, so a version-eight state can be written down, and M3.13q
 added `SQLiteLedgerV8`, so one survives the process that produced it, and
-M3.13r added `ApplicationV8`, so a consensus engine can drive one. What is
-missing is two of the seven enumerated steps:
-`protocol-application-v8` with the Go
-adapter's version-eight client, and the deletion that ends the coexistence.
-Each layer carries a version number and none is optional for a chain that
-runs, so **a version-eight chain can be driven by an engine and no engine is
-wired to one** until they are done.
+M3.13r added `ApplicationV8`, so a consensus engine can drive one, M3.13s added
+`protocol-application-v8` and the Go adapter's version-eight client, so an
+engine is wired to one, and M3.13t deleted version seven. **All seven enumerated
+steps have landed and the repository compiles exactly one economy contract.**
 
 **What is missing now is everything between a durable head and a network.** The
 version-eight kernel is wired to a SQLite owning store as of 2026-09-06, so a
@@ -5591,197 +5560,119 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.13t: the deletion**, step 7 and the **last** step of the
-seven-slice stack migration [ADR
-0065](../decisions/0065-a-kernel-replacement-may-be-staged-across-a-stack-migration.md)
-enumerates. **Steps 1 through 6 landed between 2026-09-04 and 2026-09-07.** The
-repository currently compiles and runs two whole stacks — two economy contracts,
-two snapshot formats, two owning stores, two application layers, two node
-processes, and two adapter clients — which ADR 0065 permits **only while this
-migration is in flight**, and only because this step was a numbered slice with
-its content written down before the first one landed.
+Milestone slice **M3.14a: requirement 13's economic and adversarial scenarios**,
+the largest single remaining piece of `docs/project/first-goal.md` and the first
+slice since M3.13a that is not part of a stack migration. **Both of its blockers
+are gone.** The seven-slice migration ADR 0065 enumerated finished on 2026-09-09
+with M3.13t, so there is one economy contract, it is version eight, and every
+layer between a signed transaction and CometBFT v0.39.4 is version eight's.
 
-**This is the step that makes the coexistence legitimate retrospectively.** ADR
-0065 says outright that if the migration were abandoned part-way, step 7 still
-runs, deleting `src/v8/` instead, "because the outcome this ADR refuses is a
-repository that compiles two economy contracts with no decided end." Nothing in
-this slice is optional and nothing in it is a judgement call about what to keep.
+**Two things are still untested, and they are different in kind.**
 
-The enumeration, with the first six struck:
+**An economic chain.** M3.13s's fixture sells no seat, deliberately — it
+establishes the code path, not the audit — so the issue and expiry steps
+evaluate nothing at any height. A chain that **sells and activates a seat**
+gives the pipeline subjects: the prologue derives a schedule with something in
+it, the issue step evaluates the challenge selection digest per in-scope seat,
+the expiry step runs after the transactions, and cycle assignment records get
+written where the version-seven path could write none. This is the run that
+turns "the version-eight code path executes" into "the version-eight audit
+performs".
 
-1. ~~**M3.13n** — the version-eight kernel codec, beside version seven's.~~
-   **Delivered 2026-09-04 as PR #247.**
-2. ~~**M3.13o** — the version-eight kernel execution: the ledger, the four
-   ordered block steps, the two transitions, and the schedule derivation.~~
-   **Delivered 2026-09-05 as PR #250.**
-3. ~~**M3.13p** — `snapshot_v8`, which must encode the two entry kinds version
-   eight adds or a version-eight ledger cannot be written down.~~
-   **Delivered 2026-09-05 as PR #253.**
-4. ~~**M3.13q** — `SQLiteLedgerV8`, which makes a version-eight state survive
-   the process that produced it.~~ **Delivered 2026-09-06 as PR #256.**
-5. ~~**M3.13r** — `ApplicationV8` and the version-eight transport responses.~~
-   **Delivered 2026-09-06 as PR #259.**
-6. ~~**M3.13s** — `protocol-application-v8` and the Go adapter's version-eight
-   client.~~ **Delivered 2026-09-07 as PR #262.**
-7. **M3.13t** — **the deletion.** Version seven's kernel, storage, application,
-   transport, node sources, tests, and CTest entries are removed and the
-   repository compiles exactly one economy contract again.
+**Disagreement.** Every four-node run so far has been four replicas that agree.
+Requirement 13 asks for the other case: a replica fed a block the others refuse,
+a partition, and a node restarted mid-block. Nothing in the repository has yet
+observed a node *reject* a peer's block, which is the property the whole
+deterministic-kernel argument rests on.
 
-**M3.13t's own scope, layer by layer.** Every one of these has a version-eight
-counterpart already carrying its evidence, and each counterpart's shape is
-recorded further down this document under "what X looks like now".
+**One smaller slice is unblocked and should go first, because it is cheap and it
+is open on the default branch.** Dependabot alert 20 reports a **high**-severity
+advisory against `google.golang.org/grpc v1.83.1`, an indirect dependency of
+CometBFT, patched in **1.83.2**. The advisory is a denial of service in
+**gRPC-Go xDS servers**, and this adapter runs no xDS server, so the reachable
+risk is low — but the fix is one line and the repository has a purpose-built
+mechanism for it. `adapter/cometbft/dependency-update.txt` is a transient
+request file: write `google.golang.org/grpc@v1.83.2` into it on a PR branch and
+`.github/workflows/resolve-go-dependencies.yml` resolves, tidies, verifies,
+tests, vets, and builds on a hosted runner, then publishes `go.mod` and `go.sum`
+back to the branch. **Do not resolve the module graph locally**; that is exactly
+what the workflow exists to prevent.
 
-* **The kernel.** `src/v7/` (seventeen sources) and `include/protocol/v7/` (two
-  headers), and the `PROTOCOL_STACK_KERNEL_SOURCES` entries that name them.
-* **Storage.** `snapshot_v7.cpp`, `snapshot_v7_assignments.cpp`,
-  `snapshot_v7_entries.cpp`, `snapshot_v7_internal.hpp`,
-  `include/protocol/storage/snapshot_v7.hpp`, `sqlite_ledger_v7.cpp`,
-  `sqlite_ledger_v7_open.cpp`, `sqlite_schema_v7.cpp`, their internal headers,
-  and `include/protocol/storage/sqlite_ledger_v7.hpp`.
-* **Application and transport.** `application_v7.cpp`,
-  `application_block_v7.cpp`, `application_v7_internal.hpp`,
-  `dispatcher_v7.cpp`, `response_v7.cpp`, their three public headers, and
-  **the `serve_connection(ApplicationV7&)` overload** in
-  `unix_server_v1.hpp` and `unix_connection_v1.cpp` — which is the one place
-  the deletion touches a shared version-one file.
-* **The node process.** `src/application/main_v7.cpp` and the
-  `protocol_application_server_v7` target's four CMake edits.
-* **The adapter.** `wire_v7.go`, `client_v7.go`, `wire_v7_test.go`,
-  `client_v7_test.go`, `application_v7_test.go`, `LocalV7`, `NewV7`,
-  `codespaceV7`, `ProtocolV7`, `appStateV7`, and the `case 7:` arms in
-  `ParseProtocolVersion`, `appState`, and the bridge binary's `dial`.
-* **Tests and entries.** Every `tests/kernel/economy_v7_*`,
-  `tests/storage/*_v7_*`, `tests/application/*_v7*`, and
-  `tests/integration/*version_seven*` / `*_v7_test.py` file, their CMake
-  targets, their `PROTOCOL_STACK_TARGETS` lines, their `add_test` entries, and
-  the two version-seven integrations in `tools/verify.sh`.
-* **The fuzz target.** `economy_v7_fuzz` and `tests/fuzz/economy_v7_fuzz.cpp`,
-  under the `PROTOCOL_STACK_ENABLE_FUZZING` guard.
+**What M3.13t left in place, and why each would break something if tidied
+later.** These are the four traps a future cleanup slice will walk into.
 
-**Three things the deletion must not take with it, and each is a real risk.**
+1. **`economy-transition-v7.txt` and `economy-transition-v7-execution.txt` are
+   accepted contracts and are still read.** `economy-transition-v8-cpp` passes
+   the first as an argument, because version eight's predecessor constructions
+   are pinned against it. An inequality between two digests proves nothing about
+   either end unless both are pinned, and a pin against the live version-seven
+   kernel would have died at M3.13t — which is why M3.13n wrote them against the
+   recorded files instead. `tests/tools/test_registration_test.py` fails closed
+   if a recorded vector file stops being read by anything.
+2. **`simulation/economy_transition_v7/` and its six CTest entries stay.**
+   Version eight's Python model subclasses it: `ledger.py` overrides four things
+   on version seven's `Ledger` and `block.py` imports `derive_assignment` from
+   `economy_transition_v7.settlement`.
+3. **Version one is not deprecated.** ADR 0065 never enumerated it, `wire_v1` is
+   the frame format both live versions use, and two of the four integrations in
+   `tools/verify.sh` are version one's.
+4. **`tests/tools/test_registration_test.py` keeps a docstring naming
+   `protocol_application_server_v7`, which no longer exists.** It records that
+   M3.13e added that target without registering it, so it built at the
+   compiler's default standard and failed all four hosted jobs. The target is
+   gone; the incident is the reason the build-flag check exists, and rewriting
+   it would keep the check and lose the lesson.
 
-1. **The accepted version-seven vector files.** `economy-transition-v7.txt` and
-   `economy-transition-v7-execution.txt` are *accepted contracts* and the
-   version-eight kernel's predecessor constructions are **pinned against
-   `economy-transition-v7.txt`** — an inequality between two digests proves
-   nothing about either one unless both ends are pinned. Their Python
-   verifiers and simulation models stay. `tests/tools/test_registration_test.py`
-   fails closed if a recorded vector file stops being read by anything, so run
-   it after **every** CMake edit; it is the guard that catches exactly this.
-2. **`simulation/economy_transition_v7/`.** Version eight's model *subclasses*
-   it — `ledger.py` overrides four things on version seven's `Ledger`, and
-   `block.py` imports `derive_assignment` from `economy_transition_v7.settlement`
-   and six names from `economy_transition_v6.block`. Deleting the Python
-   package would break the version-eight model. **Only the C++ is deleted.**
-3. **Version one.** `main.cpp`, `ApplicationV1`, `SQLiteLedger`, `snapshot_v1`,
-   `wire_v1`, `Client`, `LocalV1`, `New`, `ProtocolV1`, and the two version-one
-   integrations are **not** in scope. ADR 0065 enumerates version seven's
-   removal and says nothing about version one's, and `wire_v1` is the frame
-   format both live versions use.
+**What the repository compiles now.** One economy contract. `src/v8/` is
+nineteen sources and `include/protocol/v8/` two headers; `snapshot_v8` is one
+public header, one internal header, and three translation units;
+`SQLiteLedgerV8`
+is one public header, three translation units, and two internal headers;
+`ApplicationV8` and the version-eight responses are three public headers, four
+translation units, and an internal header; `protocol-application-v8` is one
+translation unit; and the Go adapter holds `wire_v8.go`, `client_v8.go`,
+`LocalV8`, `NewV8`, and `ProtocolV8`. The ctest suite is **158** entries in the
+debug presets and **166** under `clang-sanitizers`, having lost eleven
+version-seven entries — nine of them outside the fuzzing guard — and gained
+`economy-transition-v8-fuzz-smoke`. `tools/verify.sh` runs **four** hosted
+integrations: version one single-node and four-validator, and version eight
+single-node and four-validator.
 
-**What the deletion is evidence for.** The suite should lose every
-version-seven entry and keep every version-eight one; the four hosted jobs
-should pass with the smaller set; and both remaining integrations — version one
-and version eight — should still run in `tools/verify.sh`. **A grep for `v7`,
-`V7`, and `version seven` across `src/`, `include/`, `tests/` (excluding
-`tests/simulation/` and the vector files), and `adapter/` should return only
-prose about history in ADRs and this document.** That grep is the review.
+**Two figures the deletion moved, recorded so they are not rediscovered.**
+`receiptResultOffset` is 39 and now lives in `wire_v8.go`, having been declared
+in `wire_v7.go` and used from `wire_v8.go` — version eight keeps version seven's
+receipt layout, so a deletion that went by filename would have taken it.
+And `ParseProtocolVersion` now **refuses** 7: it moved from the accepted table
+to
+the rejected list beside 0, 2, 6, 9, 256, 257, 263, and 264, so an operator who
+still passes `-protocol-version 7` gets an error rather than a home no binary
+can
+serve.
 
-**One thing worth deciding before starting rather than during.** The
-version-seven *prose* in existing ADRs and in this document is history and stays
-— ADR 0056 through ADR 0062 record decisions that were correct when made, and
-ADR 0065 is the record of why two contracts coexisted at all. Do not rewrite
-them to pretend version seven never existed; strike step 7 in the enumeration
-above and record the deletion as its own ADR.
+**The version-eight fuzz harness is new and its two added entry points are the
+interesting ones.** `tests/fuzz/economy_v8_fuzz.cpp` replaced
+`economy_v7_fuzz.cpp` at M3.13t rather than being deleted with it, because no
+version-eight counterpart had ever been added and deleting it as ADR 0065
+enumerated would have left the live contract with no economy-codec fuzz target.
+The four inherited entry points are version seven's with the namespace rebound.
+The two new ones are the uptime values, and **the seat window record is the one
+that most needed it**: its pad rule and its subset rule are refusals
+`seat_window_value` can never produce a witness for, so arbitrary bytes are the
+only thing that reaches them. This is the same shape as M3.13p's finding that
+the strongest probe result is "a restore accepted it".
 
-**The rule three slices arrived at, corrected by the fourth.** Ask of each
-moved figure: **if this were still the old value, what fails?** There are three
-answers, not the two ADR 0067 recorded.
-
-1. **The happy path fails.** M3.13r's receipt prefix: left stale it broke the
-   first finalized block and an inherited test caught it the moment it
-   compiled. Nothing more is needed.
-2. **A refusal moves and nothing notices.** M3.13q's `head_snapshot` minimum:
-   left stale it moved a refusal one layer later, which every existing test
-   accepted, so it needed `check_column_bounds` at the boundary.
-3. **Nothing fails, because every test compares the constant to itself.**
-   M3.13s's `resultCodeCountV8`: it moves from 33 to 45, the codes it would cut
-   off appear in no fixture, and the whole inherited suite passes at either
-   value. **This kind is invisible to a boundary case too**, because the
-   boundary is computed from the same constant. Its test is an assertion
-   against the **literal**, plus one input on each side written out by hand.
-
-The third kind is the one a survey misses, and it is not always a constant:
-M3.13s's other instance was two genesis keys that must be two keys, which
-nothing in the fixture, the node, the adapter, or the engine would notice were
-they one.
-
-**What exists and what does not.** `simulation/economy_transition_v8/` is
-complete. **In C++ the whole version-eight kernel is complete**: `src/v8/` is
-nineteen sources and `include/protocol/v8/` two headers, verified by
-`economy_v8_codec_tests` against 121 contract vectors and by
-`economy_v8_execution_tests` against the other 62 and all 434 execution vectors.
-`src/v7/` is seventeen sources and `include/protocol/v7/` two headers.
-**`snapshot_v8` is complete as of 2026-09-05** — one public header, one internal
-header, and three translation units, verified by `storage_snapshot_v8_tests`
-against the four recorded scenarios' own `final_state_root` figures and by
-`storage_snapshot_v8_fuzz`. **`SQLiteLedgerV8` is complete as of 2026-09-06** —
-one public header, three translation units, and two internal headers, verified
-by `version-eight-owning-store` against the `carried` scenario's recorded
-`block_id`, `resulting_state_root`, and `transaction_root` across three restarts
-and by `version-eight-store-recovery` against the seven fault points and two
-process terminations. **`ApplicationV8` and the version-eight responses are
-complete as of 2026-09-06** — three public headers, four translation units, and
-an internal header, verified by `version-eight-application` against the recorded
-roots across three restarts and every refusal, and by
-`version-eight-transport` against the same blocks as request and response frames
-over a real Unix socket. **`protocol-application-v8` and the adapter's
-version-eight client are complete as of 2026-09-07** — one translation unit and
-four CMake edits in C++, `wire_v8.go` and `client_v8.go` plus `LocalV8`,
-`NewV8`, and `ProtocolV8` in Go — verified by `version-eight-headless-process`,
-`version-eight-chain-fixture`, and the two hosted CometBFT integrations.
-**Nothing above the kernel still needs version seven**: both stacks are
-complete, top to bottom, and step 7 deletes one of them.
-
-**What version eight adds to the kernel, and each item is a place to get it
-wrong:**
-
-* **two transaction kinds and twelve result codes.** The result code space
-  becomes 45 and the kind space 16, and both are flat extensions — codes 0
-  through 32 keep their exact version-seven meanings.
-* **two state entry kinds**, 18 and 19, at 13 octets of key each and 1 and 8
-  octets of value. The window record's two bitmaps are 24 bits in the low bits
-  of a `u32` each, and **the upper eight bits are pad that a decoder must
-  refuse** — this is the rule ADR 0056 records version seven as *not* stating for
-  the assignment bitmap, and version eight states it outright for this one, so
-  the kernel must enforce it rather than inherit the older laxity.
-* **the challenge selection digest**, over a 44-octet preimage under
-  `protocol-stack:v8:challenge`, truncated to eight octets and reduced modulo
-  1,200. It runs once per in-scope seat per height, which is the pipeline's whole
-  consensus-visible cost.
-* **the four ordered block steps.** The prologue derives the schedule and then
-  deletes the due window's records; the issue step reads the block's
-  `previous_state_root` as its beacon; the expiry step runs **after** the
-  transactions.
-* **`dispute_authority_key`**, a ninth genesis field immediately after
-  `verifier_key`, taking the prefix from 110 to 142 octets.
-
-**Four things that will cost a session if they are rediscovered rather than
-read.** `bitmap()` and `bit_is_set` in the kernel bound themselves by the packed
-width rather than the recorded bit count (ADR 0056); the transaction-kind and
-state entry-kind constants collide numerically, so enumerate through
-`KIND_SCHEME`; every new target must appear in `PROTOCOL_STACK_TARGETS` or it
-builds at the compiler's default standard and fails all four hosted jobs; and
-`python3 -B tests/tools/test_registration_test.py` must run after **any** CMake
-edit, because retargeting the kernel's ctest arguments is how a recorded vector
-file stops being read by anything. **Adding an executable is four CMake edits**
-— `add_executable`, its properties where it has any, its link libraries, and
-`PROTOCOL_STACK_TARGETS` — and M3.13n's `economy_v8_codec_tests` is the worked
-example immediately above `economy-transition-v8-cpp`'s `add_test`.
+**A deletion enumerated in advance still has to be re-checked against what
+exists when it runs.** ADR 0065's step 7 was written before three of the six
+slices it depends on had landed, and it listed one item — `economy_v7_fuzz` —
+whose stated precondition ("every one of these has a version-eight counterpart
+already carrying its evidence") turned out to be false for that item alone. The
+enumeration is what made the migration honest; it is not a substitute for
+checking. **Every future deletion slice should re-derive its own preconditions
+rather than trusting the list that authorised it.**
 
 **Then, in order, each its own slice:**
-* step 7 of the migration above, whose layer shapes are recorded further down
-  this document;
+* the `google.golang.org/grpc` bump described above, which is small, open on
+  the default branch, and resolved on a hosted runner;
 * requirement 13's remaining half, the **adversarial and economic** scenarios.
   **Its blocker is now gone.** Four replicas agree on version-*eight* roots
   through a restart as of M3.13s, and version eight's prologue derives the
@@ -6392,6 +6283,39 @@ its own**: `coverage.every_kind_version_eight_admits_is_executed` fails if a
 later scenario change stops reaching one.
 
 ## Blockers
+
+**M3.13t ran the founder-decision gate and passed it.** Ten decisions were
+enumerated before any was judged: the deletion's file set; retention of the two
+accepted version-seven vector files; retention of
+`simulation/economy_transition_v7/`;
+retention of version one; whether `ProtocolV7` stays selectable; the
+`serve_connection(ApplicationV7&)` overload; the `economy_v7_fuzz` target; the
+two version-seven integrations in `tools/verify.sh`; ADR 0065's expiry; and the
+new ADR's number. **Every one is already decided by an accepted document or is
+engineering work**: the file set and `ProtocolV7`'s removal by ADR 0065 step 7,
+which permits coexistence exactly until this slice and states outright that the
+deletion is not optional; the three retentions by that ADR's silence on version
+one together with the predecessor pinning M3.13n recorded; and the ADR
+numbering, the fuzz-harness migration, and the test rewrites by the founder
+constitution's placement of packaging, testing, and engineering choices outside
+the reserved set. Nothing in the slice set or changed supply, allocation,
+beneficiaries, Founder ownership, creator hierarchy, commercial routing, AI
+institutional authority, bridge scope, content permanence, or what an end user
+must do, own, run, or receive, and **no accepted vector file changed**.
+
+**No blocker requires an owner answer.** The next slice, requirement 13's
+economic and adversarial scenarios, is unblocked: the stack migration that
+gated it finished on 2026-09-09, and version eight's prologue derives the
+schedule the version-seven path could not. The `grpc` bump ahead of it is
+unblocked and resolves on a hosted runner.
+
+**One standing operational note rather than a blocker.** This document is
+7,000-plus lines and roughly half a megabyte. It is the first thing every
+session is instructed to read, and it can no longer be read in full efficiently;
+several passages were already describing superseded state before M3.13t touched
+them. Splitting the accumulated per-slice lessons out of the live handoff facts
+would be its own slice, and it is worth doing before the document costs a
+session more than it saves.
 
 **M3.13s ran the founder-decision gate and passed it.** Eleven decisions were
 enumerated before any was judged: the genesis allocation bound of 142 octets;
