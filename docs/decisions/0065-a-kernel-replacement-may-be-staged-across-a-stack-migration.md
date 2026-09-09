@@ -1,8 +1,9 @@
 # ADR 0065: A kernel replacement may be staged across a stack migration
 
-- Status: Accepted
+- Status: Accepted; expired on 2026-09-09 when step 7 landed
 - Date: 2026-09-03
 - Amends: [ADR 0046](0046-the-version-six-kernel-codec-replaces-version-four.md)
+- Expired by: [ADR 0070](0070-the-version-seven-deletion.md)
 
 ## Context
 
@@ -139,3 +140,9 @@ that makes the end real rather than intended.
 **This ADR expires when step 7 lands.** After it, ADR 0046's rule applies
 unamended: the repository compiles exactly one economy contract, and the next
 kernel replacement re-opens this question rather than inheriting an answer.
+
+**Step 7 landed on 2026-09-09 and this ADR is expired.**
+[ADR 0070](0070-the-version-seven-deletion.md) records the deletion, including
+the one item this enumeration got wrong: `economy_v7_fuzz` was listed for
+removal but had no version-eight counterpart, so it was migrated rather than
+dropped. The amendment above no longer holds and ADR 0046 stands unamended.
