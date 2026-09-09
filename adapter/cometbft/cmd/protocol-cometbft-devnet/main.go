@@ -87,7 +87,7 @@ func runStart(arguments []string) error {
 	flags.StringVar(&node, "node", "", "CometBFT node binary")
 	var protocolVersion uint
 	flags.UintVar(&protocolVersion, "protocol-version", 1,
-		"protocol ledger version every node runs (1, 7, or 8)")
+		"protocol ledger version every node runs (1 or 8)")
 	if err := flags.Parse(arguments); err != nil {
 		return err
 	}

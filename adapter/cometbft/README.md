@@ -4,9 +4,9 @@ This Go module contains the replaceable adapter between CometBFT `v0.39.4`
 and the headless C++ application. It implements the accepted version-one
 contract in
 [`consensus-application-v1.md`](../../docs/specifications/consensus-application-v1.md),
-and, under `-protocol-version 7`, the version-seven responses recorded in
-[ADR 0059](../../docs/decisions/0059-the-version-seven-transport.md) and
-[ADR 0061](../../docs/decisions/0061-the-version-seven-abci-adapter.md).
+and, under `-protocol-version 8`, the version-eight responses recorded in
+[ADR 0068](../../docs/decisions/0068-the-version-eight-application-layer.md) and
+[ADR 0069](../../docs/decisions/0069-the-version-eight-node-process-and-adapter.md).
 
 The module provides four cgo-free commands:
 
