@@ -2,10 +2,10 @@ package localapp
 
 // The version-eight client is version one's client and one different answer.
 //
-// It is version seven's `ClientV7` for the same reason version seven's was
-// version one's: the connection, the request-identifier discipline, the
-// terminal latch, the frame codec, and the request payloads carry no ledger
-// version. Six of the seven operations are byte-for-byte version one's, and
+// It was version seven's client before ADR 0065's step 7 deleted that, for the
+// same reason version seven's was version one's: the connection, the
+// request-identifier discipline, the terminal latch, the frame codec, and the
+// request payloads carry no ledger version. Six of the seven operations are byte-for-byte version one's, and
 // `FinalizeBlock` is the only one that reads a version-specific payload.
 type ClientV8 struct {
 	*Client

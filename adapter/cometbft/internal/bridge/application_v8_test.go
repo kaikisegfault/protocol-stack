@@ -98,20 +98,19 @@ func TestVersionEightCodespaceNamesItsOwnResultCodes(t *testing.T) {
 	}
 }
 
-// The three codespaces must be three distinct strings, which is the only
-// property that makes them useful to an operator reading a rejected result.
-// Rebinding a copy of a constructor and forgetting the constant is what this
-// catches, and nothing above would: every check there compares a codespace
-// against the same constant the constructor used.
-func TestTheThreeCodespacesAreDistinct(t *testing.T) {
+// The two codespaces must be two distinct strings, which is the only property
+// that makes them useful to an operator reading a rejected result. Rebinding a
+// copy of a constructor and forgetting the constant is what this catches, and
+// nothing above would: every check there compares a codespace against the same
+// constant the constructor used. Version seven's third string went with its
+// client at ADR 0065's step 7.
+func TestTheTwoCodespacesAreDistinct(t *testing.T) {
 	expected := map[string]string{
 		"v1": "protocol-stack-v1",
-		"v7": "protocol-stack-v7",
 		"v8": "protocol-stack-v8",
 	}
 	actual := map[string]string{
 		"v1": codespaceV1,
-		"v7": codespaceV7,
 		"v8": codespaceV8,
 	}
 	for name, value := range expected {

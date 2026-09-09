@@ -108,19 +108,19 @@ default. Set
 block is occupied. Every repeated start refuses partial homes, changed keys,
 changed genesis, or changed configuration.
 
-## Version seven
+## Version eight
 
-A version-seven node is the same three processes with the version-seven
-application binary and `-protocol-version 7` on both the initializer and the
+A version-eight node is the same three processes with the version-eight
+application binary and `-protocol-version 8` on both the initializer and the
 bridge. The two must agree: the genesis application state the initializer
-writes is what `ApplicationV7` requires at `InitChain`.
+writes is what `ApplicationV8` requires at `InitChain`.
 
 ```sh
-protocol-application-v7 --genesis-identity /absolute/path/protocol.genesis
+protocol-application-v8 --genesis-identity /absolute/path/protocol.genesis
 
-protocol-cometbft-init -protocol-version 7 ...
+protocol-cometbft-init -protocol-version 8 ...
 
-protocol-cometbft-bridge -protocol-version 7 \
+protocol-cometbft-bridge -protocol-version 8 \
   -application-socket /absolute/path/application.sock \
   -abci-listen tcp://127.0.0.1:26658
 ```
@@ -130,16 +130,21 @@ every bridge from that one place, because a home written for one ledger version
 and bridges started for the other is refused at `InitChain`:
 
 ```sh
-protocol-cometbft-devnet start -protocol-version 7 \
+protocol-cometbft-devnet start -protocol-version 8 \
   -genesis /absolute/path/protocol.genesis \
-  -application /absolute/path/protocol-application-v7 \
+  -application /absolute/path/protocol-application-v8 \
   -bridge /absolute/path/protocol-cometbft-bridge \
   -node /absolute/path/protocol-cometbft-node
 ```
 
 `tools/devnet.sh` remains version one: it decodes a bundled version-one genesis
-and selects version one's application binary, and a version-seven wrapper needs
-a bundled version-seven genesis of its own.
+and selects version one's application binary, and a version-eight wrapper needs
+a bundled version-eight genesis of its own.
+
+**Version seven was the third selectable version and is gone.** ADR 0065 staged
+version eight across seven slices and its step 7 deleted version seven's kernel,
+storage, application, node binary, and client, so `-protocol-version 7` is now
+refused where it once initialized a home no binary could serve.
 
 ## Single-node lifecycle
 

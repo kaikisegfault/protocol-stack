@@ -198,19 +198,29 @@ func TestVersionEightFiguresAreTheContracts(t *testing.T) {
 	}
 }
 
-// The pair that makes `-protocol-version` safe between the two live versions.
+// Version eight refuses its predecessor's finalized block.
 //
 // Versions seven and eight have the **same finalized-block shape** -- a root,
 // an identifier, a count, and one result per input -- so neither the field
 // layout nor the result count separates them on a well-formed block. The
-// receipt version octet is the only thing that does, which is why a client
-// dialled at the wrong one of these two must fail closed on the first block
+// receipt version octet is the only thing that does, which is why a bridge
+// pointed at a stale version-seven node must fail closed on the first block
 // rather than on some later result code.
-func TestVersionsSevenAndEightRefuseEachOther(t *testing.T) {
+//
+// **The version-seven receipt is a literal here, not a call into a sibling
+// decoder.** It was the latter until ADR 0065's step 7 deleted version seven,
+// and a pin that dies with the artifact it pins proves nothing afterwards: the
+// predecessor this refuses is a recorded shape, so it is written out as one.
+// The reverse direction -- version seven refusing version eight -- went with
+// that decoder, and nothing in this repository can still be dialled at it.
+func TestVersionEightRefusesAVersionSevenBlock(t *testing.T) {
 	root := Hash{0: 0xa5, 31: 0x5a}
 	blockID := Hash{0: 0x5a, 31: 0xa5}
-	// One successful result on both sides, so nothing but the receipt's own
-	// version octet differs between the two payloads.
+	// `PSRC` with a version octet of 7, at the width version eight kept.
+	receiptV7 := make([]byte, receiptBytesV8)
+	copy(receiptV7, []byte{'P', 'S', 'R', 'C', 0, 7})
+	// One successful result, so nothing but the receipt's own version octet
+	// separates this payload from a well-formed version-eight one.
 	body := func(receipt []byte) []byte {
 		value := append([]byte(nil), root[:]...)
 		value = append(value, blockID[:]...)
@@ -218,10 +228,13 @@ func TestVersionsSevenAndEightRefuseEachOther(t *testing.T) {
 		value = appendU32(value, 0)
 		return appendBlob(value, receipt)
 	}
-	if _, err := decodeFinalizeV7(body(receiptV8(0)), 1); err == nil {
-		t.Fatal("version seven accepted a version-eight finalized block")
-	}
-	if _, err := decodeFinalizeV8(body(receiptV7(0)), 1); err == nil {
+	if _, err := decodeFinalizeV8(body(receiptV7), 1); err == nil {
 		t.Fatal("version eight accepted a version-seven finalized block")
+	}
+	// The positive control: the same body with version eight's own receipt is
+	// accepted, so the refusal above is about the version octet rather than
+	// about the frame.
+	if _, err := decodeFinalizeV8(body(receiptV8(0)), 1); err != nil {
+		t.Fatalf("version eight refused its own finalized block: %v", err)
 	}
 }

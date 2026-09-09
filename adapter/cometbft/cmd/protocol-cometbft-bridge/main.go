@@ -70,13 +70,6 @@ func dial(
 		}
 		return bridge.New(bridge.LocalV1{Client: client}),
 			func() { _ = client.Close() }, nil
-	case 7:
-		client, err := localapp.DialV7(socketPath)
-		if err != nil {
-			return nil, nil, err
-		}
-		return bridge.NewV7(bridge.LocalV7{ClientV7: client}),
-			func() { _ = client.Close() }, nil
 	case 8:
 		client, err := localapp.DialV8(socketPath)
 		if err != nil {
