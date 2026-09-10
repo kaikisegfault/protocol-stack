@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-09-09
+Last updated: 2026-09-10
 
 ## Phase
 
@@ -4180,6 +4180,16 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #267 and PR #268 are the gRPC advisory bump, merged by rebase across
+  commits `2d1e4ad` and `974138b` on `main` on 2026-09-10. Two commits: a
+  one-line request file, and the hosted resolver's own
+  `build(deps): resolve hosted Go module graph`. It changes `go.mod` and `go.sum`
+  and nothing else — `google.golang.org/grpc` 1.83.1 → **1.83.2**, plus
+  `golang.org/x/crypto` 0.55.0, `golang.org/x/net` 0.58.0, and
+  `golang.org/x/text` 0.41.0 that `go mod tidy` carried with it. All four are
+  indirect; no module was added or removed. Candidate run **34531476798** on
+  `39d2c54` and post-merge run **34533172402** on `974138b` both passed the full
+  hosted matrix.
 - Issue #264 and PR #265 are the M3.13t delivery, merged by rebase across
   commits `0463fd6` through `13d6e9c` on `main`. It is the seventh and last step
   of
@@ -5560,24 +5570,76 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.14a: requirement 13's economic and adversarial scenarios**,
-the largest single remaining piece of `docs/project/first-goal.md` and the first
-slice since M3.13a that is not part of a stack migration. **Both of its blockers
-are gone.** The seven-slice migration ADR 0065 enumerated finished on 2026-09-09
-with M3.13t, so there is one economy contract, it is version eight, and every
-layer between a signed transaction and CometBFT v0.39.4 is version eight's.
+Milestone slice **M3.14a: a four-node version-eight economic chain**, scoped to
+what a devnet can actually reach — see the wall recorded below, which was
+verified on 2026-09-10 and which the previous version of this section had wrong.
+It is the largest remaining piece of `docs/project/first-goal.md` and the first
+slice since M3.13a that is not part of a stack migration. **Its blockers are
+gone.** The seven-slice migration ADR 0065 enumerated finished on 2026-09-09 with
+M3.13t, so there is one economy contract, it is version eight, and every layer
+between a signed transaction and CometBFT v0.39.4 is version eight's.
+
+**The slice was scoped and de-risked on 2026-09-10 but deliberately not
+started**, because the owner concluded the session at that point. Nothing of it
+is committed, no branch or issue exists for it, and the next session starts it
+from a clean `main`. What was verified — and is worth not re-deriving — is that
+the whole intended sequence executes in the version-eight model: register Alice,
+register Bob, purchase seat 0 unreferred at nonce 1, activate it at nonce 2,
+Alice pays Bob at nonce 3, at heights 1 through 5, every receipt `result_code`
+zero, with quiet blocks after activation behaving normally. The C++ kernel
+implements both seat transitions (`src/v8/economy_value_transitions.cpp`), so the
+chain will run. `tests/integration/version_eight_chain.py` has no seat builders
+yet and needs two; `cometbft_four_validator_v8_test.py` is where the live chain
+goes, and node 3 has never been a submitter in it.
 
 **Two things are still untested, and they are different in kind.**
 
 **An economic chain.** M3.13s's fixture sells no seat, deliberately — it
 establishes the code path, not the audit — so the issue and expiry steps
-evaluate nothing at any height. A chain that **sells and activates a seat**
-gives the pipeline subjects: the prologue derives a schedule with something in
-it, the issue step evaluates the challenge selection digest per in-scope seat,
-the expiry step runs after the transactions, and cycle assignment records get
-written where the version-seven path could write none. This is the run that
-turns "the version-eight code path executes" into "the version-eight audit
-performs".
+evaluate nothing at any height. A chain that **sells and activates a seat** puts
+the two transitions that write the seat table under a real engine, across four
+independent replicas, for the first time.
+
+**It does not give the audit subjects, and the previous version of this
+paragraph said it did. That claim was wrong, and here is the evidence.** A seat
+is in scope only from the window *after* the one it activated in —
+`slots.in_scope` is `window_of_height(activation_height) + 1 <= window` — and
+`CYCLE_BLOCKS` is **28,800**. Every height a chain begun at genesis can plausibly
+reach lies in window 0, so every seat it can activate is first audited at
+**height 28,800**, and no activation height makes that sooner: activating later
+only pushes the seat's first window later. Driven against the repository's own
+version-eight model this session, a seat purchased at height 3 and activated at
+height 4 gives `derive_schedule(ledger.activations(), 0, ledger.uptime)` **zero**
+measured seats at every reachable height, and exactly one at window 1.
+
+**The recorded traces reach window 1 through a shorthand a network does not
+have.** `trace.py` sets `ACTIVATION_HEIGHT = c.CYCLE_BLOCKS - 10` and calls
+`Ledger.advance_to`, which version eight overrides to **refuse** once any seat is
+activated — "version eight cannot skip a height at which a seat is in scope". The
+shorthand is used exactly once, before any activation, because that is the only
+stretch of a version-eight chain where a transaction-free block really does
+change height and nothing else. A four-node devnet has no such stretch to
+exploit: it must propose, vote on, and commit 28,800 real blocks.
+
+**So requirement 13's audit-bearing chain needs a mechanism that does not exist
+yet, and the next slice should record that in an ADR before building around it.**
+Two are plausible. A chain begun at a **nonzero initial height** near 28,780
+would put a seat in scope about twenty blocks later; `initial_height` is already
+carried across the wire to the application, and **three layers refuse anything
+but 1 on purpose** — `nodeconfig.readGenesis`, `ApplicationV8::InitChain`, and
+version one's application. The state root commits to the height, so lifting that
+pin is a `change-protocol` question rather than a harness option. The other is a
+**snapshot restored into a running network**: `snapshot_v8` can already express a
+ledger at any height and ADR 0066's restore gates already run
+`conservation_failures` over it, but there is no supported path for standing a
+devnet up on a restored state rather than a genesis.
+
+**Requirement 13's own words do not ask for the audit.** They ask for
+"adversarial four-node economic scenarios through restart and recovery, proving
+deterministic replica agreement on state roots". A seat purchase, a seat
+activation, a confirmed transfer, and the fees they charge are economic activity,
+and the audit is a further claim. Scope the slice to what is reachable and record
+the wall rather than letting a later session rediscover it.
 
 **Disagreement.** Every four-node run so far has been four replicas that agree.
 Requirement 13 asks for the other case: a replica fed a block the others refuse,
@@ -5585,18 +5647,33 @@ a partition, and a node restarted mid-block. Nothing in the repository has yet
 observed a node *reject* a peer's block, which is the property the whole
 deterministic-kernel argument rests on.
 
-**One smaller slice is unblocked and should go first, because it is cheap and it
-is open on the default branch.** Dependabot alert 20 reports a **high**-severity
-advisory against `google.golang.org/grpc v1.83.1`, an indirect dependency of
-CometBFT, patched in **1.83.2**. The advisory is a denial of service in
-**gRPC-Go xDS servers**, and this adapter runs no xDS server, so the reachable
-risk is low — but the fix is one line and the repository has a purpose-built
-mechanism for it. `adapter/cometbft/dependency-update.txt` is a transient
-request file: write `google.golang.org/grpc@v1.83.2` into it on a PR branch and
-`.github/workflows/resolve-go-dependencies.yml` resolves, tidies, verifies,
-tests, vets, and builds on a hosted runner, then publishes `go.mod` and `go.sum`
-back to the branch. **Do not resolve the module graph locally**; that is exactly
-what the workflow exists to prevent.
+**The smaller slice that used to sit ahead of this one is delivered.** Issue #267
+and PR #268 raised `google.golang.org/grpc` from **v1.83.1 to v1.83.2** on
+2026-09-10, closing Dependabot alert 20 — GHSA-2v4p-qf9q-27wj, a **high**
+denial of service in gRPC-Go **xDS servers**. The reachable risk was low and was
+stated as such rather than implied: no file in this repository imports gRPC and
+nothing here runs an xDS server, so the vulnerable path is compiled into nothing
+this project starts. The pin was raised because the request is one line.
+
+**The mechanism worked exactly as designed and is worth knowing before the next
+Go bump.** `adapter/cometbft/dependency-update.txt` is a transient request file;
+writing `google.golang.org/grpc@v1.83.2` into it on a PR branch made
+`.github/workflows/resolve-go-dependencies.yml` resolve, tidy, verify, test, vet,
+and build on a hosted runner, prove its two standing invariants — DTLS v2 still
+replaced by the empty local module, and no DTLS v2 package in the node's
+dependency list — then publish `go.mod` and `go.sum` back to the branch and
+delete the request file. **Nothing was resolved locally**, which is what the
+workflow exists to prevent. `go mod tidy` also carried `golang.org/x/crypto`
+0.54.0 → 0.55.0, `golang.org/x/net` 0.57.0 → 0.58.0, and `golang.org/x/text`
+0.40.0 → 0.41.0; all four bumps are indirect and no module was added or removed.
+
+**Two operational facts the next Go bump will hit.** The resolver pushes as
+`github-actions[bot]`, and the `Verify` run on that published commit lands in
+**`action_required`** rather than starting — it must be approved
+(`gh api --method POST repos/:owner/:repo/actions/runs/<id>/approve`) before the
+matrix runs. And the merge candidate is **the commit the resolver published**,
+not the one that opened the PR, so the `Verify` run on the opening commit is
+obsolete the moment the resolver finishes and should be cancelled.
 
 **What M3.13t left in place, and why each would break something if tidied
 later.** These are the four traps a future cleanup slice will walk into.
@@ -5671,18 +5748,17 @@ checking. **Every future deletion slice should re-derive its own preconditions
 rather than trusting the list that authorised it.**
 
 **Then, in order, each its own slice:**
-* the `google.golang.org/grpc` bump described above, which is small, open on
-  the default branch, and resolved on a hosted runner;
 * requirement 13's remaining half, the **adversarial and economic** scenarios.
-  **Its blocker is now gone.** Four replicas agree on version-*eight* roots
-  through a restart as of M3.13s, and version eight's prologue derives the
-  schedule, so a chain driven through the ABCI path writes cycle assignment
-  records rather than none — which is what the version-seven path could not do
-  and why this waited for the kernel. Two things remain untested: **disagreement**
-  — a replica fed a block the others refuse, a partition, a node restarted
-  mid-block — and **an economic chain**, one that sells and activates a seat so
-  the issue and expiry steps have something in scope. M3.13s's fixture sells
-  none, deliberately: it establishes the code path, not the audit;
+  **Its blocker is gone**: four replicas agree on version-*eight* roots through a
+  restart as of M3.13s. Two things remain untested, and they are different in
+  kind. **An economic chain** — one that sells and activates a seat, which puts
+  kinds 2 and 3 under a real engine for the first time. It will **not** reach the
+  audit; see the 28,800-block wall above, which is arithmetic rather than a gap
+  in any fixture, and which the slice should record in an ADR rather than build
+  around. And **disagreement** — a replica fed a block the others refuse, a
+  partition, a node restarted mid-block. Nothing in the repository has yet
+  observed a node *reject* a peer's block, which is the property the whole
+  deterministic-kernel argument rests on, and it has no dependency on the audit;
 * `calendar-v1`, which must fix the consensus timestamp's monotonicity rule and
   acceptance tolerance and the calendar-month boundary derived from them. **The
   tolerance is consensus-visible**: a proposer can move a month boundary within
@@ -6284,6 +6360,32 @@ later scenario change stops reaching one.
 
 ## Blockers
 
+**The grpc slice ran the founder-decision gate and passed it.** Five decisions
+were enumerated before any was judged: the module version to request; whether to
+resolve locally or on a hosted runner; whether the bump needs an ADR; the branch,
+issue, and PR shape; and the verification path. **Every one is already decided.**
+The advisory names `1.83.2` as the first patched version; `CLAUDE.md` requires
+dependency locks to be generated on GitHub-hosted runners; `CLAUDE.md` requires
+an ADR for **consensus-path** dependencies and gRPC is an indirect dependency of
+the replaceable CometBFT adapter that no file here imports; and a dependency
+change fails closed to the full hosted matrix. Nothing in the slice set or
+changed supply, allocation, beneficiaries, Founder ownership, creator hierarchy,
+commercial routing, AI institutional authority, bridge scope, content permanence,
+or what an end user must do, own, run, or receive.
+
+**The M3.14a gate was run too, and it also passes — recorded here so a fresh
+session does not re-derive it.** Seven decisions: which transactions the economic
+chain executes; the seat id and the absence of a referrer; which replica submits
+which transaction; whether the audit is exercised; whether to add initial-height
+or snapshot-seeded devnets; the ADR number; and Alice's nonce renumbering.
+**Seat purchase and activation as biometric-gated transactions are explicitly
+resolved** — the founder constitution records them under the 2026-08-13/14 round
+in ADR 0033 — so exercising them is delegated work rather than a decision.
+Whether the audit is exercised is not a choice at all but the arithmetic finding
+above. Adding initial-height support **would** be a compatibility change needing
+`change-protocol` and an ADR, which is precisely why the slice must not quietly
+do it. Nothing there touches the reserved set either.
+
 **M3.13t ran the founder-decision gate and passed it.** Ten decisions were
 enumerated before any was judged: the deletion's file set; retention of the two
 accepted version-seven vector files; retention of
@@ -6303,11 +6405,21 @@ beneficiaries, Founder ownership, creator hierarchy, commercial routing, AI
 institutional authority, bridge scope, content permanence, or what an end user
 must do, own, run, or receive, and **no accepted vector file changed**.
 
-**No blocker requires an owner answer.** The next slice, requirement 13's
-economic and adversarial scenarios, is unblocked: the stack migration that
-gated it finished on 2026-09-09, and version eight's prologue derives the
-schedule the version-seven path could not. The `grpc` bump ahead of it is
-unblocked and resolves on a hosted runner.
+**No blocker requires an owner answer.** The next slice, M3.14a's economic
+chain, is unblocked: the stack migration that gated it finished on 2026-09-09,
+the sequence it needs was verified against the model on 2026-09-10, and the C++
+kernel already implements both seat transitions. The `grpc` bump that used to sit
+ahead of it is delivered and merged.
+
+**One correction is on the record and matters more than a blocker would.** This
+document told two sessions in a row that a chain selling a seat would give the
+uptime audit subjects. It does not, and the reason is a constant rather than a
+defect. A slice planned against that sentence would have spent itself discovering
+the 28,800-block wall. **The general lesson is the one M3.13t already recorded in
+a different form**: a plan written before its dependencies landed must re-derive
+its own preconditions rather than trust the sentence that authorised it — and a
+claim about what a fixture will *observe* is worth probing against the model
+before it is worth building.
 
 **One standing operational note rather than a blocker.** This document is
 7,000-plus lines and roughly half a megabyte. It is the first thing every
