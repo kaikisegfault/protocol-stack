@@ -63,12 +63,27 @@ func Broadcast(
 		return TransactionResult{}, fmt.Errorf("decode receipt: %w", err)
 	}
 	if response.CheckTx.Code != 0 || response.TxResult.Code != 0 {
-		return TransactionResult{
+		rejected := TransactionResult{
 			Height:       height,
 			CheckCode:    response.CheckTx.Code,
 			FinalizeCode: response.TxResult.Code,
 			Receipt:      receipt,
-		}, errors.New("transaction was rejected")
+		}
+		// A transaction the kernel refuses is still committed in a block, and
+		// every replica must independently produce that refusal and the root it
+		// leaves. So convergence is waited for here as it is on the success
+		// path: an operator sees a rejection either way, and a caller that
+		// deliberately provoked one can still ask what the network agreed on.
+		// A CheckTx rejection never reached a block, so it has no height and no
+		// convergence to report.
+		if response.CheckTx.Code == 0 {
+			health, healthErr := WaitForHealth(ctx, devnet)
+			if healthErr != nil {
+				return rejected, healthErr
+			}
+			rejected.Health = health
+		}
+		return rejected, errors.New("transaction was rejected")
 	}
 	health, err := WaitForHealth(ctx, devnet)
 	if err != nil {

@@ -186,6 +186,12 @@ func runTransaction(arguments []string) error {
 		ctx, topology, nodeIndex, transaction)
 	if err != nil {
 		if result.Height != 0 {
+			// A refused transaction is still an operator error, so this command
+			// keeps failing. What it now also prints, when the network reached a
+			// height and converged, is the root it converged on -- because a
+			// caller that provoked the refusal deliberately is asking exactly
+			// that question, and a rejection that reports no root cannot answer
+			// it.
 			fmt.Printf(
 				"height=%d\ncheck_code=%d\nfinalize_code=%d\nreceipt=%s\n",
 				result.Height,
@@ -193,6 +199,9 @@ func runTransaction(arguments []string) error {
 				result.FinalizeCode,
 				hex.EncodeToString(result.Receipt),
 			)
+			if result.Health.Height != 0 {
+				fmt.Printf("app_hash=%X\n", result.Health.ApplicationRoot)
+			}
 		}
 		return err
 	}

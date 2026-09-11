@@ -39,6 +39,7 @@ reported as a changed constant.
 
 from __future__ import annotations
 
+import copy
 import pathlib
 import sys
 from dataclasses import dataclass
@@ -390,13 +391,60 @@ class Session:
     def apply(self, raw: bytes) -> Block:
         """Execute one block holding this transaction, and require it to succeed.
 
-        A fixture whose transaction is refused proves nothing about a node, so
-        the refusal is raised here rather than recorded.
+        A fixture whose transaction is *accidentally* refused proves nothing
+        about a node, so an unexpected refusal is raised here rather than
+        recorded. `apply_refused` is the deliberate case.
         """
         block = self._apply([raw])
         if block.receipts[0][RESULT_OFFSET] != 0:
             raise RuntimeError("fixture transaction did not succeed")
         return block
+
+    def apply_refused(self, raw: bytes, expected: int) -> Block:
+        """Execute one block whose transaction the contract must refuse by name.
+
+        **A refusal is admitted, not dropped.** `ledger-transition-v1` omits an
+        admission failure from execution and from the transaction root
+        entirely — it produces no receipt at all — while every *admitted*
+        transaction appends a receipt whether it succeeded or failed. Only three
+        things fail admission, all readable from the bytes without touching
+        state, so everything a running network can be made to refuse arrives
+        here with a receipt. This method requires that: admitted, and refused
+        with the exact code asked for.
+
+        The code is passed in rather than merely asserted nonzero because "it
+        was refused" is not the claim worth making. Two different defects both
+        refuse; only one of them refuses *for the stated reason*, and a test
+        that accepts any nonzero code would pass while the kernel refused for
+        the wrong one.
+        """
+        block = self._apply([raw])
+        actual = block.receipts[0][RESULT_OFFSET]
+        if actual != expected:
+            raise RuntimeError(
+                f"fixture transaction produced result {actual}, expected "
+                f"{expected}"
+            )
+        if actual == 0:
+            raise RuntimeError("a refusal cannot be SUCCESS")
+        return block
+
+    def root_if_empty(self) -> bytes:
+        """The state root the *next* height would produce with no transaction.
+
+        This exists for one claim and it is the sharpest one a refusal can make.
+        Every non-success result writes no state and charges no fee, so a block
+        whose only transaction was refused must leave the chain in the state an
+        empty block would have — the root moves, because it commits to the
+        height, and it must move to exactly that value and no other.
+
+        The live ledger is deep-copied rather than advanced, because asking the
+        question must not answer it: a session that closed a block to find out
+        what the block would be has already spent the height.
+        """
+        probe = copy.deepcopy(self._ledger)
+        outcome = execute_block(probe, [], self._signer)
+        return bytes.fromhex(outcome.resulting_state_root)
 
     def _apply(self, raw_inputs: list[bytes]) -> Block:
         outcome = execute_block(self._ledger, raw_inputs, self._signer)
