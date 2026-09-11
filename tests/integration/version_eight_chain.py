@@ -24,14 +24,17 @@ root commits to the whole block, so a fixture whose block holds four
 transactions can only be reproduced by getting all four into one block in one
 order, which broadcasting through a mempool does not give you.
 
-**Version eight adds a genesis field and an audit this fixture leaves empty.**
-The genesis carries `dispute_authority_key`, distinct from the verifier key, so
-the two are never the same octets by accident. The uptime pipeline runs at every
-height under version eight, but it audits *in-scope* seats and this chain sells
-none -- so the issue and expiry steps evaluate nothing and the fixture stays a
-statement about registrations, a transfer, and the roots they produce. What it
-proves is that a version-eight chain runs under a real engine at all; the
-economic scenarios that exercise the audit are requirement 13's and come next.
+**Version eight adds a genesis field and an audit no devnet can reach.** The
+genesis carries `dispute_authority_key`, distinct from the verifier key, so the
+two are never the same octets by accident. The uptime pipeline runs at every
+height under version eight, and it audits *in-scope* seats: this chain sells and
+activates one, so the seat table is written twice and the audit still evaluates
+nothing, because a seat is in scope only from the window after the one it
+activated in and a window is 28,800 heights. Every height a chain begun at
+genesis can plausibly reach lies in window 0. ADR 0071 records that wall and why
+this fixture does not build around it; `check_the_audit_is_out_of_reach` in the
+sibling test derives it rather than asserting it, so a changed constant is
+reported as a changed constant.
 """
 
 from __future__ import annotations
@@ -73,6 +76,10 @@ RESULT_OFFSET = 39
 ALICE_IDENTITY = bytes.fromhex("a1" * 32)
 BOB_IDENTITY = bytes.fromhex("b1" * 32)
 TRANSFER_AMOUNT = 1_000_000
+
+# The seat the fixture sells. Zero is the first identifier the capacity admits
+# and carries no meaning beyond being inside it.
+SEAT_ID = 0
 
 
 class Signer:
@@ -129,6 +136,7 @@ class Chain:
     verifier_key: bytes
     dispute_authority_key: bytes
     blocks: tuple[Block, ...]
+    activations: dict[int, int]
 
 
 def _genesis(verifier_key: bytes, dispute_authority_key: bytes) -> g.Genesis:
@@ -195,6 +203,69 @@ def _register(
             "first_signer_public_key": signer_key,
             "verifier_signature": signer.sign(verifier_key, message),
         },
+    )
+
+
+def _purchase(
+    signer: Signer,
+    ledger: Ledger,
+    identity: bytes,
+    hub_key: bytes,
+    signer_key: bytes,
+    seat_id: int,
+    nonce: int,
+) -> bytes:
+    """Kind 2, unreferred: the signer pays, the HUB key approves the seat.
+
+    `has_referrer` is false and `referrer_escrow_id` is 32 zero octets, which is
+    the encoding rather than a convention — the field is fixed-width and present
+    either way, so a decoder that read it when it should not would be caught by
+    the root rather than by a shorter transaction.
+    """
+    message = messages.purchase_message(
+        ledger.chain_id, identity, seat_id, VALID_UNTIL
+    )
+    return _build(
+        signer,
+        ledger,
+        c.PURCHASE_SEAT,
+        signer_key,
+        nonce,
+        {
+            "seat_id": seat_id,
+            "has_referrer": False,
+            "referrer_escrow_id": bytes(32),
+            "hub_signature": signer.sign(hub_key, message),
+        },
+    )
+
+
+def _activate(
+    signer: Signer,
+    ledger: Ledger,
+    identity: bytes,
+    hub_key: bytes,
+    signer_key: bytes,
+    seat_id: int,
+    nonce: int,
+) -> bytes:
+    """Kind 3, which records the height and is the only way into the audit.
+
+    Activation is what puts a seat in a window's scope, so the height this lands
+    at is the one every later uptime question is asked relative to. A consensus
+    engine chooses it, which is exactly why the fixture reads it back out of the
+    ledger rather than predicting it.
+    """
+    message = messages.activation_message(
+        ledger.chain_id, identity, seat_id, VALID_UNTIL
+    )
+    return _build(
+        signer,
+        ledger,
+        c.ACTIVATE_SEAT,
+        signer_key,
+        nonce,
+        {"seat_id": seat_id, "hub_signature": signer.sign(hub_key, message)},
     )
 
 
@@ -269,10 +340,41 @@ class Session:
             self._signer, self._ledger, BOB_IDENTITY, self.bob_hub,
             self.bob_signer, self.verifier_key)
 
+    def alice_buys_seat(self, nonce: int, seat_id: int = SEAT_ID) -> bytes:
+        return _purchase(
+            self._signer, self._ledger, ALICE_IDENTITY, self.alice_hub,
+            self.alice_signer, seat_id, nonce)
+
+    def alice_activates_seat(self, nonce: int, seat_id: int = SEAT_ID) -> bytes:
+        return _activate(
+            self._signer, self._ledger, ALICE_IDENTITY, self.alice_hub,
+            self.alice_signer, seat_id, nonce)
+
     def alice_pays_bob(self, nonce: int, amount: int = TRANSFER_AMOUNT) -> bytes:
         return _confirmed_transfer(
             self._signer, self._ledger, ALICE_IDENTITY, self.alice_hub,
             self.alice_signer, nonce, escrow_id(BOB_IDENTITY, 0), amount)
+
+    def seats(self) -> dict[int, bool]:
+        """Every seat the chain has sold, and whether it has been activated.
+
+        A caller that wants to state "the purchase wrote a seat and the
+        activation did not write a second one" needs the table rather than the
+        roots, and the roots alone cannot say which of the two happened.
+        """
+        return {
+            seat_id: seat.is_activated
+            for seat_id, seat in self._ledger.seats.items()
+        }
+
+    def activations(self) -> dict[int, int]:
+        """Activated seats and the heights they were activated at.
+
+        This is the model's own accessor, the one `derive_schedule` is handed at
+        every height, so a caller asking what the audit will measure is asking
+        the audit's own input rather than a parallel record of it.
+        """
+        return self._ledger.activations()
 
     def apply_empty(self) -> Block:
         """Close a block the fixture did not fill, which a chain may do."""
@@ -312,18 +414,30 @@ class Session:
 
 
 def build_chain(sodium: Sodium) -> Chain:
-    """Three contiguous blocks: two registrations and a confirmed transfer.
+    """Five contiguous blocks: two registrations, a seat, and a transfer.
 
     Two registrations because a transfer to an unregistered recipient is
-    refused, and a transfer because it is the first block that moves value and
-    charges the fee, so a node that agreed to the first two and not the third
-    would be caught.
+    refused. A purchase and an activation because they are the two transitions
+    that write the seat table, and until this fixture grew them no consensus
+    engine in this repository had ever executed either one: they existed in the
+    C++ kernel, in the Python model, and in recorded vectors, and nowhere in
+    between. And a transfer last because it is the block that moves value and
+    charges the fee, so a node that agreed to the first four and not the fifth
+    would still be caught.
+
+    **The order is not arbitrary.** A seat cannot be activated before it is
+    bought, and both are refused before its owner is registered, so the sequence
+    is the only one the contract admits. Alice's transfer therefore carries
+    nonce 3 rather than nonce 1: a nonce is per-signer and consecutive, and the
+    two seat transactions are hers.
     """
     session = Session(sodium)
     blocks = (
         session.apply(session.register_alice()),
         session.apply(session.register_bob()),
-        session.apply(session.alice_pays_bob(1)),
+        session.apply(session.alice_buys_seat(1)),
+        session.apply(session.alice_activates_seat(2)),
+        session.apply(session.alice_pays_bob(3)),
     )
     return Chain(
         genesis=session.genesis,
@@ -332,4 +446,5 @@ def build_chain(sodium: Sodium) -> Chain:
         verifier_key=session.verifier_key,
         dispute_authority_key=session.dispute_authority_key,
         blocks=blocks,
+        activations=session.activations(),
     )
