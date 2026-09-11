@@ -7,11 +7,28 @@ that were never told each other's answer must hold the same state root at the
 same height, through a restart, having each executed the same blocks
 independently.
 
-**Three transactions enter through three different replicas.** A node that
-agreed only with the peer it heard from would pass a single-submitter run.
-Alice registers through node 0, Bob registers through node 1, the network is
-stopped and started, and Alice pays Bob through node 2 — and after every stop
-all four databases are opened directly and required to report the same head.
+**Five transactions enter through four different replicas.** A node that agreed
+only with the peer it heard from would pass a single-submitter run. Alice
+registers through node 0 and Bob through node 1; the network is stopped and
+started; then Alice buys seat 0 through node 2, activates it through node 3, and
+pays Bob through node 0 — and after every stop all four databases are opened
+directly and required to report the same head.
+
+**The seat is the point of this run.** Kinds 2 and 3 write the seat table, and
+before this fixture grew them no consensus engine in this repository had
+executed either: they existed in the C++ kernel, in the Python model, and in
+recorded vectors, and nowhere in between. Four independent replicas now agree on
+the roots a purchase and an activation produce, having each executed them from
+octets rather than been told the answer. Both land after the restart, so the
+registry entry the purchase reads is a row recovered from SQLite, and node 3 —
+which has never submitted anything here — is the replica that activates.
+
+**It still does not exercise the uptime audit, and that is arithmetic.** A seat
+is in scope only from the window *after* the one it activated in, and a window is
+28,800 heights, so a seat this network can activate is first audited at a height
+it will not reach: not because the fixture is weak but because a devnet begun at
+genesis stays inside window 0. ADR 0071 records the wall and the two mechanisms
+that would cross it, neither of which this slice adopts.
 
 **The model is driven alongside the network rather than precomputed.** A
 consensus engine decides how many blocks a chain has, and an empty version-eight
@@ -22,10 +39,9 @@ transaction is executed against it.
 **Under version eight a quiet height is not a no-op**, which is why the session
 is advanced one whole block at a time rather than through the ledger's
 shorthand: every height runs the prologue, the issue step, and the expiry step
-against whatever seats are in scope. This chain sells none, so those steps
-evaluate nothing and the roots are version seven's shape of claim — but the code
-path a replica runs at a quiet height is version eight's, and that is what four
-replicas are being required to agree about.
+against whatever seats are in scope. None is in scope here, so those steps
+evaluate nothing — but the code path a replica runs at a quiet height is version
+eight's, and that is what four replicas are being required to agree about.
 """
 
 from __future__ import annotations
@@ -36,7 +52,9 @@ import sys
 import tempfile
 
 REPOSITORY = pathlib.Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPOSITORY / "tests" / "differential"))
+for _entry in (REPOSITORY, REPOSITORY / "tests" / "differential"):
+    if str(_entry) not in sys.path:
+        sys.path.insert(0, str(_entry))
 
 from cometbft_devnet import (  # noqa: E402
     Network,
@@ -47,7 +65,11 @@ from cometbft_devnet import (  # noqa: E402
     stop_network,
 )
 from pinned_sodium import Sodium  # noqa: E402
-from version_eight_chain import Block, Session  # noqa: E402
+from version_eight_chain import SEAT_ID, Block, Session  # noqa: E402
+from simulation.economy_transition_v8.slots import (  # noqa: E402
+    first_cycle_window,
+    window_first_height,
+)
 
 PROTOCOL_VERSION = 8
 
@@ -129,6 +151,35 @@ def audit(network: Network, workspace: pathlib.Path, chain: Chain) -> None:
     )
 
 
+def check_the_seat_is_sold_and_unaudited(chain: Chain) -> int:
+    """What the run proved about the seat, and what it could not have proved.
+
+    The first half is the slice's outcome: the network executed a purchase and
+    an activation, so exactly one seat exists and it is activated at a height
+    the engine chose rather than one this fixture predicted.
+
+    The second half keeps the docstring above honest. An activated seat reads as
+    putting version eight's issue and expiry steps under a real subject, and it
+    does not, because a seat is in scope only from the window after the one it
+    activated in. That is derived here from the contract's own rule rather than
+    asserted, so a network that somehow *did* reach its seat's first window
+    would fail this rather than pass it quietly.
+    """
+    activations = chain.session.activations()
+    if activations.keys() != {SEAT_ID}:
+        raise RuntimeError(
+            f"the devnet activated {sorted(activations)} rather than [{SEAT_ID}]"
+        )
+    activation_height = activations[SEAT_ID]
+    first_audited = window_first_height(first_cycle_window(activation_height))
+    if first_audited <= chain.session.height:
+        raise RuntimeError(
+            f"the seat activated at height {activation_height} is audited from "
+            f"height {first_audited}, which this devnet reached"
+        )
+    return activation_height
+
+
 def verify(
     application: pathlib.Path,
     bridge: pathlib.Path,
@@ -139,9 +190,16 @@ def verify(
 ) -> None:
     sodium = Sodium(str(sodium_library))
     chain = Chain(sodium)
+    # Every transaction is built before the network starts, because none of the
+    # five binds a height: a nonce is per-signer and consecutive, and the seat
+    # messages bind the seat identifier rather than the block it lands in. What
+    # the engine chooses is which height each one lands at, which is exactly the
+    # figure the model is driven to rather than told.
     register_alice = chain.session.register_alice()
     register_bob = chain.session.register_bob()
-    alice_pays_bob = chain.session.alice_pays_bob(1)
+    alice_buys_seat = chain.session.alice_buys_seat(1)
+    alice_activates_seat = chain.session.alice_activates_seat(2)
+    alice_pays_bob = chain.session.alice_pays_bob(3)
 
     parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(
@@ -179,16 +237,20 @@ def verify(
         second, restart_health = start_network(network, workspace)
         try:
             check_health(chain, restart_health)
-            submit(network, workspace, chain, 2, alice_pays_bob)
+            submit(network, workspace, chain, 2, alice_buys_seat)
+            submit(network, workspace, chain, 3, alice_activates_seat)
+            submit(network, workspace, chain, 0, alice_pays_bob)
             stop_network(second, network)
         finally:
             second.kill()
         audit(network, workspace, chain)
+        activation_height = check_the_seat_is_sold_and_unaudited(chain)
 
     print(
         "CometBFT four-validator version-eight integration: passed "
-        "(4 independent replicas, 2 registrations and 1 confirmed transfer "
-        "through 3 different nodes, full restart, 4 durable C++ audits per stop)"
+        "(4 independent replicas, 2 registrations, 1 seat bought and activated "
+        f"at height {activation_height}, and 1 confirmed transfer through 4 "
+        "different nodes, full restart, 4 durable C++ audits per stop)"
     )
 
 
