@@ -23,6 +23,14 @@ initialised with `"protocol-stack-v8"`, which `ApplicationV8::init_chain`
 refuses at any other value -- including `"protocol-stack-v7"`, the string a
 stale deployment would still be sending. Neither needs a separate case here
 because neither has a way to fail quietly.
+
+**The chain sells and activates a seat, and both blocks land after the restart.**
+They are the first execution of kinds 2 and 3 by anything a consensus engine
+drives, and putting them on the far side of the restart makes the registry entry
+the purchase reads a row recovered from SQLite rather than one this process
+wrote. The run still does not exercise the uptime audit: a seat is in scope only
+from the window after the one it activated in, and ADR 0071 records why that is
+arithmetic rather than a gap in this fixture.
 """
 
 from __future__ import annotations
@@ -164,11 +172,18 @@ def commit_first_two(stack: Stack, chain: Chain) -> None:
 
 
 def commit_after_restart(stack: Stack, chain: Chain) -> None:
-    """The third block is committed by a process that did not execute the first two.
+    """The remaining blocks run on a process that executed neither of the first two.
 
-    Its root therefore depends on a state read back out of SQLite rather than one
-    held in memory, which is the half of requirement 13's "through restart" that
-    a single run cannot show.
+    Their roots therefore depend on a state read back out of SQLite rather than
+    one held in memory, which is the half of requirement 13's "through restart"
+    that a single run cannot show.
+
+    **The seat blocks are deliberately on this side of the restart.** A purchase
+    reads the purchaser's registry entry and its seat count, and an activation
+    reads the seat the purchase wrote; putting both after the restart makes the
+    registry entry a row recovered from disk rather than a value the process has
+    held since it wrote it. The transfer follows them, so the fee is charged
+    against a balance the same recovered state supplies.
     """
     processes = launch(stack)
     try:
@@ -178,13 +193,15 @@ def commit_after_restart(stack: Stack, chain: Chain) -> None:
                 f"restart handshake head: height={restarted[0]} "
                 f"root={restarted[1].hex().upper()}"
             )
-        commit_block(stack, chain, 2)
+        for index in range(2, len(chain.blocks)):
+            commit_block(stack, chain, index)
+        last = chain.blocks[-1]
         durable = stop_stack(
             processes, stack.application_socket, PROTOCOL_VERSION)
-        if durable != (chain.blocks[2].height, chain.blocks[2].state_root):
+        if durable != (last.height, last.state_root):
             raise RuntimeError(
-                f"durable head after three blocks: height={durable[0]} "
-                f"root={durable[1].hex().upper()}"
+                f"durable head after {len(chain.blocks)} blocks: "
+                f"height={durable[0]} root={durable[1].hex().upper()}"
             )
     finally:
         for process in reversed(processes):
@@ -268,8 +285,8 @@ def verify(
 
     print(
         "CometBFT version-eight integration: passed "
-        "(2 registrations, 1 confirmed transfer, restart at height 2, "
-        "durable height 3)"
+        "(2 registrations, 1 seat sold and activated, 1 confirmed transfer, "
+        f"restart at height 2, durable height {chain.blocks[-1].height})"
     )
 
 
