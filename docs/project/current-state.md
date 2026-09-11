@@ -378,6 +378,87 @@ assignment pays the first without anything anywhere being told the second was
 offline. [ADR 0064](../decisions/0064-the-version-eight-execution-model.md)
 records the one rule the model had to derive and three findings.
 
+**Four independent replicas refused a transaction on 2026-09-11**, which is
+the other half of requirement 13 and the first time anything in this repository
+required a network to say *no*. Every four-node run before it was four replicas
+agreeing about a **success**: every receipt in every integration carried a zero.
+The deterministic-kernel argument rests on the opposite case — a wrong
+transaction cannot change state because every replica independently refuses it —
+and that sentence was untested because no wrong transaction had ever been
+produced.
+
+**Two are now, refused for two unrelated reasons.** A transfer at a consumed
+nonce gives `NONCE_MISMATCH`, and a second purchase of seat 0 gives `REPLAY`. The
+second is charged at the nonce the first did not consume, because a non-success
+result performs no state write at all. Each is checked three ways: the receipt
+carries the *named* code, because two defects both refuse and only one refuses
+for the stated reason; the four replicas converge on one root and one
+octet-identical receipt; and that root equals the one an empty block at the same
+height would produce.
+
+**A replay in the only form a running network can carry one.** The same bytes
+broadcast twice never reach the application — CometBFT's mempool discards a
+transaction whose hash it has seen — so a byte-identical replay is refused by the
+mempool cache rather than by the kernel. A different amount at the same consumed
+nonce has a different hash, passes the cache, is gossiped, proposed and
+committed, and is refused by the layer the claim is about. **This is worth
+knowing before any future replay test is written.**
+
+**What makes the claim four-replica at all is that `check_transaction` refuses
+almost nothing.** It rejects oversized input and that is all, so nearly every
+refusal is an *execution* refusal: the transaction is admitted, committed in a
+block, and refused independently by all four replicas. A transaction CheckTx
+rejected would be refused by one node's admission filter, which is a much weaker
+statement — `run_refused_transaction` fails closed on that case rather than
+accepting it.
+
+### How M3.14b was delivered
+
+**Candidate run 34631946173 on `7347803` passed all five jobs**, and the
+branch merged as `f88bcf7`. Every preset reports:
+
+```text
+CometBFT four-validator version-eight integration: passed (4 independent
+replicas, 2 registrations, 1 seat bought and activated at height 5, 1 confirmed
+transfer, and 2 refusals -- NONCE_MISMATCH and REPLAY -- through 4 different
+nodes, full restart, 4 durable C++ audits per stop)
+```
+
+**One Go change was needed and it is in the harness rather than the protocol.**
+`devnet.Broadcast` returned early on a nonzero `TxResult.Code` and skipped
+`WaitForHealth`, so a refused transaction reported no `app_hash` — the one figure
+the claim needs. It now waits for convergence on that path too. A **CheckTx**
+rejection still reports none, deliberately: it never reached a block, so there is
+no convergence to report. The command still exits nonzero for a refusal, because
+for an operator it is still an error, which is why `run_refused_transaction`
+expects the failure and parses its output rather than using `check=True`.
+
+**A mutation probe passed, and the passing was the finding.** Making
+`NONCE_MISMATCH` advance the nonce before refusing — a refusal that writes state
+— **passed**, which would have been evidence of nothing. An instrumented re-run
+showed the mutated line lives in `_fee_exempt_envelope_checks`, which only runs
+for the challenge-response kind, so a transfer never executes it. Mutating the
+real check in version six's `_envelope_checks` fails at once with `InvalidBlock:
+a refused transaction changed the state`. **This is the third time this
+repository has been caught by a probe that passed against code the test never
+runs**, and the first time instrumenting rather than trusting it is what found
+the truth.
+
+**The finding changed what the new check claims.** `_execute_block` already
+compares the state root across each transaction and raises on a refusal that
+wrote, so the empty-block comparison in `execute_refused` is the same property
+restated about the block the *network* committed, after the version-eight steps
+ran — not an isolated guard. Today the two coincide because no seat is in scope.
+The docstring says so rather than implying isolation it does not have.
+
+**One local mistake is recorded rather than hidden.** `go vet` was run once in
+the adapter directory; it resolved the module graph and populated about a
+gigabyte of caches, which `CLAUDE.md` forbids on this machine. Both were removed
+immediately with `go clean -modcache -cache`. **The lesson for a future session
+is that `gofmt` is local-safe and every other Go command is not** — `go vet`,
+`go build`, and `go test` all resolve the graph, and the hosted matrix runs all
+three.
+
 ### How M3.14a was delivered
 
 **The evidence is the four hosted integrations' own output.** Candidate run
@@ -3418,6 +3499,16 @@ slices.
   `economy-transition-v7` is the first contract to bind version three; every
   other simulator, transition model, and kernel path still binds version two,
   which remains correct against it.
+- **A four-node version-eight network refuses a transaction, and all four
+  replicas refuse it identically.** As of 2026-09-11 two transactions the
+  contract must reject — a transfer at a consumed nonce and a second purchase of
+  an owned seat — are committed into blocks, executed independently by four
+  CometBFT-driven replicas, and refused by each with the same named result code,
+  the same octet-identical receipt, and one converged state root equal to what an
+  empty block at that height would produce. It is the first evidence in this
+  repository for the claim the whole deterministic-kernel argument rests on.
+  **What is still untested is a replica refusing a peer's whole block**, which is
+  a different refusal class and needs a driven `ApplicationV8` beside the network.
 - **A four-node version-eight network sells and activates a Founder Seat.** As
   of 2026-09-11 the two transitions that write the seat table — kind 2
   `purchase_seat` and kind 3 `activate_seat` — are executed by four independent
@@ -4261,6 +4352,13 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #274 and PR #275 are the M3.14b delivery, merged as `f88bcf7`. One
+  commit, five files, **312 insertions and 28 deletions**: three Python
+  integration files and two Go files in the devnet harness. **No accepted vector
+  file, specification, manifest, encoding, or kernel source changed**, and the
+  Go change is to `protocol-cometbft-devnet`'s reporting rather than to the
+  bridge, the node, or any consensus path — the refusals it exercises are the
+  contract's existing ones.
 - Issue #271 and PR #272 are the M3.14a delivery. Five commits, five files,
   **458 insertions and 44 deletions**: four Python integration files and
   `docs/decisions/0071-a-devnet-cannot-reach-the-uptime-audit.md`. **No accepted
@@ -5377,11 +5475,14 @@ steps have landed and the repository compiles exactly one economy contract.**
 version-eight kernel is wired to a SQLite owning store as of 2026-09-06, so a
 state it produces survives a restart. It is not wired to the archive or to the
 CometBFT adapter, so no two nodes agree on one. That wiring is requirement 13's
-four-node adversarial scenarios. **Its economic half landed on 2026-09-11** —
-four replicas agree on the roots a seat purchase and a seat activation produce —
-and its adversarial half has not started: nothing here has yet observed a node
-*reject* a peer's block. That remaining half is the largest single remaining
-piece of `first-goal.md`.
+four-node adversarial scenarios, and **both halves landed on 2026-09-11**. Four
+replicas agree on the roots a seat purchase and a seat activation produce, and
+four replicas independently refuse two transactions the contract rejects. **What
+remains of requirement 13 is narrower than it was**: a replica refusing a peer's
+whole *block*, a partition, and a node restarted mid-block. All three need a
+driven `ApplicationV8` beside the network rather than a transaction the mempool
+will carry, which is why they are one further slice rather than this one's
+remainder.
 
 **As of 2026-08-31 the first two bricks of it are laid and the gap is two steps
 narrower.** A version-seven state can be encoded to canonical bytes and restored
@@ -5662,159 +5763,58 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.14b: a replica that refuses a block its peers accept**,
-which is requirement 13's remaining half and the one property nothing in this
-repository has ever observed.
+Milestone slice **M3.14c: the refusals a mempool cannot deliver** — a replica
+fed a block its peers never proposed, a partition, and a node restarted
+mid-block. It is what is left of requirement 13's word *adversarial*, and it is
+the last piece of requirement 13.
 
-**M3.14a is delivered and merged.** Issue #271 and PR #272 put version eight's
-two seat transitions — kind 2 `purchase_seat` and kind 3 `activate_seat` — under
-a real consensus engine for the first time. Four independent replicas execute a
-purchase and an activation from octets, after a full restart, and agree on the
-roots. Before that branch the two transitions existed in the C++ kernel, in the
-Python model, and in recorded vectors, and in nothing a CometBFT-driven node had
-ever run. **ADR 0071 records the wall the slice hit** and refuses all three
-mechanisms that would cross it. The details are under "How M3.14a was delivered".
+**M3.14a and M3.14b are both delivered and merged.** Issue #271 and PR #272 put
+the two seat transitions under a real consensus engine; issue #274 and PR #275
+made four replicas refuse two transactions identically. Requirement 13 now has
+four replicas agreeing about a success and about a failure, through a restart,
+with every replica's durable head opened directly and checked. The details are
+under "How M3.14b was delivered" and "How M3.14a was delivered".
 
-**So what is left of requirement 13 is the word *adversarial*.** Every four-node
-run in this repository has been four replicas that agree. The requirement asks
-for the other case: a replica fed a block the others refuse, a partition, and a
-node restarted mid-block. **Nothing here has yet observed a node *reject* a
-peer's block**, which is the property the whole deterministic-kernel argument
-rests on — the argument says a wrong block cannot be committed because every
-replica independently refuses it, and that sentence has never been tested by
-producing a wrong block.
+**What is left is a different refusal class and it needs a different harness.**
+`ledger-transition-v1` has three. An **admission** failure omits the transaction
+from execution and from the transaction root — there are exactly three of them,
+all readable from the bytes. An **execution** failure admits the transaction,
+gives it a receipt with a nonzero code, and leaves the block valid; that is what
+M3.14b exercised, and it is what a mempool can deliver. The third is the one
+still untested: **an internal invariant failure, a height error, or a
+resource-bound violation rejects the whole proposed block** and restores the
+pre-block state exactly.
 
-**It has no dependency on the audit**, which is what makes it the next slice
-rather than a later one. Refusal is a property of the kernel and the application
-layer, not of the uptime pipeline: a replica handed a transaction with a broken
-signature, a replayed nonce, a state root that does not match what it computed,
-or a block at a height it has already committed must refuse it at heights 1
-through 5 exactly as it would at height 28,800.
+**A mempool cannot deliver the third**, and that is the slice's central
+constraint rather than a detail. CometBFT gossips every transaction to every
+replica and each replica builds its own block from its own mempool, so a fixture
+cannot hand one node a block the others would refuse: the honest routes are a
+driven `ApplicationV8` beside the network, fed a block the network never
+proposed, or a deliberately modified node. **Start with the driven application**
+— it needs no change to the adapter, it can construct a block at a wrong height
+or with more admitted transactions than version one permits, and
+`ApplicationError` is the type the refusal arrives as.
 
-**Where the refusals already live, so the slice does not go looking.**
-`ApplicationV8::init_chain` refuses a chain identity, an initial height, or an
-app state that is not the one it was built for; `check_transaction` refuses
-oversized input at admission; and `finalize_block` is terminal on a repeated
-height. `ApplicationError` is the type they report through. What does not exist
-is any test that makes a *running network* exercise one, and the shape of that
-test is the slice's first question: CometBFT v0.39.4 gossips through a mempool,
-so a fixture cannot simply hand one replica a different block. The plausible
-routes are a transaction the mempool accepts and the kernel refuses at execution
-— which every replica must refuse identically, giving agreement about a
-*refusal* rather than about a success — and a directly driven `ApplicationV8`
-beside the network, fed a block the network never proposed.
+**Three already-existing refusals are the obvious first subjects, and none has a
+test that makes a running application produce it.** `ApplicationV8::init_chain`
+refuses a chain identity, an initial height, or an app state that is not the one
+it was built for; `finalize_block` is terminal on a repeated height; and
+`_execute_block` raises `InvalidBlock` on more admitted transactions than
+version one permits, on a height that is not `h + 1`, and on a refused
+transaction that changed the state.
 
-**The first of those is reachable now and the second may not be.** A refusal all
-four replicas agree about is still a four-replica agreement claim and it is the
-one the fixtures have never made: every transaction in every integration so far
-has a `result_code` of zero, so the run proves nothing about a node that must
-say no. Start there.
+**The partition and the mid-block restart are the same slice's other half.**
+Neither has a dependency on the block-refusal work, and the mid-block restart is
+the closest to what already exists: `stop_network` and `start_network` are in
+place, and what is missing is killing a replica *between* its commit and its
+return rather than at a quiet point. M3.13f already proved the single-node
+version of that against the store; the four-node version has never been run.
 
-**One thing M3.14a proved about the fixtures is worth carrying in.** The
-version-eight fixture's `Session.apply` **raises** when a receipt is nonzero,
-deliberately, because a fixture whose transaction is refused proves nothing
-about a node. A refusal slice needs the opposite affordance — apply and require
-a *named* refusal — and adding it is the first edit rather than a surprise.
-
-**The smaller slice that used to sit ahead of this one is delivered.** Issue #267
-and PR #268 raised `google.golang.org/grpc` from **v1.83.1 to v1.83.2** on
-2026-09-10, closing Dependabot alert 20 — GHSA-2v4p-qf9q-27wj, a **high**
-denial of service in gRPC-Go **xDS servers**. The reachable risk was low and was
-stated as such rather than implied: no file in this repository imports gRPC and
-nothing here runs an xDS server, so the vulnerable path is compiled into nothing
-this project starts. The pin was raised because the request is one line.
-
-**The mechanism worked exactly as designed and is worth knowing before the next
-Go bump.** `adapter/cometbft/dependency-update.txt` is a transient request file;
-writing `google.golang.org/grpc@v1.83.2` into it on a PR branch made
-`.github/workflows/resolve-go-dependencies.yml` resolve, tidy, verify, test, vet,
-and build on a hosted runner, prove its two standing invariants — DTLS v2 still
-replaced by the empty local module, and no DTLS v2 package in the node's
-dependency list — then publish `go.mod` and `go.sum` back to the branch and
-delete the request file. **Nothing was resolved locally**, which is what the
-workflow exists to prevent. `go mod tidy` also carried `golang.org/x/crypto`
-0.54.0 → 0.55.0, `golang.org/x/net` 0.57.0 → 0.58.0, and `golang.org/x/text`
-0.40.0 → 0.41.0; all four bumps are indirect and no module was added or removed.
-
-**Two operational facts the next Go bump will hit.** The resolver pushes as
-`github-actions[bot]`, and the `Verify` run on that published commit lands in
-**`action_required`** rather than starting — it must be approved
-(`gh api --method POST repos/:owner/:repo/actions/runs/<id>/approve`) before the
-matrix runs. And the merge candidate is **the commit the resolver published**,
-not the one that opened the PR, so the `Verify` run on the opening commit is
-obsolete the moment the resolver finishes and should be cancelled.
-
-**What M3.13t left in place, and why each would break something if tidied
-later.** These are the four traps a future cleanup slice will walk into.
-
-1. **`economy-transition-v7.txt` and `economy-transition-v7-execution.txt` are
-   accepted contracts and are still read.** `economy-transition-v8-cpp` passes
-   the first as an argument, because version eight's predecessor constructions
-   are pinned against it. An inequality between two digests proves nothing about
-   either end unless both are pinned, and a pin against the live version-seven
-   kernel would have died at M3.13t — which is why M3.13n wrote them against the
-   recorded files instead. `tests/tools/test_registration_test.py` fails closed
-   if a recorded vector file stops being read by anything.
-2. **`simulation/economy_transition_v7/` and its six CTest entries stay.**
-   Version eight's Python model subclasses it: `ledger.py` overrides four things
-   on version seven's `Ledger` and `block.py` imports `derive_assignment` from
-   `economy_transition_v7.settlement`.
-3. **Version one is not deprecated.** ADR 0065 never enumerated it, `wire_v1` is
-   the frame format both live versions use, and two of the four integrations in
-   `tools/verify.sh` are version one's.
-4. **`tests/tools/test_registration_test.py` keeps a docstring naming
-   `protocol_application_server_v7`, which no longer exists.** It records that
-   M3.13e added that target without registering it, so it built at the
-   compiler's default standard and failed all four hosted jobs. The target is
-   gone; the incident is the reason the build-flag check exists, and rewriting
-   it would keep the check and lose the lesson.
-
-**What the repository compiles now.** One economy contract. `src/v8/` is
-nineteen sources and `include/protocol/v8/` two headers; `snapshot_v8` is one
-public header, one internal header, and three translation units;
-`SQLiteLedgerV8`
-is one public header, three translation units, and two internal headers;
-`ApplicationV8` and the version-eight responses are three public headers, four
-translation units, and an internal header; `protocol-application-v8` is one
-translation unit; and the Go adapter holds `wire_v8.go`, `client_v8.go`,
-`LocalV8`, `NewV8`, and `ProtocolV8`. The ctest suite is **158** entries in the
-debug presets and **166** under `clang-sanitizers`, having lost eleven
-version-seven entries — nine of them outside the fuzzing guard — and gained
-`economy-transition-v8-fuzz-smoke`. `tools/verify.sh` runs **four** hosted
-integrations: version one single-node and four-validator, and version eight
-single-node and four-validator.
-
-**Two figures the deletion moved, recorded so they are not rediscovered.**
-`receiptResultOffset` is 39 and now lives in `wire_v8.go`, having been declared
-in `wire_v7.go` and used from `wire_v8.go` — version eight keeps version seven's
-receipt layout, so a deletion that went by filename would have taken it.
-And `ParseProtocolVersion` now **refuses** 7: it moved from the accepted table
-to
-the rejected list beside 0, 2, 6, 9, 256, 257, 263, and 264, so an operator who
-still passes `-protocol-version 7` gets an error rather than a home no binary
-can
-serve.
-
-**The version-eight fuzz harness is new and its two added entry points are the
-interesting ones.** `tests/fuzz/economy_v8_fuzz.cpp` replaced
-`economy_v7_fuzz.cpp` at M3.13t rather than being deleted with it, because no
-version-eight counterpart had ever been added and deleting it as ADR 0065
-enumerated would have left the live contract with no economy-codec fuzz target.
-The four inherited entry points are version seven's with the namespace rebound.
-The two new ones are the uptime values, and **the seat window record is the one
-that most needed it**: its pad rule and its subset rule are refusals
-`seat_window_value` can never produce a witness for, so arbitrary bytes are the
-only thing that reaches them. This is the same shape as M3.13p's finding that
-the strongest probe result is "a restore accepted it".
-
-**A deletion enumerated in advance still has to be re-checked against what
-exists when it runs.** ADR 0065's step 7 was written before three of the six
-slices it depends on had landed, and it listed one item — `economy_v7_fuzz` —
-whose stated precondition ("every one of these has a version-eight counterpart
-already carrying its evidence") turned out to be false for that item alone. The
-enumeration is what made the migration honest; it is not a substitute for
-checking. **Every future deletion slice should re-derive its own preconditions
-rather than trusting the list that authorised it.**
+**One affordance the slice will want on day one.** `Session.apply_refused` and
+`Chain.execute_refused` exist as of M3.14b and take a *named* result code. A
+block-level refusal is not a result code — it is an `InvalidBlock` from the
+model and an `ApplicationError` from the kernel — so the equivalent affordance
+for a refused *block* does not exist yet and is the first edit.
 
 **Then, in order, each its own slice:**
 * the two slices **ADR 0071 named and deliberately did not start**, either of
@@ -6483,13 +6483,31 @@ beneficiaries, Founder ownership, creator hierarchy, commercial routing, AI
 institutional authority, bridge scope, content permanence, or what an end user
 must do, own, run, or receive, and **no accepted vector file changed**.
 
-**No blocker requires an owner answer.** The next slice, M3.14b's refusal
-scenarios, is unblocked: the refusals it must provoke already exist in
-`ApplicationV8` and the kernel, four replicas already agree on version-eight
-roots through a restart, and nothing it needs is a founder-reserved value. Its
-open question is a test-shape question — how to make a running network exercise
-a refusal when CometBFT gossips every transaction to every replica — which is
-engineering work the standing delegation covers.
+**M3.14b ran the founder-decision gate and passed it.** Nine decisions were
+enumerated before any was judged: which refusals the network is made to
+exercise; whether each is an admission or an execution refusal; whether the
+devnet CLI and `Broadcast` must change to report convergence after a refusal;
+what the Python helper for a refused submission returns; which replica submits
+each refused transaction; whether the refusals go in the existing four-validator
+test or a new one; whether the slice also attempts a partition or a mid-block
+restart; whether an ADR is needed; and what the fixture affordance is called.
+**Every one is testing, harness, or scoping work.** The refusal codes themselves
+are decided by the accepted `economy-transition-v8` contract and are *exercised*
+rather than chosen — the slice adds, removes, and widens nothing a node accepts,
+and `CODE_NUMBER` is read rather than transcribed so a renumbered code space
+would be reported instead of agreed with. `CLAUDE.md` places Go in replaceable
+infrastructure, and the change is to the devnet harness's reporting rather than
+to the bridge, the node, or any consensus path. Nothing in the slice set or
+changed supply, allocation, beneficiaries, Founder ownership, creator hierarchy,
+commercial routing, AI institutional authority, bridge scope, content
+permanence, or what an end user must do, own, run, or receive.
+
+**No blocker requires an owner answer.** The next slice, M3.14c, is unblocked:
+every refusal it must provoke already exists in `ApplicationV8` and in
+`_execute_block`, and nothing it needs is a founder-reserved value. Its open
+question is a harness question — a mempool cannot deliver a block one replica
+refuses, so the block must come from a driven application beside the network —
+which is engineering work the standing delegation covers.
 
 **One correction is on the record and matters more than a blocker would, and it
 is now closed.** This document told two sessions in a row that a chain selling a
