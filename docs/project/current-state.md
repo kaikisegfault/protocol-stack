@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-09-10
+Last updated: 2026-09-11
 
 ## Phase
 
@@ -377,6 +377,77 @@ writes no state at all, another answers none and fails its cycle, and the
 assignment pays the first without anything anywhere being told the second was
 offline. [ADR 0064](../decisions/0064-the-version-eight-execution-model.md)
 records the one rule the model had to derive and three findings.
+
+### How M3.14a was delivered
+
+**The evidence is the four hosted integrations' own output.** Candidate run
+**34629392463** on `5d450b8` passed all five jobs — the scope classifier and the
+four-preset matrix — and the branch was merged by rebase, landing as `c7ac63b`
+through `604ae9c` on `main`. Every preset reports the same two new lines:
+
+```text
+CometBFT version-eight integration: passed (2 registrations, 1 seat sold and
+activated, 1 confirmed transfer, restart at height 2, durable height 5)
+CometBFT four-validator version-eight integration: passed (4 independent
+replicas, 2 registrations, 1 seat bought and activated at height 5, and 1
+confirmed transfer through 4 different nodes, full restart, 4 durable C++
+audits per stop)
+```
+
+**The devnet activated the seat at height 5** rather than at the fixture's
+height 4, which is the fixture design working as intended: the model is driven
+to whatever height the network reports rather than told, because a consensus
+engine closes blocks the fixture did not ask for and an empty version-eight
+block still moves the state root. The ctest suite stays at **158** entries in
+the debug presets and **166** under `clang-sanitizers` — the fixture's own test
+is entry 101, `version-eight-chain-fixture`, and it grew checks rather than
+becoming a second entry.
+
+**Three mutation probes were run against the new checks before the branch was
+pushed, each naming a different one.** Dropping the `+ 1` from
+`first_cycle_window` fails with "a seat activated in window 0 was reported as in
+scope for window 0"; returning `{}` from `Session.activations()` fails with "the
+recorded activation height is not the height the block ran at"; and reporting
+every seat as activated fails with "the purchase at height 3 did not write one
+unactivated seat". The four-validator check was probed the same way with three
+constructed states. **This is the standing lesson applied rather than restated**:
+a probe that passes has proved nothing until you have checked that it changed
+the code the test runs.
+
+**The probes ran under a deliberately fake signature provider and that is worth
+knowing.** `pinned_sodium` requires libsodium **1.0.22**, which the CMake build
+compiles from source, and `CLAUDE.md` forbids heavy local builds when a hosted
+job can do the work. So the local probes used a hash-based stand-in in the
+scratchpad — enough to exercise the transitions' acceptance, useless as
+cryptography — and the real Ed25519 run is the hosted matrix's. Nothing of the
+stand-in entered the repository.
+
+**Four independent replicas sold and activated a Founder Seat on 2026-09-11.**
+M3.14a put version eight's two seat transitions — kind 2 `purchase_seat` and
+kind 3 `activate_seat` — under a real consensus engine for the first time. They
+existed in the C++ kernel, in the independent Python model, and in recorded
+vectors, and in nothing a CometBFT-driven node had ever executed: every
+four-node run before it registered identities and moved value, and none sold a
+seat. Both blocks land after a full restart, so the registry entry the purchase
+reads is a row recovered from SQLite, and the five transactions enter through
+four different replicas.
+
+**The slice's more valuable output is a refusal.** A chain with an activated
+seat reads as exercising version eight's uptime audit, and it does not. A seat
+is in scope only from the window *after* the one it activated in, and
+`CYCLE_BLOCKS` is **28,800**, so a seat a genesis-begun devnet can activate is
+first audited at a height that devnet will not commit — and activating later
+only pushes it further away. **This document asserted the opposite twice**, as a
+claim about what the next slice would observe, and a slice planned against it
+would have spent itself discovering a constant.
+[ADR 0071](../decisions/0071-a-devnet-cannot-reach-the-uptime-audit.md) records
+the wall and refuses all three ways across it: a nonzero initial height, because
+the state root commits to the height and three layers reject anything but 1 on
+purpose; a snapshot-seeded devnet, because no supported path exists to start
+from one; and a shortened `CYCLE_BLOCKS`, because a fixture running against a
+different cycle length agrees with itself about a chain nobody operates. **Two
+fixture checks now derive the figure from the contract rather than transcribing
+it**, so the claim cannot rot a third time.
 
 ### How M3.13j was delivered
 
@@ -3347,6 +3418,16 @@ slices.
   `economy-transition-v7` is the first contract to bind version three; every
   other simulator, transition model, and kernel path still binds version two,
   which remains correct against it.
+- **A four-node version-eight network sells and activates a Founder Seat.** As
+  of 2026-09-11 the two transitions that write the seat table — kind 2
+  `purchase_seat` and kind 3 `activate_seat` — are executed by four independent
+  CometBFT-driven replicas, after a full restart, with every replica's durable
+  head required to match the independent Python model's root. Five transactions
+  enter through four different nodes. **It does not exercise the uptime audit**
+  and no document here may say it does: a seat is in scope only from the window
+  after the one it activated in, so a devnet begun at genesis is 28,800 heights
+  short of its own seat's first audit. ADR 0071 records that, and two fixture
+  checks derive it rather than restating it.
 - **A version-eight chain measures its own machines and pays one from that
   measurement, in Python.** `simulation/economy_transition_v8/` runs the four
   ordered steps — the prologue that derives a window's schedule from state, the
@@ -4180,6 +4261,14 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #271 and PR #272 are the M3.14a delivery. Five commits, five files,
+  **458 insertions and 44 deletions**: four Python integration files and
+  `docs/decisions/0071-a-devnet-cannot-reach-the-uptime-audit.md`. **No accepted
+  vector file, specification, manifest, encoding, workflow, dependency, or
+  kernel source changed**, so the branch widens nothing a node accepts. It is
+  nonetheless classified `full` by `tools/verification_scope.py` and that is
+  right: the four changed files *are* the hosted integrations, so the matrix is
+  what runs them.
 - Issue #267 and PR #268 are the gRPC advisory bump, merged by rebase across
   commits `2d1e4ad` and `974138b` on `main` on 2026-09-10. Two commits: a
   one-line request file, and the hosted resolver's own
@@ -5288,8 +5377,11 @@ steps have landed and the repository compiles exactly one economy contract.**
 version-eight kernel is wired to a SQLite owning store as of 2026-09-06, so a
 state it produces survives a restart. It is not wired to the archive or to the
 CometBFT adapter, so no two nodes agree on one. That wiring is requirement 13's
-four-node adversarial scenarios, which have not started, and it is the largest
-single remaining piece of `first-goal.md`.
+four-node adversarial scenarios. **Its economic half landed on 2026-09-11** —
+four replicas agree on the roots a seat purchase and a seat activation produce —
+and its adversarial half has not started: nothing here has yet observed a node
+*reject* a peer's block. That remaining half is the largest single remaining
+piece of `first-goal.md`.
 
 **As of 2026-08-31 the first two bricks of it are laid and the gap is two steps
 narrower.** A version-seven state can be encoded to canonical bytes and restored
@@ -5570,82 +5662,59 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.14a: a four-node version-eight economic chain**, scoped to
-what a devnet can actually reach — see the wall recorded below, which was
-verified on 2026-09-10 and which the previous version of this section had wrong.
-It is the largest remaining piece of `docs/project/first-goal.md` and the first
-slice since M3.13a that is not part of a stack migration. **Its blockers are
-gone.** The seven-slice migration ADR 0065 enumerated finished on 2026-09-09 with
-M3.13t, so there is one economy contract, it is version eight, and every layer
-between a signed transaction and CometBFT v0.39.4 is version eight's.
+Milestone slice **M3.14b: a replica that refuses a block its peers accept**,
+which is requirement 13's remaining half and the one property nothing in this
+repository has ever observed.
 
-**The slice was scoped and de-risked on 2026-09-10 but deliberately not
-started**, because the owner concluded the session at that point. Nothing of it
-is committed, no branch or issue exists for it, and the next session starts it
-from a clean `main`. What was verified — and is worth not re-deriving — is that
-the whole intended sequence executes in the version-eight model: register Alice,
-register Bob, purchase seat 0 unreferred at nonce 1, activate it at nonce 2,
-Alice pays Bob at nonce 3, at heights 1 through 5, every receipt `result_code`
-zero, with quiet blocks after activation behaving normally. The C++ kernel
-implements both seat transitions (`src/v8/economy_value_transitions.cpp`), so the
-chain will run. `tests/integration/version_eight_chain.py` has no seat builders
-yet and needs two; `cometbft_four_validator_v8_test.py` is where the live chain
-goes, and node 3 has never been a submitter in it.
+**M3.14a is delivered and merged.** Issue #271 and PR #272 put version eight's
+two seat transitions — kind 2 `purchase_seat` and kind 3 `activate_seat` — under
+a real consensus engine for the first time. Four independent replicas execute a
+purchase and an activation from octets, after a full restart, and agree on the
+roots. Before that branch the two transitions existed in the C++ kernel, in the
+Python model, and in recorded vectors, and in nothing a CometBFT-driven node had
+ever run. **ADR 0071 records the wall the slice hit** and refuses all three
+mechanisms that would cross it. The details are under "How M3.14a was delivered".
 
-**Two things are still untested, and they are different in kind.**
+**So what is left of requirement 13 is the word *adversarial*.** Every four-node
+run in this repository has been four replicas that agree. The requirement asks
+for the other case: a replica fed a block the others refuse, a partition, and a
+node restarted mid-block. **Nothing here has yet observed a node *reject* a
+peer's block**, which is the property the whole deterministic-kernel argument
+rests on — the argument says a wrong block cannot be committed because every
+replica independently refuses it, and that sentence has never been tested by
+producing a wrong block.
 
-**An economic chain.** M3.13s's fixture sells no seat, deliberately — it
-establishes the code path, not the audit — so the issue and expiry steps
-evaluate nothing at any height. A chain that **sells and activates a seat** puts
-the two transitions that write the seat table under a real engine, across four
-independent replicas, for the first time.
+**It has no dependency on the audit**, which is what makes it the next slice
+rather than a later one. Refusal is a property of the kernel and the application
+layer, not of the uptime pipeline: a replica handed a transaction with a broken
+signature, a replayed nonce, a state root that does not match what it computed,
+or a block at a height it has already committed must refuse it at heights 1
+through 5 exactly as it would at height 28,800.
 
-**It does not give the audit subjects, and the previous version of this
-paragraph said it did. That claim was wrong, and here is the evidence.** A seat
-is in scope only from the window *after* the one it activated in —
-`slots.in_scope` is `window_of_height(activation_height) + 1 <= window` — and
-`CYCLE_BLOCKS` is **28,800**. Every height a chain begun at genesis can plausibly
-reach lies in window 0, so every seat it can activate is first audited at
-**height 28,800**, and no activation height makes that sooner: activating later
-only pushes the seat's first window later. Driven against the repository's own
-version-eight model this session, a seat purchased at height 3 and activated at
-height 4 gives `derive_schedule(ledger.activations(), 0, ledger.uptime)` **zero**
-measured seats at every reachable height, and exactly one at window 1.
+**Where the refusals already live, so the slice does not go looking.**
+`ApplicationV8::init_chain` refuses a chain identity, an initial height, or an
+app state that is not the one it was built for; `check_transaction` refuses
+oversized input at admission; and `finalize_block` is terminal on a repeated
+height. `ApplicationError` is the type they report through. What does not exist
+is any test that makes a *running network* exercise one, and the shape of that
+test is the slice's first question: CometBFT v0.39.4 gossips through a mempool,
+so a fixture cannot simply hand one replica a different block. The plausible
+routes are a transaction the mempool accepts and the kernel refuses at execution
+— which every replica must refuse identically, giving agreement about a
+*refusal* rather than about a success — and a directly driven `ApplicationV8`
+beside the network, fed a block the network never proposed.
 
-**The recorded traces reach window 1 through a shorthand a network does not
-have.** `trace.py` sets `ACTIVATION_HEIGHT = c.CYCLE_BLOCKS - 10` and calls
-`Ledger.advance_to`, which version eight overrides to **refuse** once any seat is
-activated — "version eight cannot skip a height at which a seat is in scope". The
-shorthand is used exactly once, before any activation, because that is the only
-stretch of a version-eight chain where a transaction-free block really does
-change height and nothing else. A four-node devnet has no such stretch to
-exploit: it must propose, vote on, and commit 28,800 real blocks.
+**The first of those is reachable now and the second may not be.** A refusal all
+four replicas agree about is still a four-replica agreement claim and it is the
+one the fixtures have never made: every transaction in every integration so far
+has a `result_code` of zero, so the run proves nothing about a node that must
+say no. Start there.
 
-**So requirement 13's audit-bearing chain needs a mechanism that does not exist
-yet, and the next slice should record that in an ADR before building around it.**
-Two are plausible. A chain begun at a **nonzero initial height** near 28,780
-would put a seat in scope about twenty blocks later; `initial_height` is already
-carried across the wire to the application, and **three layers refuse anything
-but 1 on purpose** — `nodeconfig.readGenesis`, `ApplicationV8::InitChain`, and
-version one's application. The state root commits to the height, so lifting that
-pin is a `change-protocol` question rather than a harness option. The other is a
-**snapshot restored into a running network**: `snapshot_v8` can already express a
-ledger at any height and ADR 0066's restore gates already run
-`conservation_failures` over it, but there is no supported path for standing a
-devnet up on a restored state rather than a genesis.
-
-**Requirement 13's own words do not ask for the audit.** They ask for
-"adversarial four-node economic scenarios through restart and recovery, proving
-deterministic replica agreement on state roots". A seat purchase, a seat
-activation, a confirmed transfer, and the fees they charge are economic activity,
-and the audit is a further claim. Scope the slice to what is reachable and record
-the wall rather than letting a later session rediscover it.
-
-**Disagreement.** Every four-node run so far has been four replicas that agree.
-Requirement 13 asks for the other case: a replica fed a block the others refuse,
-a partition, and a node restarted mid-block. Nothing in the repository has yet
-observed a node *reject* a peer's block, which is the property the whole
-deterministic-kernel argument rests on.
+**One thing M3.14a proved about the fixtures is worth carrying in.** The
+version-eight fixture's `Session.apply` **raises** when a receipt is nonzero,
+deliberately, because a fixture whose transaction is refused proves nothing
+about a node. A refusal slice needs the opposite affordance — apply and require
+a *named* refusal — and adding it is the first edit rather than a surprise.
 
 **The smaller slice that used to sit ahead of this one is delivered.** Issue #267
 and PR #268 raised `google.golang.org/grpc` from **v1.83.1 to v1.83.2** on
@@ -5748,17 +5817,16 @@ checking. **Every future deletion slice should re-derive its own preconditions
 rather than trusting the list that authorised it.**
 
 **Then, in order, each its own slice:**
-* requirement 13's remaining half, the **adversarial and economic** scenarios.
-  **Its blocker is gone**: four replicas agree on version-*eight* roots through a
-  restart as of M3.13s. Two things remain untested, and they are different in
-  kind. **An economic chain** — one that sells and activates a seat, which puts
-  kinds 2 and 3 under a real engine for the first time. It will **not** reach the
-  audit; see the 28,800-block wall above, which is arithmetic rather than a gap
-  in any fixture, and which the slice should record in an ADR rather than build
-  around. And **disagreement** — a replica fed a block the others refuse, a
-  partition, a node restarted mid-block. Nothing in the repository has yet
-  observed a node *reject* a peer's block, which is the property the whole
-  deterministic-kernel argument rests on, and it has no dependency on the audit;
+* the two slices **ADR 0071 named and deliberately did not start**, either of
+  which would let a network reach the uptime audit. A **nonzero initial height**
+  is a `change-protocol` matter: the state root commits to the height, three
+  layers refuse anything but 1 on purpose, and admitting another value means
+  deciding what a genesis at a nonzero height *is*. A **snapshot-seeded devnet**
+  is a node-process matter: `snapshot_v8` can already express a ledger at any
+  height and ADR 0066's restore gates already check one, but
+  `protocol-application-v8` takes a database, a genesis, and a socket, so there
+  is no supported path to start from a restored state. Neither is urgent; both
+  are written down so a later session does not rediscover them as obstacles;
 * `calendar-v1`, which must fix the consensus timestamp's monotonicity rule and
   acceptance tolerance and the calendar-month boundary derived from them. **The
   tolerance is consensus-visible**: a proposer can move a month boundary within
@@ -6373,18 +6441,28 @@ changed supply, allocation, beneficiaries, Founder ownership, creator hierarchy,
 commercial routing, AI institutional authority, bridge scope, content permanence,
 or what an end user must do, own, run, or receive.
 
-**The M3.14a gate was run too, and it also passes — recorded here so a fresh
-session does not re-derive it.** Seven decisions: which transactions the economic
-chain executes; the seat id and the absence of a referrer; which replica submits
-which transaction; whether the audit is exercised; whether to add initial-height
-or snapshot-seeded devnets; the ADR number; and Alice's nonce renumbering.
-**Seat purchase and activation as biometric-gated transactions are explicitly
-resolved** — the founder constitution records them under the 2026-08-13/14 round
-in ADR 0033 — so exercising them is delegated work rather than a decision.
-Whether the audit is exercised is not a choice at all but the arithmetic finding
-above. Adding initial-height support **would** be a compatibility change needing
-`change-protocol` and an ADR, which is precisely why the slice must not quietly
-do it. Nothing there touches the reserved set either.
+**M3.14a ran the founder-decision gate at the start of its session and passed
+it.** Nine decisions were enumerated before any was judged: which transactions
+the economic chain executes; the seat id and the absence of a referrer; which
+replica submits which transaction; whether the audit is exercised; whether to
+add initial-height or snapshot-seeded devnet support; the ADR number; Alice's
+nonce renumbering; whether the seat blocks land before or after the restart; and
+whether the single-node fixture grows them too. **Seat purchase and activation
+as biometric-gated transactions are explicitly resolved** — the founder
+constitution records them under the 2026-08-13/14 round in ADR 0033 — so
+exercising them is delegated work rather than a decision. Whether the audit is
+exercised is not a choice at all but the arithmetic finding above, re-derived
+against the model rather than trusted: activation at heights 4, 100, and 28,799
+all give first cycle window 1 and first audited height 28,800. Adding
+initial-height support **would** be a compatibility change needing
+`change-protocol` and an ADR, which is precisely why the slice did not quietly
+do it and why ADR 0071 says so outright. The remaining six are testing,
+packaging, and numbering choices the founder constitution places outside the
+reserved set. Nothing in the slice set or changed supply, allocation,
+beneficiaries, Founder ownership, creator hierarchy, commercial routing, AI
+institutional authority, bridge scope, content permanence, or what an end user
+must do, own, run, or receive, and **no accepted vector file, specification,
+manifest, encoding, or kernel source changed**.
 
 **M3.13t ran the founder-decision gate and passed it.** Ten decisions were
 enumerated before any was judged: the deletion's file set; retention of the two
@@ -6405,17 +6483,24 @@ beneficiaries, Founder ownership, creator hierarchy, commercial routing, AI
 institutional authority, bridge scope, content permanence, or what an end user
 must do, own, run, or receive, and **no accepted vector file changed**.
 
-**No blocker requires an owner answer.** The next slice, M3.14a's economic
-chain, is unblocked: the stack migration that gated it finished on 2026-09-09,
-the sequence it needs was verified against the model on 2026-09-10, and the C++
-kernel already implements both seat transitions. The `grpc` bump that used to sit
-ahead of it is delivered and merged.
+**No blocker requires an owner answer.** The next slice, M3.14b's refusal
+scenarios, is unblocked: the refusals it must provoke already exist in
+`ApplicationV8` and the kernel, four replicas already agree on version-eight
+roots through a restart, and nothing it needs is a founder-reserved value. Its
+open question is a test-shape question — how to make a running network exercise
+a refusal when CometBFT gossips every transaction to every replica — which is
+engineering work the standing delegation covers.
 
-**One correction is on the record and matters more than a blocker would.** This
-document told two sessions in a row that a chain selling a seat would give the
-uptime audit subjects. It does not, and the reason is a constant rather than a
-defect. A slice planned against that sentence would have spent itself discovering
-the 28,800-block wall. **The general lesson is the one M3.13t already recorded in
+**One correction is on the record and matters more than a blocker would, and it
+is now closed.** This document told two sessions in a row that a chain selling a
+seat would give the uptime audit subjects. It does not, and the reason is a
+constant rather than a defect. A slice planned against that sentence would have
+spent itself discovering the 28,800-block wall. **M3.14a closed it in the only
+durable way**: ADR 0071 records the finding, and two fixture checks —
+`check_the_audit_is_out_of_reach` and `check_the_seat_is_sold_and_unaudited` —
+derive the first audited height from the contract's own rule, so a network that
+did reach its seat's first window fails rather than passing while the prose
+beside it goes quietly wrong. **The general lesson is the one M3.13t already recorded in
 a different form**: a plan written before its dependencies landed must re-derive
 its own preconditions rather than trust the sentence that authorised it — and a
 claim about what a fixture will *observe* is worth probing against the model
