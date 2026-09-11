@@ -28,15 +28,15 @@ for _entry in (REPOSITORY, REPOSITORY / "tests" / "differential", _HERE):
         sys.path.insert(0, str(_entry))
 
 from pinned_sodium import Sodium  # noqa: E402
+from simulation.economy_transition_v8.slots import (  # noqa: E402
+    first_cycle_window,
+    window_first_height,
+)
 from version_eight_chain import (  # noqa: E402
     SEAT_ID,
     Session,
     Signer,
     build_chain,
-)
-from simulation.economy_transition_v8.slots import (  # noqa: E402
-    first_cycle_window,
-    window_first_height,
 )
 
 RECEIPT_BYTES = 56
@@ -186,10 +186,11 @@ def check_the_audit_is_out_of_reach(chain) -> None:
         window > 0,
         "a seat activated in window 0 was reported as in scope for window 0",
     )
+    reached = chain.blocks[-1].height
     require(
-        first_audited > len(chain.blocks),
+        first_audited > reached,
         f"the seat activated at height {activation_height} is audited at height "
-        f"{first_audited}, which this fixture's chain reaches",
+        f"{first_audited}, which this fixture's chain reaches at {reached}",
     )
 
 
