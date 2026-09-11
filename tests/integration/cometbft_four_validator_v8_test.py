@@ -65,11 +65,11 @@ from cometbft_devnet import (  # noqa: E402
     stop_network,
 )
 from pinned_sodium import Sodium  # noqa: E402
-from version_eight_chain import SEAT_ID, Block, Session  # noqa: E402
 from simulation.economy_transition_v8.slots import (  # noqa: E402
     first_cycle_window,
     window_first_height,
 )
+from version_eight_chain import SEAT_ID, Block, Session  # noqa: E402
 
 PROTOCOL_VERSION = 8
 
