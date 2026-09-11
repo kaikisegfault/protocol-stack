@@ -164,6 +164,22 @@ def run_health(network: Network) -> dict[str, str]:
     return values
 
 
+def _parse_transaction_output(
+    stdout: bytes, expected_keys: set[str]
+) -> dict[str, str]:
+    """Read the command's `key=value` lines and require exactly these keys."""
+    values: dict[str, str] = {}
+    for line in stdout.decode("ascii").splitlines():
+        key, value = line.split("=", 1)
+        values[key] = value
+    if set(values) != expected_keys:
+        raise RuntimeError(
+            f"devnet transaction command printed {sorted(values)}, "
+            f"expected {sorted(expected_keys)}"
+        )
+    return values
+
+
 def run_transaction(
     network: Network,
     workspace: pathlib.Path,
@@ -196,22 +212,11 @@ def run_transaction(
             f"stdout:\n{error.stdout.decode('utf-8', errors='replace')}\n"
             f"stderr:\n{error.stderr.decode('utf-8', errors='replace')}"
         ) from error
-    values: dict[str, str] = {}
-    for line in result.stdout.decode("ascii").splitlines():
-        key, value = line.split("=", 1)
-        values[key] = value
-    if (
-        set(values)
-        != {
-            "height",
-            "check_code",
-            "finalize_code",
-            "receipt",
-            "app_hash",
-        }
-        or values["check_code"] != "0"
-        or values["finalize_code"] != "0"
-    ):
+    values = _parse_transaction_output(
+        result.stdout,
+        {"height", "check_code", "finalize_code", "receipt", "app_hash"},
+    )
+    if values["check_code"] != "0" or values["finalize_code"] != "0":
         raise RuntimeError("devnet transaction command returned wrong result")
     height = int(values["height"])
     receipt = bytes.fromhex(values["receipt"])
@@ -219,6 +224,81 @@ def run_transaction(
     if height < 1 or len(application_root) != 32:
         raise RuntimeError("devnet transaction returned an invalid head")
     return SubmittedTransaction(height, receipt, application_root)
+
+
+def run_refused_transaction(
+    network: Network,
+    workspace: pathlib.Path,
+    node_index: int,
+    transaction: bytes,
+) -> SubmittedTransaction:
+    """Submit a transaction the kernel must refuse, and read what the network agreed.
+
+    **The command is expected to fail and its failure is the point.** A refused
+    transaction is an operator error, so `protocol-cometbft-devnet transaction`
+    exits nonzero for one — and a test that provoked the refusal deliberately
+    still needs the height, the receipt, and the root the four replicas
+    converged on, which is why the command prints them on that path too.
+
+    **`check_code` must be zero.** A transaction CheckTx rejects never enters a
+    mempool, never reaches a block, and is therefore refused by exactly one
+    node's admission filter rather than by four independent executions. That is
+    a different and much weaker claim, so it is refused here rather than
+    silently accepted as a refusal.
+    """
+    transaction_path = workspace / f"refused-transaction-{node_index}.bin"
+    transaction_path.write_bytes(transaction)
+    arguments = [
+        network.devnet,
+        "transaction",
+        *network.common_arguments(),
+        "-node-index",
+        str(node_index),
+        "-tx-file",
+        transaction_path,
+        "-timeout",
+        "90s",
+    ]
+    result = subprocess.run(
+        arguments,
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=COMMAND_TIMEOUT_SECONDS,
+    )
+    if result.returncode == 0:
+        raise RuntimeError(
+            "devnet accepted a transaction the contract must refuse"
+        )
+    try:
+        values = _parse_transaction_output(
+            result.stdout,
+            {"height", "check_code", "finalize_code", "receipt", "app_hash"},
+        )
+    except (RuntimeError, ValueError) as error:
+        # The command failing is expected; failing for a *different* reason is
+        # not, and a devnet that timed out or died prints nothing this parser
+        # understands. Carry both streams so the real failure is readable
+        # instead of being reported as a missing key.
+        raise RuntimeError(
+            f"devnet refusal command failed unusably: {error}\n"
+            f"stdout:\n{result.stdout.decode('utf-8', errors='replace')}\n"
+            f"stderr:\n{result.stderr.decode('utf-8', errors='replace')}"
+        ) from error
+    if values["check_code"] != "0":
+        raise RuntimeError(
+            f"the transaction was refused at admission (check_code="
+            f"{values['check_code']}) rather than by four executions"
+        )
+    if values["finalize_code"] == "0":
+        raise RuntimeError("a refused transaction reported a zero result code")
+    height = int(values["height"])
+    application_root = bytes.fromhex(values["app_hash"])
+    if height < 1 or len(application_root) != 32:
+        raise RuntimeError("refused transaction returned an invalid head")
+    return SubmittedTransaction(
+        height, bytes.fromhex(values["receipt"]), application_root
+    )
 
 
 def audit_durable_heads(

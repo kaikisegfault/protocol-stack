@@ -7,12 +7,14 @@ that were never told each other's answer must hold the same state root at the
 same height, through a restart, having each executed the same blocks
 independently.
 
-**Five transactions enter through four different replicas.** A node that agreed
-only with the peer it heard from would pass a single-submitter run. Alice
-registers through node 0 and Bob through node 1; the network is stopped and
-started; then Alice buys seat 0 through node 2, activates it through node 3, and
-pays Bob through node 0 — and after every stop all four databases are opened
-directly and required to report the same head.
+**Seven transactions enter through four different replicas, and two of them are
+refused.** A node that agreed only with the peer it heard from would pass a
+single-submitter run. Alice registers through node 0 and Bob through node 1; the
+network is stopped and started; then Alice buys seat 0 through node 2, activates
+it through node 3, and pays Bob through node 0; and finally node 1 is handed a
+transfer at a consumed nonce and node 2 a second purchase of the seat Alice
+already owns. After every stop all four databases are opened directly and
+required to report the same head.
 
 **The seat is the point of this run.** Kinds 2 and 3 write the seat table, and
 before this fixture grew them no consensus engine in this repository had
@@ -23,12 +25,42 @@ octets rather than been told the answer. Both land after the restart, so the
 registry entry the purchase reads is a row recovered from SQLite, and node 3 —
 which has never submitted anything here — is the replica that activates.
 
+**Two of the seven transactions are refused, and that is the other half of the
+claim.** Every four-node run in this repository used to be four replicas
+agreeing about a *success*: every receipt carried a zero, so nothing here had
+ever required a network to say no and all four replicas to say the same no. The
+deterministic-kernel argument rests on exactly that — a wrong transaction cannot
+change state because every replica independently refuses it — and the sentence
+was untested until a wrong transaction was produced.
+
+**Each refusal is checked three ways.** The receipt must carry the *named* code,
+because two different defects both refuse and only one refuses for the stated
+reason; the four replicas must converge on one root; and that root must be the
+one an empty block at the same height would have produced, which is the sharpest
+form of "no state write and no fee", since the root moves only by the height it
+commits to.
+
+**A refused transaction still reaches a block, and that is what makes the claim
+four-replica at all.** `ApplicationV8::check_transaction` refuses only oversized
+input, so a stale nonce passes CheckTx, is gossiped, is proposed, and is
+committed — and every replica executes and refuses it independently. A
+transaction CheckTx rejected would be refused by one node's admission filter
+instead, which is a much weaker statement; `run_refused_transaction` fails
+closed on that case rather than accepting it as a refusal.
+
 **It still does not exercise the uptime audit, and that is arithmetic.** A seat
 is in scope only from the window *after* the one it activated in, and a window is
 28,800 heights, so a seat this network can activate is first audited at a height
 it will not reach: not because the fixture is weak but because a devnet begun at
 genesis stays inside window 0. ADR 0071 records the wall and the two mechanisms
 that would cross it, neither of which this slice adopts.
+
+**What is still not tested is a replica refusing a peer's whole block.** That is
+the third refusal class — an invariant failure, a height error, or a
+resource-bound violation rejects the proposed block outright — and producing one
+means handing a replica a block CometBFT's own pipeline would never build. It
+needs a driven `ApplicationV8` beside the network, and so do a partition and a
+mid-block restart. All three are named here rather than silently left out.
 
 **The model is driven alongside the network rather than precomputed.** A
 consensus engine decides how many blocks a chain has, and an empty version-eight
@@ -60,11 +92,13 @@ from cometbft_devnet import (  # noqa: E402
     Network,
     audit_durable_heads,
     reserve_port_block,
+    run_refused_transaction,
     run_transaction,
     start_network,
     stop_network,
 )
 from pinned_sodium import Sodium  # noqa: E402
+from simulation.economy_transition_v8.contract import CODE_NUMBER  # noqa: E402
 from simulation.economy_transition_v8.slots import (  # noqa: E402
     first_cycle_window,
     window_first_height,
@@ -72,6 +106,13 @@ from simulation.economy_transition_v8.slots import (  # noqa: E402
 from version_eight_chain import SEAT_ID, Block, Session  # noqa: E402
 
 PROTOCOL_VERSION = 8
+
+# Version-eight result codes, read from the contract rather than written down.
+# They are named because a bare 6 or 12 at a call site would make this test say
+# "it was refused" where it means "it was refused for this reason", and they are
+# looked up because a transcribed number agrees with a renumbered code space.
+NONCE_MISMATCH = CODE_NUMBER["NONCE_MISMATCH"]
+REPLAY = CODE_NUMBER["REPLAY"]
 
 
 class Chain:
@@ -94,6 +135,42 @@ class Chain:
     def execute(self, raw: bytes, height: int) -> Block:
         self.advance_to(height - 1)
         block = self.session.apply(raw)
+        return self._record(block, height)
+
+    def execute_refused(self, raw: bytes, height: int, expected: int) -> Block:
+        """The same, for a transaction the contract must refuse by name.
+
+        The empty-block root is taken *before* the block runs, because that is
+        the claim: every non-success result writes no state and charges no fee,
+        so a block whose only transaction was refused must land on exactly the
+        root an empty block at that height would have produced. The root still
+        moves — it commits to the height — and it must move to that value and
+        no other.
+
+        **This overlaps a guard the model already has, and saying so is more
+        useful than implying it does not.** `_execute_block` compares the state
+        root across each transaction and raises `InvalidBlock` when a refusal
+        changed it, so a refusal that writes state is caught there first — a
+        probe that made `NONCE_MISMATCH` advance the nonce before refusing dies
+        with "a refused transaction changed the state" rather than here. What
+        this adds is the same property stated about the block the *network*
+        committed, at the height it committed it, after the version-eight issue
+        and expiry steps have run. Today those two are the same claim because no
+        seat is in scope; they stop being the same the moment any step varies
+        with block content.
+        """
+        self.advance_to(height - 1)
+        if_empty = self.session.root_if_empty()
+        block = self.session.apply_refused(raw, expected)
+        if block.state_root != if_empty:
+            raise RuntimeError(
+                f"the refusal at height {block.height} moved state: root "
+                f"{block.state_root.hex().upper()} for an unchanged "
+                f"{if_empty.hex().upper()}"
+            )
+        return self._record(block, height)
+
+    def _record(self, block: Block, height: int) -> Block:
         if block.height != height:
             raise RuntimeError("the model and the network disagree on height")
         self.roots.append(block.state_root)
@@ -139,6 +216,40 @@ def submit(
     if result.receipt != block.receipts[0]:
         raise RuntimeError(
             f"node {node_index} reported a receipt the model did not produce"
+        )
+
+
+def submit_refused(
+    network: Network,
+    workspace: pathlib.Path,
+    chain: Chain,
+    node_index: int,
+    raw: bytes,
+    expected: int,
+) -> None:
+    """Provoke a refusal through one replica and require all four to agree on it.
+
+    This is the same claim `submit` makes, asked of a *no* instead of a yes. The
+    network still commits a block — the transaction passed CheckTx, entered a
+    mempool, was gossiped, proposed and finalized — and every replica had to
+    execute it, refuse it for the same stated reason, and arrive at the same
+    root. The receipt is compared octet for octet, so "all four refused" is a
+    claim about the reason and the figures rather than about a nonzero byte.
+    """
+    result = run_refused_transaction(network, workspace, node_index, raw)
+    if result.height <= chain.session.height:
+        raise RuntimeError("the refused transaction did not advance the height")
+    block = chain.execute_refused(raw, result.height, expected)
+    if result.application_root != block.state_root:
+        raise RuntimeError(
+            f"node {node_index} converged on root "
+            f"{result.application_root.hex().upper()} for "
+            f"{block.state_root.hex().upper()} after a refusal"
+        )
+    if result.receipt != block.receipts[0]:
+        raise RuntimeError(
+            f"node {node_index} reported a refusal receipt the model did not "
+            "produce"
         )
 
 
@@ -200,6 +311,21 @@ def verify(
     alice_buys_seat = chain.session.alice_buys_seat(1)
     alice_activates_seat = chain.session.alice_activates_seat(2)
     alice_pays_bob = chain.session.alice_pays_bob(3)
+    # Two transactions the contract must refuse, and they are refused for two
+    # different reasons so that "the network says no" is not one code path.
+    #
+    # A *stale nonce* is a replay in the only form a running network can carry
+    # one: the same bytes broadcast twice never reach the application, because
+    # CometBFT's mempool discards a transaction whose hash it has already seen.
+    # A different amount at a consumed nonce has a different hash, passes the
+    # cache, and is refused by the kernel instead -- which is the layer whose
+    # refusal this slice exists to observe.
+    #
+    # A *second purchase of seat 0* is refused for a reason that is nothing to
+    # do with nonces, and it is charged at the nonce the failed transfer did not
+    # consume, because a non-success result performs no state write at all.
+    stale_nonce_transfer = chain.session.alice_pays_bob(3, amount=7)
+    seat_bought_twice = chain.session.alice_buys_seat(4)
 
     parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(
@@ -240,6 +366,11 @@ def verify(
             submit(network, workspace, chain, 2, alice_buys_seat)
             submit(network, workspace, chain, 3, alice_activates_seat)
             submit(network, workspace, chain, 0, alice_pays_bob)
+            submit_refused(
+                network, workspace, chain, 1, stale_nonce_transfer,
+                NONCE_MISMATCH)
+            submit_refused(
+                network, workspace, chain, 2, seat_bought_twice, REPLAY)
             stop_network(second, network)
         finally:
             second.kill()
@@ -249,8 +380,9 @@ def verify(
     print(
         "CometBFT four-validator version-eight integration: passed "
         "(4 independent replicas, 2 registrations, 1 seat bought and activated "
-        f"at height {activation_height}, and 1 confirmed transfer through 4 "
-        "different nodes, full restart, 4 durable C++ audits per stop)"
+        f"at height {activation_height}, 1 confirmed transfer, and 2 refusals "
+        "-- NONCE_MISMATCH and REPLAY -- through 4 different nodes, full "
+        "restart, 4 durable C++ audits per stop)"
     )
 
 
