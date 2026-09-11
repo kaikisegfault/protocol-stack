@@ -128,6 +128,13 @@ class Chain:
 
     The two genesis keys are carried out so a caller can state that they are
     two keys. Nothing else in this fixture would notice if they were one.
+
+    `activations` is the seat table's activated half at the end of the chain,
+    carried out because the heights the seat transitions recorded are not
+    recoverable from the frozen blocks and every question about the audit is
+    asked relative to one. It is a mapping rather than a tuple of pairs because
+    both callers index it, which costs this frozen record its generated
+    `__hash__`; nothing hashes it.
     """
 
     genesis: bytes
