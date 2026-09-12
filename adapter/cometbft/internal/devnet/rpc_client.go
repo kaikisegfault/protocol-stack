@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 )
 
 type rpcClient struct {
@@ -25,8 +24,24 @@ type rpcEnvelope struct {
 	Error  *rpcError       `json:"error"`
 }
 
+// The caller's context is the only deadline, and that is the whole point.
+//
+// `http.Client.Timeout` bounds the entire request and **wins over a longer
+// context**, so a client-level timeout silently caps every budget an operator
+// asks for. This one was four seconds while `broadcast_tx_commit` blocks until
+// the transaction is in a committed block and `TimeoutCommit` is three, so a
+// transaction that arrived just after a commit needed most of the four seconds
+// before the engine had even begun the next block. On a loaded or sanitized
+// runner it needed more than four, and the `-timeout 90s` the caller passed
+// could not help: the request was already over.
+//
+// That is what the three "flaky" `RPC broadcast_tx_commit: context deadline
+// exceeded` failures were. The message names `Client.Timeout`, not the context.
+// Every call site here already sets a deadline with `context.WithTimeout`, so
+// removing the cap makes the operator's figure the real one rather than adding
+// an unbounded wait.
 func newRPCClient() rpcClient {
-	return rpcClient{http: &http.Client{Timeout: 4 * time.Second}}
+	return rpcClient{http: &http.Client{}}
 }
 
 func (client rpcClient) call(

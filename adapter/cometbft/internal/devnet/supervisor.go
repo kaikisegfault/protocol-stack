@@ -289,7 +289,7 @@ func awaitHealthy(
 	defer ticker.Stop()
 	var lastError error
 	for {
-		probeContext, cancel := context.WithTimeout(ctx, 3*time.Second)
+		probeContext, cancel := context.WithTimeout(ctx, healthProbeTimeout)
 		health, err := CheckHealth(probeContext, devnet)
 		cancel()
 		if err == nil {
