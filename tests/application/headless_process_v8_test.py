@@ -15,31 +15,24 @@ The figures it is checked against come from
 sockets or processes. **The genesis width is read out of that file too**, as
 `genesis.prefix_bytes`, rather than written here: it is the one figure that
 moved from version seven and a second copy of it is a second thing to forget.
+
+The framing itself lives in `application_driver`, which
+`driven_application_v8_test.py` speaks too. What is asked here is what a
+*process* does; what is asked there is what a *replica* does with a block its
+peers never proposed.
 """
 
-import os
 import pathlib
-import signal
-import socket
-import struct
 import subprocess
 import sys
-import time
 
-MAGIC = b"PSAP"
-# The frame format's version, which is version one's for every ledger version.
-VERSION = 1
+import application_driver as driver
+
 # The ledger version the process must report, and the application state a home
 # is initialised with. Both are operator-visible and both moved with the
 # version, so both are pinned here rather than derived from the binary.
 PROTOCOL_VERSION = 8
 APP_STATE = b'"protocol-stack-v8"'
-HEADER = struct.Struct(">4sHBBQI")
-KIND_INFO = 1
-KIND_INIT_CHAIN = 2
-KIND_CHECK_TRANSACTION = 3
-KIND_COMMIT = 7
-SEQUENCE_FAILURE = 3
 MALFORMED_TRANSACTION = 1
 # magic, schema, chain id, height: the header's previous state root starts here.
 HEADER_PREVIOUS_ROOT_OFFSET = 4 + 2 + 32 + 8
@@ -54,135 +47,6 @@ def load_values(path: pathlib.Path) -> dict[str, str]:
         key, value = line.split("=", 1)
         values[key] = value
     return values
-
-
-def receive_exact(connection: socket.socket, size: int) -> bytes:
-    result = bytearray()
-    while len(result) < size:
-        chunk = connection.recv(size - len(result))
-        if not chunk:
-            raise RuntimeError("unexpected application socket EOF")
-        result.extend(chunk)
-    return bytes(result)
-
-
-def transact(
-    connection: socket.socket,
-    kind: int,
-    request_id: int,
-    payload: bytes = b"",
-) -> tuple[int, bytes]:
-    """Send one request frame and return the response's status and body."""
-    connection.sendall(
-        HEADER.pack(MAGIC, VERSION, 0, kind, request_id, len(payload)) + payload
-    )
-    header = receive_exact(connection, HEADER.size)
-    magic, version, direction, response_kind, echoed_id, length = HEADER.unpack(
-        header
-    )
-    if (
-        magic != MAGIC
-        or version != VERSION
-        or direction != 1
-        or response_kind != kind
-        or echoed_id != request_id
-        or length > 33_554_432
-    ):
-        raise RuntimeError("invalid application response header")
-    response = receive_exact(connection, length)
-    if len(response) < 6:
-        raise RuntimeError("truncated application response")
-    status, reserved = struct.unpack(">HI", response[:6])
-    if reserved != 0:
-        raise RuntimeError("application response reserved field is not zero")
-    return status, response[6:]
-
-
-def require_ok(
-    connection: socket.socket, kind: int, request_id: int, payload: bytes = b""
-) -> bytes:
-    status, body = transact(connection, kind, request_id, payload)
-    if status != 0:
-        raise RuntimeError(f"application response status {status}")
-    return body
-
-
-def await_socket(
-    process: "subprocess.Popen[bytes]", socket_path: pathlib.Path
-) -> None:
-    deadline = time.monotonic() + 10
-    while time.monotonic() < deadline:
-        if socket_path.exists():
-            probe = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            try:
-                probe.connect(str(socket_path))
-                return
-            except (ConnectionRefusedError, FileNotFoundError):
-                pass
-            finally:
-                probe.close()
-        if process.poll() is not None:
-            error = process.stderr.read().decode("utf-8", "replace")
-            raise RuntimeError(f"application exited before ready: {error}")
-        time.sleep(0.01)
-    raise RuntimeError("application socket readiness timeout")
-
-
-def start(
-    executable: pathlib.Path,
-    database: pathlib.Path,
-    genesis: pathlib.Path,
-    socket_path: pathlib.Path,
-) -> "subprocess.Popen[bytes]":
-    process = subprocess.Popen(
-        [str(executable), str(database), str(genesis), str(socket_path)],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
-    )
-    try:
-        await_socket(process, socket_path)
-        if socket_path.stat().st_mode & 0o777 != 0o600:
-            raise RuntimeError("application socket is not mode 0600")
-        return process
-    except Exception:
-        if process.poll() is None:
-            process.kill()
-            process.wait(timeout=5)
-        if process.stderr is not None:
-            process.stderr.close()
-        raise
-
-
-def stop(process: "subprocess.Popen[bytes]", socket_path: pathlib.Path) -> None:
-    if process.poll() is None:
-        process.send_signal(signal.SIGTERM)
-        try:
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            process.wait(timeout=5)
-            raise RuntimeError("application ignored SIGTERM")
-    error = process.stderr.read().decode("utf-8", "replace")
-    process.stderr.close()
-    if process.returncode != 0:
-        raise RuntimeError(f"application exit {process.returncode}: {error}")
-    if socket_path.exists():
-        raise RuntimeError("application retained socket after shutdown")
-
-
-def connect(socket_path: pathlib.Path) -> socket.socket:
-    connection = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    connection.settimeout(10)
-    connection.connect(str(socket_path))
-    return connection
-
-
-def blob(payload: bytes) -> bytes:
-    return struct.pack(">I", len(payload)) + payload
-
-
-def init_chain_payload(chain_id: bytes) -> bytes:
-    return chain_id + struct.pack(">Q", 1) + blob(APP_STATE)
 
 
 def run_identity_mode(
@@ -234,7 +98,7 @@ def run_refusals(
         raise RuntimeError("the recorded genesis is not the recorded width")
     # The schema version occupies the two octets after the four-octet magic.
     version_seven_schema = (
-        genesis_bytes[:4] + struct.pack(">H", 7) + genesis_bytes[6:]
+        genesis_bytes[:4] + bytes([0, 7]) + genesis_bytes[6:]
     )
     cases = {
         "short.genesis": bytes.fromhex("5053474e0008"),
@@ -252,6 +116,66 @@ def run_refusals(
         )
         if result.returncode == 0:
             raise RuntimeError(f"{name} was accepted as a genesis")
+
+
+def run_first_process(
+    executable: pathlib.Path,
+    database: pathlib.Path,
+    genesis: pathlib.Path,
+    socket_path: pathlib.Path,
+    genesis_root: bytes,
+) -> None:
+    process = driver.start(executable, database, genesis, socket_path)
+    try:
+        with driver.Connection(socket_path) as connection:
+            info = connection.info()
+            if not isinstance(info, driver.Info):
+                raise RuntimeError(f"a fresh process refused info: {info!r}")
+            if info.application_version != PROTOCOL_VERSION:
+                raise RuntimeError("the process reports a foreign version")
+            if info.height != 0:
+                raise RuntimeError("a fresh process is not at height zero")
+            if info.state_root != genesis_root:
+                raise RuntimeError("the process reports a different genesis root")
+
+            # Committing before the chain is initialised is a status in a
+            # well-formed frame, not a broken connection.
+            if connection.commit() is not driver.Error.SEQUENCE_FAILURE:
+                raise RuntimeError("a premature commit was not refused")
+    finally:
+        driver.stop(process, socket_path)
+
+    if not database.exists():
+        raise RuntimeError("the first run created no database")
+
+
+def run_second_process(
+    executable: pathlib.Path,
+    database: pathlib.Path,
+    genesis: pathlib.Path,
+    socket_path: pathlib.Path,
+    chain_id: bytes,
+    genesis_root: bytes,
+) -> None:
+    """A second run reopens what the first created and initialises the chain."""
+    process = driver.start(executable, database, genesis, socket_path)
+    try:
+        with driver.Connection(socket_path) as connection:
+            root = connection.init_chain(chain_id, 1, APP_STATE)
+            if isinstance(root, driver.Error):
+                raise RuntimeError(f"init_chain was refused: {root!r}")
+            if root != genesis_root:
+                raise RuntimeError("init_chain answered a different root")
+            # An `Error` is an `IntEnum`, and `invalid_request` is 1 exactly as
+            # the malformed-transaction admission code is, so the two are told
+            # apart by type rather than by value.
+            code = connection.check_transaction(bytes(8))
+            if isinstance(code, driver.Error):
+                raise RuntimeError(f"check_transaction was refused: {code!r}")
+            if code != MALFORMED_TRANSACTION:
+                raise RuntimeError("rubbish was not refused as malformed")
+    finally:
+        driver.stop(process, socket_path)
 
 
 def main() -> int:
@@ -279,59 +203,16 @@ def main() -> int:
     genesis_path.write_bytes(genesis_bytes)
     database_path = directory / "d"
     socket_path = directory / "s"
-    if len(str(socket_path)) >= 100:
-        raise RuntimeError("the test socket pathname is too long for sun_path")
 
     run_identity_mode(executable, genesis_path, chain_id, genesis_root)
     run_refusals(executable, directory, genesis_bytes, prefix_bytes)
-
-    process = start(executable, database_path, genesis_path, socket_path)
-    try:
-        connection = connect(socket_path)
-        try:
-            body = require_ok(connection, KIND_INFO, 1)
-            version, height = struct.unpack(">QQ", body[:16])
-            if version != PROTOCOL_VERSION:
-                raise RuntimeError("the process reports a foreign protocol version")
-            if height != 0:
-                raise RuntimeError("a fresh process is not at height zero")
-            if body[16:48] != genesis_root:
-                raise RuntimeError("the process reports a different genesis root")
-
-            # Committing before the chain is initialised is a status in a
-            # well-formed frame, not a broken connection.
-            status, _ = transact(connection, KIND_COMMIT, 2)
-            if status != SEQUENCE_FAILURE:
-                raise RuntimeError("a premature commit was not refused")
-        finally:
-            connection.close()
-    finally:
-        stop(process, socket_path)
-
-    if not database_path.exists():
-        raise RuntimeError("the first run created no database")
-
-    # A second run reopens what the first created, which is the whole point of
-    # the store underneath it, and the chain is initialised over the wire.
-    process = start(executable, database_path, genesis_path, socket_path)
-    try:
-        connection = connect(socket_path)
-        try:
-            root = require_ok(
-                connection, KIND_INIT_CHAIN, 1, init_chain_payload(chain_id)
-            )
-            if root != genesis_root:
-                raise RuntimeError("init_chain answered a different root")
-            body = require_ok(
-                connection, KIND_CHECK_TRANSACTION, 2, blob(bytes(8))
-            )
-            (code,) = struct.unpack(">I", body)
-            if code != MALFORMED_TRANSACTION:
-                raise RuntimeError("rubbish was not refused as malformed")
-        finally:
-            connection.close()
-    finally:
-        stop(process, socket_path)
+    run_first_process(
+        executable, database_path, genesis_path, socket_path, genesis_root
+    )
+    run_second_process(
+        executable, database_path, genesis_path, socket_path, chain_id,
+        genesis_root,
+    )
 
     for entry in sorted(directory.iterdir()):
         entry.unlink()
