@@ -984,6 +984,17 @@ add_test(
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v8-execution.txt"
     "${CMAKE_CURRENT_BINARY_DIR}/ah-v8"
 )
+# The same short-directory rule, and for the same reason: this entry starts a
+# node process against a Unix socket inside it.
+add_test(
+  NAME version-eight-driven-application
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/integration/driven_application_v8_test.py"
+    "$<TARGET_FILE:protocol_application_server_v8>"
+    "${PROTOCOL_STACK_SODIUM_SHARED_LIBRARY}"
+    "${CMAKE_CURRENT_BINARY_DIR}/dr-v8"
+)
 add_test(
   NAME cometbft-port-allocation
   COMMAND
