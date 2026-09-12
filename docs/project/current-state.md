@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-09-11
+Last updated: 2026-09-12
 
 ## Phase
 
@@ -411,6 +411,102 @@ block, and refused independently by all four replicas. A transaction CheckTx
 rejected would be refused by one node's admission filter, which is a much weaker
 statement — `run_refused_transaction` fails closed on that case rather than
 accepting it.
+
+### How M3.14c was delivered
+
+**Candidate run 34716727961 on `c1e7a7c` passed all five jobs**, and the branch
+merged by rebase as `648b576` and `c545b84`. Every preset reports the new entry
+passing — `version-eight-driven-application`, entry 35, 0.39 seconds under
+`gcc-debug` and 1.17 under `clang-sanitizers` for sixteen real process starts —
+and the suite goes from 158 to **159** entries in the debug presets and from 166
+to **167** under `clang-sanitizers`. All four hosted integrations still pass
+unchanged.
+
+**The slice's subject is the refusal class no fixture in this repository could
+reach.** `ledger-transition-v1` has three. Admission failures and execution
+failures were both already produced by a running node — M3.14b made four
+replicas agree about two execution refusals. The third rejects the **whole
+proposed block** and restores the pre-block state, and a mempool cannot deliver
+one: CometBFT gossips every transaction to every replica and each replica builds
+its own block, so no devnet can hand one node a block the others would refuse.
+
+**So the block comes from beside the network.**
+`tests/integration/driven_application_v8_test.py` drives a real
+`protocol-application-v8` over its private Unix socket, carries it to height 3
+with signed version-eight transactions from the chain fixture — `finalize_block`
+then `commit`, with the independent Python model executing the same octets
+beside it — and then hands it blocks no proposer on its chain could have built.
+Seven refusals, each with its named status:
+
+| provoked | answer |
+| --- | --- |
+| a block from the future | `SEQUENCE_FAILURE` |
+| a block at a committed height | `SEQUENCE_FAILURE` |
+| a block past `kMaximumAdapterHeight` | `INVALID_REQUEST` |
+| a second block at a staged height | `SEQUENCE_FAILURE` |
+| a commit with nothing staged | `SEQUENCE_FAILURE` |
+| `init_chain` naming a foreign chain, height, or app state | `INVALID_REQUEST` |
+| a second `init_chain` on a chain past genesis | `SEQUENCE_FAILURE` |
+
+**The two wrong heights answer with two different statuses on purpose.** The
+adapter bound is checked before a head is read and answers `INVALID_REQUEST`;
+the successor rule is checked against the durable head and answers
+`SEQUENCE_FAILURE`. A change that collapsed them into one guard would be
+reported rather than absorbed.
+
+**Every refusal is required to be terminal and to have written nothing, and the
+second half is checked across a process boundary.** Each scenario is its own
+process and opens on the head the previous one left, so a refusal that had
+written is reported by the process that came *after* it. Two determinism claims
+fall out of that and are stated rather than implied: two processes that were
+never told each other's answer produce the identical root, block identifier and
+receipt for the same block from the same durable head; and the chain is still
+usable after a refusal, because the honest block at the refused height finalizes
+and commits on the very next process. **`process_proposal` must not latch**, and
+that is checked too — a replica that stopped every time a peer proposed a wrong
+height would be trivially killable by one bad proposer.
+
+**The slice found one thing it did not go looking for, and
+[ADR 0072](../decisions/0072-the-wire-refuses-a-block-before-the-application-does.md)
+records it.** The plan named `within_block_bounds` as a subject, and **from
+outside the process that guard cannot be reached**. `read_transactions` enforces
+the same three block bounds the application holds — 65,535 inputs, 1 MiB per
+transaction, 16 MiB per block — and answers a violation with a `WireError`,
+which `serve_with` turns into `protocol_failure` and `main_v8` answers by
+dropping the connection and continuing. So a peer meets a **closed socket**
+rather than a status, and the application never latches because it never saw the
+request. All three copies of the bounds stay: the wire bounds what a peer may
+make the process allocate, the application bounds what an in-process caller may
+stage — `application_v8_test.cpp` reaches it — and only the kernel's is part of
+the consensus contract.
+
+**The wire framing became one description instead of two.**
+`tests/application/application_driver.py` holds the frame format, the seven
+message kinds, the three bounds, and the process lifecycle;
+`headless_process_v8_test.py` was ported onto it and keeps every assertion it
+had. Two of those now compare by type as well as by value, because
+`ApplicationError::invalid_request` and the malformed-transaction admission code
+are both 1 and an `IntEnum` would have equated them.
+
+**A mutation probe found a real gap and the finding is why one scenario
+exists.** Every commit but the last is checked across a process boundary for
+free, because the next scenario opens the store and requires the head it left.
+The last commit had nothing after it, so a `commit` that answered the staged
+figures without writing them would have passed the whole file.
+`check_the_commit_is_durable` is that missing process, and a stand-in store made
+to drop exactly that one commit is reported by it and by nothing else.
+
+**What the local evidence was, and what it was not.** `CLAUDE.md` forbids
+compiling libsodium 1.0.22 and the C++ matrix on this machine, so **no local
+check touched the real application**. What ran locally was a stand-in server
+written from `wire_v1.cpp` and `response_v8.cpp` rather than from the driver, to
+round-trip every request encoder and response decoder; and a stand-in
+application implementing `application_v8.cpp`'s sequencing over the Python
+kernel, against which the whole scenario ran end to end and **ten mutations were
+each reported by name**. Those prove the scenario's control flow and that its
+assertions are not vacuous. The C++ guards themselves are exercised only by the
+hosted matrix on this commit, which is the evidence that matters and the reason
+the branch was pushed before it was believed.
 
 ### How M3.14b was delivered
 
@@ -4352,6 +4448,18 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #277 and PR #278 are the M3.14c delivery, merged by rebase as `648b576`
+  and `c545b84` on 2026-09-12. Two commits, five files, **995 insertions and 194
+  deletions**: a new wire driver and a new integration test, the headless-process
+  test ported onto the driver, one ctest entry, and
+  `docs/decisions/0072-the-wire-refuses-a-block-before-the-application-does.md`.
+  **No accepted vector file, specification, manifest, encoding, workflow,
+  dependency, or kernel source changed**, so the branch widens nothing a node
+  accepts. `tools/verification_scope.py` classifies it `full` and that is right:
+  a CMake change and a new process-driving test are exactly what the matrix is
+  for. The suite is **159** ctest entries in the debug presets and **167** under
+  `clang-sanitizers`. Candidate run 34716727961 on `c1e7a7c` and post-merge run
+  34717489030 on `c545b84` both passed all five jobs.
 - Issue #274 and PR #275 are the M3.14b delivery, merged as `f88bcf7`. One
   commit, five files, **312 insertions and 28 deletions**: three Python
   integration files and two Go files in the devnet harness. **No accepted vector
@@ -5763,58 +5871,49 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.14c: the refusals a mempool cannot deliver** — a replica
-fed a block its peers never proposed, a partition, and a node restarted
-mid-block. It is what is left of requirement 13's word *adversarial*, and it is
-the last piece of requirement 13.
+Milestone slice **M3.14d: a partition, and a node restarted mid-block** — the
+two halves of requirement 13's word *adversarial* that M3.14c deliberately left,
+and the last piece of requirement 13.
 
-**M3.14a and M3.14b are both delivered and merged.** Issue #271 and PR #272 put
-the two seat transitions under a real consensus engine; issue #274 and PR #275
-made four replicas refuse two transactions identically. Requirement 13 now has
-four replicas agreeing about a success and about a failure, through a restart,
-with every replica's durable head opened directly and checked. The details are
-under "How M3.14b was delivered" and "How M3.14a was delivered".
+**M3.14c is delivered and merged.** Issue #277 and PR #278 put a driven
+`ApplicationV8` beside the network and made it refuse seven blocks no proposer
+on its chain could have built, each terminal, each writing nothing, each checked
+across a process boundary. The details are under "How M3.14c was delivered".
+**The refusal half of the word is therefore done**, and what is left is the two
+scenarios that are about the *network* rather than about one replica.
 
-**What is left is a different refusal class and it needs a different harness.**
-`ledger-transition-v1` has three. An **admission** failure omits the transaction
-from execution and from the transaction root — there are exactly three of them,
-all readable from the bytes. An **execution** failure admits the transaction,
-gives it a receipt with a nonzero code, and leaves the block valid; that is what
-M3.14b exercised, and it is what a mempool can deliver. The third is the one
-still untested: **an internal invariant failure, a height error, or a
-resource-bound violation rejects the whole proposed block** and restores the
-pre-block state exactly.
+**Neither needs a new harness, and the mid-block restart is the closer of the
+two.** `stop_network` and `start_network` are in place in
+`tests/integration/cometbft_devnet.py`, and what is missing is killing one
+replica *between* its commit and its return rather than at a quiet point.
+M3.13f already proved the single-node version of that against the store; the
+four-node version has never been run, and the claim it would make is the one
+requirement 13 names outright — a replica that died mid-block rejoins at a head
+its peers agree with, having either committed the block or not committed it,
+never half of it.
 
-**A mempool cannot deliver the third**, and that is the slice's central
-constraint rather than a detail. CometBFT gossips every transaction to every
-replica and each replica builds its own block from its own mempool, so a fixture
-cannot hand one node a block the others would refuse: the honest routes are a
-driven `ApplicationV8` beside the network, fed a block the network never
-proposed, or a deliberately modified node. **Start with the driven application**
-— it needs no change to the adapter, it can construct a block at a wrong height
-or with more admitted transactions than version one permits, and
-`ApplicationError` is the type the refusal arrives as.
+**The partition is the other half and it is the harder one to make honest.**
+Four validators with CometBFT's default two-thirds rule means a 2/2 split
+commits nothing on either side, and a 3/1 split leaves the minority replica
+behind and then catching up — which is the interesting case, because catching up
+is where a replica executes blocks it never voted on. **Decide which of the two
+the slice makes before building it**, and say so in the fixture: a run that
+partitioned and proved only that nothing happened would pass while claiming
+more than it showed, which is the shape ADR 0071 caught this document in twice.
 
-**Three already-existing refusals are the obvious first subjects, and none has a
-test that makes a running application produce it.** `ApplicationV8::init_chain`
-refuses a chain identity, an initial height, or an app state that is not the one
-it was built for; `finalize_block` is terminal on a repeated height; and
-`_execute_block` raises `InvalidBlock` on more admitted transactions than
-version one permits, on a height that is not `h + 1`, and on a refused
-transaction that changed the state.
+**One affordance M3.14c built that M3.14d can use.**
+`tests/application/application_driver.py` holds the wire, the seven message
+kinds, the three bounds, and the process lifecycle, so a scenario that wants to
+interrogate one replica's application directly — which is exactly what a
+partitioned or restarted node needs to be asked — no longer has to reimplement
+the socket. `audit_durable_heads` remains the way to ask all four at once.
 
-**The partition and the mid-block restart are the same slice's other half.**
-Neither has a dependency on the block-refusal work, and the mid-block restart is
-the closest to what already exists: `stop_network` and `start_network` are in
-place, and what is missing is killing a replica *between* its commit and its
-return rather than at a quiet point. M3.13f already proved the single-node
-version of that against the store; the four-node version has never been run.
-
-**One affordance the slice will want on day one.** `Session.apply_refused` and
-`Chain.execute_refused` exist as of M3.14b and take a *named* result code. A
-block-level refusal is not a result code — it is an `InvalidBlock` from the
-model and an `ApplicationError` from the kernel — so the equivalent affordance
-for a refused *block* does not exist yet and is the first edit.
+**And one thing M3.14c proved that a partition scenario should not re-derive.**
+A refusal in `ApplicationV8` is terminal *in memory only*: the store is
+untouched, so the process that comes after it opens at the same head. A
+partitioned node that latched would therefore look like a dead node and recover
+like a restarted one, which is worth knowing before a fixture is written around
+the assumption that a latch is permanent.
 
 **Then, in order, each its own slice:**
 * the two slices **ADR 0071 named and deliberately did not start**, either of
@@ -6483,6 +6582,23 @@ beneficiaries, Founder ownership, creator hierarchy, commercial routing, AI
 institutional authority, bridge scope, content permanence, or what an end user
 must do, own, run, or receive, and **no accepted vector file changed**.
 
+**M3.14c ran the founder-decision gate and passed it.** Eight decisions were
+enumerated before any was judged: which refusals the driven application is made
+to produce; whether it is driven as a process over the socket or in C++ beside
+the kernel; whether the wire framing becomes a shared module; where the test
+lives and what its ctest entry is called; whether the terminal latch and the
+recovery a restart gives are choices or observations; whether an ADR is needed;
+the issue, branch and PR shape; and whether the slice also attempts the
+partition and the mid-block restart. **Every one is testing, packaging, or
+scoping work.** The refusal semantics are decided by the accepted application
+contract and are *exercised* rather than chosen — the slice adds, removes, and
+widens nothing a node accepts, and each status is compared by name so a
+renumbered error space would be reported instead of agreed with. The ADR records
+a layering the slice observed rather than a rule it chose. Nothing in the slice
+set or changed supply, allocation, beneficiaries, Founder ownership, creator
+hierarchy, commercial routing, AI institutional authority, bridge scope, content
+permanence, or what an end user must do, own, run, or receive.
+
 **M3.14b ran the founder-decision gate and passed it.** Nine decisions were
 enumerated before any was judged: which refusals the network is made to
 exercise; whether each is an admission or an execution refusal; whether the
@@ -6502,12 +6618,14 @@ changed supply, allocation, beneficiaries, Founder ownership, creator hierarchy,
 commercial routing, AI institutional authority, bridge scope, content
 permanence, or what an end user must do, own, run, or receive.
 
-**No blocker requires an owner answer.** The next slice, M3.14c, is unblocked:
-every refusal it must provoke already exists in `ApplicationV8` and in
-`_execute_block`, and nothing it needs is a founder-reserved value. Its open
-question is a harness question — a mempool cannot deliver a block one replica
-refuses, so the block must come from a driven application beside the network —
-which is engineering work the standing delegation covers.
+**No blocker requires an owner answer.** The next slice, M3.14d, is unblocked:
+`stop_network` and `start_network` already exist, the four-node fixture already
+audits every replica's durable head directly, and nothing either scenario needs
+is a founder-reserved value. Its one open question is a scoping question the
+standing delegation covers — which partition a four-validator network should be
+split into, given that a 2/2 split commits nothing on either side and a 3/1
+split is the one that makes a replica catch up on blocks it never voted on —
+and it must be answered in the fixture rather than left to the prose beside it.
 
 **One correction is on the record and matters more than a blocker would, and it
 is now closed.** This document told two sessions in a row that a chain selling a
