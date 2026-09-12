@@ -429,6 +429,23 @@ class Session:
             raise RuntimeError("a refusal cannot be SUCCESS")
         return block
 
+    def block_if_empty(self) -> Block:
+        """The whole block the *next* height would produce with no transaction.
+
+        The live ledger is deep-copied rather than advanced, because asking the
+        question must not answer it: a session that closed a block to find out
+        what the block would be has already spent the height.
+
+        The whole block rather than its root, because two callers want two
+        different parts of it. A refusal is a claim about the **state** root; a
+        replica staging a block nobody asked for is a claim about the **block**
+        as well, and the identifier commits to the header rather than to the
+        state.
+        """
+        probe = copy.deepcopy(self._ledger)
+        outcome = execute_block(probe, [], self._signer)
+        return self._block(outcome, [])
+
     def root_if_empty(self) -> bytes:
         """The state root the *next* height would produce with no transaction.
 
@@ -437,14 +454,8 @@ class Session:
         whose only transaction was refused must leave the chain in the state an
         empty block would have — the root moves, because it commits to the
         height, and it must move to exactly that value and no other.
-
-        The live ledger is deep-copied rather than advanced, because asking the
-        question must not answer it: a session that closed a block to find out
-        what the block would be has already spent the height.
         """
-        probe = copy.deepcopy(self._ledger)
-        outcome = execute_block(probe, [], self._signer)
-        return bytes.fromhex(outcome.resulting_state_root)
+        return self.block_if_empty().state_root
 
     def _apply(self, raw_inputs: list[bytes]) -> Block:
         outcome = execute_block(self._ledger, raw_inputs, self._signer)
@@ -456,6 +467,10 @@ class Session:
                     "fixture transaction was refused at admission: "
                     f"{admission.code}"
                 )
+        return self._block(outcome, raw_inputs)
+
+    @staticmethod
+    def _block(outcome, raw_inputs: list[bytes]) -> Block:
         return Block(
             height=outcome.height,
             raw_inputs=tuple(raw_inputs),

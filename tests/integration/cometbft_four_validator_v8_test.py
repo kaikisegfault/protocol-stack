@@ -55,12 +55,22 @@ it will not reach: not because the fixture is weak but because a devnet begun at
 genesis stays inside window 0. ADR 0071 records the wall and the two mechanisms
 that would cross it, neither of which this slice adopts.
 
-**What is still not tested is a replica refusing a peer's whole block.** That is
-the third refusal class — an invariant failure, a height error, or a
-resource-bound violation rejects the proposed block outright — and producing one
-means handing a replica a block CometBFT's own pipeline would never build. It
-needs a driven `ApplicationV8` beside the network, and so do a partition and a
-mid-block restart. All three are named here rather than silently left out.
+**Between the second and third runs, one replica is driven directly.** While the
+network is down, node 2's own SQLite database is opened by a driven
+`ApplicationV8` and asked two things no consensus engine would ask it: to stage
+a block and then be terminated before committing it, which is the mid-block
+interruption requirement 13 names and needs no fault injection at all; and to
+finalize a block at a height its peers never proposed, which is the third
+refusal class — a whole-block rejection rather than a per-transaction one. Then
+the network is started again and required to converge on the head it had and
+commit a further transaction. **That is the claim**: a replica that was
+interrupted or lied to loses nothing and rejoins where its peers are.
+
+**A genuine partition is still not tested**, and neither is a replica that goes
+down while the other three keep committing. Both need the devnet supervisor to
+survive one child exiting and to report the health of a named subset of
+replicas, which is Go harness work with its own slice. Both are named here
+rather than silently left out.
 
 **The model is driven alongside the network rather than precomputed.** A
 consensus engine decides how many blocks a chain has, and an empty version-eight
@@ -84,9 +94,15 @@ import sys
 import tempfile
 
 REPOSITORY = pathlib.Path(__file__).resolve().parents[2]
-for _entry in (REPOSITORY, REPOSITORY / "tests" / "differential"):
+for _entry in (
+    REPOSITORY,
+    REPOSITORY / "tests" / "application",
+    REPOSITORY / "tests" / "differential",
+):
     if str(_entry) not in sys.path:
         sys.path.insert(0, str(_entry))
+
+import application_driver as driver  # noqa: E402
 
 from cometbft_devnet import (  # noqa: E402
     Network,
@@ -113,6 +129,12 @@ PROTOCOL_VERSION = 8
 # looked up because a transcribed number agrees with a renumbered code space.
 NONCE_MISMATCH = CODE_NUMBER["NONCE_MISMATCH"]
 REPLAY = CODE_NUMBER["REPLAY"]
+
+# The replica driven directly between the second and third runs. Any of the four
+# would do; it is node 2 because that is the one that submitted the last refused
+# transaction, so the replica interrogated here is one that has already been
+# asked to disagree with a submitter.
+DRIVEN_NODE = 2
 
 
 class Chain:
@@ -262,6 +284,105 @@ def audit(network: Network, workspace: pathlib.Path, chain: Chain) -> None:
     )
 
 
+def require_replica_head(
+    connection: driver.Connection, index: int, height: int, root: bytes
+) -> None:
+    info = connection.info()
+    if not isinstance(info, driver.Info):
+        raise RuntimeError(f"node {index} refused info while driven: {info!r}")
+    if info.height != height or info.state_root != root:
+        raise RuntimeError(
+            f"node {index} holds height {info.height} root "
+            f"{info.state_root.hex().upper()}, for the network's height "
+            f"{height} root {root.hex().upper()}"
+        )
+
+
+def drive_one_stopped_replica(
+    network: Network, chain: Chain, index: int
+) -> None:
+    """Interrupt one replica mid-block, lie to it, and leave its store untouched.
+
+    This runs while the network is down, against one replica's own database, and
+    it asks two things of it that no consensus engine on its chain would ask.
+
+    **The first is the mid-block interruption, and it needs no fault injection.**
+    `finalize_block` writes nothing: it copies the durable head, executes the
+    block in memory, and stages what it produced, and only `commit` writes. So
+    terminating the process between the two *is* the interruption requirement 13
+    names, exactly and without a seam in production code. The block staged is the
+    empty one at the next height, which the model predicts whole through
+    `block_if_empty` — root, identifier and all — so the replica and the model
+    agree about a block **the network will never produce**, because this devnet
+    runs with `create_empty_blocks = false` and commits only blocks that carry a
+    transaction.
+
+    **The second is a block its peers never proposed**, at a height two past the
+    head, which is refused by name and latches the application terminal. Both
+    claims are then checked the only way that matters: a third process opens the
+    same store and must find the head the network left, so a stage or a refusal
+    that had written is reported here rather than by the network afterwards.
+    """
+    height = chain.session.height
+    root = chain.roots[height]
+    predicted = chain.session.block_if_empty()
+    database = network.root / f"node{index}" / "ledger.db"
+    socket_path = network.socket_root / "driven.sock"
+    network.socket_root.mkdir(mode=0o700)
+    try:
+        process = driver.start(
+            network.application, database, network.genesis, socket_path)
+        try:
+            with driver.Connection(socket_path) as connection:
+                require_replica_head(connection, index, height, root)
+                staged = connection.finalize_block(predicted.height)
+                if not isinstance(staged, driver.Finalized):
+                    raise RuntimeError(
+                        f"node {index} refused an empty block at height "
+                        f"{predicted.height}: {staged!r}"
+                    )
+                if (staged.state_root != predicted.state_root
+                        or staged.block_id != predicted.block_id
+                        or staged.results != ()):
+                    raise RuntimeError(
+                        f"node {index} staged a block at height "
+                        f"{predicted.height} the model did not produce"
+                    )
+        finally:
+            # Terminated with the block staged and uncommitted, which is the
+            # whole point: nothing below may find it.
+            driver.stop(process, socket_path)
+
+        process = driver.start(
+            network.application, database, network.genesis, socket_path)
+        try:
+            with driver.Connection(socket_path) as connection:
+                require_replica_head(connection, index, height, root)
+                foreign = connection.finalize_block(height + 2)
+                if foreign is not driver.Error.SEQUENCE_FAILURE:
+                    raise RuntimeError(
+                        f"node {index} answered a block at height {height + 2} "
+                        f"with {foreign!r}"
+                    )
+                if connection.info() is not driver.Error.SEQUENCE_FAILURE:
+                    raise RuntimeError(
+                        f"node {index} kept answering after refusing a block "
+                        "its peers never proposed"
+                    )
+        finally:
+            driver.stop(process, socket_path)
+
+        process = driver.start(
+            network.application, database, network.genesis, socket_path)
+        try:
+            with driver.Connection(socket_path) as connection:
+                require_replica_head(connection, index, height, root)
+        finally:
+            driver.stop(process, socket_path)
+    finally:
+        network.socket_root.rmdir()
+
+
 def check_the_seat_is_sold_and_unaudited(chain: Chain) -> int:
     """What the run proved about the seat, and what it could not have proved.
 
@@ -326,6 +447,10 @@ def verify(
     # consume, because a non-success result performs no state write at all.
     stale_nonce_transfer = chain.session.alice_pays_bob(3, amount=7)
     seat_bought_twice = chain.session.alice_buys_seat(4)
+    # The transaction the network commits after one of its replicas has been
+    # interrupted and lied to. Nonce 4 is the next one Alice has, because
+    # neither refusal above consumed hers.
+    transfer_after_the_interruption = chain.session.alice_pays_bob(4)
 
     parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(
@@ -375,14 +500,32 @@ def verify(
         finally:
             second.kill()
         audit(network, workspace, chain)
+
+        drive_one_stopped_replica(network, chain, DRIVEN_NODE)
+
+        # And the network still works. The replica that was interrupted and lied
+        # to is the one the next transaction enters through, so a store it had
+        # damaged would be reported by the block it proposes rather than by a
+        # quiet disagreement four replicas never notice.
+        third, resumed_health = start_network(network, workspace)
+        try:
+            check_health(chain, resumed_health)
+            submit(
+                network, workspace, chain, DRIVEN_NODE,
+                transfer_after_the_interruption)
+            stop_network(third, network)
+        finally:
+            third.kill()
+        audit(network, workspace, chain)
         activation_height = check_the_seat_is_sold_and_unaudited(chain)
 
     print(
         "CometBFT four-validator version-eight integration: passed "
         "(4 independent replicas, 2 registrations, 1 seat bought and activated "
-        f"at height {activation_height}, 1 confirmed transfer, and 2 refusals "
-        "-- NONCE_MISMATCH and REPLAY -- through 4 different nodes, full "
-        "restart, 4 durable C++ audits per stop)"
+        f"at height {activation_height}, 2 confirmed transfers, and 2 refusals "
+        "-- NONCE_MISMATCH and REPLAY -- through 4 different nodes, 2 full "
+        f"restarts, node {DRIVEN_NODE} interrupted mid-block and fed a block "
+        "its peers never proposed, 4 durable C++ audits per stop)"
     )
 
 
