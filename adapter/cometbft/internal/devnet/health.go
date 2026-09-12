@@ -179,6 +179,16 @@ func compareGenesisValidators(devnet nodeconfig.Devnet) error {
 	return nil
 }
 
+// healthProbeTimeout bounds **one** health observation.
+//
+// An observation is a poll rather than a wait: the loops around it expect it to
+// fail fast so they can try again, and a probe allowed to consume the caller's
+// whole budget would turn a retry loop into a single attempt. Both loops use
+// this one figure so they cannot drift, and naming it here is what lets
+// `newRPCClient` impose no timeout of its own — see the comment there for the
+// blocking call that a client-level cap silently broke.
+const healthProbeTimeout = 3 * time.Second
+
 // WaitForHealth retries until one complete health observation succeeds.
 func WaitForHealth(
 	ctx context.Context,
@@ -188,7 +198,9 @@ func WaitForHealth(
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 	for {
-		health, err := CheckHealth(ctx, devnet)
+		probeContext, cancel := context.WithTimeout(ctx, healthProbeTimeout)
+		health, err := CheckHealth(probeContext, devnet)
+		cancel()
 		if err == nil {
 			return health, nil
 		}
