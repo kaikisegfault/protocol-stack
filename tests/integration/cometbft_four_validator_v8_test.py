@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 
-"""Four independent version-eight replicas, through a full restart.
+"""Four independent version-eight replicas, through a restart and a departure.
 
 This is requirement 13's central claim asked of version eight: four processes
 that were never told each other's answer must hold the same state root at the
 same height, through a restart, having each executed the same blocks
 independently.
 
-**Seven transactions enter through four different replicas, and two of them are
+**Ten transactions enter through four different replicas, and two of them are
 refused.** A node that agreed only with the peer it heard from would pass a
 single-submitter run. Alice registers through node 0 and Bob through node 1; the
 network is stopped and started; then Alice buys seat 0 through node 2, activates
-it through node 3, and pays Bob through node 0; and finally node 1 is handed a
+it through node 3, and pays Bob through node 0; and node 1 is handed a
 transfer at a consumed nonce and node 2 a second purchase of the seat Alice
 already owns. After every stop all four databases are opened directly and
 required to report the same head.
@@ -66,11 +66,25 @@ the network is started again and required to converge on the head it had and
 commit a further transaction. **That is the claim**: a replica that was
 interrupted or lied to loses nothing and rejoins where its peers are.
 
-**A genuine partition is still not tested**, and neither is a replica that goes
-down while the other three keep committing. Both need the devnet supervisor to
-survive one child exiting and to report the health of a named subset of
-replicas, which is Go harness work with its own slice. Both are named here
-rather than silently left out.
+**And then one replica leaves a network that keeps committing.** Every earlier
+scenario here stopped the whole network, or drove one replica while all four
+were down; this stops node 3 alone, commits two transactions through nodes 0
+and 2 while it is away, opens its own store to prove it is genuinely behind,
+brings it back, and requires all four to agree on one head again. **Catching up
+is the claim**: it is the only path in this repository that makes a replica
+execute blocks it never saw proposed and never voted on. It then submits the
+next transaction itself, so it is a full member rather than merely present, and
+the durable audit afterwards covers its own database.
+
+Three of four validators hold thirty of forty voting power, which is more than
+two thirds and therefore exactly enough. A second departure would halt the chain
+rather than test anything.
+
+**A genuine partition is still not tested**, and the difference is deliberate
+rather than overlooked. Blocking a peer's P2P port needs privileges this harness
+does not have, and a two-two split would commit nothing on either side, so a
+stopped replica is the only fault of this shape a devnet can produce. The
+fixture says which is meant.
 
 **The model is driven alongside the network rather than precomputed.** A
 consensus engine decides how many blocks a chain has, and an empty version-eight
@@ -107,7 +121,9 @@ import application_driver as driver  # noqa: E402
 from cometbft_devnet import (  # noqa: E402
     Network,
     audit_durable_heads,
+    control_replica,
     reserve_port_block,
+    run_health,
     run_refused_transaction,
     run_transaction,
     start_network,
@@ -135,6 +151,17 @@ REPLAY = CODE_NUMBER["REPLAY"]
 # transaction, so the replica interrogated here is one that has already been
 # asked to disagree with a submitter.
 DRIVEN_NODE = 2
+
+# The replica that leaves the network while it keeps committing, and the three
+# that carry on without it. Node 3 departs because it is the one that has
+# submitted least -- it activated the seat and nothing else -- so the replica
+# required to catch up is not also the one that has been driven directly.
+#
+# **Three is the whole margin.** Four validators hold ten voting power each, and
+# CometBFT commits on more than two thirds, so 30 of 40 is exactly enough and a
+# second departure would halt the chain rather than test anything.
+DEPARTING_NODE = 3
+REMAINING_NODES = (0, 1, 2)
 
 
 class Chain:
@@ -223,9 +250,17 @@ def submit(
     chain: Chain,
     node_index: int,
     raw: bytes,
+    running: tuple[int, ...] | None = None,
 ) -> None:
-    """Submit through one replica and require the whole network to agree."""
-    result = run_transaction(network, workspace, node_index, raw)
+    """Submit through one replica and require the running replicas to agree.
+
+    `running` defaults to the whole network. Naming a subset is a claim that
+    exactly those replicas are up: each must converge on the block, and each
+    must see only the others, so a submission made while one replica is down is
+    still an agreement between independent executions rather than a relaxed
+    check.
+    """
+    result = run_transaction(network, workspace, node_index, raw, running)
     if result.height <= chain.session.height:
         raise RuntimeError("transaction did not advance the devnet height")
     block = chain.execute(raw, result.height)
@@ -383,6 +418,108 @@ def drive_one_stopped_replica(
         network.socket_root.rmdir()
 
 
+def require_departed_replica_is_behind(
+    network: Network, index: int, height: int, root: bytes
+) -> None:
+    """Open the stopped replica's own store and require it to be where it left.
+
+    This runs while the other three are still committing, and it is what makes
+    the catch-up afterwards a real claim rather than a restatement of health: a
+    replica that had somehow kept up, or whose store had been advanced by
+    anything other than executing blocks, is reported here.
+
+    Its database is unlocked because its application process is gone -- a
+    replica is its three processes, so stopping one takes the node, the bridge
+    and the application together.
+    """
+    socket_path = network.socket_root / "departed.sock"
+    process = driver.start(
+        network.application,
+        network.root / f"node{index}" / "ledger.db",
+        network.genesis,
+        socket_path,
+    )
+    try:
+        with driver.Connection(socket_path) as connection:
+            require_replica_head(connection, index, height, root)
+    finally:
+        driver.stop(process, socket_path)
+
+
+def one_replica_leaves_and_returns(
+    network: Network,
+    workspace: pathlib.Path,
+    chain: Chain,
+    transfers: tuple[bytes, bytes, bytes],
+) -> int:
+    """Take one replica down, keep committing, and require it to catch up.
+
+    **This is requirement 13's last unobserved claim.** Every earlier scenario
+    stopped the whole network or drove one replica while all four were down. Here
+    three replicas keep producing blocks that the fourth never sees, never votes
+    on, and must nevertheless hold when it comes back -- which is the only path
+    in this repository that makes a replica execute a block it did not
+    participate in agreeing.
+
+    **It is a stopped replica, not a partition**, and the difference is stated
+    here rather than beside it. Blocking a peer's P2P port needs privileges the
+    harness does not have, and a two-two split would commit nothing on either
+    side, so a departure is the only fault of this shape a devnet can produce.
+
+    Returns the height the network reached while the replica was away.
+    """
+    departure_height = chain.session.height
+    departure_root = chain.roots[departure_height]
+
+    control_replica(network, "stop", DEPARTING_NODE)
+
+    # The three that remain are a healthy network in their own right: converged,
+    # not catching up, and seeing exactly each other. A stopped replica still
+    # gossiping would fail this rather than pass unnoticed.
+    check_health(chain, run_health(network, REMAINING_NODES))
+
+    # Two transactions through two different remaining replicas, so what is
+    # proved is that the *network* kept going rather than that one block landed.
+    submit(network, workspace, chain, 0, transfers[0], REMAINING_NODES)
+    submit(network, workspace, chain, 2, transfers[1], REMAINING_NODES)
+    reached = chain.session.height
+    if reached <= departure_height:
+        raise RuntimeError(
+            "the remaining replicas committed nothing while node "
+            f"{DEPARTING_NODE} was down"
+        )
+    require_departed_replica_is_behind(
+        network, DEPARTING_NODE, departure_height, departure_root)
+
+    control_replica(network, "start", DEPARTING_NODE)
+
+    # **The catch-up is required here and nowhere else.** `start-replica`
+    # returns as soon as the three processes are up; this asks all four for one
+    # agreed head, and the returning replica can only answer it by executing the
+    # blocks it missed. The standing 90-second health budget covers it with room
+    # to spare -- a handful of blocks is a fraction of a second of execution --
+    # and it cannot usefully be raised anyway, because `COMMAND_TIMEOUT_SECONDS`
+    # kills the subprocess at 100.
+    caught_up = run_health(network)
+    # Checked before the model comparison so this message wins: `check_health`
+    # advances the model, and a height below the one the network already
+    # reached would surface there as "moved backwards", which names the symptom
+    # rather than the replica. Reaching it at all would mean all four regressed,
+    # since three of them are already at `reached` and health requires
+    # agreement -- a cheap guard against an expensive surprise.
+    if int(caught_up["height"]) < reached:
+        raise RuntimeError(
+            f"node {DEPARTING_NODE} rejoined at height {caught_up['height']}, "
+            f"behind the {reached} its peers reached"
+        )
+    check_health(chain, caught_up)
+
+    # And it is a full member again rather than merely present: the next block
+    # is proposed by the replica that was away.
+    submit(network, workspace, chain, DEPARTING_NODE, transfers[2])
+    return reached
+
+
 def check_the_seat_is_sold_and_unaudited(chain: Chain) -> int:
     """What the run proved about the seat, and what it could not have proved.
 
@@ -451,6 +588,13 @@ def verify(
     # interrupted and lied to. Nonce 4 is the next one Alice has, because
     # neither refusal above consumed hers.
     transfer_after_the_interruption = chain.session.alice_pays_bob(4)
+    # Three more, for the replica that leaves and returns: two the remaining
+    # three commit without it, and one it submits itself once it has caught up.
+    transfers_around_the_departure = (
+        chain.session.alice_pays_bob(5),
+        chain.session.alice_pays_bob(6),
+        chain.session.alice_pays_bob(7),
+    )
 
     parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(
@@ -513,19 +657,28 @@ def verify(
             submit(
                 network, workspace, chain, DRIVEN_NODE,
                 transfer_after_the_interruption)
+            # And one replica leaves this same running network, which is the
+            # one thing every earlier run stopped the whole network to do.
+            height_without_it = one_replica_leaves_and_returns(
+                network, workspace, chain, transfers_around_the_departure)
             stop_network(third, network)
         finally:
             third.kill()
+        # All four durable heads, including the one that was away: the replica
+        # that caught up must have written what it executed, not merely served
+        # it from memory.
         audit(network, workspace, chain)
         activation_height = check_the_seat_is_sold_and_unaudited(chain)
 
     print(
         "CometBFT four-validator version-eight integration: passed "
         "(4 independent replicas, 2 registrations, 1 seat bought and activated "
-        f"at height {activation_height}, 2 confirmed transfers, and 2 refusals "
+        f"at height {activation_height}, 5 confirmed transfers, and 2 refusals "
         "-- NONCE_MISMATCH and REPLAY -- through 4 different nodes, 2 full "
         f"restarts, node {DRIVEN_NODE} interrupted mid-block and fed a block "
-        "its peers never proposed, 4 durable C++ audits per stop)"
+        f"its peers never proposed, node {DEPARTING_NODE} stopped while the "
+        f"other 3 committed to height {height_without_it} and caught up on "
+        "return, 4 durable C++ audits per stop)"
     )
 
 
