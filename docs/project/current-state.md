@@ -430,7 +430,21 @@ caught up on return, 4 durable C++ audits per stop)
 The ctest suite is unchanged at **159** entries in the debug presets and **167**
 under `clang-sanitizers`, because this slice adds no entry: it grows the hosted
 integration that `tools/verify.sh` runs after ctest. Post-merge run 34777514884
-on `923d2d3`.
+on `923d2d3` passed all five jobs on its second attempt.
+
+**Its first attempt was cancelled, and the reason is a process trap worth
+avoiding rather than a defect.** `verify.yml`'s concurrency group is
+`${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}`
+with `cancel-in-progress: true`, so **merging a code PR and its documentation
+closeout back to back cancels the code PR's post-merge run**: both pushes land
+on `refs/heads/main` and the second evicts the first. The closeout's own run
+then classifies `metadata` and skips the matrix, so `main` is left with no
+completed full-matrix result even though nothing failed. Nothing was actually
+unverified here — `git rev-parse` shows `140ce72` and `923d2d3` share tree
+`e28e0b7e`, so the candidate matrix ran on exactly this code — but the evidence
+a later reader looks for was missing until the run was restarted. **Either wait
+for the code merge's post-merge run to finish before merging the closeout, or
+re-run it afterwards.**
 
 **This is the last piece of requirement 13, and its cost was in the Go harness
 rather than in the test.** Three properties of `adapter/cometbft/internal/devnet`
