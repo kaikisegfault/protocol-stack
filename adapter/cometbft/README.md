@@ -108,8 +108,8 @@ as the supervisor has done the work; neither waits for the network to agree
 again.
 
 ```sh
-protocol-cometbft-devnet stop-replica -root /absolute/path -index 3
-protocol-cometbft-devnet start-replica -root /absolute/path -index 3
+tools/devnet.sh stop-replica 3
+tools/devnet.sh start-replica 3
 ```
 
 **A replica is its three processes**, so a stop takes the CometBFT node, the
@@ -122,9 +122,8 @@ are expected to be running, because both otherwise require all four to have
 converged:
 
 ```sh
-protocol-cometbft-devnet health -root /absolute/path -nodes 0,1,2
-protocol-cometbft-devnet transaction -root /absolute/path -nodes 0,1,2 \
-  -node-index 1 -tx-file /absolute/path/transaction.bin
+tools/devnet.sh health 0,1,2
+tools/devnet.sh transaction examples/devnet/transaction-2.hex 1 0,1,2
 ```
 
 **`-nodes` names the replicas expected to run, not the ones to look at.** Every
@@ -139,8 +138,17 @@ requires it to catch up, which is where it executes the blocks it never voted
 on:
 
 ```sh
+tools/devnet.sh start-replica 3
+tools/devnet.sh health
+```
+
+The underlying command takes the same three subcommands directly, which is
+what a version-eight network uses:
+
+```sh
+protocol-cometbft-devnet stop-replica -root /absolute/path -index 3
+protocol-cometbft-devnet health -root /absolute/path -nodes 0,1,2
 protocol-cometbft-devnet start-replica -root /absolute/path -index 3
-protocol-cometbft-devnet health -root /absolute/path -timeout 90s
 ```
 
 **This is a stopped replica, not a network partition.** Blocking a peer's P2P

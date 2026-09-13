@@ -17,10 +17,25 @@ genesis="$state_root/protocol.genesis"
 usage() {
   printf '%s\n' \
     "usage: tools/devnet.sh start" \
-    "       tools/devnet.sh health" \
-    "       tools/devnet.sh transaction <hex-file> [node-index]" \
+    "       tools/devnet.sh health [running-nodes]" \
+    "       tools/devnet.sh transaction <hex-file> [node-index] [running-nodes]" \
+    "       tools/devnet.sh stop-replica <index>" \
+    "       tools/devnet.sh start-replica <index>" \
     "" \
-    "start remains in the foreground; press Ctrl-C for an orderly stop."
+    "start remains in the foreground; press Ctrl-C for an orderly stop." \
+    "" \
+    "stop-replica takes one replica's three processes down and leaves the" \
+    "network running on the other three, which is more than two thirds of the" \
+    "voting power and therefore still enough to commit. While it is down, name" \
+    "the replicas that are still running, ascending and comma-separated:" \
+    "" \
+    "  tools/devnet.sh stop-replica 3" \
+    "  tools/devnet.sh health 0,1,2" \
+    "  tools/devnet.sh transaction examples/devnet/transaction-2.hex 1 0,1,2" \
+    "  tools/devnet.sh start-replica 3" \
+    "  tools/devnet.sh health" \
+    "" \
+    "The last health is where the returning replica has to catch up."
 }
 
 require_platform() {
@@ -148,25 +163,43 @@ case "$command_name" in
       -node "$node"
     ;;
   health)
-    if [ "$#" -ne 0 ]; then
+    if [ "$#" -gt 1 ]; then
       usage >&2
       exit 1
     fi
     ensure_binaries
+    running=${1:-}
     set -- -root "$state_root" -base-p2p-port "$base_port"
     if [ -n "$socket_root" ]; then
       set -- "$@" -socket-root "$socket_root"
     fi
+    if [ -n "$running" ]; then
+      set -- "$@" -nodes "$running"
+    fi
     exec "$devnet" health "$@"
     ;;
+  stop-replica|start-replica)
+    if [ "$#" -ne 1 ]; then
+      usage >&2
+      exit 1
+    fi
+    ensure_binaries
+    replica_index=$1
+    set -- -root "$state_root" -base-p2p-port "$base_port"
+    if [ -n "$socket_root" ]; then
+      set -- "$@" -socket-root "$socket_root"
+    fi
+    exec "$devnet" "$command_name" "$@" -index "$replica_index"
+    ;;
   transaction)
-    if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
+    if [ "$#" -lt 1 ] || [ "$#" -gt 3 ]; then
       usage >&2
       exit 1
     fi
     ensure_binaries
     transaction_hex=$1
     node_index=${2:-0}
+    running=${3:-}
     transaction_file=$(mktemp "$state_root/.transaction.XXXXXX")
     trap 'rm -f "$transaction_file"' EXIT HUP INT TERM
     python3 - "$transaction_hex" "$transaction_file" <<'PY'
@@ -183,6 +216,9 @@ PY
     set -- -root "$state_root" -base-p2p-port "$base_port"
     if [ -n "$socket_root" ]; then
       set -- "$@" -socket-root "$socket_root"
+    fi
+    if [ -n "$running" ]; then
+      set -- "$@" -nodes "$running"
     fi
     "$devnet" transaction "$@" \
       -node-index "$node_index" \
