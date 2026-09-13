@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-09-12
+Last updated: 2026-09-13
 
 ## Phase
 
@@ -411,6 +411,139 @@ block, and refused independently by all four replicas. A transaction CheckTx
 rejected would be refused by one node's admission filter, which is a much weaker
 statement — `run_refused_transaction` fails closed on that case rather than
 accepting it.
+
+### How M3.14e was delivered
+
+**Candidate run 34776763041 on `140ce72` passed all five jobs**, and the branch
+merged by rebase as `453a9f5`, `b3a6a63`, `d088744` and `923d2d3`. Every preset
+reports the grown claim:
+
+```text
+CometBFT four-validator version-eight integration: passed (4 independent
+replicas, 2 registrations, 1 seat bought and activated at height 5, 5 confirmed
+transfers, and 2 refusals -- NONCE_MISMATCH and REPLAY -- through 4 different
+nodes, 2 full restarts, node 2 interrupted mid-block and fed a block its peers
+never proposed, node 3 stopped while the other 3 committed to height 11 and
+caught up on return, 4 durable C++ audits per stop)
+```
+
+The ctest suite is unchanged at **159** entries in the debug presets and **167**
+under `clang-sanitizers`, because this slice adds no entry: it grows the hosted
+integration that `tools/verify.sh` runs after ctest. Post-merge run 34777514884
+on `923d2d3`.
+
+**This is the last piece of requirement 13, and its cost was in the Go harness
+rather than in the test.** Three properties of `adapter/cometbft/internal/devnet`
+made the scenario inexpressible, and M3.14d had already established all three by
+reading the code: `Run`'s final `select` treated any child exit as fatal,
+`compareHeads` required all four replicas converged, and `devnet transaction`
+waited for that same health after broadcasting.
+
+**The supervisor now accepts control requests on a Unix socket** at
+`control.sock` in the socket root — `stop <index>` and `start <index>`, one line
+each way — **and the request is executed inline on the main loop.** That is the
+load-bearing choice rather than an implementation detail. `awaitUnix` and
+`awaitTCP` read from the same `events` channel the watch loop reads, so a
+handler running in the accept goroutine would race the watch loop for a child
+exit and one of them would silently lose it: either a crash would go unnoticed
+or a readiness wait would hang. The accept goroutine parses and forwards; the
+loop runs the work and replies; there is exactly one reader of `events` at every
+moment.
+
+**A child the supervisor stopped is marked, and three places read the mark.**
+The watch loop skips its exit and stays fatal for every other one;
+`awaitEndpoint` and `awaitHealthy` skip it too, so a readiness wait during a
+restart is not aborted by the exit of the child that restart replaced; and
+`stopPhase` skips it at teardown, because its `done` value has already been
+consumed and its log already closed, so reaping it twice would block until the
+15-second shutdown timeout. The mark is written and read only on the main loop,
+so it needs no synchronisation.
+
+**Health now takes a replica subset**, threaded through `CheckHealth`,
+`WaitForHealth`, `Broadcast`, and a `-nodes` flag on `health` and `transaction`.
+**The subset is the set of replicas expected to be running**, not the set that
+happens to be asked, and that distinction is what keeps the observation a check
+rather than a relaxation:
+
+| comparison | narrows with the subset? | why |
+| --- | --- | --- |
+| heads, roots, catching-up | yes | only a running replica has a head to report |
+| peer sets | yes | three running replicas must see exactly two peers each, so a stopped replica still gossiping **fails** |
+| validator set | **no** | it comes from a genesis file four homes share, and stopping a process does not retire its validator |
+| genesis files on disk | **no** | read from disk rather than from an RPC |
+
+[ADR 0073](../decisions/0073-the-devnet-supervisor-accepts-control-requests.md)
+records all of it, including four rejected alternatives — signals instead of a
+socket, a handler goroutine synchronising on `events`, stopping only the
+CometBFT process, and letting health silently ignore unreachable replicas.
+
+**The scenario is what all of that was for.** Node 3 is stopped alone; the
+remaining three are required to be a healthy network in their own right; two
+transfers commit through nodes 0 and 2; **node 3's own SQLite store is opened
+directly and required to still hold the head it left at**; it comes back, all
+four are required to agree on one head, and it submits the next transaction
+itself. The durable audit afterwards covers its own database.
+
+**Catching up is the claim, and it is the only path in this repository that
+makes a replica execute a block it never saw proposed and never voted on.**
+Every other execution any fixture produces is a block the replica participated
+in agreeing. The store check while it is away is what makes the catch-up a real
+claim rather than a restatement of health: a replica that had somehow kept up is
+reported there instead of passing quietly.
+
+**Three of four validators is the whole margin**, and the fixture says so.
+Each holds ten voting power and CometBFT commits on more than two thirds, so
+thirty of forty is exactly enough. A second departure would halt the chain
+rather than test anything, and the control channel makes that easy to ask for by
+accident.
+
+**A stopped replica is not a partition, and this is now stated rather than
+implied.** Blocking a peer's P2P port needs privileges the harness does not
+have, and a two-two split would commit nothing on either side. **A genuine
+partition therefore remains untested**, and the fixture, the ADR and this
+document all say so in the same words rather than leaving prose beside them to
+suggest otherwise.
+
+**`tools/devnet.sh` gained the same three commands**, because it would otherwise
+have dead-ended for exactly the operator who had just used one: its `health`
+always asked about all four, and all four had stopped being the answer.
+`health` takes an optional running-node list and `transaction` an optional third
+argument, both defaulting to the whole network, so every existing invocation is
+unchanged.
+
+**Two defects the local checks caught, and both would otherwise have cost a
+hosted round trip.** A divergence fixture that moved only the ABCI height was
+actually testing *inconsistent head metadata*, because a node reporting two
+different heights about itself is refused before the convergence comparison is
+reached — **and the pre-existing `head` case had the same latent flaw**,
+asserting only `err != nil` and therefore never noticing. Both now move both
+heights and the metadata case is separate and named. And the catch-up health
+call first asked for a 120-second budget inside a subprocess
+`COMMAND_TIMEOUT_SECONDS` kills at 100, which would have reported a clean
+failure as a `TimeoutExpired`.
+
+**What the local evidence was, and what it was not.** `go build`, `go vet`, and
+`go test -race -count=1` ran for `internal/devnet` and the devnet command,
+offline against stubbed `nodeconfig` and CometBFT `config` packages with
+**`GOPROXY=off`**, and all 12 tests passed — including a control round trip over
+a real Unix socket in both directions, and an unreadable request that must get
+one error line and leave the accept loop serving. Separately, the
+ten-transaction sequence was executed end to end against the Python kernel with
+a **stub signature oracle**, confirming that Alice's balance and nonces carry
+the three new transfers at nonces 5, 6 and 7. The pinned libsodium 1.0.22 is not
+built on this machine and the system copy is refused by `pinned_sodium`, so only
+the signature octets differed; the economic path is identical. **None of that
+touched a real devnet**, which the hosted matrix is for.
+
+**The stub module is worth rebuilding rather than rediscovering.** It is a
+scratch Go module declaring `go 1.23` and the real module path, with
+`replace github.com/cometbft/cometbft => ./stub/cometbft` and a hand-written
+`internal/nodeconfig` carrying only the surface the devnet package uses. Go
+1.23 is what this machine has and the real module needs 1.25.7, so the test
+files need one shim: `t.Context()` arrived in Go 1.24, and replacing it with
+`context.Background()` in the scratch copy lets everything else compile and run.
+Bootstrapping the real toolchain would be a 75 MB download `CLAUDE.md` rules
+out.
 
 ### How M3.14d was delivered
 
@@ -4550,6 +4683,18 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #283 and PR #284 are the M3.14e delivery, merged by rebase as
+  `453a9f5`, `b3a6a63`, `d088744` and `923d2d3` on 2026-09-13. Four commits,
+  seventeen files, **1,709 insertions and 269 deletions**: eleven Go files in
+  `adapter/cometbft` for the control channel, the tolerant watch loop and the
+  replica subset, two Python integration files, `tools/devnet.sh`, the adapter
+  README, and ADR 0073. **No accepted vector file, specification, manifest,
+  encoding, or kernel source changed**, and every Go change is to the devnet
+  harness rather than to the bridge, the node, or any consensus path.
+  `tools/verification_scope.py` classifies it `full`. Candidate 34776763041 on
+  `140ce72` passed all five jobs, with **159** ctest entries in the debug
+  presets and **167** under `clang-sanitizers`, both unchanged because the
+  slice grows the hosted integration rather than adding an entry.
 - Issue #280 and PR #281 are the M3.14d delivery, merged by rebase as `6edd868`
   and `a958f82` on 2026-09-12. Two commits, five files, **206 insertions and 21
   deletions**: two Python integration files, and three Go files in
@@ -5699,12 +5844,18 @@ state it produces survives a restart. It is not wired to the archive or to the
 CometBFT adapter, so no two nodes agree on one. That wiring is requirement 13's
 four-node adversarial scenarios, and **both halves landed on 2026-09-11**. Four
 replicas agree on the roots a seat purchase and a seat activation produce, and
-four replicas independently refuse two transactions the contract rejects. **What
-remains of requirement 13 is narrower than it was**: a replica refusing a peer's
-whole *block*, a partition, and a node restarted mid-block. All three need a
-driven `ApplicationV8` beside the network rather than a transaction the mempool
-will carry, which is why they are one further slice rather than this one's
-remainder.
+four replicas independently refuse two transactions the contract rejects.
+
+**Requirement 13 closed on 2026-09-13.** What remained after 2026-09-11 was a
+replica refusing a peer's whole *block*, a node restarted mid-block, a partition,
+and a replica down while the others kept committing. M3.14c and M3.14d delivered
+the first two with a driven `ApplicationV8` beside the network, and M3.14e
+delivered the fourth by giving the supervisor a control channel. **The partition
+is the one that stays open, and it is a permission rather than a gap in the
+work**: blocking a peer's P2P port needs privileges this harness does not have,
+and a two-two split would commit nothing on either side, so a stopped replica is
+the only fault of that shape a devnet can produce. ADR 0073 records it and the
+fixture says which is meant.
 
 **As of 2026-08-31 the first two bricks of it are laid and the gap is two steps
 narrower.** A version-seven state can be encoded to canonical bytes and restored
@@ -5783,6 +5934,12 @@ partition, a node restarted mid-block. Neither is blocked any more. The
 ABCI path is gone: version eight's prologue derives the schedule, so a chain
 driven end to end writes cycle assignment records where version seven's wrote
 none.
+
+**Both halves are now delivered and this paragraph is history.** M3.14a built
+the economic chain, M3.14b and M3.14c the disagreement, M3.14d the mid-block
+restart, and M3.14e the replica down while the others kept committing. Only the
+partition remains, and it is a permission this harness does not have rather than
+work left undone — see the requirement 13 paragraph above.
 
 **Two contracts are also still owed, and neither blocks requirement 13.** That
 was recorded the other way round at the close of M3.12b and M3.13a corrected it.
@@ -5985,62 +6142,39 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Milestone slice **M3.14e: a replica that goes down while the others keep
-committing** — the last piece of requirement 13, and the first slice in a while
-whose cost is in the Go harness rather than in a test.
+Requirement 13 is **complete**. Three successors are recorded below, and
+**`calendar-v1` is the next slice**: it is the one that advances
+`docs/project/first-goal.md` itself rather than the harness around it, and it is
+the first `change-protocol` slice in six.
 
-**M3.14d is delivered and merged.** Issue #280 and PR #281 interrupted one
-replica of the real four-node chain between `finalize_block` and `commit`, fed it
-a block its peers never proposed, proved a third process finds the head the
-network left, and then required the network to converge and commit a further
-transaction through that same replica. The details are under "How M3.14d was
-delivered".
+**M3.14e is delivered and merged.** Issue #283 and PR #284 stopped one replica
+of the real four-node chain, required the remaining three to be a healthy
+network in their own right, committed two transfers through two of them, opened
+the departed replica's own store to prove it was genuinely behind, brought it
+back, required all four to agree, and had the returning replica submit the next
+transaction itself. The details are under "How M3.14e was delivered".
 
-**What is left is the scenario that needs the network to keep going without
-one of its members**, and three properties of the Go harness block it. All three
-were established by reading `adapter/cometbft/internal/devnet` rather than
-guessed, so this slice starts from them rather than discovering them:
+**What requirement 13 now has, stated once so no later slice re-proves it.**
+Four independent replicas agreeing on a success and on two named refusals;
+two full restarts with four durable C++ audits per stop; one replica interrupted
+mid-block and fed a block its peers never proposed; and one replica down while
+the others committed, catching up on return. **The only fault of this shape left
+untested is a genuine network partition**, which needs privileges to block a
+peer's P2P port that this harness does not have — recorded in ADR 0073 and in
+the fixture rather than left to be rediscovered.
 
-* **`Run`'s final `select` treats any child exit as fatal** and tears the whole
-  network down, so today a replica cannot be stopped without stopping the
-  network;
-* **`compareHeads` requires all four** replicas to report the same height and
-  root with none catching up, so `devnet health` fails while any replica is
-  down;
-* **`devnet transaction` waits for that same health** after broadcasting, so
-  nothing can be submitted while one replica is down either.
+**The recorded successors, in order, each its own slice:**
 
-**So the slice is three bounded changes and one scenario.** A control channel
-on the supervisor — a Unix socket in the socket root is the obvious shape, since
-the supervisor already owns one — so that one replica's three children can be
-stopped and started; a watch loop that tolerates a *deliberately* stopped child
-while still being fatal for any other exit; and a health path that can be asked
-about a named subset of replicas, threaded through `health` and `transaction`.
-Then: take node 2 down, commit transactions through the other three, bring it
-back, and require it to catch up to exactly the head its peers hold — which is
-the one thing in requirement 13 that has never been observed, because catching
-up is where a replica executes blocks it never voted on.
-
-**One design point worth settling before writing it.** The readiness helpers
-(`awaitUnix`, `awaitTCP`, `awaitHealthy`) read from the same `events` channel the
-watch loop reads, so a control handler running in its own goroutine would race
-the watch loop for exits. **Perform the stop and start on the main loop
-instead** — have the control socket parse a request and hand it to the loop over
-a channel, and let the loop run it inline — and there is exactly one reader of
-`events` at every moment.
-
-**And one cost to accept up front.** `internal/devnet` reaches CometBFT through
-`nodeconfig`, so none of the Go is testable on the owner's machine. It can be
-**type-checked** offline against stubs — see the note in "How M3.14d was
-delivered", and use `GOPROXY=off` so an accidental resolution fails rather than
-downloading 173 MB — but every behavioural check is a hosted matrix round trip.
-Write it carefully the first time.
-
-**A genuine partition is a separate question and should not be folded in.**
-Without root there is no way to block a peer's P2P port, so a "partition" here
-can only be a stopped replica, and a 2/2 split would commit nothing on either
-side. Say which is meant in the fixture rather than in the prose beside it.
-**Then, in order, each its own slice:**
+* **`calendar-v1`** is the nearest one that moves the product. It must fix the
+  consensus timestamp's monotonicity rule and acceptance tolerance and the
+  calendar-month boundary derived from them. **The tolerance is
+  consensus-visible**: a proposer can move a month boundary within it, so it
+  must be a stated parameter rather than an adapter default, and the rule must
+  be statable in a form any consensus adapter can satisfy, because CometBFT's
+  own time is a median of validator clocks. It belongs with the unreferred
+  pool's payout — the month, the ranking snapshot, and the payout transition —
+  which is unestablished in version six, seven, and eight alike. **This is a
+  `change-protocol` slice**, unlike the last five.
 * the two slices **ADR 0071 named and deliberately did not start**, either of
   which would let a network reach the uptime audit. A **nonzero initial height**
   is a `change-protocol` matter: the state root commits to the height, three
@@ -6051,20 +6185,35 @@ side. Say which is meant in the fixture rather than in the prose beside it.
   `protocol-application-v8` takes a database, a genesis, and a socket, so there
   is no supported path to start from a restored state. Neither is urgent; both
   are written down so a later session does not rediscover them as obstacles;
-* `calendar-v1`, which must fix the consensus timestamp's monotonicity rule and
-  acceptance tolerance and the calendar-month boundary derived from them. **The
-  tolerance is consensus-visible**: a proposer can move a month boundary within
-  it, so it must be a stated parameter rather than an adapter default, and the
-  rule must be statable in a form any consensus adapter can satisfy, because
-  CometBFT's own time is a median of validator clocks. It belongs with the
-  unreferred pool's payout — the month, the ranking snapshot, and the payout
-  transition — which is unestablished in version six, seven, and eight alike;
 * the HUB verification architecture of ADR 0048, which needs its threat model,
   with the biometric stabilization scheme named as requiring independent
   cryptographic review before anything rests on it. **It now has a dependency
   pointing at it**: version eight's `dispute_authority_key` is a single key
   standing in for the per-machine attestation registry that ADR 0048 defers, and
   the registry is what ends the interim.
+
+**What the devnet harness can now do, so the next slice does not re-read it.**
+`adapter/cometbft/internal/devnet` is seven files. `supervisor.go` holds the
+`supervisor` struct, `Run`, the `supervise` loop, and the per-replica lifecycle;
+`readiness.go` holds the four `await*` helpers, **every one of which reads from
+`events` and may therefore only be called on the main loop**; `control.go` holds
+the socket, the line parser and `SendControl`; `replicas.go` holds the subset
+type. A replica's three children are addressable as `phases[phase][index]`. To
+stop one from a test, call `control_replica(network, "stop", index)` in
+`tests/integration/cometbft_devnet.py`, and pass `running=(...)` to
+`run_health`, `run_transaction` and `run_refused_transaction` for as long as it
+is down.
+
+**The offline Go check is worth rebuilding rather than re-deriving.** A scratch
+module declaring `go 1.23` and the real module path, with
+`replace github.com/cometbft/cometbft => ./stub/cometbft` and a hand-written
+`internal/nodeconfig` stub, type-checks and **runs** the devnet package's tests
+in seconds. Two things make it work: **`GOPROXY=off`**, so an accidental
+resolution fails instead of downloading 173 MB, and a one-line shim for
+`t.Context()`, which needs Go 1.24 and is the only thing in the test files this
+machine's Go 1.23 cannot compile. It caught two defects in M3.14e that would
+each have cost a hosted round trip.
+
 
 **What this document twice called a flake was a defect, and M3.14d fixed it.**
 Three hosted runs have failed with `devnet transaction failed: RPC
@@ -6723,6 +6872,28 @@ the reserved set. Nothing in the slice set or changed supply, allocation,
 beneficiaries, Founder ownership, creator hierarchy, commercial routing, AI
 institutional authority, bridge scope, content permanence, or what an end user
 must do, own, run, or receive, and **no accepted vector file changed**.
+
+**M3.14e ran the founder-decision gate and passed it.** Fourteen decisions were
+enumerated before any was judged: whether the supervisor gains a control channel
+at all; its shape, its wire format and its request bound; that a stop takes all
+three of a replica's processes rather than only its consensus node; how the
+watch loop distinguishes a deliberate stop from a crash; that a request executes
+on the main loop rather than in the accept goroutine; which health comparisons
+narrow with the replica subset and which do not; the CLI surface on both the
+command and the wrapper script; which replica departs, how many transactions
+commit while it is away and through which replicas; what catching up is required
+to reach; and every timeout. **Every one is delegated by
+`founder-constitution.md` lines 1093-1096**, which place mechanism, encoding,
+storage, consensus scheduling, networking, testing, packaging, and operational
+choices outside the reserved set. No consensus-visible behaviour changed at all
+— the kernel, the contracts, the encodings and the genesis are untouched — which
+is why `change-protocol` was not invoked. An ADR *was* written this time, unlike
+M3.14d, because the slice records rules that outlive it: what the control
+channel is, what the subset does and does not narrow, and why a partition stays
+untested. Nothing in the slice set or changed supply, allocation, beneficiaries,
+Founder ownership, creator hierarchy, commercial routing, AI institutional
+authority, bridge scope, content permanence, or what an end user must do, own,
+run, or receive.
 
 **M3.14d ran the founder-decision gate and passed it.** Nine decisions were
 enumerated before any was judged: which replica is driven and at what point;
