@@ -13,32 +13,34 @@ import (
 )
 
 func compareHeads(
+	replicas Replicas,
 	statuses []statusResult,
-	infos [nodeconfig.DevnetNodeCount]abciInfoResult,
+	infos []abciInfoResult,
 ) (NetworkHealth, error) {
 	var expected NetworkHealth
-	for index := range nodeconfig.DevnetNodeCount {
-		if statuses[index].SyncInfo.CatchingUp {
+	for position, index := range replicas {
+		if statuses[position].SyncInfo.CatchingUp {
 			return NetworkHealth{}, fmt.Errorf(
 				"node %d is still catching up", index)
 		}
 		statusHeight, err := parseUint(
-			"latest block height", statuses[index].SyncInfo.LatestBlockHeight)
+			"latest block height", statuses[position].SyncInfo.LatestBlockHeight)
 		if err != nil {
 			return NetworkHealth{}, fmt.Errorf("node %d: %w", index, err)
 		}
-		headerHash, err := hex.DecodeString(statuses[index].SyncInfo.LatestAppHash)
+		headerHash, err := hex.DecodeString(
+			statuses[position].SyncInfo.LatestAppHash)
 		if err != nil {
 			return NetworkHealth{}, fmt.Errorf(
 				"node %d latest application hash: %w", index, err)
 		}
 		infoHeight, err := parseUint(
-			"ABCI height", infos[index].Response.LastBlockHeight)
+			"ABCI height", infos[position].Response.LastBlockHeight)
 		if err != nil {
 			return NetworkHealth{}, fmt.Errorf("node %d: %w", index, err)
 		}
 		infoRoot, err := base64.StdEncoding.DecodeString(
-			infos[index].Response.LastBlockAppHash)
+			infos[position].Response.LastBlockAppHash)
 		if err != nil || len(infoRoot) != len(nodeconfig.Hash{}) {
 			return NetworkHealth{}, fmt.Errorf(
 				"node %d returned invalid ABCI application root", index)
@@ -52,17 +54,17 @@ func compareHeads(
 		var root nodeconfig.Hash
 		copy(root[:], infoRoot)
 		current := NetworkHealth{
-			ChainID:         statuses[index].NodeInfo.Network,
+			ChainID:         statuses[position].NodeInfo.Network,
 			Height:          infoHeight,
 			ApplicationRoot: root,
 			HeaderHeight:    statusHeight,
 			HeaderAppHash:   headerHash,
 		}
-		if current.ChainID == "" || statuses[index].NodeInfo.ID == "" {
+		if current.ChainID == "" || statuses[position].NodeInfo.ID == "" {
 			return NetworkHealth{}, fmt.Errorf(
 				"node %d omitted network identity", index)
 		}
-		if index == 0 {
+		if position == 0 {
 			expected = current
 		} else if current.ChainID != expected.ChainID ||
 			current.Height != expected.Height ||
@@ -76,26 +78,40 @@ func compareHeads(
 	return expected, nil
 }
 
-func comparePeers(statuses []statusResult, networks []netInfoResult) error {
-	nodeIDs := make(map[string]struct{}, nodeconfig.DevnetNodeCount)
-	for index, status := range statuses {
-		if _, duplicate := nodeIDs[status.NodeInfo.ID]; duplicate {
-			return errors.New("validator RPC node IDs are not distinct")
-		}
+// comparePeers requires each named replica to see exactly the others.
+//
+// The expected count follows the **subset**, not the topology, and that is what
+// keeps the check sharp while a replica is down: three running replicas must
+// each report two peers, so a stopped replica whose process is still gossiping
+// is caught here rather than passing as an extra peer nobody counted.
+func comparePeers(
+	replicas Replicas,
+	statuses []statusResult,
+	networks []netInfoResult,
+) error {
+	nodeIDs := make(map[string]struct{}, len(replicas))
+	for position, index := range replicas {
+		status := statuses[position]
 		if status.NodeInfo.ID == "" {
 			return fmt.Errorf("node %d omitted node ID", index)
 		}
+		if _, duplicate := nodeIDs[status.NodeInfo.ID]; duplicate {
+			return errors.New("validator RPC node IDs are not distinct")
+		}
 		nodeIDs[status.NodeInfo.ID] = struct{}{}
 	}
-	for index, network := range networks {
+	for position, index := range replicas {
+		network := networks[position]
 		count, err := parseUint("peer count", network.NPeers)
-		if err != nil || count != nodeconfig.DevnetNodeCount-1 ||
-			len(network.Peers) != nodeconfig.DevnetNodeCount-1 {
-			return fmt.Errorf("node %d does not have exactly three peers", index)
+		if err != nil || count != uint64(len(replicas)-1) ||
+			len(network.Peers) != len(replicas)-1 {
+			return fmt.Errorf(
+				"node %d does not have exactly %d peers",
+				index, len(replicas)-1)
 		}
-		expected := make(map[string]struct{}, nodeconfig.DevnetNodeCount-1)
+		expected := make(map[string]struct{}, len(replicas)-1)
 		for id := range nodeIDs {
-			if id != statuses[index].NodeInfo.ID {
+			if id != statuses[position].NodeInfo.ID {
 				expected[id] = struct{}{}
 			}
 		}
@@ -112,9 +128,17 @@ func comparePeers(statuses []statusResult, networks []netInfoResult) error {
 	return nil
 }
 
-func compareValidators(results []validatorsResult) error {
+// compareValidators requires every named replica to report the same four.
+//
+// The validator **set** does not narrow with the subset: it comes from a
+// genesis file four homes share, and stopping a process does not retire its
+// validator. A run that reported three validators while one replica was down
+// would mean the set had actually changed, which is a different and much
+// larger event than a stopped process.
+func compareValidators(replicas Replicas, results []validatorsResult) error {
 	var expected []string
-	for index, result := range results {
+	for position, index := range replicas {
+		result := results[position]
 		if len(result.Validators) != nodeconfig.DevnetNodeCount {
 			return fmt.Errorf(
 				"node %d does not report four validators", index)
@@ -129,7 +153,7 @@ func compareValidators(results []validatorsResult) error {
 			current = append(current, validator.Address)
 		}
 		sort.Strings(current)
-		if index == 0 {
+		if position == 0 {
 			expected = current
 		} else if !equalStrings(current, expected) {
 			return errors.New("validator replicas report different validator sets")

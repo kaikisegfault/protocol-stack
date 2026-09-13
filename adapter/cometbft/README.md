@@ -12,7 +12,8 @@ The module provides four cgo-free commands:
 
 - `protocol-cometbft-bridge`, the stateless ABCI++ socket bridge;
 - `protocol-cometbft-devnet`, the strict four-replica initializer, foreground
-  supervisor, health checker, and transaction submitter;
+  supervisor, health checker, transaction submitter, and single-replica stop
+  and start control;
 - `protocol-cometbft-init`, the strict single-node home initializer;
 - `protocol-cometbft-node`, the pinned CometBFT node process.
 
@@ -98,6 +99,53 @@ fixture through validator `1`:
 tools/devnet.sh health
 tools/devnet.sh transaction examples/devnet/transaction-2.hex 1
 ```
+
+### Taking one replica down while the others keep committing
+
+The supervisor listens on a control socket in the socket root, so one replica
+can leave a running network and come back to it. Both commands answer as soon
+as the supervisor has done the work; neither waits for the network to agree
+again.
+
+```sh
+protocol-cometbft-devnet stop-replica -root /absolute/path -index 3
+protocol-cometbft-devnet start-replica -root /absolute/path -index 3
+```
+
+**A replica is its three processes**, so a stop takes the CometBFT node, the
+bridge, and the application, in that order, and a start brings them back in the
+reverse one. Three of four validators still hold more than two thirds of the
+voting power, so the network keeps committing; taking two down halts it.
+
+While a replica is down, `health` and `transaction` must be told which replicas
+are expected to be running, because both otherwise require all four to have
+converged:
+
+```sh
+protocol-cometbft-devnet health -root /absolute/path -nodes 0,1,2
+protocol-cometbft-devnet transaction -root /absolute/path -nodes 0,1,2 \
+  -node-index 1 -tx-file /absolute/path/transaction.bin
+```
+
+**`-nodes` names the replicas expected to run, not the ones to look at.** Every
+replica named must be up and converged, and every replica *not* named must be
+absent from the others' peer sets — so a replica that was supposed to be
+stopped and is still gossiping fails the observation. What does not narrow is
+the validator set: it comes from a genesis file four homes share, and stopping
+a process does not retire its validator, so all four are still required.
+
+Bringing the replica back and then asking for whole-network health is what
+requires it to catch up, which is where it executes the blocks it never voted
+on:
+
+```sh
+protocol-cometbft-devnet start-replica -root /absolute/path -index 3
+protocol-cometbft-devnet health -root /absolute/path -timeout 90s
+```
+
+**This is a stopped replica, not a network partition.** Blocking a peer's P2P
+port needs privileges the harness does not have, and a two-two split would
+commit nothing on either side.
 
 Use a different absolute `PROTOCOL_STACK_DEVNET_ROOT` to initialize a new
 network without deleting retained evidence. Set
