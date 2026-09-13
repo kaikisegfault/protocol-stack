@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -30,7 +31,9 @@ func main() {
 
 func run(arguments []string) error {
 	if len(arguments) == 0 {
-		return errors.New("expected start, health, or transaction command")
+		return errors.New(
+			"expected start, health, transaction, stop-replica, or " +
+				"start-replica command")
 	}
 	switch arguments[0] {
 	case "start":
@@ -39,6 +42,8 @@ func run(arguments []string) error {
 		return runHealth(arguments[1:])
 	case "transaction":
 		return runTransaction(arguments[1:])
+	case "stop-replica", "start-replica":
+		return runControl(arguments[0], arguments[1:])
 	default:
 		return fmt.Errorf("unknown command %q", arguments[0])
 	}
@@ -112,9 +117,25 @@ func runStart(arguments []string) error {
 	}, protocol)
 }
 
+// addReplicaFlag names the replicas expected to be running.
+//
+// Every replica named must be up and converged, and every replica *not* named
+// must be absent from the others' peer sets, so the default is the whole
+// network and a narrower list is a claim about a deliberately stopped replica
+// rather than a way to ignore one.
+func addReplicaFlag(flags *flag.FlagSet) *string {
+	value := flags.String(
+		"nodes",
+		devnet.AllReplicas().String(),
+		"ascending comma-separated indices of the replicas expected to run",
+	)
+	return value
+}
+
 func runHealth(arguments []string) error {
 	flags := flag.NewFlagSet("health", flag.ContinueOnError)
 	layout := addLayoutFlags(flags)
+	nodes := addReplicaFlag(flags)
 	var timeout time.Duration
 	flags.DurationVar(&timeout, "timeout", 30*time.Second, "health timeout")
 	if err := flags.Parse(arguments); err != nil {
@@ -123,19 +144,24 @@ func runHealth(arguments []string) error {
 	if flags.NArg() != 0 || timeout <= 0 {
 		return errors.New("health arguments are invalid")
 	}
+	replicas, err := devnet.ParseReplicas(*nodes)
+	if err != nil {
+		return err
+	}
 	topology, err := layout.devnet()
 	if err != nil {
 		return err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	health, err := devnet.WaitForHealth(ctx, topology)
+	health, err := devnet.WaitForHealth(ctx, topology, replicas)
 	if err != nil {
 		return err
 	}
 	fmt.Printf(
-		"validators=4\nchain_id=%s\nheight=%d\napp_hash=%X\n"+
+		"validators=%d\nchain_id=%s\nheight=%d\napp_hash=%X\n"+
 			"header_height=%d\nheader_app_hash=%X\n",
+		len(replicas),
 		health.ChainID,
 		health.Height,
 		health.ApplicationRoot,
@@ -148,6 +174,7 @@ func runHealth(arguments []string) error {
 func runTransaction(arguments []string) error {
 	flags := flag.NewFlagSet("transaction", flag.ContinueOnError)
 	layout := addLayoutFlags(flags)
+	nodes := addReplicaFlag(flags)
 	var timeout time.Duration
 	var transactionPath string
 	var nodeIndex int
@@ -161,6 +188,10 @@ func runTransaction(arguments []string) error {
 	}
 	if flags.NArg() != 0 || timeout <= 0 || transactionPath == "" {
 		return errors.New("transaction arguments are invalid")
+	}
+	replicas, err := devnet.ParseReplicas(*nodes)
+	if err != nil {
+		return err
 	}
 	topology, err := layout.devnet()
 	if err != nil {
@@ -183,7 +214,7 @@ func runTransaction(arguments []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	result, err := devnet.Broadcast(
-		ctx, topology, nodeIndex, transaction)
+		ctx, topology, replicas, nodeIndex, transaction)
 	if err != nil {
 		if result.Height != 0 {
 			// A refused transaction is still an operator error, so this command
@@ -214,5 +245,39 @@ func runTransaction(arguments []string) error {
 		hex.EncodeToString(result.Receipt),
 		result.Health.ApplicationRoot,
 	)
+	return nil
+}
+
+// runControl asks a running supervisor to stop or start one replica.
+//
+// The supervisor keeps running either way: this is how a replica leaves a
+// network that goes on committing without it, and how it comes back. What the
+// command does *not* wait for is the network agreeing again — a replica that
+// has just started is behind, and `health` is where catching up is required.
+func runControl(command string, arguments []string) error {
+	action := strings.TrimSuffix(command, "-replica")
+	flags := flag.NewFlagSet(command, flag.ContinueOnError)
+	layout := addLayoutFlags(flags)
+	var index int
+	var timeout time.Duration
+	flags.IntVar(&index, "index", -1, "replica index to stop or start")
+	flags.DurationVar(
+		&timeout, "timeout", 90*time.Second, "supervisor response timeout")
+	if err := flags.Parse(arguments); err != nil {
+		return err
+	}
+	if flags.NArg() != 0 || timeout <= 0 {
+		return fmt.Errorf("%s arguments are invalid", command)
+	}
+	topology, err := layout.devnet()
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	if err := devnet.SendControl(ctx, topology, action, index); err != nil {
+		return err
+	}
+	fmt.Printf("%s=%d\n", action, index)
 	return nil
 }

@@ -60,18 +60,28 @@ type NetworkHealth struct {
 	HeaderAppHash   []byte
 }
 
-// CheckHealth performs one complete four-replica health observation.
+// CheckHealth performs one complete health observation of a replica subset.
+//
+// Every replica named must be running and converged; every replica **not**
+// named must be absent from the others' peer sets. Pass `AllReplicas()` for the
+// whole network, which is what every caller wants except one that has
+// deliberately stopped a replica.
 func CheckHealth(
 	ctx context.Context,
 	devnet nodeconfig.Devnet,
+	replicas Replicas,
 ) (NetworkHealth, error) {
+	if err := replicas.validate(); err != nil {
+		return NetworkHealth{}, err
+	}
 	client := newRPCClient()
-	statuses := make([]statusResult, nodeconfig.DevnetNodeCount)
-	networks := make([]netInfoResult, nodeconfig.DevnetNodeCount)
-	validators := make([]validatorsResult, nodeconfig.DevnetNodeCount)
-	var infos [nodeconfig.DevnetNodeCount]abciInfoResult
+	statuses := make([]statusResult, len(replicas))
+	networks := make([]netInfoResult, len(replicas))
+	validators := make([]validatorsResult, len(replicas))
+	infos := make([]abciInfoResult, len(replicas))
 
-	for index, node := range devnet.Nodes {
+	for position, index := range replicas {
+		node := devnet.Nodes[index]
 		var health map[string]any
 		if err := client.call(
 			ctx, node.RPCPort, "health", map[string]any{}, &health); err != nil {
@@ -83,53 +93,57 @@ func CheckHealth(
 		}
 		if err := client.call(
 			ctx, node.RPCPort, "status", map[string]any{},
-			&statuses[index],
+			&statuses[position],
 		); err != nil {
 			return NetworkHealth{}, fmt.Errorf("node %d: %w", index, err)
 		}
 		if err := client.call(
 			ctx, node.RPCPort, "net_info", map[string]any{},
-			&networks[index],
+			&networks[position],
 		); err != nil {
 			return NetworkHealth{}, fmt.Errorf("node %d: %w", index, err)
 		}
 		if err := client.call(
 			ctx, node.RPCPort, "abci_info", map[string]any{},
-			&infos[index],
+			&infos[position],
 		); err != nil {
 			return NetworkHealth{}, fmt.Errorf("node %d: %w", index, err)
 		}
 	}
 
-	health, err := compareHeads(statuses, infos)
+	health, err := compareHeads(replicas, statuses, infos)
 	if err != nil {
 		return NetworkHealth{}, err
 	}
 	if health.Height == 0 {
+		// The genesis files are read from disk rather than from an RPC, so a
+		// stopped replica's home is still there to be compared. All four are
+		// compared whatever the subset is: a devnet whose homes disagree is
+		// broken regardless of which processes happen to be running.
 		if err := compareGenesisValidators(devnet); err != nil {
 			return NetworkHealth{}, err
 		}
 	} else {
-		for index, node := range devnet.Nodes {
+		for position, index := range replicas {
 			if err := client.call(
 				ctx,
-				node.RPCPort,
+				devnet.Nodes[index].RPCPort,
 				"validators",
 				map[string]any{
 					"height":   strconv.FormatUint(health.Height, 10),
 					"page":     "1",
 					"per_page": "100",
 				},
-				&validators[index],
+				&validators[position],
 			); err != nil {
 				return NetworkHealth{}, fmt.Errorf("node %d: %w", index, err)
 			}
 		}
-		if err := compareValidators(validators); err != nil {
+		if err := compareValidators(replicas, validators); err != nil {
 			return NetworkHealth{}, err
 		}
 	}
-	if err := comparePeers(statuses, networks); err != nil {
+	if err := comparePeers(replicas, statuses, networks); err != nil {
 		return NetworkHealth{}, err
 	}
 	return health, nil
@@ -193,13 +207,14 @@ const healthProbeTimeout = 3 * time.Second
 func WaitForHealth(
 	ctx context.Context,
 	devnet nodeconfig.Devnet,
+	replicas Replicas,
 ) (NetworkHealth, error) {
 	var lastError error
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 	for {
 		probeContext, cancel := context.WithTimeout(ctx, healthProbeTimeout)
-		health, err := CheckHealth(probeContext, devnet)
+		health, err := CheckHealth(probeContext, devnet, replicas)
 		cancel()
 		if err == nil {
 			return health, nil

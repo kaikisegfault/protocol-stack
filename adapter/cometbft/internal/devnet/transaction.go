@@ -19,14 +19,26 @@ type TransactionResult struct {
 }
 
 // Broadcast submits exact transaction bytes and waits for replica convergence.
+//
+// `replicas` names the replicas expected to be running, which is what
+// convergence is then required of. The submitting node must be one of them: a
+// transaction cannot be handed to a replica the caller has stopped, and
+// refusing that here reports the caller's mistake instead of a connection
+// error from a port nobody is listening on.
 func Broadcast(
 	ctx context.Context,
 	devnet nodeconfig.Devnet,
+	replicas Replicas,
 	nodeIndex int,
 	transaction []byte,
 ) (TransactionResult, error) {
-	if nodeIndex < 0 || nodeIndex >= nodeconfig.DevnetNodeCount {
-		return TransactionResult{}, errors.New("transaction node index is invalid")
+	if err := replicas.validate(); err != nil {
+		return TransactionResult{}, err
+	}
+	if !replicas.contains(nodeIndex) {
+		return TransactionResult{}, fmt.Errorf(
+			"transaction node index %d is not among the running replicas %s",
+			nodeIndex, replicas)
 	}
 	if len(transaction) == 0 || len(transaction) > 1_048_576 {
 		return TransactionResult{}, errors.New(
@@ -77,7 +89,7 @@ func Broadcast(
 		// A CheckTx rejection never reached a block, so it has no height and no
 		// convergence to report.
 		if response.CheckTx.Code == 0 {
-			health, healthErr := WaitForHealth(ctx, devnet)
+			health, healthErr := WaitForHealth(ctx, devnet, replicas)
 			if healthErr != nil {
 				return rejected, healthErr
 			}
@@ -85,7 +97,7 @@ func Broadcast(
 		}
 		return rejected, errors.New("transaction was rejected")
 	}
-	health, err := WaitForHealth(ctx, devnet)
+	health, err := WaitForHealth(ctx, devnet, replicas)
 	if err != nil {
 		return TransactionResult{}, err
 	}

@@ -19,6 +19,13 @@ type childProcess struct {
 	cmd  *exec.Cmd
 	log  *os.File
 	done chan error
+	// stopped marks a child the supervisor deliberately terminated, and it is
+	// written and read only on the supervisor's main loop. Two things read it.
+	// The watch loop skips this child's exit event instead of treating it as a
+	// fatal crash; and `stopPhase` skips it at teardown, because its `done`
+	// value has already been consumed and its log already closed, so reaping it
+	// a second time would block until the shutdown timeout.
+	stopped bool
 }
 
 func startChild(
@@ -59,7 +66,15 @@ func startChild(
 	return process, nil
 }
 
-func stopPhase(children []*childProcess, timeout time.Duration) error {
+func stopPhase(all []*childProcess, timeout time.Duration) error {
+	children := make([]*childProcess, 0, len(all))
+	for _, child := range all {
+		// A nil entry is a phase slot the supervisor never filled, which is
+		// what teardown finds when startup failed partway through.
+		if child != nil && !child.stopped {
+			children = append(children, child)
+		}
+	}
 	if len(children) == 0 {
 		return nil
 	}
