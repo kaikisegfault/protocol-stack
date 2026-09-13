@@ -128,13 +128,30 @@ def start_network(
         ) from error
 
 
-def run_health(network: Network) -> dict[str, str]:
+def _replica_arguments(running: tuple[int, ...] | None) -> list[str]:
+    """Name the replicas expected to be running, when that is not all four.
+
+    The flag is a claim rather than a filter: every replica named must be up
+    and converged, and every replica *not* named must be absent from the
+    others' peer sets. Passing nothing means the whole network, which is what
+    every caller wants except one that has deliberately stopped a replica.
+    """
+    if running is None:
+        return []
+    return ["-nodes", ",".join(str(index) for index in running)]
+
+
+def run_health(
+    network: Network,
+    running: tuple[int, ...] | None = None,
+) -> dict[str, str]:
     try:
         result = subprocess.run(
             [
                 network.devnet,
                 "health",
                 *network.common_arguments(),
+                *_replica_arguments(running),
                 "-timeout",
                 "90s",
             ],
@@ -159,9 +176,52 @@ def run_health(network: Network) -> dict[str, str]:
         "header_height",
         "header_app_hash",
     }
-    if set(values) != expected_keys or values["validators"] != "4":
+    expected_count = NODE_COUNT if running is None else len(running)
+    if (
+        set(values) != expected_keys
+        or values["validators"] != str(expected_count)
+    ):
         raise RuntimeError("unexpected devnet health output")
     return values
+
+
+def control_replica(network: Network, action: str, index: int) -> None:
+    """Ask the running supervisor to stop or start one replica.
+
+    The supervisor keeps running either way, which is the whole point: this is
+    how a replica leaves a network that goes on committing without it. Neither
+    command waits for the network to agree again -- a replica that has just
+    started is behind, and `run_health` over all four is where catching up is
+    required.
+    """
+    if action not in ("stop", "start"):
+        raise RuntimeError(f"unknown replica control action {action!r}")
+    result = subprocess.run(
+        [
+            network.devnet,
+            f"{action}-replica",
+            *network.common_arguments(),
+            "-index",
+            str(index),
+            "-timeout",
+            "90s",
+        ],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=COMMAND_TIMEOUT_SECONDS,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"devnet {action}-replica {index} failed:\n"
+            f"stdout:\n{result.stdout.decode('utf-8', errors='replace')}\n"
+            f"stderr:\n{result.stderr.decode('utf-8', errors='replace')}"
+        )
+    if result.stdout.decode("ascii").strip() != f"{action}={index}":
+        raise RuntimeError(
+            f"devnet {action}-replica printed "
+            f"{result.stdout.decode('ascii', errors='replace')!r}"
+        )
 
 
 def _parse_transaction_output(
@@ -185,6 +245,7 @@ def run_transaction(
     workspace: pathlib.Path,
     node_index: int,
     transaction: bytes,
+    running: tuple[int, ...] | None = None,
 ) -> SubmittedTransaction:
     transaction_path = workspace / f"transaction-{node_index}.bin"
     transaction_path.write_bytes(transaction)
@@ -194,6 +255,7 @@ def run_transaction(
                 network.devnet,
                 "transaction",
                 *network.common_arguments(),
+                *_replica_arguments(running),
                 "-node-index",
                 str(node_index),
                 "-tx-file",
@@ -231,6 +293,7 @@ def run_refused_transaction(
     workspace: pathlib.Path,
     node_index: int,
     transaction: bytes,
+    running: tuple[int, ...] | None = None,
 ) -> SubmittedTransaction:
     """Submit a transaction the kernel must refuse, and read what the network agreed.
 
@@ -252,6 +315,7 @@ def run_refused_transaction(
         network.devnet,
         "transaction",
         *network.common_arguments(),
+        *_replica_arguments(running),
         "-node-index",
         str(node_index),
         "-tx-file",
