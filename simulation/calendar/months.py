@@ -49,9 +49,10 @@ def year_month_of(timestamp: int) -> tuple[int, int]:
 def month_index(timestamp: int) -> int:
     """The monotone month number, zero for the epoch month.
 
-    Anchoring at 1970 rather than at year zero keeps the index inside a u32
-    with five decimal orders to spare and makes the epoch month index 0 rather
-    than an arbitrary constant.
+    The index reaches 96,359 and fits in a u32 with four decimal orders to
+    spare. The reason for anchoring at 1970 is the zero point rather than the
+    width — an index counted from year zero would also fit — and the zero point
+    is what makes the epoch month index 0 instead of an arbitrary constant.
     """
     year, month = year_month_of(timestamp)
     return (year - c.MIN_CALENDAR_YEAR) * c.MONTHS_PER_YEAR + (month - 1)
