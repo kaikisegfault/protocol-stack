@@ -710,6 +710,11 @@ immutable; compatible changes require a new version.
   issuance span, the ordered conditions of the window check, and the exact block
   equivalents of the founder-directed activity threshold and grace allowance; it
   defines a schedule and measures nothing.
+- `specifications/calendar-v1.md`: the consensus timestamp's unit, range,
+  monotonicity rule, and two-sided acceptance tolerance, the proleptic Gregorian
+  derivation from it to a calendar month, and the rule that the block opening a
+  month is the block closing every earlier one; it derives a month, stores
+  nothing, and binds no ledger version yet.
 - `specifications/uptime-measurement-v1.md`: the 24-slot grid a window is
   subdivided into, the two evidence sources, challenge selection from an
   unpredictable beacon and its response deadline, the conjunctive slot credit
