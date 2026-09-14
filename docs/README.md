@@ -932,5 +932,15 @@ hours and the pinned M1 commit interval by hand. It holds a seat activation
 table and answers whether a window is the window for a seat's cycle; it measures
 no uptime and is not bound by any economy model yet.
 
+The calendar model is `../simulation/calendar/` with vectors in
+`../test-vectors/calendar-v1.txt`. `../tools/calendar-vectors/verify.py` derives
+every recorded value twice, once from a live model run using the closed-form era
+arithmetic and once from an `expected.py` that imports nothing from
+`../simulation/` and builds the calendar by accumulating month lengths from 1970
+instead, so the two sides are different algorithms rather than one algorithm
+stated twice. It reads a clock in exactly one place — the observing machine's
+reading, which is a parameter of the admission check and of nothing else — and it
+ranks nothing and pays nothing.
+
 Shared deterministic primitives used by these models live in
 `../simulation/common/`.

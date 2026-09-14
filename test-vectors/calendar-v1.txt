@@ -1,0 +1,201 @@
+# Calendar v1 normative vectors.
+# Timestamps are unsigned decimal milliseconds since 1970-01-01T00:00:00Z.
+# Month indices count calendar months from January 1970, which is index 0.
+#
+# Every value here is derived twice: once by tools/calendar-vectors/expected.py,
+# which imports nothing from simulation/ and walks month lengths from 1970, and
+# once by a live run of simulation/calendar, which uses the closed-form era
+# arithmetic. A boolean vector may only be true, because its name is the claim.
+#
+# The scenario is simulation/calendar/scenario.py. Its timestamps sit at the
+# last and first millisecond of a month, at a repeated value, and on both sides
+# of a halt long enough to leave two months without a single height, because an
+# off-by-one is invisible at an instant in the middle of a month.
+
+
+# The unit, the range, and the tolerance.
+constants.millis_per_second=1000
+constants.millis_per_day=86400000
+constants.min_timestamp_millis=0
+constants.max_timestamp_millis=253402300799999
+constants.min_calendar_year=1970
+constants.max_calendar_year=9999
+constants.months_per_year=12
+constants.max_month_index=96359
+constants.tolerance_seconds=60
+constants.tolerance_millis=60000
+constants.target_commit_seconds=3
+constants.max_boundary_shift_blocks=20
+constants.seconds_per_month_minimum=2419200
+constants.state_bytes=0
+
+# The tolerance divides the commit interval exactly, and it is small relative to the shortest month, which is the ceiling ADR 0050 sets.
+exactness.tolerance_remainder_seconds=0
+exactness.boundary_shift_converts_back_to_seconds=60
+exactness.tolerance_parts_per_million_of_shortest_month=24
+exactness.blocks_in_shortest_month=806400
+exactness.range_ends_at_the_last_milli_of_december_9999=true
+exactness.epoch_is_month_index_zero=true
+exactness.day_count_in_range=2932897
+
+# The Gregorian leap rule in full. 2000 and 2100 are the pair the abbreviated rule gets wrong, in opposite directions.
+leap.year_2024_is_a_leap_year=true
+leap.year_2000_is_a_leap_year=true
+leap.february_days_1970=28
+leap.february_days_2000=29
+leap.february_days_2024=29
+leap.february_days_2026=28
+leap.february_days_2100=28
+leap.days_in_400_years=146097
+
+# Instants whose month an off-by-one anywhere in the derivation would change: month edges, year edges, February in four kinds of year, and both ends of the accepted range.
+derivation.epoch.timestamp=0
+derivation.epoch.month_index=0
+derivation.epoch.year=1970
+derivation.epoch.month=1
+derivation.epoch_month_last_milli.timestamp=2678399999
+derivation.epoch_month_last_milli.month_index=0
+derivation.epoch_month_last_milli.year=1970
+derivation.epoch_month_last_milli.month=1
+derivation.second_month_first_milli.timestamp=2678400000
+derivation.second_month_first_milli.month_index=1
+derivation.second_month_first_milli.year=1970
+derivation.second_month_first_milli.month=2
+derivation.common_year_february_last.timestamp=1772323199999
+derivation.common_year_february_last.month_index=673
+derivation.common_year_february_last.year=2026
+derivation.common_year_february_last.month=2
+derivation.common_year_march_first.timestamp=1772323200000
+derivation.common_year_march_first.month_index=674
+derivation.common_year_march_first.year=2026
+derivation.common_year_march_first.month=3
+derivation.leap_year_february_29.timestamp=1709208000000
+derivation.leap_year_february_29.month_index=649
+derivation.leap_year_february_29.year=2024
+derivation.leap_year_february_29.month=2
+derivation.century_leap_february_29.timestamp=951782400000
+derivation.century_leap_february_29.month_index=361
+derivation.century_leap_february_29.year=2000
+derivation.century_leap_february_29.month=2
+derivation.century_common_february_28.timestamp=4107542399999
+derivation.century_common_february_28.month_index=1561
+derivation.century_common_february_28.year=2100
+derivation.century_common_february_28.month=2
+derivation.century_common_march_first.timestamp=4107542400000
+derivation.century_common_march_first.month_index=1562
+derivation.century_common_march_first.year=2100
+derivation.century_common_march_first.month=3
+derivation.year_end.timestamp=1798761599999
+derivation.year_end.month_index=683
+derivation.year_end.year=2026
+derivation.year_end.month=12
+derivation.year_start.timestamp=1798761600000
+derivation.year_start.month_index=684
+derivation.year_start.year=2027
+derivation.year_start.month=1
+derivation.range_end.timestamp=253402300799999
+derivation.range_end.month_index=96359
+derivation.range_end.year=9999
+derivation.range_end.month=12
+
+# The whole accepted range walked day by day and month by month, reported as mismatch counts rather than as a claim.
+roundtrip.days_walked=2932897
+roundtrip.day_inverse_mismatches=0
+roundtrip.day_cross_algorithm_mismatches=0
+roundtrip.months_walked=96360
+roundtrip.month_start_index_mismatches=0
+roundtrip.month_end_index_mismatches=0
+roundtrip.month_starts_off_a_day_boundary=0
+roundtrip.month_cross_algorithm_mismatches=0
+roundtrip.month_length_total_millis=253402300800000
+roundtrip.month_lengths_tile_the_range=true
+roundtrip.shortest_month_millis=2419200000
+roundtrip.longest_month_millis=2678400000
+
+# The recorded chain: a first block that closes nothing, a repeated timestamp, both milliseconds of a month boundary, and a halt long enough to leave two months with no height at all.
+chain.genesis_timestamp=1769903940000
+chain.block_count=7
+chain.first_block.height=1
+chain.first_block.timestamp=1769903970000
+chain.first_block.month_index=672
+chain.first_block.months_closed=none
+chain.repeated_timestamp.height=2
+chain.repeated_timestamp.timestamp=1769903970000
+chain.repeated_timestamp.month_index=672
+chain.repeated_timestamp.months_closed=none
+chain.january_last_milli.height=3
+chain.january_last_milli.timestamp=1769903999999
+chain.january_last_milli.month_index=672
+chain.january_last_milli.months_closed=none
+chain.february_first_milli.height=4
+chain.february_first_milli.timestamp=1769904000000
+chain.february_first_milli.month_index=673
+chain.february_first_milli.months_closed=672
+chain.february_last_milli.height=5
+chain.february_last_milli.timestamp=1772323199999
+chain.february_last_milli.month_index=673
+chain.february_last_milli.months_closed=none
+chain.after_a_two_month_halt.height=6
+chain.after_a_two_month_halt.timestamp=1777593600000
+chain.after_a_two_month_halt.month_index=676
+chain.after_a_two_month_halt.months_closed=673,674,675
+chain.one_milli_later.height=7
+chain.one_milli_later.timestamp=1777593600001
+chain.one_milli_later.month_index=676
+chain.one_milli_later.months_closed=none
+chain.month_indices=672,672,672,673,673,676,676
+chain.opening_heights=1,4,6
+chain.empty_months=674,675
+chain.a_repeated_timestamp_is_accepted=true
+chain.month_672_first_height=1
+chain.month_672_last_height=3
+chain.month_673_first_height=4
+chain.month_673_last_height=5
+chain.month_676_first_height=6
+chain.month_676_last_height=7
+chain.head_timestamp=1777593600001
+chain.state_digest=7dd61b069c38b3f088b29307cd21255c9a32ab178e5060685fe7b6c2400baec5
+
+# The tolerance is inclusive on both sides. Two of the accepted blocks were observed at exactly the edge, one on each side.
+tolerance.ahead_edge_offset_millis=-60000
+tolerance.behind_edge_offset_millis=60000
+tolerance.both_edges_were_accepted=true
+
+# Every rejection, produced by a live run and by the independently restated order. The three `order.` cases violate two conditions at once, so the stated order is normative rather than decorative.
+rejection.height_far_ahead=HEIGHT_NOT_NEXT
+rejection.height_already_accepted=HEIGHT_NOT_NEXT
+rejection.timestamp_above_range=TIMESTAMP_RANGE
+rejection.timestamp_below_range=TIMESTAMP_RANGE
+rejection.timestamp_not_monotonic=TIMESTAMP_NOT_MONOTONIC
+rejection.timestamp_one_milli_too_far_ahead=TIMESTAMP_AHEAD_OF_TOLERANCE
+rejection.timestamp_one_milli_too_far_behind=TIMESTAMP_BEHIND_TOLERANCE
+rejection.order_height_before_range=HEIGHT_NOT_NEXT
+rejection.order_range_before_monotonic=TIMESTAMP_RANGE
+rejection.order_monotonic_before_tolerance=TIMESTAMP_NOT_MONOTONIC
+genesis.first_block_equal_to_genesis=ACCEPTED
+genesis.first_block_below_genesis=TIMESTAMP_NOT_MONOTONIC
+coverage.codes_modelled=6
+coverage.codes_reached=6
+coverage.unreached_codes=none
+coverage.deterministic_codes=3
+coverage.admission_only_codes=2
+coverage.rejection_order=HEIGHT_NOT_NEXT,TIMESTAMP_RANGE,TIMESTAMP_NOT_MONOTONIC,TIMESTAMP_AHEAD_OF_TOLERANCE,TIMESTAMP_BEHIND_TOLERANCE
+
+# A refusal writes nothing, and a replay with no clock at all reaches the chain the tolerance admitted.
+containment.rejections_leave_the_chain_unchanged=true
+containment.replay_reaches_the_same_digest=true
+containment.replay_reaches_the_same_months=true
+containment.every_code_is_deterministic_or_admission_only=true
+containment.replay_admits_a_stamp_the_tolerance_refuses=true
+containment.admission_refuses_that_stamp=TIMESTAMP_AHEAD_OF_TOLERANCE
+
+# The bounds a later slice needs: how far a proposer can move a boundary, and how many months a seat's span can touch.
+bounds.max_boundary_shift_blocks=20
+bounds.longest_seat_span_months=25
+bounds.issuance_cycles_per_seat=731
+bounds.max_day_index=2932896
+
+# The model's own state label and schema.
+state.schema=protocol-stack/calendar-state/v1
+state.label=protocol-stack:calendar:state-v1
+state.block_count=7
