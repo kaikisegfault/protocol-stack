@@ -26,7 +26,7 @@ yet says what a month is in a form two machines can agree on.
 
 ## Scope
 
-This specification defines a field, three rules about it, and an integer
+This specification defines a field, five rules about it, and an integer
 derivation. It measures nothing, ranks nothing, and pays nothing.
 
 In scope:
@@ -155,7 +155,7 @@ bound exists so that every derivation below is **total** — every accepted
 timestamp has a year, a month, and a month index, and no derivation has an
 undefined case to guess at.
 
-## The three rules on the field
+## The five rules on the field
 
 Let `t(h)` be the timestamp of the block at height `h`, and let `g` be the
 genesis timestamp, which a conforming ledger version binds in its genesis file
