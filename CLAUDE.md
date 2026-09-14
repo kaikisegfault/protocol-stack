@@ -11,7 +11,10 @@ the source of truth.
 
 ## Start every session
 
-1. Read `docs/project/current-state.md`.
+1. Read `docs/project/current-state.md`. It is the handoff and it is the only
+   document that says what is true now. Per-slice history lives in
+   `docs/project/delivery-log.md`; read that when the handoff points you there
+   or when you need the reasoning behind one of its claims, not by default.
 2. Read `docs/project/founder-constitution.md`, `docs/project/charter.md`, and
    `docs/project/first-goal.md`.
 3. Read only the roadmap, specifications, ADRs, and architecture documents
@@ -41,6 +44,10 @@ test evidence, then repair the state document.
 - Specify consensus-critical behavior before implementing it.
 - Implement, test, inspect the diff, and update affected documentation.
 - Update `current-state.md` only with verified facts and an exact next action.
+- Write the slice's `How ... was delivered` record in `delivery-log.md`, newest
+  first, and keep `current-state.md` to what is true now. The two were one
+  document until 2026-09-14, when history was 47% of a file every session is
+  told to read first; putting a record back into the handoff would regrow it.
 - Continue with another bounded slice while time and context remain.
 - Do not end after a plan when an authorized, unblocked implementation step is
   available.

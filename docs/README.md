@@ -13,7 +13,11 @@
   the completed Founder Economy proof milestone, whose figures predate the
   2026-08-07 direction revision.
 - `project/roadmap.md`: ordered milestones.
-- `project/current-state.md`: verified handoff between sessions.
+- `project/current-state.md`: verified handoff between sessions. What is true
+  now, what is missing, what the next unblocked action is, and what is blocked.
+- `project/delivery-log.md`: every per-slice `How ... was delivered` record,
+  moved verbatim out of the handoff on 2026-09-14. History and reasoning rather
+  than current state; where the two disagree, the handoff is current.
 - `project/native-economy-simulation-report-v1.md`: reproducible M2 seeded
   accounting study and its explicitly non-production interpretation.
 - `project/participation-simulation-report-v1.md`: reproducible M2 validator
