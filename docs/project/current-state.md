@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-09-13
+Last updated: 2026-09-14
 
 ## Phase
 
@@ -275,6 +275,9 @@ Python model reproduce both `test-vectors/economy-transition-v7.txt` and
 `test-vectors/economy-transition-v7-execution.txt`. What remains is
 `calendar-v1`, the HUB verification architecture of ADR 0048, and requirement
 13 — the four-node adversarial scenarios, which has not started.
+**Two of those three are now closed.** Requirement 13 closed with M3.14e on
+2026-09-13, and `calendar-v1` was accepted by M3.15a on 2026-09-14. The HUB
+verification architecture of ADR 0048 is the only one of the three still owed.
 
 **M3.13a delivered the version-seven state snapshot on 2026-08-30**, which is the
 first artifact that lets a version-seven state leave memory. ADR 0056 records it.
@@ -283,6 +286,8 @@ first artifact that lets a version-seven state leave memory. ADR 0056 records it
 mentions a month in one descriptive sentence and executes nothing against one, so
 what requirement 13 was actually waiting for was a state that can be written
 down. `calendar-v1` is still owed and is not it.
+**M3.15a delivered it on 2026-09-14**, four weeks after requirement 13 stopped
+waiting for it, which is the order that sentence predicted.
 
 **M3.13b delivered the version-seven owning store on 2026-08-31**, and with it
 "no state survives a restart" stops being true of this repository. ADR 0057
@@ -411,6 +416,124 @@ block, and refused independently by all four replicas. A transaction CheckTx
 rejected would be refused by one node's admission filter, which is a much weaker
 statement — `run_refused_transaction` fails closed on that case rather than
 accepting it.
+
+### How M3.15a was delivered
+
+**Candidate run 34889245697 on `def33fd` passed all five jobs**, and the branch
+merged by rebase as `a5c3527`, `31e048b`, `9d5ccbe` and `0a54f22`. Issue #287 and PR #288 accepted
+[`calendar-v1`](../specifications/calendar-v1.md) and
+[ADR 0074](../decisions/0074-the-consensus-timestamp-and-the-calendar-month.md).
+It is the first `change-protocol` slice in six, and the first contract accepted
+since `economy-transition-v8`.
+
+**What it closes.** ADR 0050 decided on 2026-08-19 that the ecosystem's clock is
+the consensus timestamp in the block header and that a month is a real calendar
+month beginning on the 1st, then named four things it deliberately did not fix:
+the mapping, the boundary rule, the acceptance tolerance, and the derivation from
+the header field. Four weeks later nothing had fixed them and
+`economy-transition-v8` scoped them out by name. All four are now fixed.
+
+**The four decisions, and the one that took the most research.**
+
+* **The unit is a `u64` of milliseconds since the Unix epoch**, bounded at the
+  last millisecond of 9999 so that every derivation below it is total. Seconds
+  were reached for first — every founder-directed duration is stated in seconds
+  and `cycle-boundary-v1` is denominated in them throughout — and were rejected
+  because a chain catching up after a halt produces blocks faster than one a
+  second, so a seconds field could satisfy a non-decreasing rule and could never
+  satisfy a strict one. **The unit is permanent and the monotonicity rule may
+  not be.** Nanoseconds end in 2262.
+* **Monotonicity is non-decreasing.** A strict rule is a liveness hazard exactly
+  when a network is already in trouble, and nothing here needs one: a height,
+  not a timestamp, identifies a block.
+* **The tolerance is 60 seconds and two-sided.** One-sided is unsound and it is
+  the tempting simplification: a colluding proposer set stamping far *behind*
+  would hold the chain's clock back indefinitely, never cross a month boundary,
+  and pay nobody while satisfying every other rule. The floor is about 38
+  seconds — twice a generous 10-second consumer clock skew, plus BFT time's
+  one-commit-interval lag, plus CometBFT's own 15-second default `MessageDelay`
+  — and the ceiling is ADR 0050's, that a proposer can move a month boundary by
+  exactly the tolerance. 60 clears the floor by more than half again and is 24
+  parts per million of the shortest month: at most 20 blocks of the 806,400 in a
+  28-day month. **CometBFT's PBTS defaults were rejected deliberately**: a
+  505-millisecond precision is right for a datacentre validator set and wrong for
+  a consumer machine in a home, and the cost of excluding honest machines from a
+  network whose purpose is that ordinary people run it is larger than 20 blocks
+  of boundary.
+* **The month is the proleptic Gregorian month in UTC**, index
+  `(year - 1970) * 12 + (month - 1)`.
+
+**Two findings in it are worth more than the constants.**
+
+**C5 is not re-applied on replay, and C1 and C2 are.** The tolerance is the only
+rule whose input is not in the block. A machine replaying history, restoring a
+snapshot, or reconstructing state must re-check the range and the monotonicity
+and must **not** re-check the tolerance, because the clock it would read is not
+the clock that agreed the block — applying it would make a correct chain
+unverifiable one tolerance-width after it was produced. The model exposes
+`accept` and `replay` as separate entry points and the vector file records **one
+stamp ten days out offered to both**, accepted by the replay path and refused by
+the admission path, so the separation is falsifiable rather than described.
+
+**A block closes a closed-open range of months, not one predecessor.**
+Monotonicity requires only that time not go backwards, so a chain halted across a
+month boundary resumes with a jump and every index between is an **empty month**
+holding no heights at all. An opening block therefore closes every index in
+`[month_of(h - 1), month_of(h))`. An implementation assuming a single predecessor
+would silently skip a month's accrual the first time a network was down across a
+boundary, which is the shape of defect that stays invisible until it is
+expensive. The fixture halts across March and April 2026 so the case is a
+recorded vector rather than a sentence.
+
+**And one derivation that is a consequence rather than a choice.** A month's last
+height cannot be recognised when it executes, because whether a later block falls
+in the same month is not yet known. **The block that opens a month is the only
+recognisable point**, so a transition acting on a completed month — the
+unreferred pool's payout is the one this work exists for — executes there. No
+other height is available.
+
+**The evidence method is two algorithms rather than one stated twice.** The model
+uses the closed-form era arithmetic; `tools/calendar-vectors/expected.py` imports
+nothing from `simulation/` and builds the calendar by accumulating month lengths
+from 1970, finding a month by binary search. 165 vectors are recorded and every
+one is produced by both. **Four probes that drifted only `expected.py`** — its
+leap rule, its month table, its tolerance, its rejection order — were each caught
+by the agreement gate alone, which is what makes the independence a measurement.
+
+**Twenty mutation probes were run and every one was caught.** The closed interval
+opened, both tolerance edges made exclusive, monotonicity made strict, the
+opening predicate made non-strict, the rejection order permuted, `replay`
+re-applying the tolerance, the range check removed, the abbreviated leap rule,
+the era arithmetic shifted, the day-index truncation changed, the range bound off
+by one, the tolerance changed, and the epoch anchor moved. The probe harness
+requires each mutation's text to occur **exactly once** in its file before
+running, so a probe that silently changed nothing is reported as a miss rather
+than as a pass — which is the M3.13l lesson made structural.
+
+**The whole range is walked rather than sampled**: 2,932,897 days and 96,360
+months, reported as mismatch counts. **2000 and 2100 are recorded** because they
+are the pair the abbreviated "divisible by four" leap rule gets wrong in opposite
+directions; a model tested only against 2024 would agree with the abbreviation.
+
+**What it deliberately did not do.** The unreferred pool's payout — the candidate
+set, the ranking snapshot, the height at which the payout executes, and the
+treatment of an accrual with no candidate. It is the immediate successor, and it
+carried two founder-reserved questions this slice did not. **Both were raised at
+its close and answered the same day**; ADR 0075 records them, so the payout is
+unblocked rather than waiting.
+
+**Facts a later session should not rediscover.** The model is
+`simulation/calendar/`: `civil.py` is the closed-form Gregorian pair, `months.py`
+the timestamp-to-month derivation and its inverse, `chain.py` the ordered
+acceptance rules and the month over a chain, `contract.py` the constants and
+three guards, `scenario.py` the fixture. `tools/calendar-vectors/verify.py
+--emit` rewrites the vector file through the same agreement gate, so a recorded
+value is never transcribed; it takes about three seconds, and the cost is the
+four-century walk that derives the 25-month seat-span bound. The three ctest
+entries are `calendar-vectors`, `calendar-civil`, and `calendar-chain`.
+**`simulation/calendar` does not shadow Python's `calendar` module**, because
+only the repository root is ever added to `sys.path` and absolute imports resolve
+`import calendar` to the standard library.
 
 ### How M3.14e was delivered
 
@@ -5955,18 +6078,27 @@ restart, and M3.14e the replica down while the others kept committing. Only the
 partition remains, and it is a permission this harness does not have rather than
 work left undone — see the requirement 13 paragraph above.
 
-**Two contracts are also still owed, and neither blocks requirement 13.** That
-was recorded the other way round at the close of M3.12b and M3.13a corrected it.
-`calendar-v1` has to fix the consensus timestamp's monotonicity rule and
-acceptance tolerance and the calendar-month boundary derived from it, because
-the tolerance is consensus-visible and a proposer can move a month boundary
-within it. **Nothing executable uses a month yet**: version seven mentions one
-in a single descriptive sentence, and the unreferred pool's payout — the month,
-the ranking snapshot, and the payout transition — is unestablished in version
-six and version seven alike, so the calendar and that payout belong together
-rather than apart. The HUB verification architecture of ADR 0048 needs its
+**Two contracts were also still owed, and neither blocked requirement 13.**
+That was recorded the other way round at the close of M3.12b and M3.13a
+corrected it. **One of the two is now delivered.** `calendar-v1` and ADR 0074
+fix the consensus timestamp's unit, range, monotonicity rule and two-sided
+60-second acceptance tolerance, the proleptic Gregorian derivation from it to a
+calendar month, and the rule that the block opening a month is the block closing
+every earlier one. The HUB verification architecture of ADR 0048 still needs its
 threat model, with the biometric stabilisation scheme named as requiring
 independent cryptographic review before anything rests on it.
+
+**What `calendar-v1` does not do is the half that is still owed, and the
+division is deliberate.** It derives a month and binds no ledger version, so
+**nothing executable uses a month yet** — the rule moved from undefined to
+unenforced, which is exactly the posture `cycle-boundary-v1` took and the same
+gap it left. The unreferred pool's payout — the candidate set, the ranking
+snapshot, the height the payout executes at, and an accrual with no candidate —
+is unestablished in versions six, seven and eight alike and is the immediate
+successor slice. It is separated from the calendar rather than folded into it
+because the calendar's decisions were all delegated and the payout's were not:
+two of them were founder-reserved, both were answered on 2026-09-14, and ADR
+0075 records them.
 
 **One of those absences now carries a dependency rather than only a roadmap
 position.** The founder answer of 2026-08-16 makes external purchasability the
@@ -6156,10 +6288,14 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-Requirement 13 is **complete**. Three successors are recorded below, and
-**`calendar-v1` is the next slice**: it is the one that advances
-`docs/project/first-goal.md` itself rather than the harness around it, and it is
-the first `change-protocol` slice in six.
+Requirement 13 is **complete** and `calendar-v1` is **accepted**. The nearest
+slice that moves the product is the **unreferred pool's payout**, and it is
+**unblocked**: the two founder-reserved decisions inside it were raised at the
+close of M3.15a and answered on 2026-09-14, and
+[ADR 0075](../decisions/0075-founder-answers-on-the-monthly-pool-candidate-set-and-carry.md)
+records them. The candidate set is every seat in scope at any point in the
+month, ranked on the uptime it accumulated during that month, and an accrual
+with no candidate carries to the earliest subsequent month that has one.
 
 **M3.14e is delivered and merged.** Issue #283 and PR #284 stopped one replica
 of the real four-node chain, required the remaining three to be a healthy
@@ -6179,16 +6315,18 @@ the fixture rather than left to be rediscovered.
 
 **The recorded successors, in order, each its own slice:**
 
-* **`calendar-v1`** is the nearest one that moves the product. It must fix the
-  consensus timestamp's monotonicity rule and acceptance tolerance and the
-  calendar-month boundary derived from them. **The tolerance is
-  consensus-visible**: a proposer can move a month boundary within it, so it
-  must be a stated parameter rather than an adapter default, and the rule must
-  be statable in a form any consensus adapter can satisfy, because CometBFT's
-  own time is a median of validator clocks. It belongs with the unreferred
-  pool's payout — the month, the ranking snapshot, and the payout transition —
-  which is unestablished in version six, seven, and eight alike. **This is a
-  `change-protocol` slice**, unlike the last five.
+* **`calendar-v1` is delivered**, by M3.15a on 2026-09-14. What it leaves is
+  the **unreferred pool's payout**: the candidate set, the ranking snapshot, the
+  height the payout executes at, its remainder rule, and an accrual with no
+  candidate. `calendar-v1` hands it the two things it needed — the month, and
+  the rule that **the block opening a month is the only recognisable point at
+  which the previous month is final**, so the payout executes there. It also
+  hands it two figures: a proposer can move a month boundary by at most **20
+  blocks**, and a seat's 731-cycle span touches at most **25** calendar months.
+  **Its two founder-reserved decisions are answered** and recorded in ADR 0075;
+  the rest — the remainder rule, the storage bound, and when a referral benefit
+  begins for a seat purchased but never activated — the Founder Constitution
+  names outright as specification work.
 * the two slices **ADR 0071 named and deliberately did not start**, either of
   which would let a network reach the uptime audit. A **nonzero initial height**
   is a `change-protocol` matter: the state root commits to the height, three
@@ -6965,7 +7103,70 @@ changed supply, allocation, beneficiaries, Founder ownership, creator hierarchy,
 commercial routing, AI institutional authority, bridge scope, content
 permanence, or what an end user must do, own, run, or receive.
 
-**No blocker requires an owner answer.** The next slice, M3.14e, is unblocked,
+**M3.15a ran the founder-decision gate and passed it.** Twelve decisions were
+enumerated before any was judged: the canonical unit; the epoch; the calendar
+system; the zone the 1st is read in; leap-second treatment; the monotonicity
+rule; the tolerance's value and the fact that it is two-sided; the month
+identifier's encoding; the accepted timestamp range and its year bound; the
+genesis-timestamp requirement; the chain's partial first month; and the
+packaging — the model layout, the vector method, the ctest entries, and the ADR
+number. **Every one is delegated.** ADR 0050 names the mapping, the boundary
+rule, the acceptance tolerance and the derivation from the header field as
+`calendar-v1`'s to fix, and requires only that the tolerance be small relative to
+a month and be a consensus parameter rather than an adapter default; the Founder
+Constitution decided the month itself on 2026-08-19 and places mechanism,
+encoding, storage, consensus scheduling, networking, testing and packaging
+outside the reserved set. **UTC was deduced rather than chosen** — a consensus
+timestamp is one global value and there is no participant zone consensus could
+read — and the specification states the participant-visible consequence outright
+rather than burying it in the arithmetic. Nothing in the slice set or changed
+supply, allocation, beneficiaries, Founder ownership, creator hierarchy,
+commercial routing, AI institutional authority, bridge scope, content
+permanence, or what an end user must do, own, run, or receive, and **no accepted
+vector file, specification, manifest, encoding, or kernel source changed** — the
+slice is additive in every file it touches except two cross-reference lines.
+
+**Two founder-reserved decisions were raised at the close of M3.15a and were
+answered the same day.** Both are inside the unreferred pool's payout and both
+decide who receives value, which is the test that made them reserved rather than
+mechanism. They were enumerated during M3.15a's gate, recorded as not-yet-
+blocking, and raised the moment `calendar-v1` was accepted and they became the
+nearest dependency. **The answers are founder-directed inputs to the payout
+slice and are recorded in ADR 0075 and in the Founder Constitution**; they are
+restated here only because this document is what the next session reads first.
+
+* **The candidate set is every seat in scope at any point in the month**, ranked
+  on uptime accumulated during that month. The owner's reasoning is the one the
+  question named: a seat that ran 29 of 30 days and whose 731-cycle span ended
+  on the 30th is exactly the machine the pool exists to reward, and a
+  month's-end snapshot would pay a worse performer instead. **It also removes a
+  failure mode at the end of the distribution**, where a month's-end rule would
+  shrink the candidate set toward empty as spans expire.
+* **An accrual with no candidate carries to the earliest subsequent month that
+  has one**, which takes it entirely. This is ADR 0049's recovery-pool shape
+  applied to the monthly pool rather than a second mechanism invented for it,
+  and it keeps the monthly accrual inside the monthly ranking instead of letting
+  a day's best performer collect what a month's ranking was meant to award.
+
+**One consequence of the second answer is recorded rather than left to be
+discovered**: a final accrual at the very end of the distribution may have no
+later month at all. The carry rule does not say where that goes, the question
+put it as the option's cost, and it is the payout slice's to raise again if its
+own model shows the case is reachable rather than theoretical.
+
+The remaining payout decisions are **not** reserved and must not be sent to the
+owner as though they were: the constitution names the pool's remainder rule, the
+storage bound on accrued referral balances at 100,000 seats, and when a referral
+benefit begins for a seat purchased but never activated as specification work
+outright.
+
+**No blocker requires an owner answer.** With the two answers above recorded,
+the unreferred pool's payout is unblocked, and so are the other successors under
+"Exact next action" — the nonzero initial height, the snapshot-seeded devnet,
+and ADR 0048's threat model.
+
+**The following paragraph is M3.14e's and is retained as history.** The next
+slice, M3.14e, is unblocked,
 and unusually well specified for one that has not started: the three properties
 of the Go harness that block it are named above, established by reading
 `adapter/cometbft/internal/devnet` rather than guessed, and the one design trap

@@ -538,6 +538,17 @@ Where several seats stand at exactly the same top figure — whatever that figur
 is — they share it equally. The rule is one winner unless there is an exact tie
 for first, which is the same shape as the daily failed-cycle reallocation.
 
+**The candidate set is every seat in scope at any point in the month**, ranked on
+the uptime it accumulated during that month, decided on 2026-09-14. A seat that
+ran 29 of 30 days and whose 731-cycle span ended on the 30th is exactly the
+machine the pool exists to reward, so membership is a range overlap rather than a
+snapshot at either edge. **A month with accrual and no candidate does not pay:
+its accrual stays in the pool and the earliest subsequent month with a candidate
+takes it entirely**, which is the recovery pool's shape rather than a second
+mechanism.
+[ADR 0075](../decisions/0075-founder-answers-on-the-monthly-pool-candidate-set-and-carry.md)
+records both answers and the alternatives rejected.
+
 These details require a specification and are engineering work rather than
 founder decisions:
 
@@ -1059,6 +1070,17 @@ requires only a signer signature, for every participant rather than for Founder
 Seats alone; a verified user's uncollected incentive is never issued; and a
 signer key belongs to exactly one holding address. **The first two of those had
 been listed here as unresolved since the mandatory-verification pivot.**
+
+Resolved on 2026-09-14, and recorded in
+[ADR 0075](../decisions/0075-founder-answers-on-the-monthly-pool-candidate-set-and-carry.md),
+which the founder-decision gate for `calendar-v1` raised after enumerating the
+payout that follows it: the unreferred pool's monthly candidate set is every
+seat in scope at any point in the month, ranked on the uptime accumulated during
+it, and a month whose candidate set is empty carries its accrual to the earliest
+subsequent month that has one. **One case is deliberately still open** — a final
+accrual at the end of the distribution with no later month at all — and it is to
+be raised again rather than answered autonomously, because it would decide a
+beneficiary.
 
 Resolved on 2026-08-15, and recorded in
 [ADR 0042](../decisions/0042-the-hub-entry-airdrop-and-the-verified-user-rate.md):
