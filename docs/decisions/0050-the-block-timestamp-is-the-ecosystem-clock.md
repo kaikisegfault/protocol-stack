@@ -69,6 +69,11 @@ A `calendar-v1` specification will fix the mapping, the boundary rule, the
 acceptance tolerance, and the derivation from the header field. It is a separate
 slice with its own model and vectors; this ADR fixes only the decision.
 
+**Delivered on 2026-09-14** as
+[`calendar-v1`](../specifications/calendar-v1.md), with the choices and the
+alternatives rejected recorded in
+[ADR 0074](0074-the-consensus-timestamp-and-the-calendar-month.md).
+
 **Rejected: a genesis-anchored calendar counting 28,800-block days.** It was
 proposed here first and it is deterministic, but the chain's day only equals a
 real day if block production hits its 3-second target exactly. At 1% slow it
