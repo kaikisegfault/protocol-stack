@@ -1197,6 +1197,20 @@ add_test(
     "${PROJECT_SOURCE_DIR}/tests/simulation/calendar_chain_test.py"
 )
 add_test(
+  NAME unreferred-pool-payout-vectors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tools/unreferred-pool-payout-vectors/verify.py"
+    --vectors
+    "${PROJECT_SOURCE_DIR}/test-vectors/unreferred-pool-payout-v1.txt"
+)
+add_test(
+  NAME unreferred-pool-payout
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/unreferred_pool_payout_test.py"
+)
+add_test(
   NAME uptime-measurement-vectors
   COMMAND
     "${Python3_EXECUTABLE}"

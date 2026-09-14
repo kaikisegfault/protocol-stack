@@ -1,0 +1,151 @@
+# Unreferred pool payout v1 normative vectors.
+# Amounts are unsigned decimal atomic units at the eight-decimal denomination.
+# Uptime figures are unsigned decimal seconds. Month indices are calendar-v1's,
+# counted from January 1970.
+#
+# Every value here is derived twice: once by
+# tools/unreferred-pool-payout-vectors/expected.py, which imports nothing from
+# simulation/ and settles the whole sequence in closed form, and once by a live
+# run of simulation/unreferred_pool, which is a machine consuming one window at
+# a time. A boolean vector may only be true, because its name is the claim.
+#
+# The scenario is simulation/unreferred_pool/scenario.py. Its genesis sits off a
+# day boundary so a window straddles a month boundary, and its months reach a
+# single winner, a two-way tie over an odd balance, a three-way tie, a month
+# every candidate ran zero seconds in, and two months a halt left with no window
+# at all.
+
+
+# The window arithmetic, imported rather than restated.
+constants.slot_seconds=3600
+constants.slots_per_window=24
+constants.window_uptime_seconds_max=86400
+constants.assignment_lag_windows=2
+constants.referral_atomic_per_cycle=3420000000
+
+# A window is attributed to the month containing its first height. The fixture's genesis sits off a day boundary so one window straddles a month boundary, and the figures the rejected last-height rule would have produced are recorded beside the real ones.
+attribution.window_0.month=673
+attribution.window_1.month=673
+attribution.window_2.month=674
+attribution.window_3.month=674
+attribution.window_4.month=674
+attribution.window_33.month=675
+attribution.window_63.month=676
+attribution.window_155.month=679
+attribution.straddling_windows=1
+attribution.months_touched=673,674,675,676,679
+attribution.first_month_figures=1=86400
+attribution.first_month_figures_under_last_height_rule=none
+attribution.the_two_rules_differ_on_this_fixture=true
+
+# The candidate set: in scope at any point in the month, no duty gate, no accumulation-cap filter, derived from the seat table rather than from what anyone happened to accumulate.
+candidates.month_673=1
+candidates.month_674=1,2,3
+candidates.month_675=1,2,3
+candidates.month_676=1,2,3
+candidates.month_679=1,2,3
+candidates.seat_1.first_cycle_window=1
+candidates.seat_2.first_cycle_window=2
+candidates.seat_3.first_cycle_window=4
+candidates.a_month_of_zeroes_still_has_every_candidate=true
+candidates.month_of_zeroes_winner_count=3
+
+# Every month the fixture closes, settled by the machine and by the closed form. The last month is not closed, because no later window has arrived to close it.
+payout.months_settled=6
+payout.month_673.candidate_count=1
+payout.month_673.best_figure=86400
+payout.month_673.payable_before=0
+payout.month_673.share=0
+payout.month_673.remainder=0
+payout.month_673.paid=0
+payout.month_673.winners=1
+payout.month_673.winner_count=1
+payout.month_673.remainder_is_below_the_winner_count=true
+payout.month_673.share_times_winners_plus_remainder=0
+payout.month_674.candidate_count=3
+payout.month_674.best_figure=216000
+payout.month_674.payable_before=13680000001
+payout.month_674.share=6840000000
+payout.month_674.remainder=1
+payout.month_674.paid=13680000000
+payout.month_674.winners=1,2
+payout.month_674.winner_count=2
+payout.month_674.remainder_is_below_the_winner_count=true
+payout.month_674.share_times_winners_plus_remainder=13680000001
+payout.month_675.candidate_count=3
+payout.month_675.best_figure=86400
+payout.month_675.payable_before=3420000001
+payout.month_675.share=1140000000
+payout.month_675.remainder=1
+payout.month_675.paid=3420000000
+payout.month_675.winners=1,2,3
+payout.month_675.winner_count=3
+payout.month_675.remainder_is_below_the_winner_count=true
+payout.month_675.share_times_winners_plus_remainder=3420000001
+payout.month_676.candidate_count=3
+payout.month_676.best_figure=0
+payout.month_676.payable_before=3420000001
+payout.month_676.share=1140000000
+payout.month_676.remainder=1
+payout.month_676.paid=3420000000
+payout.month_676.winners=1,2,3
+payout.month_676.winner_count=3
+payout.month_676.remainder_is_below_the_winner_count=true
+payout.month_676.share_times_winners_plus_remainder=3420000001
+payout.month_677.candidate_count=0
+payout.month_677.best_figure=0
+payout.month_677.payable_before=1
+payout.month_677.share=0
+payout.month_677.remainder=0
+payout.month_677.paid=0
+payout.month_677.winners=none
+payout.month_677.winner_count=0
+payout.month_678.candidate_count=0
+payout.month_678.best_figure=0
+payout.month_678.payable_before=1
+payout.month_678.share=0
+payout.month_678.remainder=0
+payout.month_678.paid=0
+payout.month_678.winners=none
+payout.month_678.winner_count=0
+
+# A month with no candidate carries, and the theorem that says the case cannot arise once a seat is activated: in-span is a subset of in-scope, so a month that accrued has someone to pay.
+carry.months_carried=677,678
+carry.months_carried_count=2
+carry.accrual_inside_carried_months=0
+carry.a_carried_month_never_held_accrual=true
+carry.payable_after_the_run=3420000001
+
+# Every unit the pool received is undistributed or owed to a named winner, checked after every assignment rather than at the end.
+conservation.accrued=23940000001
+conservation.payable=3420000001
+conservation.assigned=20520000000
+conservation.accrued_equals_payable_plus_assigned=true
+conservation.claim_count=8
+claim.month_674.seat_1=6840000000
+claim.month_674.seat_2=6840000000
+claim.month_675.seat_1=1140000000
+claim.month_675.seat_2=1140000000
+claim.month_675.seat_3=1140000000
+claim.month_676.seat_1=1140000000
+claim.month_676.seat_2=1140000000
+claim.month_676.seat_3=1140000000
+conservation.no_recorded_claim_is_zero=true
+
+# Two orderings the rule states and that are invisible without a test: several months closed by one assignment settle in ascending order, and the payout precedes the closing assignment's own accrual.
+ordering.settled_months=673,674,675,676,677,678
+ordering.settled_months_ascend=true
+ordering.the_wrong_order_pays_a_different_amount=true
+ordering.assigned_in_the_stated_order=20520000000
+ordering.assigned_if_accrual_ran_first=23940000000
+
+# The bounds the rule imposes, and the guard behind the figure.
+bounds.most_months_accumulating_at_once=1
+bounds.open_figures_after_the_run=1
+bounds.nominal_month_figure_seconds_max=2678400
+bounds.max_figure_seconds=18446744073709551615
+
+# The model's own state label, schema, and digest.
+state.schema=protocol-stack/unreferred-pool-payout-state/v1
+state.label=protocol-stack:unreferred-pool-payout:state-v1
+state.digest=b5649a4280c7db2a2f79e84d8afe7560fca257281c7ac6c9f9ee01c2a8858941
