@@ -259,15 +259,15 @@ the whole chain rather than a defence against anything.
 is exactly how far a dishonest proposer can move a month boundary, so it must be
 small relative to a month. At 60 seconds it is `60 / 2,419,200` of the shortest
 possible month — under 25 parts per million — and at the 3-second commit target
-it moves at most `MAX_BOUNDARY_SHIFT_BLOCKS` = 20 blocks of the roughly 806,400
-in a 28-day month.
+it moves at most `MAX_BOUNDARY_SHIFT_BLOCKS` = 20 blocks of the 806,400 in a
+28-day month.
 
-**60 seconds clears the floor by more than half again and sits five orders of
-magnitude under the ceiling.** It is also a figure an operator can reason about
-without arithmetic: a Founder Machine whose clock is more than a minute wrong
-will be told so, and telling an operator "your clock is more than a minute out"
-is a diagnosable instruction in a way that "your clock is more than 505
-milliseconds out" is not.
+**60 seconds clears the floor by more than half again and sits more than four
+orders of magnitude under the ceiling.** It is also a figure an operator can
+reason about without arithmetic: a Founder Machine whose clock is more than a
+minute wrong will be told so, and telling an operator "your clock is more than
+a minute out" is a diagnosable instruction in a way that "your clock is more
+than 505 milliseconds out" is not.
 
 **Rejected: CometBFT's PBTS defaults, a 505-millisecond precision with a
 15-second message delay.** They are well chosen for the problem they solve —
@@ -297,7 +297,7 @@ below is integer arithmetic on `t` alone.
 **Why UTC, stated rather than assumed.** A consensus timestamp is one global
 value; there is no participant whose local zone consensus could read, and a
 per-participant boundary would mean the same block closed different months for
-different people, which is not a calendar but 38 of them. The consequence is
+different people, which is not a calendar but one per zone. The consequence is
 worth stating plainly because a participant experiences it: the 1st begins at
 midnight UTC, so a machine in UTC+13 sees a month roll at one o'clock in the
 afternoon of its own 1st. Every global system makes this trade and the
@@ -342,9 +342,11 @@ month_index(t) = (y - MIN_CALENDAR_YEAR) * MONTHS_PER_YEAR + (m - 1)
 ```
 
 `month_index` is a non-decreasing function of `t`, is 0 for the epoch month, and
-is `MAX_MONTH_INDEX` for December 9999. Anchoring at 1970 rather than at year
-zero keeps it inside a `u32` with five decimal orders to spare, and makes the
-epoch month index 0 rather than an arbitrary constant.
+is `MAX_MONTH_INDEX` for December 9999. It therefore fits in a `u32` with four
+decimal orders to spare. **The reason for anchoring at 1970 is the zero point
+rather than the width** — an index counted from year zero would also fit — and
+the zero point matters because it makes the epoch month index 0 instead of an
+arbitrary constant that every implementation would have to agree on separately.
 
 ### The inverse
 
@@ -414,10 +416,11 @@ an **empty month**: a month with no heights at all.
 
 An opening block therefore closes **every** index in
 `[month_of_height(h - 1), month_of_height(h))` — its predecessor's own month and
-every empty month after it — not only the immediately preceding one. An implementation that assumed a single predecessor would silently
-skip a month's worth of an accrued pool the first time a network was down across
-a month boundary, which is exactly the kind of defect that is invisible until it
-is expensive.
+every empty month after it — not only the immediately preceding one. An
+implementation that assumed a single predecessor would silently skip a month's
+worth of an accrued pool the first time a network was down across a month
+boundary, which is exactly the kind of defect that is invisible until it is
+expensive.
 
 An empty month accrues nothing, because every accrual in this ecosystem is
 per-cycle and a cycle is a span of heights. What it does and does not owe is the
