@@ -1177,6 +1177,26 @@ add_test(
     "${PROJECT_SOURCE_DIR}/tests/simulation/cycle_boundary_model_test.py"
 )
 add_test(
+  NAME calendar-vectors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tools/calendar-vectors/verify.py"
+    --vectors
+    "${PROJECT_SOURCE_DIR}/test-vectors/calendar-v1.txt"
+)
+add_test(
+  NAME calendar-civil
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/calendar_civil_test.py"
+)
+add_test(
+  NAME calendar-chain
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/calendar_chain_test.py"
+)
+add_test(
   NAME uptime-measurement-vectors
   COMMAND
     "${Python3_EXECUTABLE}"
