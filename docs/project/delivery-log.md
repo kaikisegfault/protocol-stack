@@ -32,6 +32,103 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M3.16a was delivered
+
+**Candidate run 34896935985 on `92eb982` passed all five jobs**, and the branch merged
+by rebase as `b05f09a`. Issue #294 and PR #295 accepted
+[`unreferred-pool-payout-v1`](../specifications/unreferred-pool-payout-v1.md).
+
+**What it closes.** The unreferred performance pool has accrued since
+`economy-transition-v3` — an unreferred seat's 34.2 units per cycle route to it,
+version six gave it entry kind 12, and version seven's genesis writes it — and
+**nothing has ever taken value out of it**. This is the rule that does: the
+monthly candidate set, the ranking figure and which month a window's uptime
+counts toward, the exact-tie split and the remainder, the carry, the point in the
+sequence at which a month is paid, the quantities a binding ledger version must
+carry, and when a referral benefit begins for a seat purchased and never
+activated.
+
+**Two findings in it are worth more than the arithmetic.**
+
+**The payout does not fire in the block that opens a month, and that was this
+specification's first rule.** `calendar-v1` establishes that the opening block is
+the only point at which a *month* is final, and that is true of the month. It is
+not true of the month's **figures**: a window is assigned `ASSIGNMENT_LAG_WINDOWS`
+windows after it opens, so a month's last two windows are still unassigned when
+the next month begins. Paying at the opening block would have ranked every seat
+on a month with its last two days missing, **every month, silently**. The right
+sequence is the **window-assignment** sequence, in which `month_of_window` is
+monotone, so the first assigned window of a later month is exactly the point at
+which every earlier month's figures are complete — `calendar-v1`'s own argument
+applied to the sequence in which the inputs actually arrive rather than to the
+sequence of heights. **It was found by checking a resource bound**, not by
+reviewing the rule.
+
+**The carry ADR 0075 decided is unreachable rather than merely unlikely.**
+In-span implies in-scope by construction — `economy-transition-v8` defines
+in-span as in-scope plus a span test — and in-scope has no upper bound, because
+ADR 0049's rule 3 makes ranking permanent. So a month that accrued always has
+someone to pay, and the zero-candidate case arises only before the first
+activation, when the pool is empty. **That also closes the one question ADR 0075
+deliberately left open** — a final accrual at the end of the distribution with no
+later month to pay it — by derivation rather than by another founder decision.
+The model checks the implication on **every** settlement rather than asserting it
+once, so a later change that made in-scope expire fails a test instead of quietly
+turning a safety net into a policy.
+
+**Measuring a bound rather than asserting it corrected the specification twice.**
+The document said two months accumulate at once, reasoning from the assignment
+lag; the model measured **one**, because window assignment is ordered and
+`month_of_window` is monotone, so a month's figures are complete and deleted
+before its successor accumulates anything. And the per-month figure bound turned
+out to depend on the **block rate**, which no consensus rule bounds from above —
+`calendar-v1` bounds the timestamp against civil time and nothing bounds how fast
+blocks are produced — so the accumulation is a **checked** addition rather than an
+argued-safe one. **A bound that depends on an operational rate is not a bound.**
+
+**One deduction closed a constitutional specification item almost for free.** The
+constitution asks when a referral benefit begins for a seat purchased and never
+activated. `cycle-boundary-v1` fixes `first_cycle_window` from the activation
+height and the referral leg accrues per contributing cycle, so a seat with no
+activation has no first cycle, is in no contributing set, and generates no leg to
+route anywhere. It accrues **nothing, ever** — the question reads as though such
+a seat might accrue to somewhere, and it does not.
+
+**The evidence method is two constructions rather than one stated twice.** The
+model is a machine: it consumes windows one at a time and carries a balance.
+`tools/unreferred-pool-payout-vectors/expected.py` imports nothing from
+`simulation/` and settles the whole sequence in **closed form**, grouping windows
+by month and folding the balance forward. 116 vectors are recorded and every one
+is produced by both.
+
+**Seventeen mutation probes were run and every one was caught**, including the
+rejected last-height attribution, the settlement order reversed, the accrual
+applied before the payout, `in_scope` given an upper bound, the candidate set
+read from the figures instead of the seat table, the remainder swept to the
+winners, and three that drifted only the independent side. **The seventeenth
+initially passed**, and what it found was that `assign`'s own conservation guard
+had no test that could fail it: every other check called `assert_conserved`
+directly. A test that corrupts the balance between two assignments now exercises
+it, rather than the guard being recorded as untestable.
+
+**The fixture's genesis sits deliberately off a day boundary.** At the commit
+target a window is exactly one day, so a genesis at midnight would make every
+window exactly one calendar day and **the straddling case would be unreachable**.
+Six hours of offset is what makes window 1 begin on 28 February and end on
+1 March, and the vector records the February figures the rejected last-height
+rule would have produced beside the real ones, so the two attribution rules are
+distinguishable rather than merely described.
+
+**Facts a later session should not rediscover.** The model is
+`simulation/unreferred_pool/`: `contract.py` the constants and three agreement
+guards, `ledger.py` the `UnreferredPool` machine and `month_of_window`,
+`scenario.py` the fixture. It **binds** `calendar-v1` rather than restating it —
+a window's month comes from `simulation.calendar` via the timestamp of the
+window's first height — and it owns no clock, no block rate, and no opinion about
+a date. The two ctest entries are `unreferred-pool-payout-vectors` and
+`unreferred-pool-payout`, and `verify.py --emit` rewrites the vector file through
+the same agreement gate.
+
 ### How M3.15b was delivered
 
 **This document is what M3.15b delivered.** Issue #290 and PR #291 moved every

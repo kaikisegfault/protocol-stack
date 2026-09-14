@@ -2439,9 +2439,25 @@ equally, **no minimum, no duty gate, no accumulation-cap filter**. An accrual
 with no candidate carries to the earliest subsequent month that has one.
 
 **M3.15b split this document.** Every `How ... was delivered` record is now in
-[`delivery-log.md`](delivery-log.md), moved verbatim, and this file is 4,270
-lines rather than 8,140. `CLAUDE.md` now says to write a slice's record there
-rather than here, so the document does not regrow.
+[`delivery-log.md`](delivery-log.md), moved verbatim, and this file is a little
+over 4,300 lines rather than 8,140. `CLAUDE.md` now says to write a slice's
+record there rather than here, so the document does not regrow.
+
+**M3.16a delivered the payout on 2026-09-14**, so the sentence above about it
+being the nearest slice is history. `unreferred-pool-payout-v1` is accepted: the
+candidate set, the ranking figure, the attribution rule, the tie split, the
+remainder, the carry, the settlement point, and the quantities a binding version
+must carry. **The nearest slice is now the ledger version that binds both it and
+`calendar-v1`**, described below.
+
+**Two things M3.16a found are worth carrying forward rather than rediscovering.**
+The payout fires at the first assigned window of a later month and **not** at the
+block that opens a month — a window is assigned two windows after it opens, so a
+month's last windows are unassigned when the next month begins, and the obvious
+rule would rank every seat on a month missing its last two days. And the carry
+ADR 0075 decided is **unreachable** once a seat is activated, because in-span
+implies in-scope and in-scope never expires; that also closes by derivation the
+one case ADR 0075 left open.
 
 **M3.14e is delivered and merged.** Issue #283 and PR #284 stopped one replica
 of the real four-node chain, required the remaining three to be a healthy
@@ -2461,18 +2477,32 @@ the fixture rather than left to be rediscovered.
 
 **The recorded successors, in order, each its own slice:**
 
-* **`calendar-v1` is delivered**, by M3.15a on 2026-09-14. What it leaves is
-  the **unreferred pool's payout**: the candidate set, the ranking snapshot, the
-  height the payout executes at, its remainder rule, and an accrual with no
-  candidate. `calendar-v1` hands it the two things it needed — the month, and
-  the rule that **the block opening a month is the only recognisable point at
-  which the previous month is final**, so the payout executes there. It also
-  hands it two figures: a proposer can move a month boundary by at most **20
-  blocks**, and a seat's 731-cycle span touches at most **25** calendar months.
-  **Its two founder-reserved decisions are answered** and recorded in ADR 0075;
-  the rest — the remainder rule, the storage bound, and when a referral benefit
-  begins for a seat purchased but never activated — the Founder Constitution
-  names outright as specification work.
+* **`calendar-v1` and `unreferred-pool-payout-v1` are both delivered**, by
+  M3.15a and M3.16a on 2026-09-14, and **neither binds a ledger version**. That
+  is the posture `cycle-boundary-v1` and `uptime-measurement-v1` took and it
+  leaves the same gap: the rules moved from undefined to **unenforced**. **The
+  nearest slice that moves the product is the version that enforces them**, and
+  it is a `change-protocol` slice of the size `economy-transition-v8` was —
+  M3.13j through M3.13s — so it should be taken as a specification first, then a
+  Python model, then the kernel, rather than as one slice.
+
+  **What that version has to add, enumerated so the slice does not re-derive
+  it.** A block header timestamp and a genesis timestamp, which make it a new
+  contract version rather than an edit; `TIMESTAMP_TOLERANCE_MILLIS` as a
+  consensus parameter; `calendar-v1`'s C1 and C2 applied in execution with C5
+  exposed to the adapter **separately**, because a replay must not re-apply it;
+  the month a live window opened in, at most three live at once; per-seat
+  monthly accumulated figures, nonzero only, deleted when their month is paid;
+  the pool entry gaining a third quantity, `payable`, beside `accrued` and
+  `minted`; a per-month-per-seat claim and the mint that takes it, in the
+  referral balance's existing shape; the payout step ordered **before** the
+  accrual step; and the usual genesis, chain identity, state root, and receipt
+  version consequences.
+
+  **Three figures the two specifications hand it**, so it does not recompute
+  them: a proposer can move a month boundary by at most **20 blocks**; a seat's
+  731-cycle span touches at most **25** calendar months; and exactly **one**
+  month accumulates figures at a time, because window assignment is ordered.
 * the two slices **ADR 0071 named and deliberately did not start**, either of
   which would let a network reach the uptime audit. A **nonzero initial height**
   is a `change-protocol` matter: the state root commits to the height, three
@@ -3342,10 +3372,38 @@ reader since the author. Reading the accepted contracts *before* asking the
 founder-decision questions, rather than after, would have put all three in one
 batch instead of two.
 
-**No blocker requires an owner answer.** The unreferred pool's payout is
-unblocked, and so are the other successors under "Exact next action" — the
-nonzero initial height, the snapshot-seeded devnet, and ADR 0048's threat
-model.
+**M3.16a ran the founder-decision gate and passed it.** Thirteen decisions were
+enumerated before any was judged. **Three are already founder-decided** and were
+cited rather than re-chosen: the candidate set and the carry by ADR 0075 and ADR
+0076, and the single-best-plus-exact-ties rule by the constitution. **Three the
+constitution names as specification work outright**: the pool's remainder rule,
+the storage bound on accrued referral balances, and when a referral benefit
+begins for a seat purchased but never activated. **Four are decided by accepted
+specifications**: the month and the finality argument by `calendar-v1` and ADR
+0074, and the figure, `in_scope` and `in_span` by `economy-transition-v8` and
+`cycle-boundary-v1`. **The remaining three are mechanism** the constitution
+places outside the reserved set: the attribution granularity, the step ordering,
+and the storage layout. **The claim shape is a deduction rather than a choice** —
+ADR 0041 ties a seat to an identity rather than an address, so there is no
+address a payout could credit and it has to be a claim the winner mints.
+Nothing in the slice set or changed supply, allocation, beneficiaries, Founder
+ownership, creator hierarchy, commercial routing, AI institutional authority,
+bridge scope, content permanence, or what an end user must do, own, run, or
+receive, and **no accepted vector file, specification, manifest, encoding, or
+kernel source changed**.
+
+**No blocker requires an owner answer.** The successors under "Exact next
+action" — the ledger version that binds `calendar-v1` and
+`unreferred-pool-payout-v1`, the nonzero initial height, the snapshot-seeded
+devnet, and ADR 0048's threat model — are all unblocked.
+
+**One case ADR 0075 left open is closed by derivation rather than by an
+answer, and it must not be re-asked.** It asked what becomes of a final accrual
+at the end of the distribution with no later month that has a candidate. M3.16a
+proved the case unreachable: in-span implies in-scope, in-scope never expires,
+so every month that accrued has a candidate and is paid in the month after it.
+**Raising it again would be asking the owner to decide something the accepted
+contracts already settle.**
 
 **The following paragraph is M3.14e's and is retained as history.** The next
 slice, M3.14e, is unblocked,
