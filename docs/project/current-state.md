@@ -2419,16 +2419,24 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 ## Exact next action
 
 Requirement 13 is **complete** and `calendar-v1` is **accepted**. The nearest
-slice that moves the product is the **unreferred pool's payout**, and **one
-question still blocks its first rule**: see "Blockers". Two of its three
-founder-reserved decisions were raised at the close of M3.15a and answered on
-2026-09-14, and
+slice that moves the product is the **unreferred pool's payout**, and it is
+**unblocked**: all three of its founder-reserved decisions were answered on
+2026-09-14. Two were raised at the close of M3.15a and
 [ADR 0075](../decisions/0075-founder-answers-on-the-monthly-pool-candidate-set-and-carry.md)
 records them — the candidate set is every seat in scope at any point in the
 month, ranked on the uptime it accumulated during that month, and an accrual
 with no candidate carries to the earliest subsequent month that has one. **The
 third was found while reading `economy-transition-v7` to start the slice**, was
-not surfaced when the first two were asked, and is the accumulation cap.
+not surfaced when the first two were asked, and is the accumulation cap: it does
+**not** filter the monthly ranking, so a seat at the cap competes and can win.
+[ADR 0076](../decisions/0076-the-monthly-pool-ranks-every-in-scope-seat.md)
+records it and corrects the two accepted forward references that said otherwise.
+
+**The complete monthly candidate set, stated once so the payout slice does not
+reassemble it from three ADRs:** every seat whose 731-cycle span overlapped the
+month, ranked on the uptime it accumulated during that month, exact ties sharing
+equally, **no minimum, no duty gate, no accumulation-cap filter**. An accrual
+with no candidate carries to the earliest subsequent month that has one.
 
 **M3.15b split this document.** Every `How ... was delivered` record is now in
 [`delivery-log.md`](delivery-log.md), moved verbatim, and this file is 4,270
@@ -3299,49 +3307,45 @@ benefit begins for a seat purchased but never activated as specification work
 outright.
 
 **A third founder-reserved decision was found while starting the payout slice,
-and it blocks that slice's first rule.** It was not surfaced when the first two
-were asked, and it is recorded here rather than resolved because resolving it
-would decide who receives value.
+and it was answered the same day.** It was not surfaced when the first two were
+asked, and it was recorded rather than resolved in-session because resolving it
+would have decided who receives value.
 
-**`economy-transition-v7` already says what competes for the monthly pool, and
-the answer of 2026-09-14 does not match it.** The accepted text is unambiguous:
-"The eligible set is **every** in-scope seat that met the cycle's duty threshold
-and is under the accumulation cap, in span or not. It is the candidate set for
-the winner derivation, so it is what competes for the daily reallocation, for
-the recovery pool, **and for the monthly unreferred pool**." That sentence is a
-pointer rather than a complete rule — it is defined per cycle and says nothing
-about how thirty cycle-sets combine into a month — which is why the question of
-whose figure is compared over a month was real and was answered. But it carries
-**two filters the answer does not**.
+**`economy-transition-v7` said what competes for the monthly pool, and the
+answer of 2026-09-14 did not match it.** The accepted text is: "The eligible set
+is **every** in-scope seat that met the cycle's duty threshold and is under the
+accumulation cap, in span or not... it is what competes for the daily
+reallocation, for the recovery pool, **and for the monthly unreferred pool**."
+That sentence is a pointer rather than a complete rule — it is defined per cycle
+and says nothing about how thirty cycle-sets combine into a month — which is why
+the question of whose figure is compared over a month was real and was answered.
+But it carried **two filters the answer did not**, and both are now settled.
 
-* **The met-the-cycle filter is resolved.** It was put to the owner as an option
-  and declined, so the answer supersedes version seven's sentence on it. The
-  practical effect is small: a seat that met no cycle has a figure of zero and
-  wins only in a month where every candidate is at zero, which the
-  constitution's "whatever that figure is" contemplates.
-* **The accumulation cap is not resolved.** It was never surfaced. Under version
-  seven a seat at the thirty-window accumulation cap is out of the eligible set
-  even with the month's top uptime; under the answer as written it competes and
-  can win. **That is a material difference in an ordinary month**, not an edge
-  case, and the two rules pay different people.
+* **The duty filter** was put to the owner as an option and declined, so ADR
+  0075 supersedes version seven on it. The effect is small: a seat that met no
+  cycle has a figure of zero and wins only where every candidate is at zero,
+  which "whatever that figure is" contemplates.
+* **The accumulation cap does not filter the monthly ranking.** A seat at the
+  thirty-window cap competes and can win. The owner's reasoning is that the cap
+  exists to stop unminted permissions piling up, and a monthly pool payout is a
+  claim the seat has **never been offered** rather than one it declined to
+  collect, so ADR 0035's daily rule does not reach it. ADR 0076 records it.
 
-ADR 0035 is the reason it is genuinely open rather than merely unstated: it
-decided that a cycle a seat cannot collect because it is at the accumulation
-limit "is treated exactly as a cycle it failed", which is a rule about the
-**daily generation** and about mint permissions. Whether it also governs a
-**monthly pool payout** — value the seat performed for but has not been offered
-yet — is not decided by it, and reading it either way is a choice about a
-beneficiary rather than a deduction.
+**One thing about how this was found is worth keeping.** ADR 0049 — the decision
+version seven implements — makes the same forward reference with the duty filter
+and **without** the cap. The cap entered the monthly clause in version seven's
+*restatement* rather than in the decision it restated, and it went unnoticed for
+two weeks because nothing executes the clause. **A forward reference in an
+accepted document is checked by no test**, because there is nothing to test
+until the thing it points at is built; the slice that builds it is the first
+reader since the author. Reading the accepted contracts *before* asking the
+founder-decision questions, rather than after, would have put all three in one
+batch instead of two.
 
-**Everything else in the payout slice is unblocked**: the monthly uptime
-attribution, the ranking, the tie split, the remainder rule, the carry, the
-payout height, and the storage bound. The slice was not started with a hole in
-its first rule, which is what the gate exists to prevent.
-
-**No other blocker requires an owner answer.** The other successors under "Exact
-next action" — the nonzero initial height, the snapshot-seeded devnet, and ADR
-0048's threat model — are unblocked and are safe work to take while this answer
-is outstanding.
+**No blocker requires an owner answer.** The unreferred pool's payout is
+unblocked, and so are the other successors under "Exact next action" — the
+nonzero initial height, the snapshot-seeded devnet, and ADR 0048's threat
+model.
 
 **The following paragraph is M3.14e's and is retained as history.** The next
 slice, M3.14e, is unblocked,

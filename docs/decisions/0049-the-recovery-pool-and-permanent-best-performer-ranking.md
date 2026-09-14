@@ -63,6 +63,17 @@ no clean "end" to release at once each machine has its own activation date.
   cycle, in span or not. These *compete* for the daily reallocation, the recovery
   pool, and the monthly unreferred pool.
 
+**Correction of 2026-09-14: the monthly clause is superseded and the rest
+stands.** The monthly unreferred pool's candidate set is every seat in scope at
+any point in the month, ranked on the uptime it accumulated during that month,
+with no duty gate and no accumulation-cap filter;
+[ADR 0075](0075-founder-answers-on-the-monthly-pool-candidate-set-and-carry.md)
+and [ADR 0076](0076-the-monthly-pool-ranks-every-in-scope-seat.md) record it.
+Note that the eligible set **as defined here** never carried the accumulation
+cap — that filter entered the monthly clause in `economy-transition-v7`'s
+restatement rather than in this decision — so this document was already
+consistent with the answer on the cap and is superseded only on the duty gate.
+
 Today these are one set, and separating them is what makes ranking permanent.
 
 ### 3. The 731 cycles bound the native asset distribution and nothing else

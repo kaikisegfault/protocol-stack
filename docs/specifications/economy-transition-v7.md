@@ -117,6 +117,21 @@ threshold and is under the accumulation cap, in span or not. It is the candidate
 set for the winner derivation, so it is what competes for the daily reallocation,
 for the recovery pool, and for the monthly unreferred pool.
 
+**Correction of 2026-09-14: the last clause is superseded and the rest stands.**
+The eligible set as defined above is correct for the daily reallocation and the
+recovery pool, which are what this document implements, and both filters are
+[ADR 0035](../decisions/0035-founder-answers-on-payout-the-cap-and-hub-recovery.md)'s
+and remain in force there. **It is not the monthly unreferred pool's candidate
+set.** That set was decided on 2026-09-14 and is every seat in scope at any
+point in the month, ranked on the uptime it accumulated during that month, with
+**no duty gate and no accumulation-cap filter**;
+[ADR 0075](../decisions/0075-founder-answers-on-the-monthly-pool-candidate-set-and-carry.md)
+and
+[ADR 0076](../decisions/0076-the-monthly-pool-ranks-every-in-scope-seat.md)
+record it. The clause was a forward reference to a payout this document does not
+implement, so no transition, encoding, vector, digest, root, or behaviour here
+changes, and none of version seven's recorded evidence depends on it.
+
 **A seat past its own 731 cycles is in the eligible set and not in the
 contributing set.** It generates nothing and can win everything. That is ADR
 0049's rule 3 — the 731 cycles bound the distribution and not the machine's

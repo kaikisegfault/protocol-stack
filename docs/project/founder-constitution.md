@@ -539,7 +539,15 @@ is — they share it equally. The rule is one winner unless there is an exact ti
 for first, which is the same shape as the daily failed-cycle reallocation.
 
 **The candidate set is every seat in scope at any point in the month**, ranked on
-the uptime it accumulated during that month, decided on 2026-09-14. A seat that
+the uptime it accumulated during that month, with **no duty gate and no
+accumulation-cap filter**, decided on 2026-09-14. A seat at the thirty-window
+accumulation cap competes and can win: that cap exists to stop unminted
+permissions piling up, and a monthly pool payout is a claim the seat has never
+been offered rather than one it declined to collect, so
+[ADR 0035](../decisions/0035-founder-answers-on-payout-the-cap-and-hub-recovery.md)'s
+daily rule does not reach it.
+[ADR 0076](../decisions/0076-the-monthly-pool-ranks-every-in-scope-seat.md)
+records that answer and the two forward references it corrects. A seat that
 ran 29 of 30 days and whose 731-cycle span ended on the 30th is exactly the
 machine the pool exists to reward, so membership is a range overlap rather than a
 snapshot at either edge. **A month with accrual and no candidate does not pay:
@@ -1077,7 +1085,11 @@ which the founder-decision gate for `calendar-v1` raised after enumerating the
 payout that follows it: the unreferred pool's monthly candidate set is every
 seat in scope at any point in the month, ranked on the uptime accumulated during
 it, and a month whose candidate set is empty carries its accrual to the earliest
-subsequent month that has one. **One case is deliberately still open** — a final
+subsequent month that has one, and the ranking applies no duty gate and no
+accumulation-cap filter, which
+[ADR 0076](../decisions/0076-the-monthly-pool-ranks-every-in-scope-seat.md)
+records together with the two accepted forward references it corrects. **One
+case is deliberately still open** — a final
 accrual at the end of the distribution with no later month at all — and it is to
 be raised again rather than answered autonomously, because it would decide a
 beneficiary.
