@@ -34,9 +34,22 @@ handoff; `M3.15b` and anything after it was written here.
 
 ### How M3.16a was delivered
 
-**Candidate run 34896935985 on `92eb982` passed all five jobs**, and the branch merged
-by rebase as `b05f09a`. Issue #294 and PR #295 accepted
+**Candidate run 34896935985 on `92eb982` passed all five jobs**, and the branch
+merged by rebase as `b05f09a`. Issue #294 and PR #295 accepted
 [`unreferred-pool-payout-v1`](../specifications/unreferred-pool-payout-v1.md).
+**Run 34898156677 then re-ran the full matrix on `b05f09a` itself** and passed
+all five, because the post-merge run had been cancelled by the next push to
+`main` before it finished. The rebase preserves the tree, so the candidate run
+was already evidence about these bytes; the second run makes the commit on
+`main` carry it directly rather than by that argument.
+
+**The cancellation is the workflow's concurrency group doing its job and it is
+worth knowing about.** `verify.yml` groups by ref with `cancel-in-progress`, so
+a push to `main` cancels the matrix still running for the previous push to
+`main`. Pushing a closeout immediately after a merge therefore leaves the code
+commit unverified on `main` unless the run is restarted. Either wait for the
+post-merge matrix before pushing the closeout, or re-run it afterwards as this
+slice did.
 
 **What it closes.** The unreferred performance pool has accrued since
 `economy-transition-v3` — an unreferred seat's 34.2 units per cycle route to it,
