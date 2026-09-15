@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-09-14
+Last updated: 2026-09-15
 
 ## Phase
 
@@ -2230,6 +2230,14 @@ because the calendar's decisions were all delegated and the payout's were not:
 two of them were founder-reserved, both were answered on 2026-09-14, and ADR
 0075 records them.
 
+**That paragraph is history as of 2026-09-15 and is kept for its reasoning.**
+M3.16a accepted `unreferred-pool-payout-v1` and M3.17a accepted
+`economy-transition-v9`, which binds both it and `calendar-v1`. **The gap is
+therefore no longer that no ledger version applies a month; it is that no code
+executes the version that does.** What is owed is the execution model, the
+kernel, the stack, and the application-contract version that carries a timestamp
+into the application — all of it under "Exact next action".
+
 **One of those absences now carries a dependency rather than only a roadmap
 position.** The founder answer of 2026-08-16 makes external purchasability the
 permanent funding path for a new participant once the entry airdrop's
@@ -2459,6 +2467,27 @@ ADR 0075 decided is **unreachable** once a seat is activated, because in-span
 implies in-scope and in-scope never expires; that also closes by derivation the
 one case ADR 0075 left open.
 
+**M3.17a specified the binding version on 2026-09-15**, so the sentence above
+about it being the nearest slice is history too.
+[`economy-transition-v9`](../specifications/economy-transition-v9.md) and
+[ADR 0077](../decisions/0077-the-version-nine-clock-and-monthly-settlement.md)
+are accepted, and **nothing executes them**. **The nearest slice is the
+version-nine Python execution model**, on the M3.13k precedent, and what it must
+not re-derive is under "The recorded successors" below.
+
+**Three things M3.17a found are worth carrying forward rather than
+rediscovering.** The winner's award is a **per-seat running balance** rather than
+the per-month claim this document had recorded, because the owner's M3.8a rule
+already decides how many transactions a participant needs in order to be paid.
+**Exactly one month can close per assignment**, so the settlement is a single
+pass rather than a loop over closed indices — iterating them would make one
+block's work proportional to how long the network was down. And **committing the
+timestamp to the state root is forced by restart** and costs the challenge
+beacon: a proposer gains about `2^16.9` timestamp values to grind over on a quiet
+block, which is quantified, referred to the review ADR 0027 already owes, and
+**not** mitigated by excluding the timestamp from the beacon, because that would
+cost a second root construction on the pipeline's most adversarial path.
+
 **M3.14e is delivered and merged.** Issue #283 and PR #284 stopped one replica
 of the real four-node chain, required the remaining three to be a healthy
 network in their own right, committed two transfers through two of them, opened
@@ -2477,32 +2506,57 @@ the fixture rather than left to be rediscovered.
 
 **The recorded successors, in order, each its own slice:**
 
-* **`calendar-v1` and `unreferred-pool-payout-v1` are both delivered**, by
-  M3.15a and M3.16a on 2026-09-14, and **neither binds a ledger version**. That
-  is the posture `cycle-boundary-v1` and `uptime-measurement-v1` took and it
-  leaves the same gap: the rules moved from undefined to **unenforced**. **The
-  nearest slice that moves the product is the version that enforces them**, and
-  it is a `change-protocol` slice of the size `economy-transition-v8` was —
-  M3.13j through M3.13s — so it should be taken as a specification first, then a
-  Python model, then the kernel, rather than as one slice.
+* **The binding version is specified and none of it is implemented.** M3.17a
+  accepted [`economy-transition-v9`](../specifications/economy-transition-v9.md)
+  and [ADR 0077](../decisions/0077-the-version-nine-clock-and-monthly-settlement.md)
+  on 2026-09-15, so `calendar-v1` and `unreferred-pool-payout-v1` now bind a
+  ledger version. **The nearest slice is the Python execution model**, on the
+  M3.13k precedent, then the kernel and the stack, then the application-contract
+  version named below. The paragraphs that stood here enumerating what the
+  binding version had to add are superseded by the specification itself and are
+  not restated; two of them were **wrong**, and the corrections are the reason
+  to read the document rather than this list.
 
-  **What that version has to add, enumerated so the slice does not re-derive
-  it.** A block header timestamp and a genesis timestamp, which make it a new
-  contract version rather than an edit; `TIMESTAMP_TOLERANCE_MILLIS` as a
-  consensus parameter; `calendar-v1`'s C1 and C2 applied in execution with C5
-  exposed to the adapter **separately**, because a replay must not re-apply it;
-  the month a live window opened in, at most three live at once; per-seat
-  monthly accumulated figures, nonzero only, deleted when their month is paid;
-  the pool entry gaining a third quantity, `payable`, beside `accrued` and
-  `minted`; a per-month-per-seat claim and the mint that takes it, in the
-  referral balance's existing shape; the payout step ordered **before** the
-  accrual step; and the usual genesis, chain identity, state root, and receipt
-  version consequences.
+  **Two things M3.17a decided differently from what this document told it to,
+  and both are now the accepted contract.** The winner's award is a **per-seat
+  running balance**, not the per-month-per-seat claim recorded here — the owner's
+  M3.8a rule that a mint takes everything with no quantity choice already decides
+  how many transactions a participant needs in order to be paid, so a per-month
+  award would have charged `n` fees for `n` months. And the live window-month
+  records number **two**, not the three `unreferred-pool-payout-v1` sized for,
+  because version nine deletes the oldest in the same prologue that assigns it.
 
-  **Three figures the two specifications hand it**, so it does not recompute
-  them: a proposer can move a month boundary by at most **20 blocks**; a seat's
-  731-cycle span touches at most **25** calendar months; and exactly **one**
-  month accumulates figures at a time, because window assignment is ordered.
+  **What the model slice must not re-derive.** The four entry kinds are 20 window
+  month, 21 monthly uptime figure (**nonzero only**, keyed by month **and** seat),
+  22 monthly pool claim, and 23 settlement cursor; kind 12 becomes
+  `accrued || payable || minted`. The header is **154** octets with the timestamp
+  inserted at offset 46 and genesis **150** with `genesis_timestamp` at offset 10,
+  both inserted rather than appended. The prologue at an assignment height runs:
+  derive the sequence, version seven's settlement steps 1–7, settle the closing
+  month, settlement step 8, accumulate the figures, then delete the kind-19 and
+  kind-20 entries for the due window. Genesis writes **sixteen** economy entries.
+  **Version nine adds no result code.**
+
+  **The settlement is a single pass and the model must prove it rather than
+  assume it.** Exactly one month can close per assignment, because every index
+  between the cursor's month and the new one is empty by construction. No
+  invariant over a single accepted state separates the single pass from the loop
+  — they agree on every state both produce — so the vectors settle a multi-month
+  halt **both ways** and require agreement state for state. That is a required
+  vector, not a nicety.
+
+  **Two figures the two input specifications still hand it**, so it does not
+  recompute them: a proposer can move a month boundary by at most **20 blocks**,
+  and a seat's 731-cycle span touches at most **25** calendar months.
+* **An application-contract version is owed, and it is a real dependency rather
+  than a note.** `consensus-application-v1` states that timestamps are not
+  application transition inputs and freezes its local frame at version 1, and
+  version nine makes both false: `ProcessProposal` and `FinalizeBlock` must carry
+  the proposed timestamp and `InitChain` the genesis timestamp, and the two
+  execution paths must differ in exactly one respect — `ProcessProposal` applies
+  C5 and `FinalizeBlock` **never** does. `economy-transition-v9` states what that
+  contract must gain and deliberately stops there. **Nothing can run a
+  version-nine devnet until it exists.**
 * the two slices **ADR 0071 named and deliberately did not start**, either of
   which would let a network reach the uptime audit. A **nonzero initial height**
   is a `change-protocol` matter: the state root commits to the height, three
@@ -3146,6 +3200,38 @@ later scenario change stops reaching one.
 
 ## Blockers
 
+**M3.17a ran the founder-decision gate and passed it.** Twenty-two decisions were
+enumerated before any was judged. **Three are already founder-decided** and were
+cited rather than re-chosen: the candidate set and the carry by ADR 0075, and the
+accumulation cap's exclusion from the monthly ranking by ADR 0076. **Six are
+fixed by accepted specifications**: the unit, the range, the tolerance and the
+five rules by `calendar-v1`; the attribution rule, the tie split, the remainder
+and the settlement point by `unreferred-pool-payout-v1`. **The remaining thirteen
+are encoding, storage, ordering, packaging and naming**, which the founder
+constitution places outside the reserved set — the header and genesis field
+offsets, the state root's commitment to the timestamp, the four entry kinds and
+their key and value layouts, the extended pool value, the transaction kind and
+its ladder, the prologue's order, the single-pass closing rule, the label set,
+the ADR number, and the issue, branch and PR shape.
+
+**One was close enough to reserved to be worth naming, and it is recorded rather
+than left implicit.** Whether a winner's award is a per-seat running balance or a
+per-month award decides how many transactions and fees a participant needs in
+order to collect, which is a question about what an end user must do to be paid.
+It was classified **delegated because the owner had already answered it**: "a
+mint takes everything with no quantity choice" is the M3.8a rule that kinds 4, 5
+and 18 all implement, and applying an existing founder answer to a new subject is
+deduction rather than invention. **Had no such answer existed the slice would
+have stopped and asked**, and both the specification and ADR 0077 say so, so a
+later reader can see which way the classification went and why.
+
+Nothing in the slice set or changed supply, allocation, beneficiaries, Founder
+ownership, creator hierarchy, commercial routing, AI institutional authority,
+bridge scope, content permanence, or what an end user must do, own, run, or
+receive beyond applying rules already decided, and **no accepted vector file,
+manifest, encoding, or kernel source changed** — the slice is additive in every
+file it touches except three cross-reference passages.
+
 **The grpc slice ran the founder-decision gate and passed it.** Five decisions
 were enumerated before any was judged: the module version to request; whether to
 resolve locally or on a hosted runner; whether the bump needs an ADR; the branch,
@@ -3393,9 +3479,10 @@ receive, and **no accepted vector file, specification, manifest, encoding, or
 kernel source changed**.
 
 **No blocker requires an owner answer.** The successors under "Exact next
-action" — the ledger version that binds `calendar-v1` and
-`unreferred-pool-payout-v1`, the nonzero initial height, the snapshot-seeded
-devnet, and ADR 0048's threat model — are all unblocked.
+action" — the version-nine Python execution model and the kernel and stack
+behind it, the application-contract version that carries a timestamp, the
+nonzero initial height, the snapshot-seeded devnet, and ADR 0048's threat model
+— are all unblocked.
 
 **One case ADR 0075 left open is closed by derivation rather than by an
 answer, and it must not be re-asked.** It asked what becomes of a final accrual
