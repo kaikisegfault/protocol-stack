@@ -237,7 +237,10 @@ window record restated: a stale entry from another month is then visibly wrong
 rather than silently counted, and the invariant that catches it can be stated over
 the state instead of over the history that produced it. Only nonzero figures are
 written, and a decoder refuses a zero, because a zero figure is a second encoding
-of absence.
+of absence. **The same rule reaches the claim**: a settlement whose share rounds
+to zero writes no claim entry at all, since a claim is a balance and a balance of
+zero is absence. In the zero-best month that is the difference between writing
+100,000 entries recording that nobody was paid anything and writing none.
 
 ### 10. The application contract needs a version, and this document does not write it
 

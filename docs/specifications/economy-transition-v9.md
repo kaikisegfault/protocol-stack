@@ -441,9 +441,11 @@ keeps that legible in state and costs nothing: the mint's authority is still the
 seat's identity and the destination is still any escrow that identity owns, which
 is kind 4's rule unchanged.
 
-The entry is created the first time a seat wins and is **not** deleted when it is
-emptied, exactly as a referral balance is not: the pair is the audit trail of what
-a machine earned and what it took.
+The entry is created the first time a seat wins **something**, and is **not**
+deleted when it is emptied, exactly as a referral balance is not: the pair is the
+audit trail of what a machine earned and what it took. A win whose share rounds
+to zero creates no entry, because a zero `accrued` is absence rather than a
+record of a win.
 
 ### The settlement cursor
 
@@ -668,9 +670,9 @@ remainder      = payable - |winners| * share
 1. if `candidates(a)` is empty, nothing is paid, `payable` is untouched, and the
    month carries to the earliest subsequent month that has a candidate, which is
    ADR 0075's rule;
-2. otherwise, for each winner in ascending seat order, add `share` to its kind-22
-   claim's `accrued`, creating the entry if absent, and set the pool's `payable`
-   to `remainder`;
+2. otherwise, **when `share` is nonzero**, add `share` to each winner's kind-22
+   claim's `accrued` in ascending seat order, creating the entry if absent; and
+   set the pool's `payable` to `remainder` whether `share` was zero or not;
 3. delete every kind-21 entry whose month is `a`.
 
 **The candidate set is derived from the seat table and not from the figures**,
@@ -689,8 +691,16 @@ regardless of their uptime — and it is the largest single block this transitio
 can produce. It is not an error and it is not to be filtered.
 
 **`share` may be zero**, when `payable` is below the winner count. Nothing is
-assigned, `remainder` equals `payable`, and the whole balance carries. The
-arithmetic needs no special case and none is added.
+assigned, `remainder` equals `payable`, and the whole balance carries.
+
+**A zero share therefore writes no claim entry, and that is a rule rather than an
+optimisation.** A claim is a balance, and a balance of zero is absence — the same
+rule the monthly figure follows and the same rule `protocol-primitives-v1`
+imposes everywhere, that a value has one encoding. Adding zero to an absent entry
+would create one, and in the zero-best month that is up to 100,000 entries
+recording that nobody was paid anything. The winners are still the winners; there
+is simply nothing for them to collect, and the next month that pays will divide a
+balance that includes what this one could not.
 
 **The deletion in part 3 is the largest state change this rule makes** — up to
 100,000 entries in one block at capacity, though only for seats that actually
@@ -815,7 +825,8 @@ than assumed.
 5. Every kind-21 value is nonzero.
 6. Every kind-21 entry's `month_index` equals the cursor.
 7. `month_of_window(due) >= accumulating_month` at every assignment.
-8. For every kind-22 claim, `minted <= accrued`.
+8. For every kind-22 claim, `accrued` is nonzero and `minted <= accrued`. A
+   claim of zero is absence and a transition never writes one.
 
 **The pool conservation identity**, required at every accepted state:
 
@@ -1103,9 +1114,9 @@ every recorded value twice — once from an `expected.py` that imports nothing f
 - **the settlement** — a single winner, an exact tie of two and of three with the
   share and remainder at each, a remainder arriving in the next month's payout, a
   month with candidates and no accrual, a zero-best month in which every
-  candidate wins, a `share` of zero carrying the whole balance, a seat joining
-  mid-month and a seat whose span ended mid-month both competing, and a seat at
-  the accumulation cap winning;
+  candidate wins, a `share` of zero carrying the whole balance **and writing no
+  claim entry**, a seat joining mid-month and a seat whose span ended mid-month
+  both competing, and a seat at the accumulation cap winning;
 - **the single pass** — a halt spanning three months settled in one assignment
   with the carry reaching the correct month, checked against an explicit
   per-index loop over the same scenario so the two are proved equal rather than
