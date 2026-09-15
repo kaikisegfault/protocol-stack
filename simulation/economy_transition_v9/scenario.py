@@ -13,6 +13,14 @@ proposals that exercise `calendar-v1`'s five rules.
 choice and the reason the straddling case is reachable at all: at the commit
 target a window is exactly one day, so a genesis at midnight would make every
 window exactly one calendar day and no window would ever cross a month boundary.
+
+**The recorded window sequence is sampled rather than consecutive**, and that is
+a property of a fixture about arithmetic rather than a claim about a chain. A
+real chain assigns every window, because heights are consecutive and the prologue
+runs at every window-opening height — a halt moves the *timestamps* and not the
+heights. What the sampling buys is a scenario short enough to record: windows 5
+through 32 would each accrue and none would change a winner. The execution half
+cannot sample, and its fixture will not.
 """
 
 from __future__ import annotations
