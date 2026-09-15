@@ -32,6 +32,123 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M3.17a was delivered
+
+**The version-nine clock and monthly settlement are specified and none of it is
+implemented.** `docs/specifications/economy-transition-v9.md` and ADR 0077 are
+accepted, and they are the contract that turns two accepted-but-unenforced
+specifications into behaviour independent nodes reproduce. Documentation only:
+no source, build, workflow, dependency, configuration, or vector file changed,
+and the only edits to accepted documents are three cross-reference passages.
+
+**What it closes.** `calendar-v1` fixed a consensus timestamp **no block header
+carried** and a month **no transition read**; `unreferred-pool-payout-v1` fixed a
+ranking over figures **no state held** and a payout **no block performed**. Both
+took the posture `cycle-boundary-v1` and `uptime-measurement-v1` took, and left
+the same gap. Version nine adds the header field, the genesis field, the state
+root's commitment to the timestamp, four entry kinds, a third quantity on the
+unreferred pool, one transaction kind, and two steps of the prologue.
+
+**Two findings are worth more than the encoding.**
+
+**The winner's award is a per-seat running balance and not a per-month claim**,
+which is how the handoff had provisionally described it. A per-month award would
+make collecting `n` months cost `n` transactions and `n` fees, would need the
+mint to name a month or walk a range, and would hold an entry per win forever for
+a seat that never collects. **The owner had already decided it**: "a mint takes
+everything with no quantity choice" is the M3.8a answer that kinds 4, 5, and 18
+all implement, and the reasoning the owner gave then is the same reasoning here —
+a mint that can take a chosen amount must record what it took. That is why the
+decision was classified delegated rather than sent back as a question, and the
+specification cites the answer rather than restating the preference.
+
+**Exactly one month can close per assignment, so the settlement is a single pass
+rather than a loop over the closed indices.** `unreferred-pool-payout-v1` says
+the payout runs once per closed index in ascending order, which reads as a loop.
+Window attribution is non-decreasing and consecutive assigned windows carry the
+cursor's month and the new one with nothing between them, so every index strictly
+between is an **empty** month — no window attributed, therefore no accrual and no
+candidates, therefore a pass that leaves the balance exactly as it found it.
+**It matters because the gap is bounded by nothing a chain controls**: a network
+halted for a year resumes with twelve empty months between, and a genesis
+timestamp decades in the past would close hundreds at the first assignment.
+Iterating them makes one block's work proportional to how long the network was
+down, which is a denial of service reachable by an outage rather than by an
+attacker.
+
+**The equivalence had to be stated as evidence rather than as an invariant, and
+noticing that is part of the finding.** The first draft claimed an invariant
+would catch a later change that broke the theorem. None can: the single pass and
+the loop agree on every state they both produce, so nothing over a single
+accepted state separates them. What separates them is a scenario, so the required
+vectors settle a multi-month halt **both ways** and require the two to agree
+state for state.
+
+**Committing the timestamp to the state root is forced, and its cost is the
+beacon.** C2 compares `t(h)` with `t(h - 1)`, so a machine that restarted or
+restored from a snapshot must know its predecessor's stamp, and a value two
+machines could hold differently without their roots differing is a fork no gate
+catches. The consequence is that version eight's `beacon(h)` — the state root at
+`h - 1` — now varies with the timestamp, so on a **quiet** block, where the root
+was previously fully determined, a proposer gains about `2^16.9` values inside C5
+to grind over. The specification quantifies it, argues the marginal risk is small
+(a challenge harms only a seat that cannot answer, and sparing one across a slot
+needs essentially every proposal), refers it to the review ADR 0027 already owes,
+and **records the cheap mitigation it declines** — a beacon excluding the
+timestamp would cost a second root construction on the pipeline's most
+adversarial path.
+
+**Measuring a bound rather than inheriting it corrected one figure.**
+`unreferred-pool-payout-v1` sized the live window-month records at **three** —
+the open window and the two in the assignment lag. Version nine deletes the
+oldest of the three in the same prologue that assigns it, so the encoded count is
+**two** at every point inside a block. The input document was sizing before the
+binding version decided where the deletion falls; the smaller figure is the real
+one, invariant 2 states it over the state, and the vectors measure it over a
+recorded run rather than asserting it.
+
+**Version nine adds no result code, and that is a property rather than an
+accident.** Kind 22 reuses kind 4's ladder exactly, so every refusal it can
+produce already has a number and the space stays at 45. The opposite would have
+been worth noticing: a new mint needing a new refusal would be a mint whose
+authority rules differ from every other mint's. The four conditions `calendar-v1`
+names are block-level and belong to the application contract's status space.
+
+**One open item of `calendar-v1`'s is answered rather than inherited.** A genesis
+timestamp far from civil time: genesis validation applies C1 and **reads no
+clock**, because the chain identity is a hash of the genesis bytes and a validity
+rule that read a clock would make two machines disagree about a chain's own
+identifier. A genesis in the future halts the chain at its first block reporting
+`TIMESTAMP_NOT_MONOTONIC`, which is what the ordered conditions reach first and
+is the reason an operator can act on.
+
+**Facts a later session should not rediscover.** The four new entry kinds are 20
+window month (`u8(20) || cycle_window:u64` to `month_index:u32`), 21 monthly
+uptime figure (`u8(21) || month_index:u32 || seat_id:u32` to `uptime_seconds:u64`,
+**nonzero only**), 22 monthly pool claim (`u8(22) || seat_id:u32` to
+`accrued:u64 || minted:u64`), and 23 settlement cursor (`u8(23)` to
+`accumulating_month:u32`). Kind 12's value becomes `accrued || payable || minted`
+at 24 octets. The header is 154 octets with the timestamp **inserted at offset
+46**, after the height; genesis is 150 with `genesis_timestamp` **inserted at
+offset 10**, after `network_id`; both insert rather than append so a mis-versioned
+decode fails at the first comparison instead of producing a plausible header. The
+prologue's order at an assignment height is: derive the sequence, version seven's
+settlement steps 1 through 7, **settle the closing month**, settlement step 8,
+**accumulate the figures**, then delete the kind-19 and kind-20 entries for the
+due window — the deletion moves to the end because the figures are computed from
+the records it deletes. Genesis writes **sixteen** economy entries, the fourteen
+plus the cursor and window 0's month, both at `month_index(genesis_timestamp)`,
+because height 0 does not exist and genesis is window 0's opening height.
+
+**What the slice deliberately did not write.** `consensus-application-v1` says
+timestamps are not application transition inputs and freezes its frame at version
+1; both become false under version nine. The specification states exactly what a
+conforming application contract must gain — the timestamp in `ProcessProposal`,
+`FinalizeBlock` and `InitChain`, C5 applied in the first and **never** in the
+second, and a block-level status rather than a transaction result — and stops
+there. Writing both in one document would put a wire encoding inside a consensus
+transition, and version eight's layering is what says so.
+
 ### How M3.16a was delivered
 
 **Candidate run 34896935985 on `92eb982` passed all five jobs**, and the branch
