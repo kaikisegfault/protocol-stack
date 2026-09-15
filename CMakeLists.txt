@@ -1211,6 +1211,20 @@ add_test(
     "${PROJECT_SOURCE_DIR}/tests/simulation/unreferred_pool_payout_test.py"
 )
 add_test(
+  NAME economy-transition-v9-vectors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tools/economy-transition-v9-vectors/verify.py"
+    --vectors
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v9.txt"
+)
+add_test(
+  NAME economy-transition-v9-contract
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_v9_contract_test.py"
+)
+add_test(
   NAME uptime-measurement-vectors
   COMMAND
     "${Python3_EXECUTABLE}"
