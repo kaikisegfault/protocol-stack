@@ -18,6 +18,14 @@ single-pass closing rule, and the two pool identities. `scenario.py` is the
 recorded fixture, bound from `simulation.unreferred_pool`'s rather than invented
 beside it.
 
+**The execution half.** `ledger.py` holds the state a transition runs against,
+`execution.py` and `transitions.py` admit and dispatch the seventeen kinds —
+sixteen of them delegated to version eight's own table — `receipt.py` restates
+the one consistency rule the added kind moves, `block.py` runs the timestamp
+rule, the six-step prologue and the three steps around the transactions, and
+`trace.py` records the first chain in this repository that takes value **out** of
+the unreferred pool.
+
 **Three modules bind an accepted model rather than restating its judgement**,
 and each carries the guard that keeps the binding honest: `timeline` against
 `simulation.calendar`, `settlement` against `simulation.unreferred_pool`, and
@@ -31,23 +39,35 @@ domain-separated preimage using the accepted construction.
 """
 
 from . import (
+    block,
     contract,
     envelope,
+    execution,
     genesis,
     header,
+    ledger,
+    receipt,
     scenario,
     settlement,
     state,
     timeline,
+    trace,
+    transitions,
 )
 
 __all__ = [
+    "block",
     "contract",
     "envelope",
+    "execution",
     "genesis",
     "header",
+    "ledger",
+    "receipt",
     "scenario",
     "settlement",
     "state",
     "timeline",
+    "trace",
+    "transitions",
 ]
