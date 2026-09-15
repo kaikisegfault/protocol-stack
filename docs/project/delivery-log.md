@@ -32,6 +32,104 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M3.17b was delivered
+
+**The version-nine contract half executes in Python and 213 vectors record it.**
+`simulation/economy_transition_v9/` is eight modules and no copied table,
+`test-vectors/economy-transition-v9.txt` is normative, and every value in it is
+derived twice — once by an `expected.py` that imports nothing from `simulation/`
+and computes the calendar by **accumulating month lengths from 1970** rather than
+by the closed form the model uses, and once by a live run. Two ctest entries are
+registered. No accepted vector, model, manifest, encoding, or kernel source
+changed, and the accepted calendar, payout and version-eight suites all still
+pass unchanged.
+
+**The first thing the slice did was find a defect in the specification it was
+built from, and it found it by reading rather than by running.** M3.16a's payout
+model writes no claim when the share rounds to zero; `economy-transition-v9` said
+to add the share to each winner's claim "creating the entry if absent", without
+qualification, and **adding zero to an absent entry creates one**. A claim is a
+balance and a balance of zero is absence — the rule the monthly figure already
+follows and the one `protocol-primitives-v1` imposes everywhere. In the zero-best
+month that would be up to 100,000 entries recording that nobody was paid
+anything. It was corrected before the model existed, which is the cheapest point
+it could have been corrected at and the reason to read the accepted models before
+writing a new one.
+
+**A mutation probe found a coverage gap the vectors could not have found on
+their own.** The independent header derivation could **lose the timestamp
+entirely** and every one of the 207 vectors still passed, because nothing called
+it: the header was checked by its widths and offsets and never by its bytes.
+**A derivation no vector reaches is not evidence, it is decoration**, and the
+only thing that distinguishes the two is a probe. `header.py` now holds the
+154-octet header and its identifier, and it lives in the **contract half rather
+than beside block execution** — what a block header *is* is an encoding and
+belongs with the state keys and the genesis bytes; what a block *does* belongs
+with the transition.
+
+**Sixteen probes were run and every one that changed behaviour was caught**,
+against a no-op control that was not. Among them: a zero share writing a claim
+entry, the share dividing by one winner fewer, the candidate set excluding its
+last window, replay applying the tolerance, the mint message dropping the kind
+byte, the header swapping height and timestamp, the block-id label left at
+version one's, a paid month's figures left undeleted, and **the accrual applied
+before the payout, which fails 23 vectors** — so the normative ordering is
+evidence rather than decoration. The candidate-set probe is worth naming
+separately: it was caught by the model's **own accrual theorem**, reporting
+"month 673 accumulated uptime and has no candidate", which is the theorem firing
+exactly where `unreferred-pool-payout-v1` says it should.
+
+**Three modules bind an accepted model rather than restating its judgement, and
+each carries the guard that keeps the binding honest.** `timeline` drives
+`simulation.calendar` over the same proposals and requires the same condition to
+fire at every height — merely accepting the same blocks would not be checked,
+because the **ordered conditions** are the part a second implementation gets
+wrong. `settlement` drives `simulation.unreferred_pool` over the same month and
+requires the same winners, share and remainder; over the whole recorded run the
+two reach **identical claims**, and version nine's *skipped* months are exactly
+the payout model's *carried* ones, which is the single-pass equivalence
+demonstrated against an accepted artifact rather than against a loop written for
+the occasion. `envelope`'s mint message reproduces version six's construction
+byte for byte on all three of version six's kinds.
+
+**Two restatements were unavoidable and are named rather than hidden.** Version
+six's `mint_message` guards its `kind` argument against version six's three
+confirmable mints, which is correct there and wrong for a version with four; and
+a ledger holds a head rather than every block it has seen, so `calendar-v1`'s
+conditions are restated over two scalars rather than driven through a chain of
+`Block` objects. **A restatement is only safe if something keeps the two equal**,
+which is what the guards above are for.
+
+**The carryover classification produced a correction of its own.**
+`MAX_GENESIS_ACCOUNTS` does **not** move — 48-octet account entries absorb eight
+more prefix octets without crossing an entry boundary — so it is carried as
+version eight's own object and the recomputation under the wider prefix is a
+**guard** rather than a redefinition. A later version that widened the prefix
+past an entry boundary fails there instead of silently admitting one account
+fewer than its own table says. The final classification is 119 carried, 15
+revised, 20 added, and five of version eight's own provenance names replaced.
+
+**Facts a later session should not rediscover.** The package is
+`simulation/economy_transition_v9/`: `contract.py` the classification and the
+new constants, `state.py` the four entry kinds and the root that commits to the
+timestamp, `genesis.py` the 150-octet genesis and its sixteen entries,
+`header.py` the 154-octet header, `envelope.py` kind 22's body, `timeline.py`
+the five calendar rules as **two entry points that differ in exactly one
+respect**, `settlement.py` the ranking and the single-pass rule, `scenario.py`
+the fixture. The fixture is **bound** from `simulation/unreferred_pool`'s rather
+than invented beside it, so one genesis timestamp and one window sequence drive
+both models. **That sequence is sampled rather than consecutive** — 0, 1, 2, 3,
+4, 33, 63, 155 — which is legitimate for a fixture about arithmetic and is not a
+claim about a chain: a real chain assigns every window, because heights are
+consecutive and a halt moves the timestamps rather than the heights. The
+execution fixture cannot sample, and the one place the sampling shows is
+`close_month`'s `last_window` argument, which a real chain fills with `due - 1`. The seam to the execution half is that `settlement.py` operates on
+plain decoded dicts — `{(month, seat): seconds}`, `{seat: (accrued, minted)}`,
+and a `Pool` triple — so `block.py` wires it to the ledger's encoded maps without
+either half reaching into the other. The two ctest entries are
+`economy-transition-v9-vectors` and `economy-transition-v9-contract`, and
+`verify.py --emit` rewrites the vector file through the same agreement gate.
+
 ### How M3.17a was delivered
 
 **The version-nine clock and monthly settlement are specified and none of it is
