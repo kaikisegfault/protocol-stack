@@ -1,0 +1,171 @@
+# Economy transition v9 execution vectors.
+# Amounts are unsigned decimal atomic units at the eight-decimal denomination.
+# Uptime figures are unsigned decimal seconds, timestamps unsigned decimal
+# milliseconds since the Unix epoch, month indices calendar-v1's counted from
+# January 1970, and byte strings lowercase hex.
+#
+# These record what a version-nine chain *does*. The contract surface it does it
+# over is test-vectors/economy-transition-v9.txt and the measurement is version
+# eight's; this file touches neither and restates neither.
+#
+# The fixture is simulation/economy_transition_v9/trace.py. It runs at ninety
+# seconds a block, so a window of 28,800 heights is exactly thirty days and every
+# window opens in a new month -- at the commit target a month is about thirty
+# windows and 864,000 heights, which no recorded trace can run. Nothing in the
+# contract bounds the block rate from above, and a seat's figure is a function of
+# heights rather than of stamps, so the rate changes when a month closes and
+# nothing about what a machine earned.
+
+
+# The chain this trace runs, derived twice. The genesis timestamp is the one field version nine adds, and it binds the chain identity like every other genesis field.
+genesis.bytes=5053474e0009000000090000019bbef3b0004f1851909daf1400000000000000000000000000000003e80000000000000000af153c99adf7c49e5a92563946cf0e60dfd7a58785462530988f661aa68faaa75555555555555555555555555555555555555555555555555555555555555555d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d800000000
+genesis.chain_id=06c5fd4ad26d89cab06f68d1a328665871c1e486088aad14ea24eeac95dfbc5e
+genesis.timestamp=1768435200000
+genesis.month=672
+genesis.millis_per_block=90000
+
+# Every window this chain opened, and the month it opened in, derived twice. At ninety seconds a block a window is exactly thirty days, so each one opens in a month of its own — which is the fixture's whole reason for running slower than the commit target.
+calendar.window_1.month=673
+calendar.window_1.opening_timestamp=1771027200000
+calendar.window_2.month=674
+calendar.window_2.opening_timestamp=1773619200000
+calendar.window_3.month=675
+calendar.window_3.opening_timestamp=1776211200000
+calendar.window_4.month=676
+calendar.window_4.opening_timestamp=1778803200000
+calendar.windows_opened=4
+
+# Exactly two window-month entries are live at the end of the run — the open window's and its predecessor's — which is two rather than the three unreferred-pool-payout-v1 sized for, because version nine deletes the oldest in the same prologue that assigns it. Measured over the run rather than asserted.
+calendar.live_window_months=2
+calendar.live_window_months_are_the_open_window_and_its_predecessor=true
+
+# The root the setup shorthand leaves behind, and the stamp it commits to. `advance_to` stands in for a run of empty blocks and is valid only before any activation, and version nine makes its timestamp a required argument: a shorthand that advanced the height and left the stamp behind would commit a root naming a height the stamp does not belong to, and every later block would still satisfy C2 because the stale stamp is smaller. The failure would be a wrong root rather than a refusal, which is the direction that hides — and this is the only place it is observable, because the block that follows sets its own stamp.
+shorthand.timestamp=1771026210000
+shorthand.height=28789
+shorthand.skipped_blocks=28787
+shorthand.root=ec7271b064a806c7d3cb7fb0b6d124b3718fd76f616b5ce12a76f1fdc6f1cbf4
+shorthand.the_first_block_after_it_carries_that_root=true
+
+# Two machines across the window the chain measured: one answered every audit it was issued and one answered none. A trace cannot pre-compute which of its machines will be challenged — that unpredictability is the property the pipeline exists to have — so what it states afterwards is that every challenge was answered, and the counts are how that is checked.
+audit.alice_challenged=69
+audit.alice_answered=69
+audit.alice_answered_every_challenge=true
+audit.bob_challenged=75
+audit.bob_answered=0
+audit.bob_answered_none=true
+audit.quiet_heights=86410
+
+# Every month this chain closed, with the block that closed it. A month is settled at the assignment of the first window of a later month, which is the point at which its figures are complete — not at the block that opens the month, which would rank every seat on a month missing its last windows.
+settled.settlements=2
+settled.month_672.settled_at_height=86400
+settled.month_672.month_of_the_assigned_window=673
+settled.month_672.candidate_count=0
+settled.month_672.best_figure=0
+settled.month_672.winners=
+settled.month_672.payable_before=0
+settled.month_672.share=0
+settled.month_672.remainder=0
+settled.month_672.assigned=0
+settled.month_672.skipped_months=
+settled.month_673.settled_at_height=115200
+settled.month_673.month_of_the_assigned_window=674
+settled.month_673.candidate_count=2
+settled.month_673.best_figure=86400
+settled.month_673.winners=0
+settled.month_673.payable_before=6840000000
+settled.month_673.share=6840000000
+settled.month_673.remainder=0
+settled.month_673.assigned=6840000000
+settled.month_673.skipped_months=
+
+# The pool's three quantities after the run, and the two identities over them. The first is unreferred-pool-payout-v1's — every unit received is undistributed or owed to a named winner — and the second is the one it leaves to the version that implements a mint, stated here as an equality because an equality catches a unit minted twice.
+settled.pool_accrued=13680000000
+settled.pool_payable=6840000000
+settled.pool_minted=6840000000
+settled.claims_assigned=6840000000
+settled.claims_minted=6840000000
+settled.accrued_equals_payable_plus_assigned=true
+settled.minted_equals_the_claims_minted=true
+settled.conservation_failures=0
+settled.pool_accrued_is_the_unreferred_legs=13680000000
+settled.windows_that_accrued=2
+
+# Kind 22 executed. A mint with 64 zero octets against a posture that requires a confirmation is refused and writes nothing, so the mint that follows it in the same block is offered the sequence number the refusal did not consume. A second mint collects nothing, and a stranger cannot mint another seat's award.
+mint.an_unconfirmed_mint_is_refused=BIOMETRIC_REQUIRED
+mint.winner_mints_the_pool=SUCCESS
+mint.a_second_mint_collects_nothing=NOTHING_TO_MINT
+mint.a_stranger_cannot_mint_another_seats_award=UNAUTHORIZED
+mint.receipt=505352430009d4df3424dd9e296167ad318f665a0081469565fd2a2f619fc785584f4beeeb1b160000000000000003e80000000197b21e00
+mint.receipt_version=9
+mint.issued_atomic=6840000000
+mint.fee_charged=1000
+mint.winner_seat=0
+mint.the_claim_is_emptied_and_kept=true
+mint.the_referral_channel_issued_it=true
+
+# The settlement block's header and identifier, derived twice. The header is 154 octets with the timestamp inserted after the height, and the identifier is re-versioned because it derives a different artifact.
+block.header=5053424c000906c5fd4ad26d89cab06f68d1a328665871c1e486088aad14ea24eeac95dfbc5e000000000001c2000000019e28eed000797c0e9bfecfe85761ddf530c659473bfa6db38f583e0ea326bcfb470f4475746da8ef0952a76852f884316ee85aee6a97d3cdbae244aa90a6103a2f1b734ea1de861d536bd6bb69ba293c48371348ff86c4703c1c0ffd6037ff03a10634895d00000000
+block.header_bytes=154
+block.block_id=623c05e09db1e17585e25cea01b2e6368ada9da91af33ae102e99b2343b484c6
+block.timestamp=1778803200000
+block.height=115200
+block.transaction_root=6da8ef0952a76852f884316ee85aee6a97d3cdbae244aa90a6103a2f1b734ea1
+
+# Every month this chain closed, with the block that closed it. A month is settled at the assignment of the first window of a later month, which is the point at which its figures are complete — not at the block that opens the month, which would rank every seat on a month missing its last windows.
+halted.settlements=3
+halted.month_672.settled_at_height=86400
+halted.month_672.month_of_the_assigned_window=673
+halted.month_672.candidate_count=0
+halted.month_672.best_figure=0
+halted.month_672.winners=
+halted.month_672.payable_before=0
+halted.month_672.share=0
+halted.month_672.remainder=0
+halted.month_672.assigned=0
+halted.month_672.skipped_months=
+halted.month_673.settled_at_height=115200
+halted.month_673.month_of_the_assigned_window=674
+halted.month_673.candidate_count=2
+halted.month_673.best_figure=86400
+halted.month_673.winners=0
+halted.month_673.payable_before=6840000000
+halted.month_673.share=6840000000
+halted.month_673.remainder=0
+halted.month_673.assigned=6840000000
+halted.month_673.skipped_months=
+halted.month_674.settled_at_height=144000
+halted.month_674.month_of_the_assigned_window=678
+halted.month_674.candidate_count=2
+halted.month_674.best_figure=86400
+halted.month_674.winners=0
+halted.month_674.payable_before=6840000000
+halted.month_674.share=6840000000
+halted.month_674.remainder=0
+halted.month_674.assigned=6840000000
+halted.month_674.skipped_months=675,676,677
+
+# The pool's three quantities after the run, and the two identities over them. The first is unreferred-pool-payout-v1's — every unit received is undistributed or owed to a named winner — and the second is the one it leaves to the version that implements a mint, stated here as an equality because an equality catches a unit minted twice.
+halted.pool_accrued=20520000000
+halted.pool_payable=6840000000
+halted.pool_minted=0
+halted.claims_assigned=13680000000
+halted.claims_minted=0
+halted.accrued_equals_payable_plus_assigned=true
+halted.minted_equals_the_claims_minted=true
+halted.conservation_failures=0
+halted.pool_accrued_is_the_unreferred_legs=20520000000
+halted.windows_that_accrued=3
+
+# The halt closes one month and skips three, in one pass, and the result is required to equal an explicit per-index loop over the same state. No invariant over a single accepted state separates the two — they agree on every state both produce — so what distinguishes them is a scenario.
+single_pass.height=144000
+single_pass.settled_month=674
+single_pass.skipped_months=675,676,677
+single_pass.months_the_halt_crossed=4
+single_pass.equals_the_loop=true
+
+# **The payout before the accrual is observable.** The window being assigned belongs to the new month, so its accrual belongs to the new month: letting it land first pays the closing month one window of its successor's accrual, and the root says so.
+ordering.accrual_before_the_settlement_reaches_a_different_root=true
+
+# **The accumulation before the deletion is normative and unobservable, and that is a finding rather than a defect.** The specification says the deletion must follow the accumulation because the figures are computed from the records it removes — which is true of an implementation that reads those records lazily, and vacuous for one that derives the window's seat sequence once before either step. Every conforming implementation derives it once, because the settlement needs the same sequence the assignment does, so the two orders commit to the same root. This vector states what the shape of the prologue makes safe rather than claiming an order the chain could observe — and it is where a later implementation that read the records lazily would be noticed.
+ordering.deletion_before_the_accumulation_reaches_the_same_root=true
+ordering.accepted_root=de861d536bd6bb69ba293c48371348ff86c4703c1c0ffd6037ff03a10634895d
