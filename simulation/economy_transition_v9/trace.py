@@ -358,6 +358,12 @@ def _seated_chain(
     scenario.skipped_blocks = ledger.advance_to(
         ACTIVATION_HEIGHT - 1, stamp(ACTIVATION_HEIGHT - 1)
     )
+    # The root the shorthand leaves behind, read before the next block consumes
+    # it. It is the only observable consequence of `advance_to` carrying the
+    # timestamp or not: the block that follows sets its own stamp, so a
+    # shorthand that dropped it would differ here and nowhere else.
+    scenario.notes["root_after_the_shorthand"] = ledger.state_root()
+    scenario.notes["timestamp_after_the_shorthand"] = ledger.timestamp
     _run(scenario, signatures, [
         _activate(signatures, ledger, ALICE_IDENTITY, ALICE_KEY, ALICE_SIGNER_KEY,
                   ALICE_SEAT, 2),

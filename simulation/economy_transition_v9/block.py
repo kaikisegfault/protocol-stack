@@ -34,6 +34,18 @@ removes. Version eight deleted them immediately after the assignment; version
 nine moves the deletion to the end of the prologue and changes nothing else about
 it.
 
+**The first of those two orderings is observable and the second is not, which is
+a finding rather than a defect.** Letting the accrual land before the settlement
+pays the closing month one window of its successor's accrual, and the root says
+so. The deletion is a different case: the specification's reason for the order —
+that the figures come from the records the deletion removes — is true of an
+implementation that reads those records lazily, and vacuous for one that derives
+the window's seat sequence **once** before either step, which is what every
+conforming implementation does because the settlement needs the same sequence the
+assignment does. So the two orders commit to the same root, the vectors record
+that rather than claiming a difference, and a later implementation that read the
+records lazily is what would make the order load-bearing again.
+
 **`settle_before_accrual` and `delete_before_accumulate` run the rejected
 orders**, so a trace can put the accepted reading and the rejected one on
 identical inputs. Neither is a configuration option a chain has.
@@ -97,9 +109,9 @@ __all__ = [
 class BlockOutcome:
     """One executed block, and the labels the vectors record it under.
 
-    Version eight's fields, with the three the settlement adds: the timestamp the
-    block carried, the month it settled if any, and the empty month indices the
-    single pass jumped.
+    Version eight's fields, with the four the settlement adds: the timestamp the
+    block carried, the month of the window it assigned, the month it settled if
+    any, and the empty month indices the single pass jumped.
     """
 
     def __init__(self, height: int, timestamp: int, previous_state_root: str) -> None:
@@ -115,6 +127,7 @@ class BlockOutcome:
         self.lost_slots: list[tuple[int, int]] = []
         self.settled = None
         self.skipped_months: tuple[int, ...] = ()
+        self.due_month: int | None = None
         self.opened_window: int | None = None
         self.header = b""
         self.block_id = ""
@@ -275,6 +288,7 @@ def _assignment(
     due_month = ledger.window_months.get(due)
     if due_month is None:
         raise InvalidBlock(f"window {due} is assigned with no recorded month")
+    outcome.due_month = due_month
 
     measured = derive_schedule(ledger.activations(), due, ledger.uptime)
     seats = _resolved(ledger, measured) if measured else []
