@@ -57,7 +57,6 @@ CARRIED_FROM_V8: tuple[str, ...] = (
     "CHALLENGE_RESPONSE",
     "CHANNEL_ENTRY",
     "CODE_NUMBER",
-    "CONFIRMABLE_MINTS",
     "CYCLE_ASSIGNMENT_ENTRY",
     "CYCLE_ASSIGNMENT_FIXED_VALUE_BYTES",
     "CYCLE_BLOCKS",
@@ -90,6 +89,7 @@ CARRIED_FROM_V8: tuple[str, ...] = (
     "LEG_BENEFICIARY_KIND",
     "MANIFEST_DIGEST_HEX",
     "MAX_EXEMPT_SLOT_MASK",
+    "MAX_GENESIS_ACCOUNTS",
     "MAX_OBJECT_BYTES",
     "MAX_SEATS_PER_IDENTITY",
     "MAX_SEAT_ID",
@@ -176,14 +176,15 @@ REPLACED_DECLARATIONS: tuple[str, ...] = (
 REVISED_IN_V9: tuple[str, ...] = (
     "BODY_BYTES",
     "CHAIN_ID_LABEL",
+    "CONFIRMABLE_MINTS",
     "ECONOMY_TREE_PREFIX",
     "ENTRY_KEY_BYTES",
     "ENTRY_KINDS",
     "ENTRY_VALUE_BYTES",
     "GENESIS_PREFIX_BYTES",
     "GENESIS_SCHEMA_VERSION",
+    "ISSUING_KINDS",
     "KIND_SCHEME",
-    "MAX_GENESIS_ACCOUNTS",
     "RECEIPT_VERSION",
     "STATE_ROOT_LABEL",
     "STATE_ROOT_SCHEMA_VERSION",
@@ -199,6 +200,7 @@ GENESIS_SCHEMA_VERSION = 9
 RECEIPT_VERSION = 9
 
 ADDED_IN_V9: tuple[str, ...] = (
+    "ACCOUNT_BOUND_UNDER_THE_WIDER_PREFIX",
     "ADDED_IN_V9_ENTRY_KINDS",
     "BLOCK_HEADER_BYTES",
     "BLOCK_HEADER_SCHEMA_VERSION",
@@ -335,9 +337,23 @@ LIVE_WINDOW_MONTHS = 2
 # One `u64` after the network identifier. `account_count` stays last because the
 # account entries follow it.
 GENESIS_PREFIX_BYTES = v8.GENESIS_PREFIX_BYTES + GENESIS_TIMESTAMP_BYTES
-MAX_GENESIS_ACCOUNTS = (
+
+# **The account bound did not move**, so it is carried rather than revised, and
+# the recomputation under the wider prefix is a guard rather than a redefinition:
+# 48-octet account entries absorb eight more prefix octets without crossing an
+# entry boundary. A version that widened the prefix past one would fail here
+# rather than silently admitting one account fewer than its own table says.
+ACCOUNT_BOUND_UNDER_THE_WIDER_PREFIX = (
     v8.MAX_OBJECT_BYTES - GENESIS_PREFIX_BYTES
 ) // v8.ACCOUNT_ENTRY_BYTES
+
+
+def assert_account_bound_unchanged() -> None:
+    if ACCOUNT_BOUND_UNDER_THE_WIDER_PREFIX != MAX_GENESIS_ACCOUNTS:
+        raise AssertionError(
+            f"the wider prefix admits {ACCOUNT_BOUND_UNDER_THE_WIDER_PREFIX} "
+            f"accounts and the carried bound is {MAX_GENESIS_ACCOUNTS}"
+        )
 
 # Version eight's fourteen, plus the settlement cursor and window zero's month.
 GENESIS_ECONOMY_ENTRY_COUNT = 16

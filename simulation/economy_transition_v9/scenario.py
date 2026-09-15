@@ -127,3 +127,61 @@ def proposals() -> tuple[tuple[int, int, int, str], ...]:
             "accepts_at_the_behind_boundary",
         ),
     )
+
+
+def run() -> dict:
+    """The recorded settlement, driven window by window as a block would drive it.
+
+    This is the settlement machine and not a ledger: there is no block, no
+    transaction and no root here, because those are the execution half's. What it
+    does hold is the **order**, which is normative and is the part two
+    implementations can each read a sentence about differently: the closing
+    month is settled first, then the assigned window's accrual raises the pool,
+    then its uptime accumulates into the new month.
+    """
+    from .genesis import genesis_month
+    from .settlement import Pool, close_month
+
+    months = window_months()
+    pool = Pool()
+    claims: dict[int, tuple[int, int]] = {}
+    figures: dict[tuple[int, int], int] = {}
+    settlements: list = []
+    skipped: list[int] = []
+    cursor = genesis_month(genesis())
+    previous_window: int | None = None
+
+    for index, uptime, accrual in pool_scenario.SEQUENCE:
+        due_month = months[index]
+        settlement, empty = close_month(
+            cursor,
+            due_month,
+            ACTIVATIONS,
+            previous_window if previous_window is not None else index,
+            pool,
+            claims,
+            figures,
+        )
+        if settlement is not None:
+            settlements.append(settlement)
+            skipped.extend(empty)
+        cursor = due_month
+
+        pool.accrued += accrual
+        pool.payable += accrual
+
+        for seat, seconds in sorted(uptime.items()):
+            if seconds:
+                key = (due_month, seat)
+                figures[key] = figures.get(key, 0) + seconds
+        pool.assert_conserved(claims)
+        previous_window = index
+
+    return {
+        "pool": pool,
+        "claims": claims,
+        "figures": figures,
+        "settlements": tuple(settlements),
+        "skipped": tuple(skipped),
+        "cursor": cursor,
+    }

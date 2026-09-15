@@ -1,0 +1,301 @@
+# Economy transition v9 normative vectors.
+# Amounts are unsigned decimal atomic units at the eight-decimal denomination.
+# Uptime figures are unsigned decimal seconds. Timestamps are unsigned decimal
+# milliseconds since the Unix epoch, and month indices are calendar-v1's,
+# counted from January 1970. Byte strings are lowercase hex.
+#
+# Every value here is derived twice: once by
+# tools/economy-transition-v9-vectors/expected.py, which imports nothing from
+# simulation/ and computes the calendar by accumulating month lengths from 1970
+# rather than by the closed form the model uses, and once by a live run of
+# simulation/economy_transition_v9. A boolean vector may only be true, because
+# its name is the claim.
+#
+# The fixture is simulation/economy_transition_v9/scenario.py, which binds
+# simulation/unreferred_pool's rather than inventing a second one: the genesis
+# sits six hours off a day boundary so a window straddles a month boundary, and
+# the recorded months reach a single winner, a two-way tie over an odd balance,
+# a three-way tie, a month every candidate ran zero seconds in, and a halt that
+# leaves two months with no window at all.
+
+
+# Four constructions are re-versioned and every other label keeps the version that accepted it. The block identifier and the header schema version move for the first time since version one, because version nine is the first version to change the header's bytes.
+identity.chain_id_label=protocol-stack:v9:chain-id
+identity.state_root_label=protocol-stack:v9:state-root
+identity.economy_tree_prefix=protocol-stack:v9:economy
+identity.block_id_label=protocol-stack:v9:block-id
+identity.genesis_schema_version=9
+identity.state_root_schema_version=9
+identity.block_header_schema_version=9
+identity.receipt_version=9
+
+# Every inherited label keeps the version that accepted it, because a label names the artifact it derives and none of those artifacts changed. The mint message kind 22 reuses is version six's.
+identity.carried_label.sign=protocol-stack:v1:tx-sign
+identity.carried_label.transaction_id=protocol-stack:v1:tx-id
+identity.carried_label.mint_confirm=protocol-stack:v6:mint-confirm
+identity.carried_label.challenge=protocol-stack:v8:challenge
+identity.carried_label.dispute=protocol-stack:v8:dispute
+identity.carried_label.mint_confirm_is_version_six=true
+
+# The block header is version one's with the timestamp inserted after the height, which moves every later offset. Appending would have preserved them, and that is a hazard rather than a benefit: a loose decoder would read a version-nine header as a version-one header with eight trailing octets and agree with itself about every field.
+header.bytes=154
+header.timestamp_offset=46
+header.grew_by=8
+header.version_eight_bytes=146
+header.bytes_encoded=5053424c0009000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f00000000000000040000019c9daebb00a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c000000002
+header.encoded_length=154
+header.timestamp_field=true
+header.block_id=056aa3ec0ed776aa790bed94a10e513a2f13f9fa717cafbeb276744a0e27efa3
+header.block_id_differs_from_version_ones=true
+header.refuses_a_timestamp_outside_the_range=true
+
+# Genesis gains a u64 after the network identifier. account_count stays last, which it must: the account entries follow it. The account bound is unchanged, because 48-octet entries absorb eight more prefix octets without crossing an entry boundary.
+genesis.prefix_bytes=150
+genesis.timestamp_offset=10
+genesis.version_eight_prefix_bytes=142
+genesis.max_accounts=21842
+genesis.max_accounts_unchanged_from_version_eight=true
+genesis.economy_entry_count=16
+
+# Kind 22's body is kind 4's exactly, and that is the point rather than a coincidence: a mint of a seat's award is authorized the way a mint of a seat's permissions is.
+kind22.body_bytes=100
+kind22.body_equals_mint_node=true
+kind22.scheme=1
+kind22.transaction_kind=22
+kind22.is_confirmable_mint=true
+kind22.is_issuing_kind=true
+kind22.transaction_kind_count=17
+
+# Version nine adds no result code. Kind 22 reuses kind 4's ladder exactly, so every refusal it can produce already has a number. The opposite would be worth noticing: a new mint needing a new refusal would be a mint whose authority rules differ from every other mint's.
+codes.count=45
+codes.unchanged_from_version_eight=true
+codes.kind22.cycle_range=10
+codes.kind22.seat_not_purchased=14
+codes.kind22.seat_not_activated=13
+codes.kind22.unauthorized=9
+codes.kind22.escrow_not_found=28
+codes.kind22.escrow_not_owned=29
+codes.kind22.nothing_to_mint=15
+codes.kind22.biometric_required=22
+codes.kind22.channel_cap=20
+
+# calendar-v1's four timestamp conditions produce no result code. They are block-level and belong to the application contract's status space, exactly as ledger-transition-v1's height rule does.
+codes.timestamp_conditions=('HEIGHT_NOT_NEXT', 'TIMESTAMP_RANGE', 'TIMESTAMP_NOT_MONOTONIC', 'TIMESTAMP_AHEAD_OF_TOLERANCE', 'TIMESTAMP_BEHIND_TOLERANCE')
+codes.no_timestamp_condition_is_a_result_code=true
+
+# The clock is calendar-v1's, bound rather than restated: a second copy of a tolerance is a second opinion, and two machines holding different tolerances is a fork.
+clock.millis_per_day=86400000
+clock.min_timestamp_millis=0
+clock.max_timestamp_millis=253402300799999
+clock.max_month_index=96359
+clock.tolerance_millis=60000
+clock.tolerance_is_not_a_genesis_field=true
+
+# The genesis bytes and the chain identity, derived twice. The encoder's field order is not the declaration's: total_supply is written before fixed_transfer_fee, inherited three versions back.
+genesis.bytes=5053474e0009000000090000019c9daebb004f1851909daf1400000000000000000000000000000003e80000000000000000af153c99adf7c49e5a92563946cf0e60dfd7a58785462530988f661aa68faaa7a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d800000000
+genesis.encoded_bytes=150
+genesis.chain_id=430ddefe2b43981479bdbc450b54aa27e6ab39f3617d4823afc27e2db5264298
+genesis.timestamp_field=1772172000000
+genesis.month=673
+
+# No version-nine chain identity equals a predecessor's. Each non-collision is required separately, because distinct labels are strings rather than a chain, and the objects are different lengths so no version-nine genesis can be read as an earlier one either.
+genesis.chain_id_differs_from_v2=true
+genesis.chain_id_differs_from_v3=true
+genesis.chain_id_differs_from_v4=true
+genesis.chain_id_differs_from_v5=true
+genesis.chain_id_differs_from_v6=true
+genesis.chain_id_differs_from_v7=true
+genesis.chain_id_differs_from_v8=true
+
+# Genesis validation applies calendar-v1's range rule and reads no clock. That is forced: the chain identity is a hash of the genesis bytes, so a validity rule that read a clock would make two machines disagree about a chain's own identifier.
+genesis.refuses_a_timestamp_above_the_range=true
+genesis.refuses_a_timestamp_below_the_range=true
+
+# Genesis writes sixteen economy entries: version eight's fourteen with the pool rewidened, plus the settlement cursor and window zero's month, both at the genesis month. Height zero is never a block, so genesis is window zero's opening height and writing its month here is the general rule reaching the one height that is a genesis.
+genesis.entry_count=16
+genesis.cursor_value=000002a1
+genesis.window_zero_month_value=000002a1
+genesis.pool_value=000000000000000000000000000000000000000000000000
+genesis.twelve_entries_are_version_eights_unchanged=true
+
+# The four new entry kinds, their key and value widths derived twice, and the widened pool value that makes this a version rather than an edit: no version-eight decoder can read a version-nine kind-12 entry and no version-nine decoder can read a version-eight one.
+state.window_month.kind=20
+state.window_month.key_bytes=9
+state.window_month.value_bytes=4
+state.monthly_figure.kind=21
+state.monthly_figure.key_bytes=9
+state.monthly_figure.value_bytes=8
+state.monthly_claim.kind=22
+state.monthly_claim.key_bytes=5
+state.monthly_claim.value_bytes=16
+state.settlement_cursor.kind=23
+state.settlement_cursor.key_bytes=1
+state.settlement_cursor.value_bytes=4
+state.unreferred_pool.value_bytes=24
+state.unreferred_pool.value_bytes_in_version_eight=16
+state.entry_kind_count=20
+
+# The encodings themselves, derived twice.
+state.window_month.key=140000000000000004
+state.window_month.value=000002a2
+state.monthly_figure.key=15000002a200000002
+state.monthly_figure.value=0000000000034bc0
+state.monthly_claim.key=1600000002
+state.monthly_claim.value=000000021f9828000000000000000000
+state.settlement_cursor.key=17
+state.settlement_cursor.value=000002a7
+state.unreferred_pool.value=0000000592ef690100000000cbd90f010000000000000000
+
+# A zero is absence in two of the four new values, and the decoders say so. A candidate with no figure has a figure of zero by absence and a seat that has won nothing has no claim, so writing either would give one fact two encodings. In the zero-best month that is up to 100,000 entries recording that nobody was paid.
+state.refuses_a_figure_of_zero=true
+state.refuses_a_claim_of_zero=true
+state.refuses_a_claim_minting_more_than_it_accrued=true
+state.refuses_a_month_above_the_calendar_bound=true
+state.refuses_a_cursor_above_the_calendar_bound=true
+state.refuses_a_figure_key_above_the_calendar_bound=true
+state.refuses_a_pool_payable_above_accrued=true
+state.refuses_a_pool_minting_more_than_it_assigned=true
+
+# A version-eight decoder refuses every version-nine entry, by kind or by width. This is the compatibility boundary stated as behaviour rather than as a sentence about lengths.
+state.version_eight_refuses_the_window_month=true
+state.version_eight_refuses_the_monthly_figure=true
+state.version_eight_refuses_the_monthly_claim=true
+state.version_eight_refuses_the_settlement_cursor=true
+state.version_eight_refuses_the_widened_pool=true
+
+# Two window-month entries are live and not the three unreferred-pool-payout-v1 sized for. That document counts the open window and the two inside the assignment lag; version nine deletes the oldest of the three in the same prologue that assigns it, so at every point inside a block the entries are the open window's and its predecessor's.
+state.live_window_months=2
+state.live_window_months_sized_by_the_payout_spec=3
+
+# calendar-v1's five rules, each reached on its own and in its normative order. The two tolerance conditions are the two sides of C5 and are separately named so each can be tested alone: a one-sided rule would let a colluding proposer set hold the chain's clock back indefinitely and pay nobody while satisfying every other rule.
+timestamp.accepts_the_first_block=ACCEPTED
+timestamp.accepts_an_equal_timestamp=ACCEPTED
+timestamp.accepts_a_later_timestamp=ACCEPTED
+timestamp.refuses_a_height_that_is_not_next=HEIGHT_NOT_NEXT
+timestamp.refuses_a_timestamp_above_the_range=TIMESTAMP_RANGE
+timestamp.refuses_a_timestamp_below_its_predecessor=TIMESTAMP_NOT_MONOTONIC
+timestamp.refuses_a_timestamp_below_genesis_after_a_reset=TIMESTAMP_NOT_MONOTONIC
+timestamp.refuses_a_timestamp_ahead_of_the_tolerance=TIMESTAMP_AHEAD_OF_TOLERANCE
+timestamp.refuses_a_timestamp_behind_the_tolerance=TIMESTAMP_BEHIND_TOLERANCE
+timestamp.accepts_at_the_ahead_boundary=ACCEPTED
+timestamp.accepts_at_the_behind_boundary=ACCEPTED
+
+# Every one of the five conditions is reached by the recorded proposals, counted rather than assumed, so a later scenario cannot lose coverage while still passing.
+timestamp.every_condition_is_reached=true
+timestamp.conditions_reached=6
+
+# The clockless replay of an accepted chain agrees height for height. This is the evidence that C5 is not on the replay path: a machine that re-applied the tolerance while replaying history would reject the chain's own past one tolerance-width after it was produced.
+replay.head_height=5
+replay.head_timestamp=1772172072000
+replay.accepted_height_count=5
+replay.a_stale_clock_would_reject_the_chains_own_past=true
+
+# The version-nine restatement of the rules is the accepted model's, outcome for outcome and condition for condition, over the same proposals. A restatement that merely accepted the same blocks would not be checked: the ordered conditions are the part a second implementation gets wrong.
+timestamp.agrees_with_calendar_v1=true
+
+# A window is attributed to the month containing its first height. The fixture's genesis sits six hours off a day boundary, so one window straddles a month boundary, and the month a last-height attribution would have chosen is recorded beside the real one so the accepted rule and the rejected one are distinguishable rather than merely described.
+attribution.window_0.month=673
+attribution.window_1.month=673
+attribution.window_2.month=674
+attribution.window_3.month=674
+attribution.window_4.month=674
+attribution.window_33.month=675
+attribution.window_63.month=676
+attribution.window_155.month=679
+attribution.window_1.straddles=true
+attribution.window_1.month_under_the_rejected_rule=674
+attribution.window_1.the_two_rules_disagree=true
+attribution.straddling_windows=1
+
+# Window zero's month is genesis's, because height zero is never a block: a chain starts at height one, so genesis is window zero's opening height.
+attribution.window_zero_month=673
+attribution.no_seat_is_in_scope_at_window_zero=true
+
+# The recorded settlement, derived twice: once by a machine consuming one window at a time and carrying a balance, and once by a closed-form fold that groups the whole sequence by month first. Two different shapes reaching the same claims is what makes a recorded value evidence.
+settlement.pool_accrued=23940000001
+settlement.pool_payable=3420000001
+settlement.cursor=679
+settlement.claims=1:9120000000;2:9120000000;3:2280000000
+settlement.open_figures=1:86400
+settlement.month_673.candidate_count=1
+settlement.month_673.best_figure=86400
+settlement.month_673.winners=1
+settlement.month_673.payable_before=0
+settlement.month_673.share=0
+settlement.month_673.remainder=0
+settlement.month_673.assigned=0
+settlement.month_674.candidate_count=3
+settlement.month_674.best_figure=216000
+settlement.month_674.winners=1,2
+settlement.month_674.payable_before=13680000001
+settlement.month_674.share=6840000000
+settlement.month_674.remainder=1
+settlement.month_674.assigned=13680000000
+settlement.month_675.candidate_count=3
+settlement.month_675.best_figure=86400
+settlement.month_675.winners=1,2,3
+settlement.month_675.payable_before=3420000001
+settlement.month_675.share=1140000000
+settlement.month_675.remainder=1
+settlement.month_675.assigned=3420000000
+settlement.month_676.candidate_count=3
+settlement.month_676.best_figure=0
+settlement.month_676.winners=1,2,3
+settlement.month_676.payable_before=3420000001
+settlement.month_676.share=1140000000
+settlement.month_676.remainder=1
+settlement.month_676.assigned=3420000000
+
+# A month that accrued nothing pays nothing and that is not an error; a share that rounds to zero writes no claim entry, because a claim is a balance and a balance of zero is absence; and a remainder stays in the pool and is distributed with the next month that pays.
+settlement.february_pays_nothing=true
+settlement.february_writes_no_claim=true
+settlement.remainders_carry=true
+settlement.zero_share_writes_no_claim=true
+settlement.zero_share_carries_the_whole_balance=true
+settlement.zero_share_winner_count=3
+
+# A month in which no candidate was credited for a single slot is a zero-best month: every candidate ties and shares. ADR 0075 declined a duty gate and ADR 0076 declined an accumulation-cap filter, so it is not an error and it is not to be filtered.
+settlement.zero_best_months=1
+settlement.zero_best_month_pays_every_candidate=true
+
+# Exactly one month closes per assignment and the empty indices are skipped, because window attribution is non-decreasing and consecutive assigned windows carry the cursor's month and the new one with nothing between them. Iterating them would make one block's work proportional to how long the network was down.
+settlement.skipped_months=677,678
+settlement.settled_month_count=4
+
+# The single pass and an explicit per-index loop agree state for state over a multi-month halt. This is the evidence the equivalence needs, because no invariant over a single accepted state separates the two: they agree on every state both produce, so what distinguishes them is a scenario.
+settlement.single_pass_equals_the_loop=true
+settlement.halt_months_closed_in_one_pass=3
+
+# The version-nine arithmetic is unreferred-pool-payout-v1's model's, month for month over the recorded run. A restatement that reached a different winner would fail here rather than survive as a second opinion about who is paid.
+settlement.agrees_with_the_payout_model=true
+settlement.payout_model_carries_the_same_months=true
+
+# The two pool identities, checked over the encoded state after the recorded run rather than argued. The second is the one unreferred-pool-payout-v1 names for completeness and leaves to the version that implements a mint, and version nine states it as an equality because an equality catches a unit minted twice.
+settlement.conserved=true
+settlement.assigned_total=20520000000
+
+# Kind 22's body and its signed length, derived twice, and the mint message it reuses. No new domain-separated label is added: version six's message already binds the transaction kind, precisely so a confirmation obtained for one mint cannot be replayed onto another.
+kind22.body=0000000331313131313131313131313131313131313131313131313131313131313131319c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c
+kind22.signed_length=260
+
+# The four confirmable mints differ on identical remaining fields, and the byte that differs is the kind. Kind 22's message is derived twice.
+kind22.mint_message=1e70726f746f636f6c2d737461636b3a76363a6d696e742d636f6e6669726d000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f1600000007313131313131313131313131313131313131313131313131313131313131313100000000000010e1
+kind22.four_mint_messages_are_distinct=true
+kind22.mint_message_agrees_with_version_six=true
+
+# A version-nine kind-22 transaction round-trips, and version eight refuses it as an unknown kind rather than decoding it as something else.
+kind22.round_trips=true
+kind22.signed_bytes=260
+kind22.version_eight_refuses_it=true
+
+# The carryover declaration partitions version eight's public surface exactly, so a constant that moved without a vector reaching it fails a test rather than surviving as a copy nobody compared.
+carryover.version_eight_surface=139
+carryover.classification_is_total=true
+carryover.carried=119
+carryover.revised=15
+carryover.added=20
+carryover.replaced_declarations=5
+carryover.every_carried_constant_is_version_eights_own_object=true
+carryover.every_revised_constant_moved=true
+carryover.every_added_constant_is_new=true
+carryover.the_account_bound_survives_the_wider_prefix=true

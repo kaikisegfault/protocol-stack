@@ -30,12 +30,22 @@ It implements no cryptographic primitive. Every digest is SHA-256 over a
 domain-separated preimage using the accepted construction.
 """
 
-from . import contract, envelope, genesis, scenario, settlement, state, timeline
+from . import (
+    contract,
+    envelope,
+    genesis,
+    header,
+    scenario,
+    settlement,
+    state,
+    timeline,
+)
 
 __all__ = [
     "contract",
     "envelope",
     "genesis",
+    "header",
     "scenario",
     "settlement",
     "state",
