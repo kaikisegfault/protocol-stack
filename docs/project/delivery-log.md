@@ -32,6 +32,91 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M3.17c was delivered
+
+**The unreferred performance pool pays somebody, and it is the first time.** It
+has accrued since `economy-transition-v3` — an unreferred seat's 34.2 units per
+cycle route to it, version six gave it entry kind 12, version seven's genesis
+writes it — and **nothing had ever taken value out of it**.
+`simulation/economy_transition_v9/` gained `ledger.py`, `receipt.py`,
+`execution.py`, `transitions.py`, `block.py` and `trace.py`, and
+`test-vectors/economy-transition-v9-execution.txt` records 125 vectors over two
+scenarios. Two ctest entries gate them. No accepted vector, model, manifest,
+encoding or kernel source changed, and the version-eight, payout and calendar
+suites all still pass unchanged.
+
+**The recorded run.** Two unreferred machines run a window the chain measures.
+Alice answers all **69** challenges she is issued; Bob answers none of his **75**.
+At the assignment of the window that opens March, February closes on the uptime
+accumulated *during it*, Alice wins the whole balance as a claim, and she mints it
+with kind 22. An unconfirmed mint is refused `BIOMETRIC_REQUIRED` and the
+confirmed one succeeds **on the same nonce in the same block**, so the refusal is
+shown to write nothing; a second mint collects nothing; a stranger minting another
+seat's award is `UNAUTHORIZED`. A second scenario jumps the same chain's stamps
+ninety days between two window openings, and one assignment closes March while
+skipping April, May and June in a single pass.
+
+**A probe found a coverage gap and it was the defect this slice's own commit
+message had just described.** `advance_to` carrying the timestamp is the thing
+the setup shorthand must get right: one that advanced the height and left the
+stamp behind would commit a root naming a height the stamp does not belong to,
+and **every later block would still satisfy C2**, because a stale stamp is
+smaller than the next one — a wrong root rather than a refusal, which is the
+direction that hides. **No vector caught it.** The consequence is observable in
+exactly one place, the root the shorthand leaves behind and the next block
+carries as its `previous_state_root`, and nothing recorded that root. **Writing a
+guard and describing it in a commit message is not evidence that the guard
+works**; the probe is what turns the description into a vector.
+
+**A second probe found something better than a defect.** The specification says
+the figure accumulation must precede the deletion *because the figures are
+computed from the records the deletion removes*. That is true of an
+implementation that reads those records **lazily**, and **vacuous** for one that
+derives the window's seat sequence once before either step — which every
+conforming implementation does, because the settlement needs the same sequence the
+assignment does. So the two orders commit to the same root. The vector records
+the **equality with its reason** rather than asserting a difference that is not
+there, which is the shape ADR 0064 already used for version eight's
+prologue-before-issue ordering, and it is the place a later lazy implementation
+would be noticed. **Deleting the vector because it proves nothing would remove
+the only place that change is visible.** The other new ordering — the payout
+before the accrual — **is** observable: running the rejected one reaches a
+different root.
+
+**ADR 0078 records four rules that outlive the slice.** The four new maps are
+typed fields projected into entries, which is version six's and version seven's
+pattern rather than version eight's: version eight held a raw key map because its
+uptime transitions read that key space directly, and nothing in version nine
+does. `advance_to` takes the timestamp as a **required** argument for the reason
+above. `block.py` binds `timeline.replay` and never binds `timeline.accept`, so
+the C5 separation is structural rather than a nullable argument a caller might
+fill in. And a timestamp failure raises the block transition's own rejection,
+restoring the pre-block state through the snapshot `execute_block` already takes.
+
+**The trace runs at ninety seconds a block and the reason is worth keeping.** At
+the commit target a window is exactly one day, so a month is about thirty windows
+and 864,000 heights — more than a recorded trace can run. At ninety seconds a
+window is exactly thirty days, every window opens in a new month, and a
+settlement is reachable inside three. Nothing in the contract bounds the block
+rate from above, and a seat's figure is `credited_slots * SLOT_SECONDS`, a
+function of **heights**, so a slower chain changes when a month closes and
+changes nothing about what a machine earned. That is what makes the fixture a
+chain rather than a contrivance.
+
+**Facts a later session should not rediscover.** The ledger extends version
+eight's and overrides six things: genesis, `apply_assignment` (which raises
+`pool_payable` beside `pool_accrued`), the projection, the root, the invariants,
+and `advance_to`. `block.execute_block` takes the timestamp as its second
+argument, and `run_quiet_heights` takes a `timestamp_of_height` callable — which
+is the one place a trace decides how fast its chain runs and is what makes a halt
+expressible, since a halt is a discontinuity in that function and nothing else:
+heights stay consecutive because a network that is down produces no heights at
+all. `BlockOutcome` carries `timestamp`, `due_month`, `settled` and
+`skipped_months` beside version eight's fields. The two ctest entries are
+`economy-transition-v9-execution-vectors` and `economy-transition-v9-execution`,
+and the execution test caches both scenarios at module level because each is a
+real chain of over a hundred thousand heights.
+
 ### How M3.17b was delivered
 
 **The version-nine contract half executes in Python and 213 vectors record it.**

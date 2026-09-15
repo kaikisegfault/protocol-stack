@@ -458,6 +458,18 @@ you need the history behind a claim here; read this one for what is true now.
   `economy-transition-v7` is the first contract to bind version three; every
   other simulator, transition model, and kernel path still binds version two,
   which remains correct against it.
+- **The unreferred performance pool pays somebody.** As of 2026-09-16 a
+  version-nine chain runs in Python across a month boundary, ranks a completed
+  month on the uptime accumulated during it, writes the winner a claim, and lets
+  that winner mint it with transaction kind 22. The pool has accrued since
+  `economy-transition-v3` and **nothing had ever taken value out of it**. In the
+  recorded trace one machine answers all 69 audits it is issued and the other
+  answers none of its 75, February closes at the assignment of the window that
+  opens March, and the whole balance goes to the better machine. A second
+  scenario jumps the chain's stamps ninety days and one assignment closes a month
+  while skipping three. **It is Python only**: no C++ executes a version-nine
+  transition, and no network can run one until the application contract can carry
+  a timestamp.
 - **A four-node version-eight network refuses a transaction, and all four
   replicas refuse it identically.** As of 2026-09-11 two transactions the
   contract must reject — a transfer at a consumed nonce and a second purchase of
@@ -2426,6 +2438,20 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
+**Put the version-nine transition into the C++20 kernel.**
+[`economy-transition-v9`](../specifications/economy-transition-v9.md) is
+accepted, it executes end to end in Python, and **338 vectors across two files**
+fix what a kernel must reproduce. Nothing in C++ executes a version-nine
+transition and no network can run one, so this is the nearest slice that moves
+the product. It is a `change-protocol` slice of the size M3.13m through M3.13s
+was, and what it must not re-derive is under "The recorded successors" below.
+
+**Everything below this paragraph is the accumulated history of how the slices
+that led here were chosen, newest reasoning last.** It is kept because the
+reasoning outlives the slices, and it is *not* a list of what to do next: the
+sentence directly above is. Several passages in it name a "nearest slice" that
+has since been delivered, and each says so where it stands.
+
 Requirement 13 is **complete** and `calendar-v1` is **accepted**. The nearest
 slice that moves the product is the **unreferred pool's payout**, and it is
 **unblocked**: all three of its founder-reserved decisions were answered on
@@ -2475,10 +2501,15 @@ are accepted.
 
 **M3.17b made its contract half execute the same day.**
 `simulation/economy_transition_v9/` is eight modules, 213 vectors are recorded,
-and two ctest entries gate them. **The nearest slice is the execution half** —
-the ledger, the block transition, kind 22's execution, and the execution vectors
-— which is issue #302 and M3.13l's precedent. What it must not re-derive is
-under "The recorded successors" below.
+and two ctest entries gate them.
+
+**M3.17c made a chain run it on 2026-09-16, and the unreferred pool paid somebody
+for the first time.** It has accrued since `economy-transition-v3` and nothing
+had ever taken value out of it. Six more modules, 125 execution vectors over two
+scenarios, and [ADR 0078](../decisions/0078-the-version-nine-execution-model.md).
+**The nearest slice is the C++20 kernel and the stack behind it**, and the
+application-contract version named below is what a devnet waits on. What the
+kernel must not re-derive is under "The recorded successors" below.
 
 **Three things M3.17a found are worth carrying forward rather than
 rediscovering.** The winner's award is a **per-seat running balance** rather than
@@ -2511,15 +2542,15 @@ the fixture rather than left to be rediscovered.
 
 **The recorded successors, in order, each its own slice:**
 
-* **The binding version is specified and its contract half executes.** M3.17a
+* **The binding version is specified and it executes in Python.** M3.17a
   accepted [`economy-transition-v9`](../specifications/economy-transition-v9.md)
   and [ADR 0077](../decisions/0077-the-version-nine-clock-and-monthly-settlement.md)
-  on 2026-09-15, and M3.17b modelled the codec, the calendar rules and the
-  settlement arithmetic the same day. **The nearest slice is the execution
-  half** — `ledger.py`, `block.py`, kind 22's execution, and
-  `test-vectors/economy-transition-v9-execution.txt` — on the M3.13l precedent,
-  then the kernel and the stack, then the application-contract version named
-  below. The paragraphs that stood here enumerating what the binding version had
+  on 2026-09-15, M3.17b modelled the codec, the calendar rules and the settlement
+  arithmetic the same day, and M3.17c made a chain run the whole transition on
+  2026-09-16. **The nearest slice is the C++20 kernel**, then the stack — the
+  snapshot, the owning store, the application layer, the transport, the node
+  process and the ABCI adapter, which are all still version eight's — then the
+  application-contract version named below. The paragraphs that stood here enumerating what the binding version had
   to add are superseded by the specification itself and are not restated; three
   of them were **wrong**, and the corrections are the reason to read the
   document rather than this list.
@@ -2538,36 +2569,36 @@ the fixture rather than left to be rediscovered.
   the zero-best month. M3.17b found it by reading the payout model before
   writing a new one, and corrected it before anything depended on it.
 
-  **What the execution slice must not re-derive, because M3.17b built it.** The
-  four entry kinds, the widened kind-12 value, the 150-octet genesis, the
-  154-octet header and its identifier, kind 22's body and mint message, the five
-  calendar rules as **two entry points that differ in exactly one respect**, and
-  the settlement arithmetic are all in `simulation/economy_transition_v9/` with
-  213 vectors behind them. **The seam is that `settlement.py` operates on plain
-  decoded dicts** — `{(month, seat): seconds}`, `{seat: (accrued, minted)}` and a
-  `Pool` triple — so `block.py` wires it to the ledger's encoded maps without
-  either half reaching into the other. **Version nine adds no result code.**
+  **What the kernel must reproduce, because the Python model already fixes it.**
+  The four entry kinds, the widened kind-12 value, the 150-octet genesis and its
+  sixteen entries, the 154-octet header and its re-versioned identifier, kind
+  22's body, ladder and mint message, the five calendar rules, the settlement
+  arithmetic, the six-step prologue, and the root that commits to the timestamp —
+  all in `simulation/economy_transition_v9/`, with **338 vectors** behind them
+  across two files. **Version nine adds no result code.**
 
-  **What the execution slice still owes.** The prologue at an assignment height
-  runs: derive the sequence, version seven's settlement steps 1–7, settle the
-  closing month, settlement step 8, accumulate the figures, then delete the
-  kind-19 **and kind-20** entries for the due window — the deletion moves to the
-  end because the figures are computed from the records it deletes. At every
-  window-opening height, including those below the assignment lag, the opening
-  window's month is written. Genesis writes **sixteen** economy entries.
-  **`close_month` takes the closing month's last window as a parameter** and a
-  real chain passes `due - 1`, because the cursor was set to that month at the
-  previous assignment; the contract fixture passes its own previously assigned
-  index instead, which is the one place its sampling shows.
+  **The prologue at an assignment height runs:** derive the sequence, version
+  seven's settlement steps 1–7, settle the closing month, settlement step 8,
+  accumulate the figures, then delete the kind-19 **and kind-20** entries for the
+  due window. At every window-opening height, including those below the
+  assignment lag, the opening window's month is written. **A C++20 implementation
+  may hold its state however it likes**; what it must reproduce is the
+  projection, the root, and the order.
 
-  **Three of the specification's eight invariants are the execution half's**,
-  because they are about a ledger rather than an encoding: 1, the state's
-  timestamp in range and non-decreasing; 2, a kind-20 entry for exactly the open
-  window and its predecessor; and 6, every kind-21 entry's month equal to the
-  cursor. The contract half enforces the other five — 3 and 5 in the decoders, 8
-  in the claim value, 4 and 7 in `close_month` — and both pool identities in
-  `Pool.assert_conserved`. Kind 22's nine ordered rejection conditions are the
-  execution half's too.
+  **Two of those orderings behave differently and ADR 0078 says which.** The
+  payout before the accrual is **observable** — running the rejected one reaches a
+  different root, and a vector records it. The accumulation before the deletion is
+  normative and **unobservable** under any implementation that derives the
+  window's seat sequence once, which every conforming one does; the vector records
+  the equality with its reason, and that is the place a lazy implementation would
+  be noticed.
+
+  **`advance_to` carrying the timestamp is the shape of defect to watch for in
+  the kernel too.** A path that advances a height and leaves the stamp behind
+  commits a root naming a height the stamp does not belong to, and every later
+  block still satisfies C2 because the stale stamp is smaller — a wrong root
+  rather than a refusal. The Python model records the one place it is observable;
+  a kernel needs its own.
 
   **The settlement is a single pass and M3.17b proved it rather than assuming
   it.** Exactly one month can close per assignment, because every index between
@@ -3241,6 +3272,30 @@ later scenario change stops reaching one.
 
 ## Blockers
 
+**M3.17c ran the founder-decision gate and passed it.** Twelve decisions were
+enumerated before any was judged: the ledger's field shape and its override set;
+how the timestamp reaches the block transition; where C1 and C2 run and what a
+failure does; the prologue's step order; `run_quiet_heights`' timestamp source;
+kind 22's handler and its ladder; which scenarios the vectors record; whether the
+execution fixture may sample windows; the receipt's issued amount; and the ADR,
+branch and ctest naming. **Five are fixed by `economy-transition-v9`** and were
+cited rather than re-chosen. **One is forced** by the chain's own rule that
+heights are consecutive, so the execution fixture cannot sample. The rest are
+mechanism, storage, testing and packaging, which the founder constitution places
+outside the reserved set.
+
+**M3.17b ran it and passed it.** Seven decisions: the package layout; whether the
+model subclasses or binds; the fixture's provenance; the vector file's name and
+its emitter; which cases the vectors record; where the block header encoder
+lives; and the ctest entry names. Every one is packaging, testing or mechanism,
+and every value the model carries is fixed by an accepted specification.
+
+Neither slice set or changed supply, allocation, beneficiaries, Founder
+ownership, creator hierarchy, commercial routing, AI institutional authority,
+bridge scope, content permanence, or what an end user must do, own, run, or
+receive, and **no accepted vector file, specification, manifest, encoding, or
+kernel source changed** in either.
+
 **M3.17a ran the founder-decision gate and passed it.** Twenty-two decisions were
 enumerated before any was judged. **Three are already founder-decided** and were
 cited rather than re-chosen: the candidate set and the carry by ADR 0075, and the
@@ -3520,10 +3575,10 @@ receive, and **no accepted vector file, specification, manifest, encoding, or
 kernel source changed**.
 
 **No blocker requires an owner answer.** The successors under "Exact next
-action" — the version-nine Python execution model and the kernel and stack
-behind it, the application-contract version that carries a timestamp, the
-nonzero initial height, the snapshot-seeded devnet, and ADR 0048's threat model
-— are all unblocked.
+action" — the version-nine C++20 kernel and the stack behind it, the
+application-contract version that carries a timestamp, the nonzero initial
+height, the snapshot-seeded devnet, and ADR 0048's threat model — are all
+unblocked.
 
 **One case ADR 0075 left open is closed by derivation rather than by an
 answer, and it must not be re-asked.** It asked what becomes of a final accrual
