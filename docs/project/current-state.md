@@ -2471,9 +2471,14 @@ one case ADR 0075 left open.
 about it being the nearest slice is history too.
 [`economy-transition-v9`](../specifications/economy-transition-v9.md) and
 [ADR 0077](../decisions/0077-the-version-nine-clock-and-monthly-settlement.md)
-are accepted, and **nothing executes them**. **The nearest slice is the
-version-nine Python execution model**, on the M3.13k precedent, and what it must
-not re-derive is under "The recorded successors" below.
+are accepted.
+
+**M3.17b made its contract half execute the same day.**
+`simulation/economy_transition_v9/` is eight modules, 213 vectors are recorded,
+and two ctest entries gate them. **The nearest slice is the execution half** —
+the ledger, the block transition, kind 22's execution, and the execution vectors
+— which is issue #302 and M3.13l's precedent. What it must not re-derive is
+under "The recorded successors" below.
 
 **Three things M3.17a found are worth carrying forward rather than
 rediscovering.** The winner's award is a **per-seat running balance** rather than
@@ -2506,44 +2511,80 @@ the fixture rather than left to be rediscovered.
 
 **The recorded successors, in order, each its own slice:**
 
-* **The binding version is specified and none of it is implemented.** M3.17a
+* **The binding version is specified and its contract half executes.** M3.17a
   accepted [`economy-transition-v9`](../specifications/economy-transition-v9.md)
   and [ADR 0077](../decisions/0077-the-version-nine-clock-and-monthly-settlement.md)
-  on 2026-09-15, so `calendar-v1` and `unreferred-pool-payout-v1` now bind a
-  ledger version. **The nearest slice is the Python execution model**, on the
-  M3.13k precedent, then the kernel and the stack, then the application-contract
-  version named below. The paragraphs that stood here enumerating what the
-  binding version had to add are superseded by the specification itself and are
-  not restated; two of them were **wrong**, and the corrections are the reason
-  to read the document rather than this list.
+  on 2026-09-15, and M3.17b modelled the codec, the calendar rules and the
+  settlement arithmetic the same day. **The nearest slice is the execution
+  half** — `ledger.py`, `block.py`, kind 22's execution, and
+  `test-vectors/economy-transition-v9-execution.txt` — on the M3.13l precedent,
+  then the kernel and the stack, then the application-contract version named
+  below. The paragraphs that stood here enumerating what the binding version had
+  to add are superseded by the specification itself and are not restated; three
+  of them were **wrong**, and the corrections are the reason to read the
+  document rather than this list.
 
-  **Two things M3.17a decided differently from what this document told it to,
-  and both are now the accepted contract.** The winner's award is a **per-seat
+  **Three things this document told the binding slices that were wrong, and all
+  three are now corrected in place.** The winner's award is a **per-seat
   running balance**, not the per-month-per-seat claim recorded here — the owner's
   M3.8a rule that a mint takes everything with no quantity choice already decides
   how many transactions a participant needs in order to be paid, so a per-month
   award would have charged `n` fees for `n` months. And the live window-month
   records number **two**, not the three `unreferred-pool-payout-v1` sized for,
   because version nine deletes the oldest in the same prologue that assigns it.
+  And the specification's own first draft said to add a winner's share to its
+  claim "creating the entry if absent" without qualification, which **creates a
+  zero-valued entry when the share rounds to zero** — up to 100,000 of them in
+  the zero-best month. M3.17b found it by reading the payout model before
+  writing a new one, and corrected it before anything depended on it.
 
-  **What the model slice must not re-derive.** The four entry kinds are 20 window
-  month, 21 monthly uptime figure (**nonzero only**, keyed by month **and** seat),
-  22 monthly pool claim, and 23 settlement cursor; kind 12 becomes
-  `accrued || payable || minted`. The header is **154** octets with the timestamp
-  inserted at offset 46 and genesis **150** with `genesis_timestamp` at offset 10,
-  both inserted rather than appended. The prologue at an assignment height runs:
-  derive the sequence, version seven's settlement steps 1–7, settle the closing
-  month, settlement step 8, accumulate the figures, then delete the kind-19 and
-  kind-20 entries for the due window. Genesis writes **sixteen** economy entries.
-  **Version nine adds no result code.**
+  **What the execution slice must not re-derive, because M3.17b built it.** The
+  four entry kinds, the widened kind-12 value, the 150-octet genesis, the
+  154-octet header and its identifier, kind 22's body and mint message, the five
+  calendar rules as **two entry points that differ in exactly one respect**, and
+  the settlement arithmetic are all in `simulation/economy_transition_v9/` with
+  213 vectors behind them. **The seam is that `settlement.py` operates on plain
+  decoded dicts** — `{(month, seat): seconds}`, `{seat: (accrued, minted)}` and a
+  `Pool` triple — so `block.py` wires it to the ledger's encoded maps without
+  either half reaching into the other. **Version nine adds no result code.**
 
-  **The settlement is a single pass and the model must prove it rather than
-  assume it.** Exactly one month can close per assignment, because every index
-  between the cursor's month and the new one is empty by construction. No
-  invariant over a single accepted state separates the single pass from the loop
-  — they agree on every state both produce — so the vectors settle a multi-month
-  halt **both ways** and require agreement state for state. That is a required
-  vector, not a nicety.
+  **What the execution slice still owes.** The prologue at an assignment height
+  runs: derive the sequence, version seven's settlement steps 1–7, settle the
+  closing month, settlement step 8, accumulate the figures, then delete the
+  kind-19 **and kind-20** entries for the due window — the deletion moves to the
+  end because the figures are computed from the records it deletes. At every
+  window-opening height, including those below the assignment lag, the opening
+  window's month is written. Genesis writes **sixteen** economy entries.
+  **`close_month` takes the closing month's last window as a parameter** and a
+  real chain passes `due - 1`, because the cursor was set to that month at the
+  previous assignment; the contract fixture passes its own previously assigned
+  index instead, which is the one place its sampling shows.
+
+  **Three of the specification's eight invariants are the execution half's**,
+  because they are about a ledger rather than an encoding: 1, the state's
+  timestamp in range and non-decreasing; 2, a kind-20 entry for exactly the open
+  window and its predecessor; and 6, every kind-21 entry's month equal to the
+  cursor. The contract half enforces the other five — 3 and 5 in the decoders, 8
+  in the claim value, 4 and 7 in `close_month` — and both pool identities in
+  `Pool.assert_conserved`. Kind 22's nine ordered rejection conditions are the
+  execution half's too.
+
+  **The settlement is a single pass and M3.17b proved it rather than assuming
+  it.** Exactly one month can close per assignment, because every index between
+  the cursor's month and the new one is empty by construction. No invariant over
+  a single accepted state separates the single pass from the loop — they agree on
+  every state both produce — so the vectors settle a multi-month halt **both
+  ways** and require agreement state for state. **The stronger evidence is
+  against an accepted artifact**: version nine's *skipped* months are exactly the
+  accepted payout model's *carried* ones over the recorded run, and the two reach
+  identical claims.
+
+  **One thing about the contract fixture the execution half cannot inherit.**
+  The recorded window sequence is **sampled** — 0, 1, 2, 3, 4, 33, 63, 155 —
+  which is legitimate for a fixture about arithmetic and is not a claim about a
+  chain. A real chain assigns **every** window, because heights are consecutive
+  and the prologue runs at every window-opening height; a halt moves the
+  timestamps and not the heights. The execution fixture cannot sample.
 
   **Two figures the two input specifications still hand it**, so it does not
   recompute them: a proposer can move a month boundary by at most **20 blocks**,
