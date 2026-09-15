@@ -62,7 +62,9 @@ Explicitly not in scope:
   established requires a new economy contract version rather than an edit. This
   specification defines what that version will apply. It is the same posture
   [`cycle-boundary-v1`](cycle-boundary-v1.md) took, and the same gap: the rule
-  moves from undefined to unenforced.
+  moves from undefined to unenforced. **That version is
+  [`economy-transition-v9`](economy-transition-v9.md)**, accepted 2026-09-15,
+  which closes the gap.
 - **the adapter's production algorithm.** How a proposer chooses a value — a
   local reading, CometBFT's weighted median of the previous height's precommits,
   or anything else — is an adapter matter. This specification constrains the
@@ -584,3 +586,8 @@ is round:
   governs every block, so such a chain either has an unacceptable first block or
   a monotonicity failure at it; which of the two it should report is the binding
   version's, since only that version has a genesis file to refuse.
+  **[`economy-transition-v9`](economy-transition-v9.md) answers it**: genesis
+  validation applies C1 and reads no clock, because the chain identity is a hash
+  of the genesis bytes, and a chain whose genesis is in the future reports
+  `TIMESTAMP_NOT_MONOTONIC` at its first block, which is what the ordered
+  conditions above reach first.

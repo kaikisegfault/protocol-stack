@@ -49,7 +49,9 @@ Explicitly not in scope:
   which is the posture [`cycle-boundary-v1`](cycle-boundary-v1.md),
   [`uptime-measurement-v1`](uptime-measurement-v1.md) and
   [`calendar-v1`](calendar-v1.md) all took. This document names the quantities
-  that version must carry and leaves their representation to it.
+  that version must carry and leaves their representation to it. **That version
+  is [`economy-transition-v9`](economy-transition-v9.md)**, accepted 2026-09-15,
+  which encodes them.
 - **the month.** That is `calendar-v1`: the consensus timestamp, its
   monotonicity rule and tolerance, the derivation to a calendar month, and the
   month-opening predicate. Nothing here re-derives a date.
