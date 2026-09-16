@@ -122,18 +122,25 @@ void check_settlements(const pv::Values& values, const std::string& prefix,
   }
 }
 
-const v9::BlockOutcome& block_labelled(const Scenario& scenario,
-                                       const std::string& label,
+// **A pointer rather than a reference, and the label is a view rather than a
+// string.** GCC's `-Wdangling-reference` cannot tell that a reference returned
+// from a call carrying a temporary argument does not come from that temporary,
+// and it is right to warn: the version-eight fixture records the same shape at
+// every one of its call sites. Returning a pointer removes the question, and
+// taking a view removes the temporary that raised it.
+const v9::BlockOutcome* block_labelled(const Scenario& scenario,
+                                       std::string_view label,
                                        std::size_t& index) {
   for (std::size_t block = 0; block < scenario.labels.size(); ++block) {
     for (std::size_t step = 0; step < scenario.labels[block].size(); ++step) {
       if (scenario.labels[block][step] == label) {
         index = step;
-        return scenario.blocks[block];
+        return &scenario.blocks[block];
       }
     }
   }
-  throw std::runtime_error("no recorded block carries the step " + label);
+  throw std::runtime_error("no recorded block carries the step " +
+                           std::string(label));
 }
 
 void check_mint(const pv::Values& values, const Scenario& scenario) {
@@ -144,9 +151,9 @@ void check_mint(const pv::Values& values, const Scenario& scenario) {
   const v9::ExecutedTransaction* success = nullptr;
   for (const auto label : kLabels) {
     std::size_t index = 0;
-    const auto& block = block_labelled(scenario, std::string(label), index);
-    pv::require(index < block.executed.size(), "the step was executed");
-    const auto& executed = block.executed[index];
+    const auto* block = block_labelled(scenario, label, index);
+    pv::require(index < block->executed.size(), "the step was executed");
+    const auto& executed = block->executed[index];
     const auto name = v9::result_code_name(static_cast<std::uint8_t>(executed.outcome.result));
     pv::require(name.has_value(), "every result has a name");
     agree(values, "mint." + std::string(label), std::string(*name));
