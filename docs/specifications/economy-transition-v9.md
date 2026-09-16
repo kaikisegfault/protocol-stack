@@ -1,9 +1,9 @@
 # Economy transition v9
 
-Status: Accepted M3 consensus transition contract; independent model,
-execution model, vectors, and the C++20 kernel's **codec** recorded; the C++20
-kernel's ledger, the snapshot, the store, the application, the transport, the
-node process, and the application-contract version below are not
+Status: Accepted M3 consensus transition contract; independent model, execution
+model, vectors, and the **C++20 kernel** recorded; the snapshot, the store, the
+application, the transport, the node process, and the application-contract
+version below are not
 
 This document defines the version-nine Founder Economy consensus transition. It
 is [`economy-transition-v8`](economy-transition-v8.md) with **a clock and a
@@ -1161,6 +1161,13 @@ the exact commit that adds them.
 
 **What the recorded files now hold.** `test-vectors/economy-transition-v9.txt`
 holds 239 vectors and `test-vectors/economy-transition-v9-execution.txt` holds
-125. The C++20 codec reproduces every vector in the first that does not need a
-ledger, a chain, or the Python package's own surface, and names each one it does
-not reach together with what owes it.
+125. The C++20 kernel reproduces **every vector in the execution file** and every
+vector in the contract file except two groups, each named in a compiled table
+together with what owes it: the `settlement.` section, which is the Python
+settlement machine's own run over a *sampled* window sequence no chain can
+produce, and the `carryover.` section together with the per-predecessor empty
+tree roots, which are claims about the Python package's surface and the accepted
+files that recorded them. One further vector,
+`genesis.refuses_a_timestamp_below_the_range`, is **unrepresentable** rather than
+deferred: a timestamp below the accepted range is a negative millisecond count
+and the kernel carries a timestamp in a `u64`.
