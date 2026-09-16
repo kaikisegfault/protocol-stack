@@ -32,6 +32,84 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M3.18b was delivered
+
+**A version-nine chain runs in C++, and it closes a month.** Issue #310 and PR
+#311 delivered `include/protocol/v9/ledger.hpp` and ten more sources under
+`src/v9/`, merged by rebase as `52065a1` and `7dabe5d` on 2026-09-16. Candidate
+run 35159501140 passed the complete hosted matrix with **170** ctest entries in
+the debug presets and **178** under `clang-sanitizers`, one more than M3.18a
+because the slice adds exactly one, `economy-transition-v9-execution-cpp`.
+
+**Eight of the ten sources are version eight's execution with three identifiers
+rebound, and three have an empty normalising diff** —
+`economy_execution.cpp`, `economy_uptime_transitions.cpp`, and
+`economy_ledger_internal.hpp`. Together with M3.18a's four, **seven of the
+kernel's nineteen carried translation units are provably unchanged by the port**,
+which is the strongest available statement that nothing moved by accident. The
+ninth new source, `economy_monthly.cpp`, holds what version nine adds to
+execution: the settlement arithmetic, the single-pass closing rule, and the two
+pool identities.
+
+**Kind 22 is in `economy_value_transitions.cpp` beside kind 4, and the placement
+is the argument.** Its body, scheme, authority, destination rule, posture
+confirmation, channel and fixed fee are all kind 4's, and what differs is which
+balance it empties; a reader checking that claim reads the two functions side by
+side. Putting it in version nine's own translation unit would have made the claim
+something to take on trust, and it would have needed kind 4's file-private
+helpers exported to get there.
+
+**Three mutation probes passed and every one named a real gap rather than a bad
+probe.** The recorded chains never produce a nonzero remainder, never have a
+candidate that ran nothing lose to one that did, and never reach a share that
+rounds to zero — so discarding a carry, deriving the candidate set from the
+figures, and writing a zero claim all changed no recorded value. **A fixture that
+cannot see a rule is not evidence for it**, and the first attempt to close this
+was itself wrong: derived checks against the pure `settle_month` left all three
+probes passing, because the mutations were in `settlement_candidates` and
+`apply_settlement`, which that function does not call. The second attempt builds
+a ledger by hand and drives `close_month` against it, and all three then fail
+closed — the carry probe inside `close_month`'s own conservation gate, which is
+the strongest form of catch available.
+
+**The hand-built settlement fixture is asserted to be conserved before anything
+settles against it**, so a fixture that was itself impossible could not make a
+settlement look correct. That is the habit M3.10d recorded and it earns its place
+here: the pool identity is what catches the carry probe, and a fixture that did
+not satisfy it to begin with would have caught nothing.
+
+**Seven probes were caught at once**, and two are worth naming. Reading the
+window's month from the assigning block rather than from the entry written at its
+opening height changes `audit.alice_challenged` from 69 to 81 — the systematic
+two-day distortion `unreferred-pool-payout-v1` rejects by name, showing up as a
+different audit count rather than as a wrong month. And a quiet path that
+advances the height and leaves the stamp behind changes it to 74: the beacon
+moves, so who is challenged moves, which is a louder failure than the wrong root
+it would also commit.
+
+**Both orderings ADR 0078 distinguishes are executed on chains rebuilt to the
+height before the settlement**, rather than on copies taken from the recorded
+run: a copy would share whatever that run had already decided, and a chain built
+the same way from genesis is the same chain reached independently. The payout
+before the accrual reaches a different root; the accumulation before the deletion
+reaches the same one, and the vector records the equality with its reason.
+
+**The first candidate failed both GCC presets and both Clang presets accepted
+it.** `-Werror=dangling-reference` is a GCC 13 warning and this machine has GCC
+12, so no local check could have produced it — the mirror of the portability
+defect M3.10d records Clang catching and GCC accepting. **Running one compiler
+locally is not evidence about the other**, and the version-eight execution
+fixture had already recorded this exact shape at every one of its call sites. The
+repair returns a pointer and takes a `string_view`, which removes the question
+and the temporary that raised it.
+
+**One local practice carried over from M3.18a and paid again.** A scratch shim
+forwarding `crypto_hash_sha256` to the already-installed OpenSSL let the whole
+execution target compile, link and **run locally with real digests** — about
+600,000 block transitions in 1.2 seconds — on a machine with neither CMake nor
+libsodium. Everything except the GCC 13 warning was found and fixed before
+anything was pushed.
+
 ### How M3.18a was delivered
 
 **The first C++ in this repository that encodes a version-nine artifact.**
