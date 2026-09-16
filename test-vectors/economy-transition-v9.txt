@@ -116,7 +116,39 @@ genesis.entry_count=16
 genesis.cursor_value=000002a1
 genesis.window_zero_month_value=000002a1
 genesis.pool_value=000000000000000000000000000000000000000000000000
-genesis.twelve_entries_are_version_eights_unchanged=true
+genesis.thirteen_entries_are_version_eights_unchanged=true
+
+# The version-nine state root collides with none of its eight predecessors, and the timestamp it commits to is what makes the commitment a version rather than a relabelling. Version eight's own recorded root of an empty state is reproduced by this construction, so the predecessor preimages are pinned to an accepted artifact instead of only to each other.
+root.version_nine=837d15ce4a922908a02cd8fc44c8a1fe70a19c3f1b47ceb2e8ca69c88a104f6a
+root.v1=b659827c81a9a3b03cad3d4853f129791127f877e4515af63234dc522d708063
+root.differs_from_v1=true
+root.v2=83aa1f35257af17536da60a487e2d8c238779bdc88cc804c47246fb4f7e52ba4
+root.differs_from_v2=true
+root.v3=ec855c2e642ffa0ea768760f4bbfc45e7ed7026ad6c9426ce9a6d3f35eadc518
+root.differs_from_v3=true
+root.v4=a2d518ebdde93261b30d9208f4c692ef9f3b194e19479f10071f797fcc1cbad6
+root.differs_from_v4=true
+root.v5=5571d72872f3e5940078c60926cb11104cce5920f2891b9dca2d01afc0003647
+root.differs_from_v5=true
+root.v6=2dbc31124d5ceb1ac8fbed91258b74d1bf0b42a1353621db62466618dbb391ff
+root.differs_from_v6=true
+root.v7=5a6678c870199a08c44cc16b7675a61833ad7f80554646f8fd512e5b63e57bbc
+root.differs_from_v7=true
+root.v8=6b3a0bd10a0fdf86f96de8a3448d9e6d156932d91468180fef79a032b3725529
+root.differs_from_v8=true
+root.version_eight_reproduces_its_accepted_root=true
+
+# Each predecessor's empty economy tree root, reproduced from the file that accepted it. An inequality between two digests proves nothing about either one, so every construction the non-collisions above rest on is first required to reach a root somebody else recorded. Versions eight and nine record none of their own, so version nine's is pinned by the state root above and version eight's by the root it reproduces.
+root.v2_empty_economy_root_reproduced=true
+root.v3_empty_economy_root_reproduced=true
+root.v4_empty_economy_root_reproduced=true
+root.v5_empty_economy_root_reproduced=true
+root.v6_empty_economy_root_reproduced=true
+root.v7_empty_economy_root_reproduced=true
+
+# Two states differing in nothing but the timestamp reach different roots. Without this the root could ignore the field entirely and every vector above would still pass, because they all hold one timestamp.
+root.one_milli_later=f56606e523ba86854a7cd475b933f68da3b498edd4a4bf0f092fcbb6a2e2f617
+root.the_timestamp_is_in_the_preimage=true
 
 # The four new entry kinds, their key and value widths derived twice, and the widened pool value that makes this a version rather than an edit: no version-eight decoder can read a version-nine kind-12 entry and no version-nine decoder can read a version-eight one.
 state.window_month.kind=20

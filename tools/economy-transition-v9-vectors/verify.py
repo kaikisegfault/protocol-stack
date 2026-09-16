@@ -355,7 +355,7 @@ def check_genesis(check: Checker) -> None:
         entries[state.unreferred_pool_key()].hex(),
     )
     check.equal(
-        "genesis.twelve_entries_are_version_eights_unchanged",
+        "genesis.thirteen_entries_are_version_eights_unchanged",
         {
             key: value
             for key, value in entries.items()
@@ -370,6 +370,132 @@ def check_genesis(check: Checker) -> None:
             if key[0] != c.UNREFERRED_POOL_ENTRY
         },
     )
+
+
+def check_non_collision(check: Checker) -> None:
+    """Eight separate claims, because distinct labels are strings and not a chain.
+
+    **Every predecessor preimage is also missing the timestamp**, so a
+    version-nine root could not equal one even where a label collided. The eight
+    comparisons are recorded anyway, for the reason `economy-transition-v9`
+    gives: that argument is about the preimage, and each label is its own claim.
+
+    The far end of the range is pinned against the file that accepted it rather
+    than only against a digest derived here. Version eight's own vectors record
+    the root of an empty state under its chain identity, and this construction
+    must reproduce it exactly — which is what catches a predecessor preimage that
+    quietly wrote version nine's schema version into all eight, where every
+    inequality below would still pass.
+    """
+    check.section(
+        "The version-nine state root collides with none of its eight "
+        "predecessors, and the timestamp it commits to is what makes the "
+        "commitment a version rather than a relabelling. Version eight's own "
+        "recorded root of an empty state is reproduced by this construction, so "
+        "the predecessor preimages are pinned to an accepted artifact instead of "
+        "only to each other."
+    )
+    fixture = scenario.genesis()
+    chain_id = genesis.chain_id(fixture)
+    height = 12
+
+    mine = e.state_root_over_empty(
+        chain_id, height, scenario.GENESIS_MILLIS, scenario.SUPPLY_LIMIT
+    )
+    live = state.state_root(
+        chain_id,
+        height,
+        scenario.GENESIS_MILLIS,
+        scenario.SUPPLY_LIMIT,
+        0,
+        0,
+        [],
+        {},
+    )
+    check.agree("root.version_nine", mine, live)
+
+    for version in (1, 2, 3, 4, 5, 6, 7, 8):
+        earlier = e.predecessor_state_root_over_empty(
+            version, chain_id, height, scenario.SUPPLY_LIMIT
+        )
+        live_earlier = state.predecessor_state_root(
+            version,
+            chain_id,
+            height,
+            scenario.SUPPLY_LIMIT,
+            0,
+            0,
+            [],
+            {},
+        )
+        check.agree(f"root.v{version}", earlier, live_earlier)
+        check.equal(f"root.differs_from_v{version}", earlier != mine)
+
+    accepted = read_vectors(
+        Path(__file__).resolve().parents[2]
+        / "test-vectors"
+        / "economy-transition-v8.txt"
+    )
+    recorded_root = accepted.get("root.version_eight")
+    recorded_chain = accepted.get("genesis.chain_id")
+    if recorded_root is None or recorded_chain is None:
+        check.failures.append(
+            "economy-transition-v8.txt records no root.version_eight to pin against"
+        )
+        return
+    reproduced = e.predecessor_state_root_over_empty(
+        8, bytes.fromhex(recorded_chain), height, scenario.SUPPLY_LIMIT
+    )
+    check.equal(
+        "root.version_eight_reproduces_its_accepted_root",
+        reproduced == recorded_root,
+    )
+
+    check.section(
+        "Each predecessor's empty economy tree root, reproduced from the file "
+        "that accepted it. An inequality between two digests proves nothing "
+        "about either one, so every construction the non-collisions above rest "
+        "on is first required to reach a root somebody else recorded. Versions "
+        "eight and nine record none of their own, so version nine's is pinned by "
+        "the state root above and version eight's by the root it reproduces."
+    )
+    accepted_empties = {
+        2: ("economy-transition-v2.txt", "state.economy_root_empty"),
+        3: ("economy-transition-v3.txt", "state.economy_root_empty"),
+        4: ("economy-transition-v4.txt", "state.economy_root_empty"),
+        5: ("economy-transition-v5.txt", "state.economy_root_empty"),
+        6: ("economy-transition-v6.txt", "tree.empty_root_hex"),
+        7: ("economy-transition-v7.txt", "version.economy_empty_root"),
+    }
+    vectors_dir = Path(__file__).resolve().parents[2] / "test-vectors"
+    for version, (name, key) in sorted(accepted_empties.items()):
+        recorded_empty = read_vectors(vectors_dir / name).get(key)
+        derived_empty = e.empty_tree_root(f"protocol-stack:v{version}:economy").hex()
+        check.equal(
+            f"root.v{version}_empty_economy_root_reproduced",
+            recorded_empty is not None and recorded_empty == derived_empty,
+        )
+
+    check.section(
+        "Two states differing in nothing but the timestamp reach different "
+        "roots. Without this the root could ignore the field entirely and every "
+        "vector above would still pass, because they all hold one timestamp."
+    )
+    later = e.state_root_over_empty(
+        chain_id, height, scenario.GENESIS_MILLIS + 1, scenario.SUPPLY_LIMIT
+    )
+    later_live = state.state_root(
+        chain_id,
+        height,
+        scenario.GENESIS_MILLIS + 1,
+        scenario.SUPPLY_LIMIT,
+        0,
+        0,
+        [],
+        {},
+    )
+    check.agree("root.one_milli_later", later, later_live)
+    check.equal("root.the_timestamp_is_in_the_preimage", later != mine)
 
 
 def check_state_surface(check: Checker) -> None:
@@ -930,6 +1056,7 @@ def main() -> int:
     check_widths(check)
     check_constants(check)
     check_genesis(check)
+    check_non_collision(check)
     check_state_surface(check)
     check_timestamp_rules(check)
     check_calendar_over_the_chain(check)

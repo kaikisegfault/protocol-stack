@@ -1,7 +1,9 @@
 # Economy transition v9
 
-Status: Accepted M3 consensus transition contract; model, execution, vectors,
-and C++20 kernel implementation not yet recorded
+Status: Accepted M3 consensus transition contract; independent model,
+execution model, vectors, and the C++20 kernel's **codec** recorded; the C++20
+kernel's ledger, the snapshot, the store, the application, the transport, the
+node process, and the application-contract version below are not
 
 This document defines the version-nine Founder Economy consensus transition. It
 is [`economy-transition-v8`](economy-transition-v8.md) with **a clock and a
@@ -1156,3 +1158,9 @@ against something other than itself.
 
 Acceptance of the recorded artifacts requires full GitHub-hosted verification on
 the exact commit that adds them.
+
+**What the recorded files now hold.** `test-vectors/economy-transition-v9.txt`
+holds 239 vectors and `test-vectors/economy-transition-v9-execution.txt` holds
+125. The C++20 codec reproduces every vector in the first that does not need a
+ledger, a chain, or the Python package's own surface, and names each one it does
+not reach together with what owes it.
