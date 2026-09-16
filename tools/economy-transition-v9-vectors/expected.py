@@ -449,3 +449,62 @@ def _settle_one(
         "remainder": payable - assigned,
         "assigned": assigned,
     }
+
+
+# --- the state root, over an empty state ------------------------------------
+#
+# The whole preimage written out rather than assembled from the model's frame,
+# so the timestamp's place in it is stated here independently. An empty accounts
+# tree and an empty economy tree are each one digest under their own prefix,
+# which is what makes an independent construction over an empty state short
+# enough to be obviously right.
+
+ACCOUNTS_TREE_PREFIX = "protocol-stack:v1:state"
+
+
+def empty_tree_root(prefix: str) -> bytes:
+    return digest(f"{prefix}-empty", b"")
+
+
+def state_root_over_empty(
+    chain_id: bytes, height: int, timestamp: int, supply_limit: int
+) -> str:
+    """The version-nine root of a state holding no account and no economy entry."""
+    payload = (
+        u16(SCHEMA_VERSION)
+        + chain_id
+        + u64(height)
+        + u64(timestamp)
+        + u64(supply_limit)
+        + u64(0)
+        + u64(0)
+        + u64(0)
+        + empty_tree_root(ACCOUNTS_TREE_PREFIX)
+        + u64(0)
+        + empty_tree_root(ECONOMY_TREE_PREFIX)
+    )
+    return digest(STATE_ROOT_LABEL, payload).hex()
+
+
+def predecessor_state_root_over_empty(
+    version: int, chain_id: bytes, height: int, supply_limit: int
+) -> str:
+    """The same state under an earlier label, version field, and preimage.
+
+    **No predecessor preimage carries a timestamp**, and version one's carries no
+    economy half at all, so the construction is a parameter of the version rather
+    than only of the label.
+    """
+    payload = (
+        u16(version)
+        + chain_id
+        + u64(height)
+        + u64(supply_limit)
+        + u64(0)
+        + u64(0)
+        + u64(0)
+        + empty_tree_root(ACCOUNTS_TREE_PREFIX)
+    )
+    if version > 1:
+        payload += u64(0) + empty_tree_root(f"protocol-stack:v{version}:economy")
+    return digest(f"protocol-stack:v{version}:state-root", payload).hex()

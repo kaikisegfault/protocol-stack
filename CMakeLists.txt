@@ -153,9 +153,11 @@ set(
   src/v1/execution.cpp
   src/v1/genesis.cpp
   src/v1/ledger.cpp
-  # The one economy contract the repository compiles. Version seven's kernel
-  # stood beside this one for the six slices ADR 0065 enumerates and was deleted
-  # by its step 7, which restores ADR 0046's rule unamended.
+  # **Two economy contracts are compiled while version nine is ported**, which
+  # is the coexistence ADR 0065 permitted for version eight and bounded to the
+  # port: version eight is the executing contract, version nine is the codec that
+  # will replace it, and the deletion is owed at the end of the sequence rather
+  # than at its start. ADR 0046's one-contract rule is restored then.
   src/v8/economy_assignment.cpp
   src/v8/economy_block.cpp
   src/v8/economy_body.cpp
@@ -175,6 +177,21 @@ set(
   src/v8/economy_uptime.cpp
   src/v8/economy_uptime_transitions.cpp
   src/v8/economy_value_transitions.cpp
+  # Version nine's codec: the eleven version-eight codec translation units with
+  # three identifiers rebound and the edits its own changes force, plus
+  # `economy_calendar.cpp`, which holds the whole of what version nine adds.
+  src/v9/economy_body.cpp
+  src/v9/economy_calendar.cpp
+  src/v9/economy_contract.cpp
+  src/v9/economy_envelope.cpp
+  src/v9/economy_genesis.cpp
+  src/v9/economy_identity.cpp
+  src/v9/economy_messages.cpp
+  src/v9/economy_receipt.cpp
+  src/v9/economy_settlement.cpp
+  src/v9/economy_state.cpp
+  src/v9/economy_tree.cpp
+  src/v9/economy_uptime.cpp
 )
 add_library(protocol_kernel STATIC ${PROTOCOL_STACK_KERNEL_SOURCES})
 target_include_directories(
@@ -282,6 +299,15 @@ add_executable(
   tests/kernel/economy_v8_version_test.cpp
 )
 target_link_libraries(economy_v8_codec_tests PRIVATE protocol_kernel)
+add_executable(
+  economy_v9_codec_tests
+  tests/kernel/economy_v9_test.cpp
+  tests/kernel/economy_v9_clock_test.cpp
+  tests/kernel/economy_v9_kinds_test.cpp
+  tests/kernel/economy_v9_state_test.cpp
+  tests/kernel/economy_v9_version_test.cpp
+)
+target_link_libraries(economy_v9_codec_tests PRIVATE protocol_kernel)
 add_executable(
   economy_v8_execution_tests
   tests/kernel/economy_v8_execution_test.cpp
@@ -539,6 +565,7 @@ set(
   kernel_primitive_tests
   economy_v8_codec_tests
   economy_v8_execution_tests
+  economy_v9_codec_tests
   kernel_admission_tests
   kernel_execution_tests
   kernel_genesis_tests
@@ -764,6 +791,17 @@ add_test(
     "${PROJECT_SOURCE_DIR}/test-vectors/founder-economy-manifest-v3.txt"
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7.txt"
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v6.txt"
+    "${PROJECT_SOURCE_DIR}/test-vectors/protocol-primitives-v1.txt"
+)
+add_test(
+  NAME economy-transition-v9-cpp
+  COMMAND
+    economy_v9_codec_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v9.txt"
+    "${PROJECT_SOURCE_DIR}/test-vectors/founder-economy-manifest-v3.txt"
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v8.txt"
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v6.txt"
+    "${PROJECT_SOURCE_DIR}/test-vectors/calendar-v1.txt"
     "${PROJECT_SOURCE_DIR}/test-vectors/protocol-primitives-v1.txt"
 )
 add_test(
