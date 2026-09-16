@@ -60,10 +60,18 @@ struct Deferred {
 constexpr std::array<Deferred, 6> kDeferred{{
     // A window's month is written at its opening height and read two windows
     // later, so every attribution vector needs a chain that has executed both.
-    {"attribution.", Match::prefix, "the version-nine ledger slice"},
-    // The monthly settlement: which month closes, who competes, what each winner
-    // receives, and the single pass that closes a multi-month halt.
-    {"settlement.", Match::prefix, "the version-nine ledger slice"},
+    {"attribution.", Match::prefix, "economy_v9_execution_tests"},
+    // **The settlement machine's own recording, and not a chain's.** These
+    // vectors are a run over a *sampled* window sequence — 0, 1, 2, 3, 4, 33,
+    // 63, 155 — which is legitimate for a fixture about arithmetic and is
+    // something no chain can produce: heights are consecutive and the prologue
+    // runs at every window-opening height. `economy-transition-v9` says so
+    // outright. The C++ kernel has no settlement machine separate from its
+    // chain, so what it reproduces is the same rules over a real chain, in
+    // `test-vectors/economy-transition-v9-execution.txt`.
+    {"settlement.", Match::prefix,
+     "tools/economy-transition-v9-vectors/verify.py, over a sampled window "
+     "sequence no chain can produce"},
     // The classification of version eight's Python surface into carried,
     // revised, and added. It is a claim about `simulation/economy_transition_v9`
     // and is checked by that package's own verifier; the C++ kernel's equivalent
@@ -76,7 +84,7 @@ constexpr std::array<Deferred, 6> kDeferred{{
     // target does reach is `kind22.is_issuing_kind`, because a receipt is a
     // codec artifact and `receipt_is_consistent` is the predicate that decides
     // it.
-    {"kind22.is_confirmable_mint", Match::exact, "the version-nine ledger slice"},
+    {"kind22.is_confirmable_mint", Match::exact, "economy_v9_execution_tests"},
     // **Unrepresentable rather than deferred.** A timestamp below the accepted
     // range means a negative millisecond count, and this kernel carries a
     // timestamp in a `std::uint64_t`, so there is no input that reaches the

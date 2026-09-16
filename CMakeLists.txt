@@ -177,21 +177,31 @@ set(
   src/v8/economy_uptime.cpp
   src/v8/economy_uptime_transitions.cpp
   src/v8/economy_value_transitions.cpp
-  # Version nine's codec: the eleven version-eight codec translation units with
+  # The version-nine kernel: version eight's nineteen translation units with
   # three identifiers rebound and the edits its own changes force, plus
-  # `economy_calendar.cpp`, which holds the whole of what version nine adds.
+  # `economy_calendar.cpp` and `economy_monthly.cpp`, which hold the whole of
+  # what version nine adds to the codec and to execution.
+  src/v9/economy_assignment.cpp
+  src/v9/economy_block.cpp
   src/v9/economy_body.cpp
   src/v9/economy_calendar.cpp
   src/v9/economy_contract.cpp
   src/v9/economy_envelope.cpp
+  src/v9/economy_execution.cpp
   src/v9/economy_genesis.cpp
   src/v9/economy_identity.cpp
+  src/v9/economy_invariants.cpp
+  src/v9/economy_ledger.cpp
   src/v9/economy_messages.cpp
+  src/v9/economy_monthly.cpp
   src/v9/economy_receipt.cpp
   src/v9/economy_settlement.cpp
   src/v9/economy_state.cpp
+  src/v9/economy_transitions.cpp
   src/v9/economy_tree.cpp
   src/v9/economy_uptime.cpp
+  src/v9/economy_uptime_transitions.cpp
+  src/v9/economy_value_transitions.cpp
 )
 add_library(protocol_kernel STATIC ${PROTOCOL_STACK_KERNEL_SOURCES})
 target_include_directories(
@@ -308,6 +318,13 @@ add_executable(
   tests/kernel/economy_v9_version_test.cpp
 )
 target_link_libraries(economy_v9_codec_tests PRIVATE protocol_kernel)
+add_executable(
+  economy_v9_execution_tests
+  tests/kernel/economy_v9_execution_test.cpp
+  tests/kernel/economy_v9_trace.cpp
+  tests/kernel/economy_v9_execution_checks.cpp
+)
+target_link_libraries(economy_v9_execution_tests PRIVATE protocol_kernel)
 add_executable(
   economy_v8_execution_tests
   tests/kernel/economy_v8_execution_test.cpp
@@ -566,6 +583,7 @@ set(
   economy_v8_codec_tests
   economy_v8_execution_tests
   economy_v9_codec_tests
+  economy_v9_execution_tests
   kernel_admission_tests
   kernel_execution_tests
   kernel_genesis_tests
@@ -803,6 +821,13 @@ add_test(
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v6.txt"
     "${PROJECT_SOURCE_DIR}/test-vectors/calendar-v1.txt"
     "${PROJECT_SOURCE_DIR}/test-vectors/protocol-primitives-v1.txt"
+)
+add_test(
+  NAME economy-transition-v9-execution-cpp
+  COMMAND
+    economy_v9_execution_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v9-execution.txt"
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v9.txt"
 )
 add_test(
   NAME economy-transition-v8-execution-cpp
