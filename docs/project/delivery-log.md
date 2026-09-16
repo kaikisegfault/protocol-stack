@@ -32,6 +32,112 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M3.18a was delivered
+
+**The first C++ in this repository that encodes a version-nine artifact.**
+Issue #307 and PR #308 delivered `include/protocol/v9/economy.hpp` and twelve
+sources under `src/v9/`, merged by rebase as `4c46e56` on 2026-09-16. Candidate
+run 35152873997 passed the complete hosted matrix — scope classification `full`,
+GCC and Clang debug, both sanitizers, and the aggregate required check — with
+**169** ctest entries in the debug presets and **177** under `clang-sanitizers`,
+one more than M3.17c because the slice adds exactly one, `economy-transition-v9-cpp`.
+
+**Eleven of the twelve sources are version eight's codec with three identifiers
+rebound**, and four of them have an **empty normalising diff** against their
+originals — `economy_envelope.cpp`, `economy_identity.cpp`,
+`economy_messages.cpp` and `economy_settlement.cpp`. That is the strongest
+available statement that nothing changed by accident, and it is why the file
+split matters: version nine's own addition lives in `economy_calendar.cpp`, so
+the difference between two codecs is a file rather than a diff spread across
+eleven. It is the shape M3.13n established for version eight and the reason a
+reader can audit the port while both kernels compile.
+
+**The other seven carried files change only where the contract does**, and the
+list is short enough to state: the widened kind-12 value and its new decoder in
+`economy_state.cpp`; the genesis timestamp, its offset shifts and a predecessor
+range that now runs to eight in `economy_genesis.cpp`; kind 22 in three tables in
+`economy_contract.cpp` and one shared decoder arm in `economy_body.cpp`; the
+timestamp in the root preimage in `economy_tree.cpp`; and prose in
+`economy_receipt.cpp` and `economy_internal.hpp`. **Thirteen literal mentions of
+version eight survived the rebinding and every one was read rather than
+rewritten**; the five that remain are correct history about version six's result
+codes, version eight's two kinds, and the port itself.
+
+**`accept_timestamp` and `replay_timestamp` differ in exactly one respect**, and
+that is the structural half of `calendar-v1`'s separation rather than a
+convenience: there is no argument to the second that could make a replaying,
+restoring or reconstructing machine check a tolerance. The behavioural half is a
+vector — the accepted chain re-run through the clock-reading path with a reading
+ten tolerances stale must refuse **every** height, which is what "a machine that
+re-applied C5 on replay would reject the chain's own past" means as a check
+instead of a warning.
+
+**The contract vector file did not hold the state-root non-collisions its own
+specification asks for**, and the slice added them rather than working around
+them. `economy-transition-v9.txt` had the seven chain-identity non-collisions and
+nothing about the root; it now records the version-nine root, the eight
+predecessor roots, their eight non-collisions, each predecessor's empty economy
+tree root pinned against the file that accepted it, and **a pair of states
+differing only in the timestamp**. That last pair is the one that matters:
+without it the root could ignore the field entirely and every other vector would
+still pass, because they all hold one timestamp. 213 vectors become 239.
+
+**The far end of the compatibility range is pinned to an accepted artifact.**
+`economy-transition-v8.txt` records the root of an empty state under version
+eight's chain identity, and this kernel's predecessor construction must reproduce
+it exactly. That is M3.13n's finding applied rather than rediscovered: an
+inequality between two digests proves nothing about either one, so a construction
+that wrote version nine's schema version into all eight preimages would still
+satisfy every non-collision. A probe doing exactly that fails on the pin.
+
+**A recorded boolean was named for a count it did not establish.**
+`genesis.twelve_entries_are_version_eights_unchanged` compares thirteen entries —
+ten channels, the recovery pool, the verifier key and the verified-user counter —
+and is renamed for thirteen. `docs/engineering/verification.md` requires a name
+to assert no more than its value establishes, and a name asserting a *different*
+number is the same defect seen from the other side.
+
+**Six mutation probes ran and five were caught immediately**: a state root that
+drops the timestamp, a predecessor preimage that writes version nine's schema
+version, a header whose timestamp and height swap places, an encodable zero
+figure, and a kind-12 value left at version eight's width. **The sixth passed and
+was re-aimed rather than accepted.** It changed `146'096` to `146'095` inside the
+era arithmetic, which is an *equivalent* mutation over the accepted range — the
+M3.10b lesson exactly. Re-aimed at the **century correction**, by zeroing the
+`day_of_era / 36'524` term, it fails on `century_common_march_first`: 2100-03-01,
+the case an abbreviated leap rule gets wrong. A probe that passes is a question
+about the probe before it is a question about the code.
+
+**The calendar is checked against `calendar-v1`'s own file rather than against
+version nine's restatement of it.** Twelve recorded derivations, both sides of
+three month boundaries, two leap-year Februaries, the century that is not one,
+the last millisecond the calendar defines, five February lengths derived from
+month edges rather than from a table, and the ordered rejection conditions read
+out as a list. Those vectors were recorded by driving the accepted calendar
+model; reproducing them is agreement with the specification this version binds.
+
+**The coverage guard fails both ways and that is the point.** A claimed vector
+never consulted fails, and a deferral that matches no unconsulted vector fails
+too, so an exemption cannot outlive what it excused. Five deferrals are recorded:
+`attribution.` and `settlement.` to the ledger slice, `carryover.` and the
+per-predecessor empty roots to the Python verifier, `kind22.is_confirmable_mint`
+to the ledger because confirmation is a predicate over a stored posture rather
+than a codec table, and `genesis.refuses_a_timestamp_below_the_range` **to
+nobody** — a timestamp below zero is unrepresentable in the `u64` this kernel
+carries, so recording the case would mean constructing a value the type forbids.
+Naming that as unrepresentable rather than deferred is the honest classification;
+calling it deferred would promise a later slice something no slice can deliver.
+
+**One local practice is worth repeating.** This machine has no CMake and no
+libsodium, and building either is the heavy local operation the repository
+instructions forbid. A scratch shim forwarding `crypto_hash_sha256` to the
+already-installed OpenSSL let the whole codec target compile, link and **run
+locally with real digests** before anything was pushed — which is what caught
+three recorded-fixture mistakes that would each have cost a hosted round trip:
+`header.timestamp_field` is a boolean and not the timestamp, the kind-22 body's
+destination and signature octets were transposed, and the four mint messages use
+one seat rather than two.
+
 ### How M3.17c was delivered
 
 **The unreferred performance pool pays somebody, and it is the first time.** It

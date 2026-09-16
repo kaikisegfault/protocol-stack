@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-09-15
+Last updated: 2026-09-16
 
 ## Phase
 
@@ -467,9 +467,21 @@ you need the history behind a claim here; read this one for what is true now.
   answers none of its 75, February closes at the assignment of the window that
   opens March, and the whole balance goes to the better machine. A second
   scenario jumps the chain's stamps ninety days and one assignment closes a month
-  while skipping three. **It is Python only**: no C++ executes a version-nine
-  transition, and no network can run one until the application contract can carry
-  a timestamp.
+  while skipping three. **The settlement is Python only**: no C++ executes a
+  version-nine transition, and no network can run one until the application
+  contract can carry a timestamp.
+- **The version-nine codec is in the C++20 kernel.** As of 2026-09-16
+  `include/protocol/v9/economy.hpp` and twelve sources under `src/v9/` encode
+  every version-nine artifact a codec owns: the 154-octet block header and its
+  re-versioned identifier, the 150-octet genesis with its timestamp, the four
+  entry kinds and the widened unreferred pool, kind 22's body and the mint
+  message it reuses, the state root that commits to the timestamp, the eight
+  predecessor constructions, and `calendar-v1`'s derivation from a millisecond
+  count to a calendar month. `economy-transition-v9-cpp` reproduces every vector
+  in `test-vectors/economy-transition-v9.txt` that needs no ledger and names each
+  one it does not reach together with what owes it. **It executes nothing**: the
+  monthly settlement, the six-step prologue, and kind 22's transition are the
+  ledger half and are the next slice.
 - **A four-node version-eight network refuses a transaction, and all four
   replicas refuse it identically.** As of 2026-09-11 two transactions the
   contract must reject — a transfer at a consumed nonce and a second purchase of
@@ -962,6 +974,20 @@ behavior.
 ## Repository state
 
 - Repository: `kaikisegfault/protocol-stack`.
+- Issue #307 and PR #308 are the M3.18a delivery, merged by rebase as `4c46e56`
+  on 2026-09-16. One commit, twenty-five files, **5,604 insertions and 7
+  deletions**: `include/protocol/v9/economy.hpp`, twelve sources and one internal
+  header under `src/v9/`, six test translation units under `tests/kernel/`,
+  `CMakeLists.txt`, the specification's status line, and the two files of
+  `tools/economy-transition-v9-vectors/` that record the added root section.
+  **`test-vectors/economy-transition-v9.txt` is the one accepted vector file that
+  changed**, and it changed additively: 213 vectors become 239, with one boolean
+  renamed for the count it establishes. No specification rule, manifest,
+  encoding, or existing kernel source changed, and `src/v8/` is untouched.
+  `tools/verification_scope.py` classifies it `full`. Candidate run 35152873997
+  on the branch head passed all five jobs, with **169** ctest entries in the
+  debug presets and **177** under `clang-sanitizers`, one more than M3.17c's 168
+  and 176 because the slice adds exactly one entry, `economy-transition-v9-cpp`.
 - Issue #283 and PR #284 are the M3.14e delivery, merged by rebase as
   `453a9f5`, `b3a6a63`, `d088744` and `923d2d3` on 2026-09-13. Four commits,
   seventeen files, **1,709 insertions and 269 deletions**: eleven Go files in
@@ -2438,13 +2464,33 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-**Put the version-nine transition into the C++20 kernel.**
-[`economy-transition-v9`](../specifications/economy-transition-v9.md) is
-accepted, it executes end to end in Python, and **338 vectors across two files**
-fix what a kernel must reproduce. Nothing in C++ executes a version-nine
-transition and no network can run one, so this is the nearest slice that moves
-the product. It is a `change-protocol` slice of the size M3.13m through M3.13s
-was, and what it must not re-derive is under "The recorded successors" below.
+**Put the version-nine ledger into the C++20 kernel**, beside the codec M3.18a
+delivered. `include/protocol/v9/ledger.hpp` and the execution sources under
+`src/v9/`, on the shape M3.13o gave version eight: version eight's eight
+execution translation units with three identifiers rebound, plus one translation
+unit for what version nine adds — the six-step prologue, the monthly settlement
+and its single pass, and kind 22's transition with its nine ordered rejection
+conditions.
+
+**What it must reproduce** is `test-vectors/economy-transition-v9-execution.txt`'s
+125 vectors and the sections of `test-vectors/economy-transition-v9.txt` the
+codec target defers by name: `attribution.` and `settlement.`, plus
+`kind22.is_confirmable_mint`. The coverage guard in
+`tests/kernel/economy_v9_test.cpp` lists each one with what owes it, so the
+ledger slice's scope is read off a compiled table rather than off this sentence.
+
+**Three things it must not re-derive.** The codec already holds the calendar, the
+four entry codecs, the header, genesis, and the root; the ordering pair ADR 0078
+distinguishes — the payout before the accrual is *observable* and the
+accumulation before the deletion is not — is fixed and must be reproduced rather
+than rechosen; and the settlement is a **single pass**, proved equal to a loop by
+a scenario rather than by an invariant. What the kernel must not re-derive beyond
+that is under "The recorded successors" below.
+
+**The stack behind it is still version eight's** — the snapshot, the owning
+store, the application layer, the transport, the node process and the ABCI
+adapter — and the application-contract version named below is what a devnet waits
+on.
 
 **Everything below this paragraph is the accumulated history of how the slices
 that led here were chosen, newest reasoning last.** It is kept because the
@@ -2507,9 +2553,22 @@ and two ctest entries gate them.
 for the first time.** It has accrued since `economy-transition-v3` and nothing
 had ever taken value out of it. Six more modules, 125 execution vectors over two
 scenarios, and [ADR 0078](../decisions/0078-the-version-nine-execution-model.md).
-**The nearest slice is the C++20 kernel and the stack behind it**, and the
-application-contract version named below is what a devnet waits on. What the
-kernel must not re-derive is under "The recorded successors" below.
+
+**M3.18a put the codec into the C++20 kernel the same day**, so the sentence that
+stood here calling the whole kernel the nearest slice is history: its first half
+is delivered and **the nearest slice is the ledger**. Twelve sources under
+`src/v9/`, of which eleven are version eight's codec rebound and four have an
+empty normalising diff against their originals.
+
+**Two things M3.18a found are worth carrying forward.** The contract vector file
+did not hold the **state-root non-collisions** the specification's own
+required-vector list asks for — it had the seven chain-identity ones and none for
+the root — so the slice added them, together with the pair of states differing
+only in the timestamp. Without that pair the root could ignore the field
+entirely and every other vector would still pass, because they all hold one
+timestamp. And a recorded boolean was named for a count it did not establish:
+`genesis.twelve_entries_are_version_eights_unchanged` compares thirteen entries,
+and is now named for thirteen.
 
 **Three things M3.17a found are worth carrying forward rather than
 rediscovering.** The winner's award is a **per-seat running balance** rather than
@@ -2547,9 +2606,10 @@ the fixture rather than left to be rediscovered.
   and [ADR 0077](../decisions/0077-the-version-nine-clock-and-monthly-settlement.md)
   on 2026-09-15, M3.17b modelled the codec, the calendar rules and the settlement
   arithmetic the same day, and M3.17c made a chain run the whole transition on
-  2026-09-16. **The nearest slice is the C++20 kernel**, then the stack — the
-  snapshot, the owning store, the application layer, the transport, the node
-  process and the ABCI adapter, which are all still version eight's — then the
+  2026-09-16, and M3.18a put its codec into the C++20 kernel the same day.
+  **The nearest slice is the kernel's ledger**, then the stack — the snapshot,
+  the owning store, the application layer, the transport, the node process and
+  the ABCI adapter, which are all still version eight's — then the
   application-contract version named below. The paragraphs that stood here enumerating what the binding version had
   to add are superseded by the specification itself and are not restated; three
   of them were **wrong**, and the corrections are the reason to read the
@@ -2574,8 +2634,10 @@ the fixture rather than left to be rediscovered.
   sixteen entries, the 154-octet header and its re-versioned identifier, kind
   22's body, ladder and mint message, the five calendar rules, the settlement
   arithmetic, the six-step prologue, and the root that commits to the timestamp —
-  all in `simulation/economy_transition_v9/`, with **338 vectors** behind them
-  across two files. **Version nine adds no result code.**
+  all in `simulation/economy_transition_v9/`, with **364 vectors** behind them
+  across two files. **Version nine adds no result code.** Everything in that list
+  but the ladder, the settlement arithmetic and the prologue is delivered: M3.18a
+  is the codec and the ledger is what remains.
 
   **The prologue at an assignment height runs:** derive the sequence, version
   seven's settlement steps 1–7, settle the closing month, settlement step 8,
