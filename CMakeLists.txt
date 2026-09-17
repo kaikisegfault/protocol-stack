@@ -229,6 +229,9 @@ add_library(
     src/storage/snapshot_v8.cpp
     src/storage/snapshot_v8_assignments.cpp
     src/storage/snapshot_v8_entries.cpp
+    src/storage/snapshot_v9.cpp
+    src/storage/snapshot_v9_assignments.cpp
+    src/storage/snapshot_v9_entries.cpp
 )
 add_library(
   protocol_application
@@ -428,6 +431,20 @@ add_executable(
   tests/kernel/economy_v8_trace.cpp
   tests/kernel/economy_v8_scenarios_test.cpp
 )
+# The version-nine trace is reused for the same reason version eight's is: the
+# recorded scenarios are what a snapshot is checked against, and a second copy
+# of them would be a second opinion about the states whose quantities the
+# vectors fix. Only the trace is needed here, not the scenario checks: this
+# suite reads the recorded pool quantities itself.
+add_executable(
+  storage_snapshot_v9_tests
+  tests/storage/snapshot_v9_test.cpp
+  tests/storage/snapshot_v9_fixture.cpp
+  tests/storage/snapshot_v9_round_trip.cpp
+  tests/storage/snapshot_v9_refusals.cpp
+  tests/storage/snapshot_v9_entry_refusals.cpp
+  tests/kernel/economy_v9_trace.cpp
+)
 # The two scenario translation units are the kernel execution suite's own, for
 # the reason the snapshot tests reuse them: the recorded scenarios are the third
 # source a store is checked against.
@@ -525,6 +542,12 @@ target_link_libraries(
     protocol_stack_sqlite
 )
 target_link_libraries(
+  storage_snapshot_v9_tests
+  PRIVATE
+    protocol_storage
+    protocol_stack_sqlite
+)
+target_link_libraries(
   storage_sqlite_ledger_v8_tests
   PRIVATE
     protocol_storage
@@ -601,6 +624,7 @@ set(
   storage_sqlite_recovery_v8_tests
   storage_snapshot_v1_tests
   storage_snapshot_v8_tests
+  storage_snapshot_v9_tests
   storage_sqlite_ledger_v8_tests
   storage_archive_v1_tests
   application_v1_tests
@@ -648,6 +672,9 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       src/storage/snapshot_v8.cpp
       src/storage/snapshot_v8_assignments.cpp
       src/storage/snapshot_v8_entries.cpp
+      src/storage/snapshot_v9.cpp
+      src/storage/snapshot_v9_assignments.cpp
+      src/storage/snapshot_v9_entries.cpp
   )
   add_library(
     protocol_application_wire_fuzz
@@ -678,6 +705,10 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     tests/fuzz/snapshot_v8_fuzz.cpp
   )
   add_executable(
+    storage_snapshot_v9_fuzz
+    tests/fuzz/snapshot_v9_fuzz.cpp
+  )
+  add_executable(
     storage_archive_fuzz
     tests/fuzz/archive_fuzz.cpp
   )
@@ -701,6 +732,11 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       protocol_storage_fuzz
   )
   target_link_libraries(
+    storage_snapshot_v9_fuzz
+    PRIVATE
+      protocol_storage_fuzz
+  )
+  target_link_libraries(
     application_wire_fuzz
     PRIVATE
       protocol_application_wire_fuzz
@@ -717,6 +753,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     protocol_storage_fuzz
     storage_snapshot_fuzz
     storage_snapshot_v8_fuzz
+    storage_snapshot_v9_fuzz
     storage_archive_fuzz
     protocol_application_wire_fuzz
     application_wire_fuzz
@@ -758,6 +795,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       protocol_storage_fuzz
       storage_snapshot_fuzz
       storage_snapshot_v8_fuzz
+      storage_snapshot_v9_fuzz
       storage_archive_fuzz
       protocol_application_wire_fuzz
       application_wire_fuzz
@@ -777,6 +815,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       economy_v8_fuzz
       storage_snapshot_fuzz
       storage_snapshot_v8_fuzz
+      storage_snapshot_v9_fuzz
       storage_archive_fuzz
       application_wire_fuzz
   )
@@ -843,6 +882,12 @@ add_test(
   COMMAND
     storage_snapshot_v8_tests
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v8-execution.txt"
+)
+add_test(
+  NAME version-nine-snapshot
+  COMMAND
+    storage_snapshot_v9_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v9-execution.txt"
 )
 # The directory name is short because the termination cases re-exec this binary
 # and its arguments include the directory.
@@ -2024,6 +2069,15 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     NAME storage-snapshot-v8-fuzz-smoke
     COMMAND
       storage_snapshot_v8_fuzz
+      -seed=824311
+      -runs=512
+      -max_len=4096
+      -len_control=0
+  )
+  add_test(
+    NAME storage-snapshot-v9-fuzz-smoke
+    COMMAND
+      storage_snapshot_v9_fuzz
       -seed=824311
       -runs=512
       -max_len=4096
