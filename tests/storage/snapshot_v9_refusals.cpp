@@ -59,6 +59,12 @@ void check_parameter_refusals(const Payload& original,
   }
 }
 
+// **None of the ordering cases reseals, and the reason is a rule the whole
+// suite follows.** Resealing exists to carry a mutation *past* the earlier gates
+// so it reaches the one under test. These four are refused by `read_accounts` and
+// `read_economy` before any root is computed, so a reseal would buy nothing — and
+// two of them could not be resealed at all, because `economy_root` refuses a
+// duplicate key and would hand back no root to seal with.
 void check_section_refusals(const Payload& original,
                             const ps::SnapshotParametersV9& parameters) {
   pv::require(original.accounts.size() >= 2,
@@ -66,28 +72,24 @@ void check_section_refusals(const Payload& original,
   {
     auto payload = original;
     std::swap(payload.accounts[0], payload.accounts[1]);
-    reseal(payload);
     require_refusal(payload, parameters, ps::SnapshotV9Error::malformed,
                     "an account map out of order");
   }
   {
     auto payload = original;
     payload.accounts[1] = payload.accounts[0];
-    reseal(payload);
     require_refusal(payload, parameters, ps::SnapshotV9Error::malformed,
                     "an account map with a repeated identifier");
   }
   {
     auto payload = original;
     std::swap(payload.economy[0], payload.economy[1]);
-    reseal(payload);
     require_refusal(payload, parameters, ps::SnapshotV9Error::malformed,
                     "an economy map out of order");
   }
   {
     auto payload = original;
     payload.economy[1] = payload.economy[0];
-    reseal(payload);
     require_refusal(payload, parameters, ps::SnapshotV9Error::malformed,
                     "an economy map with a repeated key");
   }
