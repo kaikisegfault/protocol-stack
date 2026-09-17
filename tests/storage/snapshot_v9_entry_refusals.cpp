@@ -7,10 +7,16 @@
 // gets the sweep is the four kinds version nine adds, its widened pool value,
 // and its new fixed entry — the surfaces this slice had to write from nothing.
 //
-// Every case mutates one entry of a payload the module has already accepted, and
-// every case that changes a value **reseals**, so the refusal comes from the
-// decoder rather than from a root that stopped matching. A case that did not
-// reseal would pass for the wrong reason on any rule the decoder later dropped.
+// Every case mutates one entry of a payload the module has already accepted.
+//
+// **Almost none of them reseals, and the reason is worth stating once.**
+// Resealing carries a mutation *past* the earlier gates so it reaches the one
+// under test. Every case here is refused by `apply_entry` or `complete`, which
+// run **before** any gate, so a reseal would buy nothing. Worse, most of these
+// payloads cannot be resealed at all: `economy_root` refuses an entry whose kind
+// or width is not one a transition writes, so a mutation of exactly that shape
+// leaves no root to seal with. The single case that must reach gate 3 reseals
+// and says so at the point it does.
 
 #include "snapshot_v9_fixture.hpp"
 
@@ -20,15 +26,14 @@
 namespace snapshot_v9_tests {
 namespace {
 
-// A refusal built by rewriting one entry's value and resealing. The entry is
-// reached by kind, so a scenario change moves it without moving this test.
+// A refusal built by rewriting one entry's value. The entry is reached by kind,
+// so a scenario change moves it without moving this test.
 void refuse_value(const Payload& original,
                   const ps::SnapshotParametersV9& parameters, v9::Entry kind,
                   const std::string& subject,
                   void (*mutate)(v9::Bytes& value)) {
   auto payload = original;
   mutate(entry_of(payload, kind).value);
-  reseal(payload);
   require_refusal(payload, parameters, ps::SnapshotV9Error::invalid_state,
                   subject);
 }
@@ -52,6 +57,8 @@ void check_window_month(const Payload& original,
     auto payload = original;
     auto& entry = last_of(payload, v9::Entry::window_month);
     poke_u64(entry.key, 1, 1ULL << 40U);
+    // The one case in this file that reseals, because it is the one that must
+    // reach a gate rather than a decoder.
     reseal(payload);
     require_refusal(payload, parameters, ps::SnapshotV9Error::not_conserved,
                     "a window month entry outliving its retention");
@@ -73,7 +80,6 @@ void check_monthly_figure(const Payload& original,
     auto payload = original;
     auto& entry = last_of(payload, v9::Entry::monthly_uptime_figure);
     poke_u32(entry.key, 1, v9::kMaxMonthIndex + 1);
-    reseal(payload);
     require_refusal(payload, parameters, ps::SnapshotV9Error::invalid_state,
                     "a monthly figure keyed to a month past the calendar");
   }
@@ -84,7 +90,6 @@ void check_monthly_figure(const Payload& original,
     auto payload = original;
     auto& entry = last_of(payload, v9::Entry::monthly_uptime_figure);
     poke_u32(entry.key, 5, 900'000);
-    reseal(payload);
     require_refusal(payload, parameters, ps::SnapshotV9Error::invalid_state,
                     "a monthly figure naming a seat the chain never sold");
   }
@@ -109,7 +114,6 @@ void check_monthly_claim(const Payload& original,
     auto payload = original;
     auto& entry = last_of(payload, v9::Entry::monthly_pool_claim);
     poke_u32(entry.key, 1, 900'000);
-    reseal(payload);
     require_refusal(payload, parameters, ps::SnapshotV9Error::invalid_state,
                     "a monthly claim naming a seat the chain never sold");
   }
@@ -130,7 +134,6 @@ void check_settlement_cursor(const Payload& original,
     // subject.
     auto payload = original;
     erase_kind(payload, v9::Entry::settlement_cursor);
-    reseal(payload);
     require_refusal(payload, parameters, ps::SnapshotV9Error::invalid_state,
                     "a payload with no settlement cursor");
   }
@@ -168,7 +171,6 @@ void check_unreferred_pool(const Payload& original,
     pv::require(entry.value.size() == 24,
                 "version nine's unreferred pool value is 24 octets");
     entry.value.resize(16);
-    reseal(payload);
     require_refusal(payload, parameters, ps::SnapshotV9Error::invalid_state,
                     "a version-eight unreferred pool value");
   }
@@ -207,14 +209,12 @@ void check_inherited(const Payload& original,
     auto payload = original;
     auto& entry = last_of(payload, v9::Entry::channel);
     entry.key[1] = static_cast<std::uint8_t>(v9::kChannelCount);
-    reseal(payload);
     require_refusal(payload, parameters, ps::SnapshotV9Error::invalid_state,
                     "a channel index no manifest defines");
   }
   {
     auto payload = original;
     erase_kind(payload, v9::Entry::recovery_pool);
-    reseal(payload);
     require_refusal(payload, parameters, ps::SnapshotV9Error::invalid_state,
                     "a payload with no recovery pool entry");
   }
@@ -222,7 +222,6 @@ void check_inherited(const Payload& original,
     auto payload = original;
     auto& entry = last_of(payload, v9::Entry::seat);
     poke_u32(entry.key, 1, v9::kMaxSeatId + 1);
-    reseal(payload);
     require_refusal(payload, parameters, ps::SnapshotV9Error::invalid_state,
                     "a seat past the founder capacity");
   }
@@ -234,7 +233,6 @@ void check_inherited(const Payload& original,
     entry.key = {0xFEU, 0x00U};
     entry.value = {};
     payload.economy.push_back(entry);
-    reseal(payload);
     require_refusal(payload, parameters, ps::SnapshotV9Error::invalid_state,
                     "an entry of a kind the contract does not define");
   }
