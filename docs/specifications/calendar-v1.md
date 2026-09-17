@@ -543,7 +543,11 @@ because the reasoning is where the off-by-one lives.
   specification excludes — proposer identity, vote data, wall-clock readings —
   and it becomes false of the agreed header field on the version that binds this
   specification, which is a difference the binding version states rather than one
-  this specification makes retroactively.
+  this specification makes retroactively. **That version is accepted**:
+  [`consensus-application-v2`](consensus-application-v2.md) binds this
+  specification for `economy-transition-v9`, and its
+  [What `calendar-v1` requires of a binding version](consensus-application-v2.md#what-calendar-v1-requires-of-a-binding-version-and-where-each-is-met)
+  records where each of the three obligations above is met.
 - **`cycle-boundary-v1` is untouched and stays in heights.** ADR 0050 is explicit
   that cycle windows remain block-denominated and that mixing the two units is
   the mistake the separation exists to prevent. Nothing here converts a month to

@@ -250,6 +250,9 @@ nine: `ProcessProposal` and `FinalizeBlock` must carry the proposed timestamp,
 `InitChain` the genesis timestamp, and the two must differ in exactly one respect
 — `ProcessProposal` applies C5 and `FinalizeBlock` never does.
 
+**It is written.** [ADR 0079](0079-the-version-nine-application-contract.md)
+accepts [`consensus-application-v2`](../specifications/consensus-application-v2.md).
+
 `economy-transition-v9` states what that contract must gain and stops there, which
 is version eight's layering: the transition defines the contract and the stack
 slices carry it. Writing both in one document would put a wire encoding inside a

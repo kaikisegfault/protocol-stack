@@ -79,11 +79,18 @@ reconciles the independently durable CometBFT and application heads through
 ABCI Info; neither process treats an uncommitted preview as state.
 
 The normative lifecycle, result mapping, resource limits, local framing, and
-replay rules are in `../specifications/consensus-application-v1.md`.
-CometBFT protobuf, Go, validator, proposer, timestamp, RPC, and transport types
-must not leak into kernel or storage modules. A future consensus engine should
-be replaceable without migrating account or economic state merely because
-transport changed.
+replay rules are in `../specifications/consensus-application-v1.md` for version
+one and `../specifications/consensus-application-v2.md` for version nine, which
+adds the block timestamp as a transition input and places each of
+`calendar-v1`'s ordered conditions on exactly one of the two entry points.
+
+CometBFT protobuf, Go, validator, proposer, RPC, and transport types must not
+leak into kernel or storage modules. **A block's agreed timestamp reaches the
+kernel from version nine onward, and it reaches it as a `u64` count of
+milliseconds** converted at the boundary — the protobuf `Timestamp` type does
+not cross it, and a machine's own clock reading crosses nothing at all. A future
+consensus engine should be replaceable without migrating account or economic
+state merely because transport changed.
 
 ## Determinism boundary
 
@@ -91,6 +98,9 @@ Consensus state must not depend on:
 
 - floating-point arithmetic;
 - locale, wall-clock time, filesystem ordering, or thread scheduling;
+  **an agreed block timestamp is not wall-clock time** — from version nine a
+  block carries one, consensus agrees it, and execution reads it as a field,
+  which is the attested-claim rule rather than an exception to it;
 - database iteration unless order is explicitly canonicalized;
 - undefined or implementation-defined C++ behavior;
 - external APIs, DNS, model inference, or mutable remote data;

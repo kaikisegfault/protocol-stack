@@ -8,6 +8,17 @@ and, under `-protocol-version 8`, the version-eight responses recorded in
 [ADR 0068](../../docs/decisions/0068-the-version-eight-application-layer.md) and
 [ADR 0069](../../docs/decisions/0069-the-version-eight-node-process-and-adapter.md).
 
+**It does not yet implement version nine.**
+[`consensus-application-v2.md`](../../docs/specifications/consensus-application-v2.md)
+is accepted and is what a version-nine adapter must satisfy: local frame version
+2, a timestamp on `ProcessProposal`, `FinalizeBlock`, and `InitChain`, the
+protobuf-to-millisecond conversion, and the eight-value proposal decision. Note
+that `wireVersion` is 1 for both clients here although version eight's
+finalized-block payload differs from version one's, so a mismatched pair is
+refused at the result count rather than at the frame header — a drift
+[ADR 0079](../../docs/decisions/0079-the-version-nine-application-contract.md)
+records and version two closes by moving the version field.
+
 The module provides four cgo-free commands:
 
 - `protocol-cometbft-bridge`, the stateless ABCI++ socket bridge;

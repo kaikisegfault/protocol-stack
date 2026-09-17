@@ -181,6 +181,11 @@ application transition inputs.** That stays true of everything it excludes —
 proposer identity, vote data, wall-clock readings — and becomes false of the
 agreed header field on the version that binds this specification, which is a
 difference that version states rather than one this ADR makes retroactively.
+**Both are now stated.**
+[`economy-transition-v9`](../specifications/economy-transition-v9.md) binds the
+fields and [ADR 0079](0079-the-version-nine-application-contract.md) accepts
+[`consensus-application-v2`](../specifications/consensus-application-v2.md),
+which carries the corrected sentence.
 
 **Cycle windows stay in block heights.** ADR 0050 is explicit that mixing the
 two units is the mistake the separation exists to prevent. Nothing here converts

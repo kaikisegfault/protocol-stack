@@ -981,6 +981,12 @@ inputs" and freezes its local protocol at frame version 1. **Both become false o
 version nine**, and closing that is a separate accepted contract rather than
 something this document may assume.
 
+**That contract is accepted.**
+[`consensus-application-v2`](consensus-application-v2.md) and
+[ADR 0079](../decisions/0079-the-version-nine-application-contract.md) settle
+every requirement below and say where each is met. The list stands as the
+statement of what was owed.
+
 A conforming application contract for version nine must:
 
 - carry the proposed timestamp in the requests that validate and execute a
