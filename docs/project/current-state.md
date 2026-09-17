@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-09-16
+Last updated: 2026-09-17
 
 ## Phase
 
@@ -2295,6 +2295,12 @@ executes the version that does.** What is owed is the execution model, the
 kernel, the stack, and the application-contract version that carries a timestamp
 into the application — all of it under "Exact next action".
 
+**As of 2026-09-17 that list is down to the stack alone.** M3.17b and M3.17c
+delivered the execution model, M3.18a and M3.18b the kernel, and M3.19a the
+application contract. What remains is `snapshot_v9`, the owning store, the
+application layer, the transport, the node process and the ABCI adapter — six
+ports, no contracts.
+
 **One of those absences now carries a dependency rather than only a roadmap
 position.** The founder answer of 2026-08-16 makes external purchasability the
 permanent funding path for a new participant once the entry airdrop's
@@ -2483,30 +2489,51 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-**Write the application-contract version version nine owes**, which is the
-nearest thing a devnet waits on and the only remaining item that is a *contract*
-rather than a port. `consensus-application-v1` states that timestamps "are not
-application transition inputs" and freezes its local frame at version 1, and
-version nine makes both false. `economy-transition-v9`'s
-[What the application contract must gain](../specifications/economy-transition-v9.md#what-the-application-contract-must-gain)
-states the five things a conforming contract must do and deliberately stops
-there; this slice turns that into an accepted specification and its ADR.
+**Write `snapshot_v9`.** Version nine has a codec, a ledger, and now a contract;
+it has no way to write a state down. The snapshot must encode the **four entry
+kinds** version nine adds — the window month, the monthly uptime figure, the
+monthly pool claim, and the settlement cursor — the **widened kind-12 value**, and
+the head's **timestamp** beside its height, or a version-nine ledger cannot be
+persisted, restored, or audited. It is the same slice `snapshot_v8` was, and
+[ADR 0065](../decisions/0065-a-kernel-replacement-may-be-staged-across-a-stack-migration.md)'s
+enumeration is the order to follow: snapshot, then `SQLiteLedgerV9`, then
+`ApplicationV9` and the transport responses, then `protocol-application-v9` and
+the Go client, then the deletion of `src/v8/`.
 
-**The one rule that is easy to get wrong and silent when it is.**
-`ProcessProposal` applies C1, C2 **and C5**, because it is where a machine first
-validates a height and the only place a clock may be read; `FinalizeBlock`
-applies C1 and C2 and **never** C5, because it is the path a replaying or
-restoring machine takes. The C++20 kernel already has the two entry points that
-make this structural — `accept_timestamp` takes a clock reading and
-`replay_timestamp` has no parameter that could carry one — so the contract has to
-say which request calls which, and the four block-level conditions
-`calendar-v1` names have to reach the status space rather than the result space.
+**The one thing the snapshot must not get wrong quietly.** The head is two
+scalars under version nine and the state root commits to both. A snapshot that
+round-trips the height and drops the timestamp produces a restored ledger whose
+next block commits a root naming a height the stamp does not belong to, and
+**every later block still satisfies C2** because the stale stamp is smaller. The
+failure is a wrong root rather than a refusal, which is the direction that hides.
+`economy-transition-v9` records the same shape of defect against `advance_to` and
+`consensus-application-v2` records its boundary form; the snapshot needs its own
+vector, not an inherited argument.
 
-**After it, the stack.** The snapshot, the owning store, the application layer,
-the transport, the node process and the ABCI adapter are all still version
-eight's, and each is a port of the shape M3.13p through M3.13s gave version
-eight. What those ports must not re-derive is under "The recorded successors"
-below.
+**The contract the remaining ports must satisfy is now written.**
+[`consensus-application-v2`](../specifications/consensus-application-v2.md) and
+[ADR 0079](../decisions/0079-the-version-nine-application-contract.md) were
+accepted on 2026-09-17, so the application layer, the transport, the node process
+and the ABCI adapter each have a stated shape and a stated evidence list rather
+than one to invent. Its required-evidence section is the acceptance criteria for
+those four slices; do not re-derive them.
+
+**One verification gap is recorded and open.** `tools/verify_metadata.py`
+validates that a Markdown link's file exists and **does not validate its anchor
+fragment**, so a broken `#section` link passes every gate in the repository.
+M3.19a swept all **41** anchored links in tracked Markdown with a throwaway
+script: one was genuinely dead — a link in this document pointing at a heading the
+M3.15b split had moved to `delivery-log.md` — and it is fixed. The rest resolve.
+
+**Whoever closes the gap should know the one thing that makes it subtle.** The
+first sweep reported a second failure in `economy-transition-v6.md` and **the
+document was right and the checker was wrong**: GitHub's slugger replaces *each*
+space with a hyphen, so `### Kind 10 — \`hub_register\`` becomes
+`kind-10--hub_register` with two hyphens, because removing the em-dash leaves two
+spaces. A checker that collapses whitespace runs reports false positives against
+every heading containing a dash, which is most of them here. Closing the gap is a
+Python source change that fails closed to the full matrix, so it is a candidate
+slice rather than a fold-in.
 
 **Everything below this paragraph is the accumulated history of how the slices
 that led here were chosen, newest reasoning last.** It is kept because the
@@ -2577,6 +2604,35 @@ application contract**. Twenty-two sources under `src/v9/`, of which nineteen ar
 version eight's rebound and **seven have an empty normalising diff** against
 their originals.
 
+**M3.19a accepted that contract on 2026-09-17**, so the sentence above is history
+too and **the nearest slice is `snapshot_v9`**.
+[`consensus-application-v2`](../specifications/consensus-application-v2.md) and
+[ADR 0079](../decisions/0079-the-version-nine-application-contract.md) settle all
+five requirements `economy-transition-v9` left open, and **version nine now owes
+no contract at all** — everything remaining is a port.
+
+**Three things M3.19a settled that the ports must not re-open.** The C++
+application reads its own clock, once per `ProcessProposal`, and the local
+protocol never carries a clock reading — a bridge-supplied reading could make a
+machine silently vote against its own rules forever, because C5 is never
+re-checked. A timestamp failure reaches **two** spaces, not one: an eight-value
+decision under a zero status at `ProcessProposal`, because a bad stamp from a
+peer is ordinary and a nonzero status would let one malformed proposal stop a
+correct machine; and a fatal status `7` or `8` at `FinalizeBlock`, because that
+path only runs on a block the network already decided. And there is deliberately
+**no status for either C5 condition**, so a conforming test asserts an absence.
+
+**One thing M3.19a found is worth carrying forward.** Version seven added a block
+identifier to the finalize response, version eight kept it, **the frame version
+stayed at `1`, and no contract document recorded it.** It is not a silent
+misparse — both decoders are correct and version one's refuses at the result
+count — but the refusal lands on the first block as a generic protocol failure
+where it should have landed on the first frame as an unsupported version. It was
+found by reconciling version one's message table against `response_v8.cpp` rather
+than against version one's prose, which is the second time a figure that looked
+like framing turned out to move with the version; ADR 0068's receipt magic prefix
+was the first.
+
 **M3.18b delivered the ledger on 2026-09-16.** Ten more sources, a second ctest
 entry, and the first C++ chain that closes a month. **Three of its mutation
 probes passed and each named a real gap rather than a bad probe**: the recorded
@@ -2634,9 +2690,11 @@ the fixture rather than left to be rediscovered.
   on 2026-09-15, M3.17b modelled the codec, the calendar rules and the settlement
   arithmetic the same day, and M3.17c made a chain run the whole transition on
   2026-09-16, and M3.18a and M3.18b put the whole kernel into C++20 the same day.
-  **The nearest slice is the application-contract version named below**, then the
-  stack — the snapshot, the owning store, the application layer, the transport,
-  the node process and the ABCI adapter, which are all still version eight's. The paragraphs that stood here enumerating what the binding version had
+  **M3.19a accepted the application contract on 2026-09-17**, so the sentence
+  that stood here naming it the nearest slice is history. **The nearest slice is
+  `snapshot_v9`**, then the owning store, the application layer, the transport,
+  the node process and the ABCI adapter — all still version eight's, and all now
+  holding an accepted contract that states what each must satisfy. The paragraphs that stood here enumerating what the binding version had
   to add are superseded by the specification itself and are not restated; three
   of them were **wrong**, and the corrections are the reason to read the
   document rather than this list.
@@ -2707,15 +2765,12 @@ the fixture rather than left to be rediscovered.
   **Two figures the two input specifications still hand it**, so it does not
   recompute them: a proposer can move a month boundary by at most **20 blocks**,
   and a seat's 731-cycle span touches at most **25** calendar months.
-* **An application-contract version is owed, and it is a real dependency rather
-  than a note.** `consensus-application-v1` states that timestamps are not
-  application transition inputs and freezes its local frame at version 1, and
-  version nine makes both false: `ProcessProposal` and `FinalizeBlock` must carry
-  the proposed timestamp and `InitChain` the genesis timestamp, and the two
-  execution paths must differ in exactly one respect — `ProcessProposal` applies
-  C5 and `FinalizeBlock` **never** does. `economy-transition-v9` states what that
-  contract must gain and deliberately stops there. **Nothing can run a
-  version-nine devnet until it exists.**
+* ~~An application-contract version is owed~~ — **delivered by M3.19a on
+  2026-09-17.** `consensus-application-v2` and ADR 0079 are accepted, so the
+  entry that stood here calling it a real dependency is closed. What it settled
+  and what the remaining ports must not re-open is under "Exact next action";
+  its required-evidence section is the acceptance criteria for the application
+  layer, the transport, the node process and the ABCI adapter;
 * the two slices **ADR 0071 named and deliberately did not start**, either of
   which would let a network reach the uptime audit. A **nonzero initial height**
   is a `change-protocol` matter: the state root commits to the height, three
@@ -3359,6 +3414,47 @@ later scenario change stops reaching one.
 
 ## Blockers
 
+**There is no blocker.** Every remaining version-nine slice is a port with an
+accepted contract behind it.
+
+**M3.19a ran the founder-decision gate and passed it.** Eighteen decisions were
+enumerated before any was judged: the document version and name; the frame
+version; which component reads the clock and how it is bound; the conversion and
+its two truncation rules; what the bridge may refuse; the decision space and its
+eight values; the two added statuses and the deliberate absence of a third and
+fourth; whether `InitChain` carries a genesis timestamp and what a mismatch does;
+whether `genesis_time` is derived and enforced; whether `Info` and `Commit`
+expose the timestamp; whether `PrepareProposal` changes; whether `CheckTx`
+changes; the app-state string and the `Info` version fields; the result-code
+mapping; the three topology deltas; the required-evidence list; whether the
+topology section is restated; and the ADR, issue, branch and PR shape.
+
+**Five are fixed by accepted specifications** and were cited rather than
+re-chosen: the unit, range, tolerance, five rules and their normative order by
+`calendar-v1`; and the placement of C1, C2 and C5, the genesis timestamp's
+C1-only validation, and the absence of a new result code by
+`economy-transition-v9`. **The remaining thirteen are mechanism, encoding,
+framing, status-space, packaging and naming**, which the founder constitution
+places outside the reserved set.
+
+**One was close enough to reserved to be worth naming, and it is recorded rather
+than left implicit.** The third topology delta records that a replica whose clock
+is outside the tolerance votes against proposals it should accept — a statement
+about what a participant must *run* in order to participate. It was classified
+**delegated because the requirement is already accepted**: `calendar-v1`'s C5 is
+what makes a roughly correct clock a precondition for voting, and M3.19a places
+the rule rather than creating it. **Had C5 not already been accepted, choosing to
+require a clock at all would have been reserved and the slice would have stopped
+and asked**, and `consensus-application-v2` says so, so a later reader can see
+which way the classification went and why.
+
+Nothing in the slice set or changed supply, allocation, beneficiaries, Founder
+ownership, creator hierarchy, commercial routing, AI institutional authority,
+bridge scope, content permanence, or what an end user must do, own, run, or
+receive, and **no accepted vector file, specification, manifest, encoding, or
+kernel source changed** — every edit outside the two new documents is a
+cross-reference or an index entry.
+
 **M3.17c ran the founder-decision gate and passed it.** Twelve decisions were
 enumerated before any was judged: the ledger's field shape and its override set;
 how the timestamp reaches the block transition; where C1 and C2 run and what a
@@ -3665,7 +3761,8 @@ kernel source changed**.
 action" — the version-nine C++20 kernel and the stack behind it, the
 application-contract version that carries a timestamp, the nonzero initial
 height, the snapshot-seeded devnet, and ADR 0048's threat model — are all
-unblocked.
+unblocked. **The kernel and the contract have since been delivered**, by M3.18a,
+M3.18b and M3.19a; the rest of the sentence still holds.
 
 **One case ADR 0075 left open is closed by derivation rather than by an
 answer, and it must not be re-asked.** It asked what becomes of a final accrual
@@ -4339,7 +4436,11 @@ version-one account derivation becomes the *signer* identifier; that the nonce
 belongs to the escrow rather than the signer; that escrow deletion requires a zero
 balance; and that a policy's time windows are block heights, because a transition
 may not read a wall clock. All six are recorded under
-[What the M3.10a gate's enumeration found](#what-the-m310a-gates-enumeration-found).
+[How M3.10a was delivered](delivery-log.md#how-m310a-was-delivered). **The
+anchor this sentence carried pointed inside this document and had been dead since
+the M3.15b split moved the record out**; it was found by M3.19a and is the reason
+the anchor-validation gap is recorded under "Exact next action" rather than only
+noted.
 
 **The four reserved ones were asked in one batched call and all four were
 answered the same day**, and ADR 0043 records them. Two — the reach of mandatory
