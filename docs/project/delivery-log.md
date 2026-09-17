@@ -32,6 +32,106 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M3.19b was delivered
+
+**A version-nine state can leave memory.** Issue #316 and PR #317 delivered
+`include/protocol/storage/snapshot_v9.hpp`, three sources under `src/storage/`,
+a five-file test suite, a fuzz target, and
+[ADR 0080](../decisions/0080-the-version-nine-snapshot.md), merged by rebase as
+`ad7d717` and `d658251` on 2026-09-17. Candidate run 35233176131 passed the
+complete hosted matrix with **171** ctest entries in the debug presets and
+**180** under `clang-sanitizers` — one and two more than M3.18b, because the
+slice adds `version-nine-snapshot` to every preset and
+`storage-snapshot-v9-fuzz-smoke` only where fuzzing is enabled.
+
+**The payload carries the head's timestamp beside its height**, which makes the
+prefix 166 octets rather than version eight's 158. That field is the one version
+nine could lose in silence: a restore that dropped it hands back a ledger whose
+next block commits a root naming a height the stamp does not belong to, and
+**every later block still satisfies C2** because the stale stamp is smaller. The
+failure is a wrong root rather than a refusal.
+
+**So the round trip makes two claims rather than one.** The restored stamp
+equals the original, and a payload that keeps every other field and zeroes only
+the stamp reaches a **different** root. Without the second, the first could hold
+while the field was decorative — the root would be carrying the stamp without
+committing to it, and no test would say so.
+
+**Version nine adds no snapshot parameter, and the asymmetry is the interesting
+part.** Its one new genesis field is the genesis timestamp and a restored ledger
+does not need it: C2's genesis case applies only at height one, the ledger keeps
+no separate copy, and `chain_id` — which *is* compared — is a digest over the
+genesis bytes. The dispute authority key needed a parameter for exactly the
+opposite reasons: the ledger retains it, transitions read it, and no root commits
+to it. Stating the two together is what makes the difference a rule rather than
+an inconsistency.
+
+**The four new kinds are decoded into fields where version eight's two are stored
+raw, and it is the same rule producing the opposite answer.** Version eight holds
+its uptime entries raw because its two transitions read that key space directly,
+so holding it raw makes them *the* implementation. ADR 0078 already established
+that nothing in version nine reads that space — the settlement is arithmetic over
+decoded figures — so a raw map here would be the second encoding instead. Which
+side reads the key space is the whole of the difference.
+
+**One key rule had no value decoder to delegate to.** The monthly figure's month
+lives in the *key*, and `decode_monthly_figure_value` knows only about seconds.
+The entry decoder therefore rebuilds the key with `monthly_figure_key` and
+requires equality. Gate 3 would refuse an out-of-range month too, one layer
+later — every figure must equal the cursor's month and the cursor is bounded by
+its own decoder — but it would refuse it as an unconserved state rather than as a
+bad entry. **A parse error names its subject; a failed invariant names a
+payload.**
+
+**Writing the negative case found something better than the case.** The obvious
+test for the kernel's first clock invariant is a resealed payload carrying an
+out-of-range stamp. **It cannot be built.** `state_root` returns `nullopt` for a
+stamp C1 would have refused, so there is nothing to reseal *with*, and the
+restore refuses at **gate 1** because the rebuilt ledger commits no root at all.
+The range rule is enforced by the root's own totality rather than by a gate that
+could be removed, which is a stronger property than the one the test set out to
+record. It was caught by predicting `not_conserved` and checking the prediction
+against `state_root` before running anything; the test now asserts both halves,
+because the refusal alone would not say which gate fired or why the other cannot.
+
+**The first candidate failed all four presets and the fixture was wrong rather
+than the decoder.** Every preset reported the same assertion — "a resealed
+payload must commit a root" — and the cause was eleven `reseal()` calls the port
+added that version eight's suite does not have. Resealing exists to carry a
+mutation *past* the earlier gates so it reaches the one under test; every one of
+those cases is refused by `read_economy`, `apply_entry` or `complete`, which all
+run **before** any gate. Three could not be resealed at all: `economy_root`
+returns `nullopt` for a duplicate key and for an entry whose kind or width is not
+one a transition writes, which is exactly the shape a duplicate-key case, a
+resized pool value and an unknown-kind entry have. Eleven calls became one — the
+window-month retention case, the only case here that must reach gate 3.
+
+**The lesson is narrower than "run the tests".** Version eight's suite already
+encoded the right rule by not resealing its ordering cases, and the port added
+calls rather than inheriting them. Reading the neighbour's *omissions* is harder
+than reading its code, and this is the second time in two slices that the useful
+signal was in what an existing artifact declined to do.
+
+**`snapshot_v9_assignments.cpp` is a provably empty normalising diff** against
+version eight's: `diff` under a mechanical `v8`→`v9` rebind produces nothing.
+That is the strongest available statement that the one variable-width record and
+the permission re-derivation did not move.
+
+**Version eight's `kFixedEntryCount` did not survive the port.** It is declared in
+that internal header and referenced nowhere — the completeness check is a set of
+named flags — and carrying it forward would have put a figure that is wrong for
+version nine, fourteen against sixteen, beside a check that does not consult it.
+Version eight's copy is left alone; an unused constant is not worth a commit
+against a delivered version.
+
+**Two smaller things the port had to decide rather than inherit.**
+`Rebuild::uptime_seats` becomes `referenced_seats`, because kinds 21 and 22 name
+a seat for the same reason kinds 18 and 19 do and a name that said "uptime" would
+have been wrong the moment the monthly figure used it. And one inherited refusal
+could not be ported: the version-nine trace purchases every seat with
+`has_referrer` clear, so there is no kind-4 entry to mutate, and the identity
+index rule stands in its place.
+
 ### How M3.19a was delivered
 
 **The last contract version nine owed is accepted.** Issue #313 and PR #314

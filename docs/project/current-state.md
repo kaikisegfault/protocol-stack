@@ -2489,26 +2489,34 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-**Write `snapshot_v9`.** Version nine has a codec, a ledger, and now a contract;
-it has no way to write a state down. The snapshot must encode the **four entry
-kinds** version nine adds — the window month, the monthly uptime figure, the
-monthly pool claim, and the settlement cursor — the **widened kind-12 value**, and
-the head's **timestamp** beside its height, or a version-nine ledger cannot be
-persisted, restored, or audited. It is the same slice `snapshot_v8` was, and
+**Write `SQLiteLedgerV9`.** The snapshot can express a version-nine state; no
+store holds one. Everything above the kernel — the application layer, the
+transport, the node process and the ABCI adapter — waits on a durable head, and
 [ADR 0065](../decisions/0065-a-kernel-replacement-may-be-staged-across-a-stack-migration.md)'s
-enumeration is the order to follow: snapshot, then `SQLiteLedgerV9`, then
-`ApplicationV9` and the transport responses, then `protocol-application-v9` and
-the Go client, then the deletion of `src/v8/`.
+enumeration puts the owning store fourth, directly after the snapshot: store,
+then `ApplicationV9` and the transport responses, then `protocol-application-v9`
+and the Go client, then the deletion of `src/v8/`.
 
-**The one thing the snapshot must not get wrong quietly.** The head is two
-scalars under version nine and the state root commits to both. A snapshot that
-round-trips the height and drops the timestamp produces a restored ledger whose
-next block commits a root naming a height the stamp does not belong to, and
-**every later block still satisfies C2** because the stale stamp is smaller. The
-failure is a wrong root rather than a refusal, which is the direction that hides.
-`economy-transition-v9` records the same shape of defect against `advance_to` and
-`consensus-application-v2` records its boundary form; the snapshot needs its own
-vector, not an inherited argument.
+**One figure is already fixed and one decision is deliberately left open.**
+`sqlite_schema_v8.cpp` bounds `head_snapshot` at `length >= 222`, which is
+version eight's snapshot `kFixedSize` of 158 + 32 + 32. Version nine's is
+**230**, because the prefix grew by the timestamp — so that CHECK constraint is a
+figure that moves with the version while looking like framing, which is the
+third time this project has met one. What is **not** decided here is whether
+`ledger_meta_v9` denormalises a `current_timestamp` column beside
+`current_height` and `current_state_root`. It does not have to: the head snapshot
+already carries the stamp and `snapshot_v9` decodes it. Whether a cheap read is
+worth a fourth column is the store slice's call, not this handoff's.
+
+**The same defect shape follows it there, for the third time.** A store that
+persisted the height and left the timestamp behind would reopen at a head whose
+stamp belongs to an earlier height, and every later block would still satisfy C2
+because the stale stamp is smaller — a wrong root rather than a refusal.
+`economy-transition-v9` records it against `advance_to`,
+`consensus-application-v2` against the replay boundary, and ADR 0080 against the
+snapshot payload. **Each needed its own vector and this one will too**; the
+argument does not transfer between layers, which is exactly why it has been
+written down three times rather than cited once.
 
 **The contract the remaining ports must satisfy is now written.**
 [`consensus-application-v2`](../specifications/consensus-application-v2.md) and
@@ -2605,7 +2613,8 @@ version eight's rebound and **seven have an empty normalising diff** against
 their originals.
 
 **M3.19a accepted that contract on 2026-09-17**, so the sentence above is history
-too and **the nearest slice is `snapshot_v9`**.
+too and **M3.19b delivered `snapshot_v9` the same day**, which makes this sentence
+history in turn: **the nearest slice is `SQLiteLedgerV9`**.
 [`consensus-application-v2`](../specifications/consensus-application-v2.md) and
 [ADR 0079](../decisions/0079-the-version-nine-application-contract.md) settle all
 five requirements `economy-transition-v9` left open, and **version nine now owes
@@ -2632,6 +2641,25 @@ found by reconciling version one's message table against `response_v8.cpp` rathe
 than against version one's prose, which is the second time a figure that looked
 like framing turned out to move with the version; ADR 0068's receipt magic prefix
 was the first.
+
+**M3.19b put a version-nine state on disk on 2026-09-17.** Three sources, a
+five-file suite, a fuzz target, ADR 0080, and two new ctest entries — 171 in the
+debug presets and 180 under `clang-sanitizers`. **Version nine adds no snapshot
+parameter**, because the one genesis field it adds is committed to by `chain_id`,
+which is already compared; the dispute authority key needed one for exactly the
+opposite reasons, and ADR 0080 states the two together so the asymmetry reads as
+a rule.
+
+**Two things M3.19b found are worth carrying forward.** An out-of-range timestamp
+**cannot reach the conservation gate at all**: `state_root` refuses to compute a
+root over a stamp C1 would have refused, so the payload cannot be built and the
+restore refuses at gate 1 instead. The range rule is enforced by the root's own
+totality rather than by a gate that could be removed. And the first candidate
+failed all four presets on a fixture defect — eleven `reseal()` calls the port
+added that version eight's suite deliberately does not have, three of them on
+payloads with no root to seal with. **Version eight had already encoded the right
+rule by omission**, and reading a neighbour's omissions is harder than reading
+its code.
 
 **M3.18b delivered the ledger on 2026-09-16.** Ten more sources, a second ctest
 entry, and the first C++ chain that closes a month. **Three of its mutation
@@ -2690,11 +2718,12 @@ the fixture rather than left to be rediscovered.
   on 2026-09-15, M3.17b modelled the codec, the calendar rules and the settlement
   arithmetic the same day, and M3.17c made a chain run the whole transition on
   2026-09-16, and M3.18a and M3.18b put the whole kernel into C++20 the same day.
-  **M3.19a accepted the application contract on 2026-09-17**, so the sentence
-  that stood here naming it the nearest slice is history. **The nearest slice is
-  `snapshot_v9`**, then the owning store, the application layer, the transport,
-  the node process and the ABCI adapter — all still version eight's, and all now
-  holding an accepted contract that states what each must satisfy. The paragraphs that stood here enumerating what the binding version had
+  **M3.19a accepted the application contract and M3.19b delivered `snapshot_v9`,
+  both on 2026-09-17**, so the two sentences that stood here naming each of them
+  the nearest slice are history. **The nearest slice is `SQLiteLedgerV9`**, then
+  the application layer, the transport, the node process and the ABCI adapter —
+  all still version eight's, and all now holding an accepted contract that states
+  what each must satisfy. The paragraphs that stood here enumerating what the binding version had
   to add are superseded by the specification itself and are not restated; three
   of them were **wrong**, and the corrections are the reason to read the
   document rather than this list.
@@ -3416,6 +3445,26 @@ later scenario change stops reaching one.
 
 **There is no blocker.** Every remaining version-nine slice is a port with an
 accepted contract behind it.
+
+**M3.19b ran the founder-decision gate and passed it.** Fourteen decisions were
+enumerated before any was judged: the payload schema version; whether the summary
+carries the timestamp and where; whether the genesis timestamp joins the
+out-of-band parameters; the four new entry-kind decoders and their refusals; the
+widened kind-12 value; the fixed-entry set; the month-index bound; whether the
+three restore gates change; the module split; the test and fixture shape; the
+fuzz registration; the CMake and CTest naming; the ADR number; and the issue,
+branch and PR shape. **Six are fixed by `economy-transition-v9`** — the entry
+table, the genesis field table, the sixteen genesis entries, and the month-index
+bound — and were cited rather than re-chosen. The remaining eight are storage,
+mechanism, testing and packaging, which the founder constitution places outside
+the reserved set.
+
+Nothing in the slice set or changed supply, allocation, beneficiaries, Founder
+ownership, creator hierarchy, commercial routing, AI institutional authority,
+bridge scope, content permanence, or what an end user must do, own, run, or
+receive, and **no accepted vector file, specification, manifest, encoding, or
+kernel source changed** — every file is new except `CMakeLists.txt`, which only
+gains registrations.
 
 **M3.19a ran the founder-decision gate and passed it.** Eighteen decisions were
 enumerated before any was judged: the document version and name; the frame
