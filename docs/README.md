@@ -652,6 +652,15 @@ immutable; compatible changes require a new version.
   receipt, and ordered block semantics.
 - `specifications/consensus-application-v1.md`: adapter-neutral ordering
   lifecycle, application results, durable commit, restart, and local framing.
+  It remains the record for the M1 network; its message table has been stale
+  from version seven onward and `consensus-application-v2.md` corrects it.
+- `specifications/consensus-application-v2.md`: the same boundary under version
+  nine — the block timestamp as a transition input, the one operation that
+  reads a clock and the reading that never crosses the boundary, where each of
+  `calendar-v1`'s five ordered conditions is applied, the eight-value proposal
+  decision and the two added statuses that make a timestamp failure a
+  block-level outcome, the protobuf-to-millisecond conversion, the enforced
+  CometBFT `genesis_time`, and local frame version 2.
 - `specifications/founder-economy-manifest-v1.md`: exact eight-decimal
   denomination, ten issuance-channel caps, 731-cycle derivation,
   permission-liability semantics, unresolved-policy placeholders, and fixed
