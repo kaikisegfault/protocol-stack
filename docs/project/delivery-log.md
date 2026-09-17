@@ -32,6 +32,137 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M3.19a was delivered
+
+**The last contract version nine owed is accepted.** Issue #313 and PR #314
+delivered `docs/specifications/consensus-application-v2.md` and
+[ADR 0079](../decisions/0079-the-version-nine-application-contract.md), merged by
+rebase as `7f29e22` and `b7ff578` on 2026-09-17. Documentation only, so the
+focused repository-metadata path: candidate run 35228541977 passed
+`Classify and verify change scope` and the aggregate `Verification required`,
+and the compiler/sanitizer matrix reported `skipping`, which is the classifier
+doing its job rather than a gate being missed.
+
+**The slice existed because two sentences were false.**
+`consensus-application-v1` lists timestamps among the values that are "not
+application transition inputs" and freezes its local frame at version 1.
+`economy-transition-v9` makes both false and deliberately stopped at naming five
+requirements a conforming contract must satisfy, on the grounds that a boundary
+contract is a separate accepted artifact. This settled them.
+
+**The central decision is where the clock is read, and the reason is not the one
+the slice started with.** C5 is the only `calendar-v1` rule whose input is not in
+the block, so exactly one component must read a clock. The obvious cheap answer
+is the Go bridge: it already speaks to CometBFT, and a clock reading is
+operational rather than canonical. It is wrong, and the decisive argument is not
+the invariant citation. A clock reading decides a vote, and **C5 is never
+re-checked on any later path**, so a bridge that supplied a wrong reading would
+produce a machine that silently votes against its own rules for as long as the
+bridge is wrong — with no root mismatch, no failed check, and nothing downstream
+to notice. The application reads it, once per `ProcessProposal`, before any
+condition is evaluated.
+
+**A second argument arrived late and would have settled it alone.**
+`calendar-v1`'s five conditions are *ordered*, and the order is normative. A
+bridge-side clock puts the first three in C++ and the last two in Go, so a split
+implementation could not report the first condition that fired without a round
+trip, or would have to duplicate the durable head across the boundary to avoid
+one. The ordering constraint is the kind of thing that looks like a detail until
+it decides the architecture.
+
+**Two reporting spaces, because the two paths have opposite correct responses.**
+This is the part a single status space would have got wrong while satisfying the
+requirement's letter. `ProcessProposal` returns a decision **under a status of
+zero**: a peer proposing a bad timestamp is an ordinary event on a live network,
+the bridge converts every nonzero status to an ABCI exception, and a contract
+that reported it as a status would let **one malformed proposal from one peer
+stop a correct machine**. `FinalizeBlock` returns a nonzero status and is fatal,
+because it only ever runs on a block the network already decided, where a C1 or
+C2 failure means this machine's rules and the network's decision disagree about
+history.
+
+**The decision space extends the kernel's condition space rather than
+re-encoding it.** Values `0`–`5` are `protocol::v9::TimestampCondition` in its own
+numbering; `6` and `7` are the contract's own and are numbered after the kernel's
+last. The contract requires a static assertion that the kernel's condition count
+is 6, so a later version adding a sixth breaks the build rather than silently
+aliasing `RESOURCE_BOUND`.
+
+**The absence of two statuses is the evidence, not the presence of eight.** There
+is deliberately no status for either C5 condition, and a conforming test asserts
+that absence: an implementation whose status space contains a tolerance value has
+a tolerance reachable on the replay path, which is the defect the whole
+separation exists to prevent. The single test that distinguishes a conforming
+implementation from a broken one is in the required evidence — the same height,
+the same bytes, one clock moved, accepted by `FinalizeBlock` and refused by
+`ProcessProposal`.
+
+**The conversion needed two rules and one of them is counterintuitive.** A block
+timestamp truncates, because BFT time is nanosecond-precision and is not a whole
+number of milliseconds, so an exactness rule would reject essentially every real
+block; truncation is safe because a monotone map preserves C2 and the
+at-most-0.999 ms shift is four orders of magnitude inside a 60,000 ms tolerance.
+A genesis timestamp must have a **zero** nanosecond remainder, because the
+launcher writes that file and exactness makes the comparison injective — a
+truncating genesis conversion would accept two distinct CometBFT genesis files
+for one canonical chain.
+
+**The bridge refuses only what it cannot represent**, which is the rule that
+keeps C1 testable. A timestamp above `MAX_TIMESTAMP_MILLIS` is representable, so
+it reaches the application and is refused there as `TIMESTAMP_RANGE`. A bridge
+that pre-filtered the range would make `calendar-v1`'s first timestamp condition
+unreachable end to end, and it would exist only in a unit test.
+
+**One thing found, and it is narrower than it first looked.** Version seven added
+a block identifier to the finalized-block response, version eight kept it, the
+frame version stayed at `1`, and no contract document ever recorded it. It was
+found by reconciling version one's message table against `response_v8.cpp` rather
+than against version one's prose. The first draft of the ADR called it a silent
+misparse. **It is not**, and checking rather than asserting it is what caught
+that: both decoders are correct and both say so in comments — version one's
+refuses at the result count, because the block identifier displaces every field
+after the root. What is actually wrong is *where* the refusal happens. It is a
+generic protocol failure on the first block where it should have been an
+unsupported version on the first frame, so the diagnosis available to an operator
+is one layer further from the cause than it needs to be. Version nine is the
+first version in the project's history to move the field that exists for exactly
+this.
+
+**Two smaller corrections the slice made rather than deferred.** The architecture
+note said CometBFT "timestamp" types must not leak into the kernel, which became
+misleading the moment a block carried one — it now separates the protobuf type,
+which does not cross the boundary, from the `u64` millisecond value, which does.
+And the determinism boundary's "wall-clock time" bullet now says outright that an
+agreed block timestamp is not wall-clock time, because that is the
+attested-claim rule rather than an exception to it, and a reader hitting the
+bullet after version nine would reasonably have concluded otherwise.
+
+**One verification gap was found, and sweeping it found a real defect.**
+`tools/verify_metadata.py` validates that a Markdown link's *file* exists and
+does not validate its **anchor fragment**, so a throwaway script swept all 41
+anchored links in tracked Markdown. One was genuinely dead:
+`current-state.md` linked to `#what-the-m310a-gates-enumeration-found`, a heading
+the M3.15b split had moved into `delivery-log.md` six sessions earlier. It now
+points at the delivery record and the slice fixed it.
+
+**The sweep also produced a false positive, and that is the part worth carrying
+forward.** It flagged `economy-transition-v6.md`'s `#kind-10--hub_register`, and
+**the document was right and the checker was wrong.** GitHub's slugger replaces
+*each* space with a hyphen rather than collapsing runs, so
+`### Kind 10 — \`hub_register\`` slugs to `kind-10--hub_register` with two
+hyphens, because removing the em-dash leaves two spaces behind. A checker that
+collapses whitespace reports a false positive against every heading containing a
+dash, which is most headings in this repository. Checking the heading before
+editing an accepted specification is what caught it. Closing the gap properly is
+a Python source change that fails closed to the full matrix, so it was left as a
+candidate slice rather than folded into a documentation change.
+
+**What it deliberately did not do.** It implemented nothing. The snapshot, the
+owning store, the application layer, the transport, the node process, and the
+ABCI adapter are all still version eight's, and each is a separate port. The
+contract states required evidence for all of them so that each port has something
+to satisfy rather than a shape to invent.
+
 ### How M3.18b was delivered
 
 **A version-nine chain runs in C++, and it closes a month.** Issue #310 and PR
