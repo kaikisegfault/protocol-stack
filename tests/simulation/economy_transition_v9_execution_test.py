@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Version nine's execution half: the clock in a block, the settlement, kind 22.
 
-The recorded vectors run two scenarios end to end. These cover what a scenario
+The recorded vectors run three scenarios end to end. These cover what a scenario
 cannot: that a block-level timestamp failure rejects the whole block and restores
 the state exactly, that the carried dispatch is version eight's own function
 object rather than a copy, that the prologue refuses the states it must, and that
@@ -183,6 +183,32 @@ class HaltTest(unittest.TestCase):
     def test_the_halted_chain_conserves_every_unit(self) -> None:
         built = scenario("halted")
         self.assertEqual(built.ledger.conservation_failures(), [])
+
+
+class RestartTest(unittest.TestCase):
+    def test_the_run_is_contiguous_from_genesis(self) -> None:
+        built = scenario("restart")
+        self.assertEqual([block.height for block in built.blocks], [1, 2, 3, 4])
+        for previous, block in zip(built.blocks, built.blocks[1:]):
+            self.assertEqual(block.previous_state_root, previous.resulting_state_root)
+
+    def test_its_first_two_blocks_are_the_settled_chains(self) -> None:
+        # The docstring's claim, checked: a layer replaying this run is replaying
+        # the prefix of the chain the settlement vectors record, not a lookalike.
+        restart = scenario("restart")
+        settled = scenario("settled")
+        for index in (0, 1):
+            self.assertEqual(restart.blocks[index].header, settled.blocks[index].header)
+
+    def test_the_repeated_stamp_is_admitted_and_one_below_it_is_not(self) -> None:
+        built = scenario("restart")
+        self.assertEqual(built.blocks[2].timestamp, built.blocks[1].timestamp)
+        self.assertEqual(
+            built.notes["refused_below_the_predecessor"], "TIMESTAMP_NOT_MONOTONIC"
+        )
+        self.assertEqual(
+            built.notes["root_after_the_refusal"], built.blocks[1].resulting_state_root
+        )
 
 
 class DispatchTest(unittest.TestCase):

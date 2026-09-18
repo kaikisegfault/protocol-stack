@@ -374,6 +374,59 @@ void verify_single_pass(const pv::Values& values) {
   expect_true(values, "single_pass.equals_the_loop");
 }
 
+// **The kernel reproduces the restart run before anything replays it**, so a
+// store or an application that later disagrees with these figures is the layer
+// at fault rather than the fixture. The stamps are checked against the fixture's
+// own table as well as against the vectors, because the third block's repeated
+// stamp is the run's reason to exist and a vector alone would not say so.
+void verify_restart_run(const pv::Values& values) {
+  Signatures signatures;
+  const auto scenario = restart_scenario(signatures);
+  agree(values, "restart.block_count",
+        static_cast<std::uint64_t>(scenario.blocks.size()));
+  pv::require(scenario.blocks.size() == kRestartStampHeights.size(),
+              "one stamp per restart block");
+  for (std::size_t index = 0; index < scenario.blocks.size(); ++index) {
+    const auto& block = scenario.blocks[index];
+    const auto key = "restart.block" + std::to_string(index);
+    agree(values, key + ".height", block.height);
+    pv::require(block.height == index + 1, "the restart run is contiguous");
+    agree(values, key + ".timestamp", block.timestamp);
+    pv::require(block.timestamp == timestamp_of_height(kRestartStampHeights[index]),
+                "each restart block carries its fixture stamp");
+    agree(values, key + ".admitted_count",
+          static_cast<std::uint64_t>(block.executed.size()));
+    agree(values, key + ".transaction_root", hex(block.transaction_root));
+    agree(values, key + ".header", hex(block.header));
+    agree(values, key + ".block_id", hex(block.block_id));
+    agree(values, key + ".resulting_state_root", hex(block.resulting_state_root));
+  }
+  pv::require(scenario.blocks[2].timestamp == scenario.blocks[1].timestamp,
+              "the third block repeats its predecessor's stamp");
+
+  for (std::size_t block = 0; block < scenario.labels.size(); ++block) {
+    for (std::size_t step = 0; step < scenario.labels[block].size(); ++step) {
+      const auto& executed = scenario.blocks[block].executed.at(step);
+      const auto name = v9::result_code_name(
+          static_cast<std::uint8_t>(executed.outcome.result));
+      pv::require(name.has_value(), "every result has a name");
+      agree(values, "restart." + scenario.labels[block][step] + ".result",
+            std::string(*name));
+    }
+  }
+
+  agree(values, "restart.below_the_predecessors_stamp.refusal",
+        std::string(v9::timestamp_condition_name(
+            scenario.refused_below_the_predecessor)));
+  pv::require(scenario.refusal_rejected_the_block,
+              "the block carrying the earlier stamp is rejected whole");
+  pv::require(scenario.root_after_the_refusal ==
+                  scenario.blocks[1].resulting_state_root,
+              "the rejected block leaves the head where block 2 left it");
+  expect_true(values,
+              "restart.below_the_predecessors_stamp.leaves_the_head_where_it_was");
+}
+
 // The contract file's calendar-over-a-chain section, which the codec target
 // defers here because a window's month is written at its opening height and read
 // two windows later.

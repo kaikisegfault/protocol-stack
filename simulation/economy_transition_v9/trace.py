@@ -17,6 +17,10 @@ changes, which is **what a month is worth**:
    between two window openings. One assignment closes one month and skips three,
    in a single pass, and the vectors compare the result against an explicit
    per-index loop over the same state.
+3. **restart** — four heights contiguous from genesis, with every block's
+   commitments recorded. It records nothing about a month; it exists for the
+   layers above the kernel, which cannot replay either chain above because each
+   jumps from height 2 to the activation height.
 
 **The chain runs at ninety seconds a block and that is a fixture choice with a
 reason.** At the commit target a window is exactly one day, so a month is about
@@ -56,7 +60,7 @@ from simulation.economy_transition_v7.trace import (
 from simulation.economy_transition_v8.trace import Responder as ResponderV8
 
 from . import contract as c
-from .block import BlockOutcome, execute_block, run_quiet_heights
+from .block import BlockOutcome, InvalidBlock, execute_block, run_quiet_heights
 from .envelope import Transaction, mint_message, signed_bytes, signing_message
 from .envelope import unsigned_bytes
 from .genesis import Genesis
@@ -74,6 +78,7 @@ __all__ = [
     "build",
     "genesis",
     "halted_scenario",
+    "restart_scenario",
     "settled_scenario",
     "timestamp_of_height",
 ]
@@ -453,4 +458,57 @@ def halted_scenario() -> tuple[Scenario, Signatures]:
     scenario.notes["quiet_heights"] = quiet
     scenario.notes["audit_blocks"] = recorded
     scenario.notes["settlement_block"] = recorded[-1]
+    return scenario, signatures
+
+
+def restart_scenario() -> tuple[Scenario, Signatures]:
+    """Four contiguous heights from genesis, for a layer that replays blocks.
+
+    **Every other recorded chain uses `advance_to`**, which a store, an
+    application, or a transport cannot follow: each commits one height at a
+    time, and a height it never executed is a height it cannot vouch for. This
+    run is the settled chain's first two blocks, then a block with no inputs,
+    then the two activations — so a layer replaying it block by block is
+    compared against figures from a model that knows nothing about that layer.
+
+    **The third block repeats its predecessor's stamp**, which C2 admits because
+    the rule is non-decreasing, and is offered one a millisecond below it first,
+    which C2 refuses. The predecessor's stamp is the value a restarted layer must
+    have restored to answer both correctly: a layer that reopened with a stale,
+    smaller stamp would admit both, and every later block would still satisfy C2.
+    """
+    signatures = Signatures()
+    scenario = Scenario(name="restart", ledger=Ledger.from_genesis(genesis()))
+    ledger = scenario.ledger
+
+    _run(scenario, signatures, [
+        Step("alice_registers", _register(
+            signatures, ledger, ALICE_IDENTITY, ALICE_KEY, ALICE_SIGNER_KEY)),
+        Step("bob_registers", _register(
+            signatures, ledger, BOB_IDENTITY, BOB_KEY, BOB_SIGNER_KEY)),
+    ], timestamp_of_height(1))
+    _run(scenario, signatures, [
+        _purchase(signatures, ledger, ALICE_IDENTITY, ALICE_KEY, ALICE_SIGNER_KEY,
+                  ALICE_SEAT, 1),
+        _purchase(signatures, ledger, BOB_IDENTITY, BOB_KEY, BOB_SIGNER_KEY,
+                  BOB_SEAT, 1),
+    ], timestamp_of_height(2))
+    # Height 3 is offered a stamp one millisecond below its predecessor's
+    # first. C2 refuses it and the block is rejected whole, so the ledger is
+    # exactly where block 2 left it — which is the sequence a restarted layer
+    # performs against the stamp it restored.
+    scenario.notes["refused_below_the_predecessor"] = None
+    try:
+        execute_block(ledger, timestamp_of_height(2) - 1, [], signatures.oracle)
+    except InvalidBlock as refusal:
+        cause = refusal.__cause__
+        scenario.notes["refused_below_the_predecessor"] = getattr(cause, "code", None)
+    scenario.notes["root_after_the_refusal"] = ledger.state_root()
+    _run(scenario, signatures, [], timestamp_of_height(2))
+    _run(scenario, signatures, [
+        _activate(signatures, ledger, ALICE_IDENTITY, ALICE_KEY, ALICE_SIGNER_KEY,
+                  ALICE_SEAT, 2),
+        _activate(signatures, ledger, BOB_IDENTITY, BOB_KEY, BOB_SIGNER_KEY,
+                  BOB_SEAT, 2),
+    ], timestamp_of_height(4))
     return scenario, signatures
