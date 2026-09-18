@@ -1167,7 +1167,7 @@ the exact commit that adds them.
 
 **What the recorded files now hold.** `test-vectors/economy-transition-v9.txt`
 holds 239 vectors and `test-vectors/economy-transition-v9-execution.txt` holds
-125. The C++20 kernel reproduces **every vector in the execution file** and every
+162. The C++20 kernel reproduces **every vector in the execution file** and every
 vector in the contract file except two groups, each named in a compiled table
 together with what owes it: the `settlement.` section, which is the Python
 settlement machine's own run over a *sampled* window sequence no chain can
@@ -1177,3 +1177,12 @@ files that recorded them. One further vector,
 `genesis.refuses_a_timestamp_below_the_range`, is **unrepresentable** rather than
 deferred: a timestamp below the accepted range is a negative millisecond count
 and the kernel carries a timestamp in a `u64`.
+
+**Thirty-seven of the execution file's vectors are the `restart.` run**, added
+on 2026-09-18 for the layers above the kernel. Every other recorded chain jumps
+from height 2 to the activation height with `advance_to`, which a store, an
+application, or a transport cannot follow because each commits one height at a
+time; this run is four heights contiguous from genesis with every block's
+commitments, including one block that repeats its predecessor's stamp and the
+refusal of one a millisecond below it. It records behaviour this document already
+fixes and changes no rule.

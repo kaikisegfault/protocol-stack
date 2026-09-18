@@ -48,6 +48,7 @@ int main(int argc, char** argv) {
     fixture::verify_scenarios(values);
     fixture::verify_orderings(values);
     fixture::verify_single_pass(values);
+    fixture::verify_restart_run(values);
     fixture::verify_coverage(values);
 
     fixture::verify_contract_sections(contract);

@@ -451,6 +451,81 @@ def check_the_single_pass(check: Checker, scenario) -> None:
     check.equal("single_pass.equals_the_loop", True)
 
 
+# The heights whose stamp each block of the restart run carries. The third block
+# repeats its predecessor's, which is the point of it.
+RESTART_STAMP_HEIGHTS = (1, 2, 2, 4)
+
+
+def check_the_restart_run(check: Checker, scenario) -> None:
+    check.section(
+        "Four heights contiguous from genesis, with every block's commitments. "
+        "Every other recorded chain uses `advance_to`, which a layer that commits "
+        "one height at a time cannot follow, so this is the run a store, an "
+        "application, and a transport replay block by block and are compared "
+        "against. The header, the identifier, the transaction root, and the "
+        "stamps are derived twice; the resulting roots are the model's."
+    )
+    check.equal("restart.block_count", len(scenario.blocks))
+    for index, block in enumerate(scenario.blocks):
+        key = f"restart.block{index}"
+        check.agree(f"{key}.height", index + 1, block.height)
+        check.agree(
+            f"{key}.timestamp",
+            trace.GENESIS_MILLIS
+            + RESTART_STAMP_HEIGHTS[index] * e.MILLIS_PER_BLOCK,
+            block.timestamp,
+        )
+        check.equal(f"{key}.admitted_count", len(block.executed))
+        check.agree(
+            f"{key}.transaction_root",
+            e.tx_tree(block.admitted_ids).hex(),
+            transaction_root(block.admitted_ids).hex(),
+        )
+        derived = e.block_header(
+            scenario.ledger.chain_id,
+            block.height,
+            block.timestamp,
+            bytes.fromhex(block.previous_state_root),
+            bytes.fromhex(block.transaction_root),
+            bytes.fromhex(block.resulting_state_root),
+            len(block.executed),
+        )
+        check.agree(f"{key}.header", derived.hex(), block.header.hex())
+        check.agree(
+            f"{key}.block_id", e.digest(e.BLOCK_ID_LABEL, derived).hex(),
+            block.block_id,
+        )
+        check.equal(f"{key}.resulting_state_root", block.resulting_state_root)
+
+    results = scenario.results()
+    for label in (
+        "alice_registers",
+        "bob_registers",
+        "seat_0_purchased",
+        "seat_1_purchased",
+        "seat_0_activated",
+        "seat_1_activated",
+    ):
+        check.equal(f"restart.{label}.result", results[label])
+
+    check.section(
+        "Before height 3 is committed at its predecessor's stamp it is offered "
+        "one a millisecond below it, and C2 refuses it whole. The predecessor's "
+        "stamp is what a restarted layer must have restored to answer both: one "
+        "that reopened with a stale, smaller stamp would admit the refused block, "
+        "and every block after it would still satisfy C2."
+    )
+    check.equal(
+        "restart.below_the_predecessors_stamp.refusal",
+        scenario.notes["refused_below_the_predecessor"],
+    )
+    check.equal(
+        "restart.below_the_predecessors_stamp.leaves_the_head_where_it_was",
+        scenario.notes["root_after_the_refusal"]
+        == scenario.blocks[1].resulting_state_root,
+    )
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--vectors", type=Path, required=True)
@@ -464,6 +539,7 @@ def main() -> int:
 
     settled, _signatures = trace.settled_scenario()
     halted, _halted_signatures = trace.halted_scenario()
+    restart, _restart_signatures = trace.restart_scenario()
 
     check_genesis(check)
     check_the_calendar_over_the_chain(check, settled)
@@ -477,6 +553,7 @@ def main() -> int:
     check_the_pool(check, halted, "halted")
     check_the_single_pass(check, halted)
     check_the_orderings(check)
+    check_the_restart_run(check, restart)
     check.require_full_coverage()
 
     if check.failures:

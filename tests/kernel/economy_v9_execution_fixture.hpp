@@ -27,6 +27,7 @@
 
 #include "../../tools/protocol-vectors/vector_common.hpp"
 
+#include <array>
 #include <cstdint>
 #include <map>
 #include <set>
@@ -257,6 +258,12 @@ struct Scenario {
   // shorthand carrying the timestamp: the block that follows sets its own.
   Hash root_after_the_shorthand{};
   std::uint64_t timestamp_after_the_shorthand = 0;
+  // The restart run's one refusal: the condition C2 reported for a stamp one
+  // millisecond below the predecessor's, and the root the rejected block left.
+  v9::TimestampCondition refused_below_the_predecessor =
+      v9::TimestampCondition::accepted;
+  bool refusal_rejected_the_block = false;
+  Hash root_after_the_refusal{};
 };
 
 v9::Genesis trace_genesis();
@@ -313,6 +320,13 @@ Scenario settled_scenario(Signatures& signatures);
 // same chain and is reached independently.
 Scenario rebuilt_chain_to(Signatures& signatures, std::uint64_t height);
 Scenario halted_scenario(Signatures& signatures);
+// Four heights contiguous from genesis, for a layer that replays blocks one at a
+// time. Every other recorded chain jumps from height 2 to the activation height,
+// which a store, an application, or a transport has no way to follow.
+Scenario restart_scenario(Signatures& signatures);
+// The heights whose stamp each restart block carries. The third repeats its
+// predecessor's, which C2 admits because the rule is non-decreasing.
+inline constexpr std::array<std::uint64_t, 4> kRestartStampHeights{1, 2, 2, 4};
 
 void verify_scenarios(const pv::Values& values);
 // The two orderings ADR 0078 distinguishes, each run on a copy of the same
@@ -323,6 +337,9 @@ void verify_orderings(const pv::Values& values);
 // invariant over a single accepted state separates the two, so what distinguishes
 // them is a scenario.
 void verify_single_pass(const pv::Values& values);
+// The restart run's commitments and its one refusal, which the layers above the
+// kernel replay block by block.
+void verify_restart_run(const pv::Values& values);
 // The contract file's sections a chain is needed for, which the codec target
 // defers to this one by name.
 void verify_contract_sections(const pv::Values& contract);

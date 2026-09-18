@@ -1,5 +1,5 @@
 // The trace scaffolding: the genesis every scenario opens on, the builders that
-// reproduce the model's exact transaction bytes, and the two recorded chains.
+// reproduce the model's exact transaction bytes, and the three recorded chains.
 //
 // Reproducing a recorded outcome means rebuilding the exact transactions that
 // produced it, down to the signature bytes: a transaction ID is a digest over
@@ -330,6 +330,53 @@ Scenario rebuilt_chain_to(Signatures& signatures, std::uint64_t height) {
 Scenario halted_scenario(Signatures& signatures) {
   auto scenario = seated_chain(signatures, "halted", halted_timestamp_of_height);
   measure(scenario, signatures, kHaltedTargetHeight, halted_timestamp_of_height);
+  return scenario;
+}
+
+Scenario restart_scenario(Signatures& signatures) {
+  Scenario scenario;
+  scenario.name = "restart";
+  scenario.ledger = open_trace_ledger();
+  auto& ledger = scenario.ledger;
+  const auto stamp = [](std::size_t index) {
+    return timestamp_of_height(kRestartStampHeights[index]);
+  };
+
+  run(scenario, signatures, stamp(0),
+      {{"alice_registers",
+        register_input(signatures, ledger, kAliceIdentity, kAliceKey,
+                       kAliceSignerKey)},
+       {"bob_registers",
+        register_input(signatures, ledger, kBobIdentity, kBobKey, kBobSignerKey)}});
+  run(scenario, signatures, stamp(1),
+      {{"seat_0_purchased",
+        purchase_input(signatures, ledger, kAliceIdentity, kAliceKey,
+                       kAliceSignerKey, kAliceSeat, 1)},
+       {"seat_1_purchased",
+        purchase_input(signatures, ledger, kBobIdentity, kBobKey, kBobSignerKey,
+                       kBobSeat, 1)}});
+
+  // Height 3 is offered a stamp one millisecond below its predecessor's first.
+  // The kernel's rejection carries no reason, so the condition is read from the
+  // replay rule the block runs as its step 0, and the rejection itself from the
+  // block.
+  const auto below = stamp(1) - 1;
+  scenario.refused_below_the_predecessor = v9::replay_timestamp(
+      v9::Head{ledger.height, ledger.timestamp}, ledger.height + 1, below);
+  scenario.refusal_rejected_the_block =
+      !v9::execute_block(ledger, below, {}, signatures.verifier()).has_value();
+  const auto root = v9::ledger_state_root(ledger);
+  pv::require(root.has_value(), "the refused block leaves a committable state");
+  scenario.root_after_the_refusal = *root;
+
+  run(scenario, signatures, stamp(2), {});
+  run(scenario, signatures, stamp(3),
+      {{"seat_0_activated",
+        activate_input(signatures, ledger, kAliceIdentity, kAliceKey,
+                       kAliceSignerKey, kAliceSeat, 2)},
+       {"seat_1_activated",
+        activate_input(signatures, ledger, kBobIdentity, kBobKey, kBobSignerKey,
+                       kBobSeat, 2)}});
   return scenario;
 }
 
