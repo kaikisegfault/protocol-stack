@@ -243,6 +243,9 @@ struct Scenario {
   v9::Ledger ledger;
   std::vector<v9::BlockOutcome> blocks;
   std::vector<std::vector<std::string>> labels;
+  // The raw inputs each recorded block was offered, in order, so a layer above
+  // the kernel can offer the same bytes and be compared against the same block.
+  std::vector<std::vector<Bytes>> block_inputs;
   // The blocks a quiet run executed because they opened a window or carried an
   // input, kept apart from `blocks` so a scenario can count the audits without
   // the setup segment.

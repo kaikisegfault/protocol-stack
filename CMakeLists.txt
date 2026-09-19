@@ -224,6 +224,9 @@ add_library(
     src/storage/sqlite_ledger_v8.cpp
     src/storage/sqlite_ledger_v8_open.cpp
     src/storage/sqlite_schema_v8.cpp
+    src/storage/sqlite_ledger_v9.cpp
+    src/storage/sqlite_ledger_v9_open.cpp
+    src/storage/sqlite_schema_v9.cpp
     src/storage/sqlite_snapshot_v1.cpp
     src/storage/snapshot_v1.cpp
     src/storage/snapshot_v8.cpp
@@ -455,6 +458,21 @@ add_executable(
   tests/kernel/economy_v8_trace.cpp
   tests/kernel/economy_v8_scenarios_test.cpp
 )
+# The version-nine trace is the one translation unit these need, rather than
+# version eight's pair: the `restart` run it records is the only contiguous
+# version-nine chain, and the scenario checks read figures this suite does not.
+add_executable(
+  storage_sqlite_ledger_v9_tests
+  tests/storage/sqlite_ledger_v9_test.cpp
+  tests/storage/sqlite_ledger_v9_refusals.cpp
+  tests/kernel/economy_v9_trace.cpp
+)
+add_executable(
+  storage_sqlite_recovery_v9_tests
+  tests/storage/sqlite_recovery_v9_test.cpp
+  tests/storage/sqlite_fault_vfs.cpp
+  tests/kernel/economy_v9_trace.cpp
+)
 add_executable(
   storage_archive_v1_tests
   tests/storage/archive_v1_test.cpp
@@ -554,6 +572,18 @@ target_link_libraries(
     protocol_stack_sqlite
 )
 target_link_libraries(
+  storage_sqlite_ledger_v9_tests
+  PRIVATE
+    protocol_storage
+    protocol_stack_sqlite
+)
+target_link_libraries(
+  storage_sqlite_recovery_v9_tests
+  PRIVATE
+    protocol_storage
+    protocol_stack_sqlite
+)
+target_link_libraries(
   storage_archive_v1_tests
   PRIVATE
     protocol_storage
@@ -626,6 +656,8 @@ set(
   storage_snapshot_v8_tests
   storage_snapshot_v9_tests
   storage_sqlite_ledger_v8_tests
+  storage_sqlite_ledger_v9_tests
+  storage_sqlite_recovery_v9_tests
   storage_archive_v1_tests
   application_v1_tests
   application_v8_tests
@@ -904,6 +936,23 @@ add_test(
     storage_sqlite_ledger_v8_tests
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v8-execution.txt"
     "${CMAKE_CURRENT_BINARY_DIR}/version-eight-owning-store"
+)
+# The directory name is short for the reason version eight's recovery suite's
+# is: the termination cases re-exec this binary and its arguments include the
+# directory.
+add_test(
+  NAME version-nine-store-recovery
+  COMMAND
+    storage_sqlite_recovery_v9_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v9-execution.txt"
+    "${CMAKE_CURRENT_BINARY_DIR}/sr-v9"
+)
+add_test(
+  NAME version-nine-owning-store
+  COMMAND
+    storage_sqlite_ledger_v9_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v9-execution.txt"
+    "${CMAKE_CURRENT_BINARY_DIR}/version-nine-owning-store"
 )
 add_test(
   NAME ledger-transition-cpp
