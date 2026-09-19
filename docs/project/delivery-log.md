@@ -38,10 +38,13 @@ handoff; `M3.15b` and anything after it was written here.
 PR #320 delivered `include/protocol/storage/sqlite_ledger_v9.hpp`, three sources
 and two internal headers under `src/storage/`, a four-file test suite, two CTest
 entries, and
-[ADR 0081](../decisions/0081-the-version-nine-owning-store.md). Two commits,
-twenty-one files, **2,696 insertions and 4 deletions**.
+[ADR 0081](../decisions/0081-the-version-nine-owning-store.md), merged by rebase
+as `159eb27`, `e0000d6` and `dc9818c` on 2026-09-19. Three commits, twenty-three
+files, **2,892 insertions and 39 deletions** — of which the code is twenty-one
+files, 2,696 insertions and 4 deletions, and the rest is this record and the
+handoff.
 `tools/verification_scope.py` classifies it `full`. Candidate run 35454011324 on
-`a2fd04e` passed all six jobs, with **173** ctest entries in the debug presets
+the store commit passed all six jobs, with **173** ctest entries in the debug presets
 and **182** under `clang-sanitizers` — two more than M3.19b's 171 and 180 in each,
 because the slice adds exactly two entries, `version-nine-owning-store` and
 `version-nine-store-recovery`, and no fuzz target. **No accepted vector rule,
