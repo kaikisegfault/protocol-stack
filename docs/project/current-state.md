@@ -484,9 +484,20 @@ you need the history behind a claim here; read this one for what is true now.
   every contract vector that needs no chain, and
   `economy-transition-v9-execution-cpp` reproduces **all 125 execution vectors**
   over two chains of 115,200 and 144,000 heights. **What is still version
-  eight's** is everything above the kernel — the snapshot, the owning store, the
-  application layer, the transport, the node process and the ABCI adapter — so no
-  network can run version nine yet.
+  eight's** is the application layer, the transport, the node process and the
+  ABCI adapter — so no network can run version nine yet.
+- **A version-nine chain survives the process that built it.** As of 2026-09-19
+  the storage layer is version nine's. `protocol::storage::snapshot_v9` turns a
+  whole version-nine state into canonical bytes — a 230-octet fixed part over a
+  166-octet prefix that carries the head's timestamp beside its height, three
+  restore gates, and a fuzz target — and `SQLiteLedgerV9` writes one to a file
+  and reads it back. The store is version eight's with `apply_block` taking the
+  agreed timestamp, a `current_timestamp_millis` column beside the height and
+  the root, and three DDL literals pinned at the octet: genesis **150**, head
+  snapshot **230**, block header **154**. Four ctest entries gate the pair.
+  **The store applies C1 and C2 and never C5**: a store executes blocks the
+  network already decided, so the proposal tolerance stays at `ProcessProposal`
+  and this signature has no clock to give it.
 - **A four-node version-eight network refuses a transaction, and all four
   replicas refuse it identically.** As of 2026-09-11 two transactions the
   contract must reject — a transfer at a consumed nonce and a second purchase of
@@ -2301,6 +2312,12 @@ application contract. What remains is `snapshot_v9`, the owning store, the
 application layer, the transport, the node process and the ABCI adapter — six
 ports, no contracts.
 
+**As of 2026-09-19 it is four.** M3.19b delivered `snapshot_v9` and M3.19c the
+owning store, so a version-nine chain now survives its own process. The
+application layer, the transport, the node process and the ABCI adapter are what
+is left, and all four have `consensus-application-v2` to satisfy rather than a
+shape to invent.
+
 **One of those absences now carries a dependency rather than only a roadmap
 position.** The founder answer of 2026-08-16 makes external purchasability the
 permanent funding path for a new participant once the entry airdrop's
@@ -2489,34 +2506,38 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-**Write `SQLiteLedgerV9`.** The snapshot can express a version-nine state; no
-store holds one. Everything above the kernel — the application layer, the
-transport, the node process and the ABCI adapter — waits on a durable head, and
-[ADR 0065](../decisions/0065-a-kernel-replacement-may-be-staged-across-a-stack-migration.md)'s
-enumeration puts the owning store fourth, directly after the snapshot: store,
-then `ApplicationV9` and the transport responses, then `protocol-application-v9`
-and the Go client, then the deletion of `src/v8/`.
+**Write `ApplicationV9` and the version-nine transport responses.** The store
+holds a durable head; nothing drives one. ADR 0065's enumeration puts the
+application layer fifth, directly after the owning store: `ApplicationV9` and the
+responses, then `protocol-application-v9` and the Go client, then the deletion of
+`src/v8/`.
 
-**One figure is already fixed and one decision is deliberately left open.**
-`sqlite_schema_v8.cpp` bounds `head_snapshot` at `length >= 222`, which is
-version eight's snapshot `kFixedSize` of 158 + 32 + 32. Version nine's is
-**230**, because the prefix grew by the timestamp — so that CHECK constraint is a
-figure that moves with the version while looking like framing, which is the
-third time this project has met one. What is **not** decided here is whether
-`ledger_meta_v9` denormalises a `current_timestamp` column beside
-`current_height` and `current_state_root`. It does not have to: the head snapshot
-already carries the stamp and `snapshot_v9` decodes it. Whether a cheap read is
-worth a fourth column is the store slice's call, not this handoff's.
+**Its contract is written and its acceptance criteria are already enumerated.**
+[`consensus-application-v2`](../specifications/consensus-application-v2.md)'s
+required-evidence section is the list; do not re-derive it. The parts that belong
+to this slice rather than to the node or the adapter are the eight-value decision
+space and the eight statuses, `calendar-v1`'s first-condition-wins ordering, both
+sides of C5 with a supplied clock, the test that `FinalizeBlock` accepts a stamp
+`ProcessProposal` would have refused for tolerance, the proof that no path from
+`FinalizeBlock`, Commit, restart, or reconstruction reaches the bound clock
+source, the timestamp-conversion cases, the InitChain cases, and the decoder and
+fuzz cases for the six changed payloads.
 
-**The same defect shape follows it there, for the third time.** A store that
-persisted the height and left the timestamp behind would reopen at a head whose
-stamp belongs to an earlier height, and every later block would still satisfy C2
-because the stale stamp is smaller — a wrong root rather than a refusal.
-`economy-transition-v9` records it against `advance_to`,
-`consensus-application-v2` against the replay boundary, and ADR 0080 against the
-snapshot payload. **Each needed its own vector and this one will too**; the
-argument does not transfer between layers, which is exactly why it has been
-written down three times rather than cited once.
+**Two things the store slice settled that the application must not re-open.**
+The store applies C1 and C2 and **never C5** — it executes blocks the network
+already decided, and a store that re-applied the proposal tolerance would refuse
+the chain's own past one tolerance-width after producing it. And `apply_block`
+takes the agreed stamp as a parameter, so the application supplies it and the
+store never reads a clock; `SQLiteLedgerV9::apply_block` has no clock to read,
+which is the enforcement rather than the convention.
+
+**The frame version is the one trap already identified and not yet sprung.**
+M3.19a found that version seven added a block identifier to the finalize response,
+version eight kept it, the frame version stayed at `1`, and no contract document
+recorded it. Version nine changes six payloads, so this is the slice where the
+frame version has to move and where version one's decoder must refuse a
+version-two frame at the **frame** rather than at the first block as a generic
+protocol failure.
 
 **The contract the remaining ports must satisfy is now written.**
 [`consensus-application-v2`](../specifications/consensus-application-v2.md) and
@@ -2620,6 +2641,11 @@ history in turn: **the nearest slice is `SQLiteLedgerV9`**.
 five requirements `economy-transition-v9` left open, and **version nine now owes
 no contract at all** — everything remaining is a port.
 
+**M3.19c delivered the store on 2026-09-19**, so that sentence is history too and
+the nearest slice is the application layer, which the paragraph at the head of
+this section states. Three sources, two suites, two ctest entries, and
+[ADR 0081](../decisions/0081-the-version-nine-owning-store.md).
+
 **Three things M3.19a settled that the ports must not re-open.** The C++
 application reads its own clock, once per `ProcessProposal`, and the local
 protocol never carries a clock reading — a bridge-supplied reading could make a
@@ -2718,10 +2744,11 @@ the fixture rather than left to be rediscovered.
   on 2026-09-15, M3.17b modelled the codec, the calendar rules and the settlement
   arithmetic the same day, and M3.17c made a chain run the whole transition on
   2026-09-16, and M3.18a and M3.18b put the whole kernel into C++20 the same day.
-  **M3.19a accepted the application contract and M3.19b delivered `snapshot_v9`,
-  both on 2026-09-17**, so the two sentences that stood here naming each of them
-  the nearest slice are history. **The nearest slice is `SQLiteLedgerV9`**, then
-  the application layer, the transport, the node process and the ABCI adapter —
+  **M3.19a accepted the application contract on 2026-09-17, M3.19b delivered
+  `snapshot_v9` the same day, and M3.19c delivered `SQLiteLedgerV9` on
+  2026-09-19**, so the three sentences that stood here naming each of them the
+  nearest slice are history. **The nearest slice is `ApplicationV9` and the
+  version-nine transport responses**, then the node process and the ABCI adapter —
   all still version eight's, and all now holding an accepted contract that states
   what each must satisfy. The paragraphs that stood here enumerating what the binding version had
   to add are superseded by the specification itself and are not restated; three
@@ -3445,6 +3472,34 @@ later scenario change stops reaching one.
 
 **There is no blocker.** Every remaining version-nine slice is a port with an
 accepted contract behind it.
+
+**M3.19c ran the founder-decision gate and passed it.** Nine decisions were
+enumerated before any was judged: whether `ledger_meta_v9` carries a timestamp
+column at all; what that column is named; whether the stamp is written in the
+same statement as the height; whether `apply_block` takes the stamp, a clock, or
+neither; whether the store applies C5; whether it exposes an uptime schedule or a
+`BlockOrder`; the three DDL width literals; the `application_id` and
+`user_version` pair; and the suite, CTest, ADR, issue, branch and PR shape.
+**Four are fixed by accepted documents** — the three widths by
+`v9::kGenesisPrefixBytes`, `snapshot_v9`'s `kFixedSize` and
+`v9::kBlockHeaderBytes`, and the C5 placement by
+[`consensus-application-v2`](../specifications/consensus-application-v2.md) and
+[ADR 0079](../decisions/0079-the-version-nine-application-contract.md) — and were
+cited rather than re-chosen. The remaining five are storage layout, naming,
+mechanism and packaging, which
+[ADR 0007](../decisions/0007-sqlite-ledger-persistence.md) and the standing
+delegation place outside the reserved set. The one the previous handoff left
+explicitly open — the timestamp column — is storage layout by that same ADR,
+which fixes a storage layout as operational data that never defines transaction,
+receipt, state-root, or block meaning.
+
+Nothing in the slice set or changed supply, allocation, beneficiaries, Founder
+ownership, creator hierarchy, commercial routing, AI institutional authority,
+bridge scope, content permanence, or what an end user must do, own, run, or
+receive, and **no accepted vector file, specification, manifest, encoding, or
+kernel source changed** — every source file is new, `CMakeLists.txt` only gains
+registrations, and the two kernel test files change only to expose the raw inputs
+each recorded block was offered.
 
 **M3.19b ran the founder-decision gate and passed it.** Fourteen decisions were
 enumerated before any was judged: the payload schema version; whether the summary

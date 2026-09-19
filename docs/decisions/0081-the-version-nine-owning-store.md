@@ -1,4 +1,4 @@
-# ADR 0081: The version-nine owning store persists the head's second scalar in a column, and the column cannot be called what it holds
+# ADR 0081: The version-nine owning store keeps the head's second scalar in a column of its own
 
 - Status: Accepted
 - Date: 2026-09-19
@@ -15,7 +15,8 @@
 
 [ADR 0080](0080-the-version-nine-snapshot.md) made a version-nine state
 expressible as canonical bytes and named this as what it owed: nothing yet wrote
-one of those payloads to a file. [ADR 0065](0065-a-kernel-replacement-may-be-staged-across-a-stack-migration.md)'s
+one of those payloads to a file.
+[ADR 0065](0065-a-kernel-replacement-may-be-staged-across-a-stack-migration.md)'s
 enumeration puts the owning store fourth, directly after the snapshot, and
 everything above it — `ApplicationV9`, the transport, the node process, the ABCI
 adapter — waits on a durable head.

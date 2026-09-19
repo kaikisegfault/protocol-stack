@@ -32,6 +32,111 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M3.19c was delivered
+
+**A version-nine chain survives the process that built it.** Issue #319 and
+PR #320 delivered `include/protocol/storage/sqlite_ledger_v9.hpp`, three sources
+and two internal headers under `src/storage/`, a four-file test suite, two CTest
+entries, and
+[ADR 0081](../decisions/0081-the-version-nine-owning-store.md). Two commits,
+twenty-one files, **2,696 insertions and 4 deletions**.
+`tools/verification_scope.py` classifies it `full`. Candidate run 35454011324 on
+`a2fd04e` passed all six jobs, with **173** ctest entries in the debug presets
+and **182** under `clang-sanitizers` — two more than M3.19b's 171 and 180 in each,
+because the slice adds exactly two entries, `version-nine-owning-store` and
+`version-nine-store-recovery`, and no fuzz target. **No accepted vector rule,
+specification, manifest, encoding, or existing kernel source changed** — every
+source file is new, `CMakeLists.txt` only gains registrations, `src/v8/` is
+untouched, and `test-vectors/economy-transition-v9-execution.txt` grew
+additively, 125 vectors becoming 162.
+
+**The suite replays a run that had to be recorded first.** Every other recorded
+version-nine chain jumps from height 2 to the activation height with
+`advance_to`, and a store cannot follow that: it commits one height at a time.
+Under version seven that was a design objection —
+[ADR 0057](../decisions/0057-the-version-seven-owning-store.md) refused a "jump
+to height" operation as test-only machinery answering to no chain rule. **Under
+version nine it answers to a chain rule and contradicts it**: every height audits
+every in-scope seat and every height's stamp is a value C2 compared, so a skipped
+height is an audit that was owed and a comparison that never happened. So the
+first commit records a four-block contiguous `restart` run — Python derives every
+stamp, transaction root, header and identifier, the C++ kernel reproduces all 37
+new vectors, and only then does a store replay them.
+
+**The head keeps a timestamp column although the payload already carries the
+stamp**, and the handoff had deliberately left that choice to this slice. It is
+not kept for the cheap read. A file whose columns named the height and the root
+would be **stating half of a head it holds whole**, and the half it omitted would
+be the one version nine added. What the column buys is a comparison the root's
+does not imply: the root refuses a *payload* whose stamp was changed alone, and
+cannot refuse a **column** that disagrees with an unchanged payload — which is
+exactly what a later reader, or a later version of this store, would be tempted
+to trust without decoding anything. The restore still reads the payload; the
+column is a claim the file makes about itself, checked and then discarded.
+
+**The column could not be called `current_timestamp`, and the reason is a
+clock.** `CURRENT_TIMESTAMP` is an SQL keyword, and SQLite resolves a bare
+`current_timestamp` in an expression to its own wall-clock reading rather than to
+a column of that name. The `CREATE TABLE` succeeds, the name is legal, and only
+an expression over it misbehaves: `typeof` returns `'text'` and `length` returns
+19, so the column's own CHECK refused **every** insert, on the first genesis this
+store ever wrote. A `SELECT` of the head would have returned the time of day.
+**The CHECK is what caught it** — a schema without one would have stored the
+column and read back the clock, in the single component of this repository whose
+whole job is to hold the chain's stamp rather than the machine's. The column is
+`current_timestamp_millis`; the block row's is plain `timestamp`, because no
+keyword shadows it, and renaming both to match would have hidden the reason.
+
+**Three DDL literals move with the version and each is pinned at the octet.**
+Genesis **150**, head snapshot **230**, block header **154** — and the header is
+the first of the three ever to move at all, unchanged from version one through
+version eight. One octet below each is refused by SQLite's own CHECK and exactly
+the width is admitted, because a tamper case proves only that *some* blob the
+column admits is refused by the decoder and would still pass against a stale
+literal. **The header literal has the worst failure shape of the three**: a store
+that creates a genesis and then refuses every block.
+
+**The restart evidence aims at the stamp rather than only at the root.** A root
+comparison proves agreement without ever showing which stamp came back, and a
+store that reopened with a stamp belonging to an earlier height would still admit
+every later block, because C2 only refuses a stamp that goes *backwards* and a
+stale one is smaller than anything that follows — a wrong root rather than a
+refusal. So between the run's two equal-stamped heights the reopened store is
+offered height 3 one millisecond below block 2's stamp, which it must refuse, and
+then at exactly that stamp, which it must admit. **A store that restored a
+smaller stamp admits both; one that restored a larger stamp admits neither.**
+
+**Four mutation probes were run against the finished suite and all four were
+caught**, which is what distinguishes a check that is load-bearing from one that
+is decorative. Dropping the restored-stamp comparison, rewinding the header
+column to version one's 146, advancing the head's height while leaving its stamp
+column behind, and writing the predecessor's stamp into the block row each turned
+a green suite red. The third is the defect this version could actually hide, and
+it is refused by the shape of the write as well: `persist_block_v9` advances the
+height, the stamp, the root and the payload in **one** `UPDATE`, so the defect
+would need two statements to exist.
+
+**The store applies C1 and C2 and never C5.** A store executes blocks the network
+already decided — a commit, a replay, a recovery — and one that re-applied the
+proposal tolerance would refuse the chain's own past one tolerance-width after
+producing it. `apply_block` therefore takes the agreed stamp as a parameter and
+has no clock to read, which is the enforcement rather than the convention. The
+same argument refuses an uptime-schedule parameter and a `BlockOrder` parameter:
+the prologue derives the schedule from the seat table and the window records, and
+the `BlockOrder` flags are demonstration flags rather than a configuration a
+chain has, so a store that exposed them would be offering an operator a way to
+leave consensus.
+
+**`sqlite_ledger_v9_open.cpp` is a provably empty normalising diff against
+version eight's**, and it is the one file of this slice where that was
+predictable in advance: reopening is validation, a store is validated once and
+then trusted for its lifetime, and none of that is version-specific.
+
+**One handoff defect was repaired on the way.** `current-state.md`'s "What works
+now" still said the snapshot was version eight's, which M3.19b had made untrue
+two days earlier. Git and the passing `version-nine-snapshot` entry are what
+settled it, and the bullet now covers the whole version-nine storage layer.
+
 ### How M3.19b was delivered
 
 **A version-nine state can leave memory.** Issue #316 and PR #317 delivered
