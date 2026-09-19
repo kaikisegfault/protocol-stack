@@ -37,7 +37,9 @@ handoff; `M3.15b` and anything after it was written here.
 **Something drives a version-nine chain.** Issue #324 and PR #325 delivered
 `include/protocol/application/application_v9.hpp`, an internal header, two
 translation units, a 693-line suite, one CTest entry, and
-[ADR 0083](../decisions/0083-the-version-nine-application-reads-one-clock.md).
+[ADR 0083](../decisions/0083-the-version-nine-application-reads-one-clock.md),
+merged by rebase as `cc3fd8d` and `45e1fd4` on 2026-09-19. Two commits, nine
+files, **1,820 insertions and 21 deletions**.
 `tools/verification_scope.py` classifies it `full`. Candidate run 35459907355
 passed all six jobs, with **175** ctest entries in the three debug and
 gcc-sanitizer presets and **185** under `clang-sanitizers`, one more than M3.20a
