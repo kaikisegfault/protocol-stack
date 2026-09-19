@@ -32,6 +32,96 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M3.20b was delivered
+
+**Something drives a version-nine chain.** Issue #324 and PR #325 delivered
+`include/protocol/application/application_v9.hpp`, an internal header, two
+translation units, a 693-line suite, one CTest entry, and
+[ADR 0083](../decisions/0083-the-version-nine-application-reads-one-clock.md).
+`tools/verification_scope.py` classifies it `full`. Candidate run 35459907355
+passed all six jobs, with **175** ctest entries in the three debug and
+gcc-sanitizer presets and **185** under `clang-sanitizers`, one more than M3.20a
+in each because the slice adds exactly one entry and no fuzz target. **No
+accepted vector file, specification, manifest, encoding, or kernel source
+changed**, version eight's application is untouched, and `CMakeLists.txt` only
+gains registrations.
+
+**The clock is the whole of what version nine adds here, and it is the first
+non-deterministic input this repository has admitted into a consensus-adjacent
+path.** It is bound at construction with **no default**, because a defaulted
+system clock would make "this deployment cannot read a clock" unrepresentable and
+an assumed clock makes C5 pass on every proposal, silently. `process_proposal`
+reads it once; reading twice would let two conditions of one evaluation disagree
+about the time.
+
+**`finalize_block` cannot apply C5 and the enforcement is a signature.** It calls
+`replay_timestamp`, which takes no clock argument, so there is no value a caller
+could pass and no branch a maintainer could add without changing a signature. The
+kernel had already made the separation structural by offering two entry points
+differing in exactly this respect; this layer's contribution is to call the right
+one and to **prove by counting** that it reaches no other. The bound clock
+increments a counter, and every operation but `process_proposal` must leave the
+count where it found it — which is a measurement rather than an assertion, and it
+is what the contract's "exposes no path" requirement actually asks for.
+
+**`init_chain` compares four values and stores none of them.** The genesis stamp
+is read from the durable head rather than kept as a member, because `init_chain`
+is only reachable while the durable height is zero and **at height zero the
+head's stamp is the genesis stamp**. ADR 0080 reached the same answer for the
+snapshot; here the reason is sharper, because the one operation that needs the
+value is the one operation that can only run where the value is still in the
+head.
+
+**The first finding is that the contract asks for one piece of evidence that
+cannot be produced.**
+[`consensus-application-v2`](../specifications/consensus-application-v2.md)
+requires a vector for every `ProcessProposal` decision `0` through `7`, each on
+its own. Seven are straightforward. **Decision `7`, `NOT_EXECUTABLE`, is not
+reachable from a proposal's contents**, and establishing that took a probe rather
+than a reading. The kernel turns every transaction-level problem into a
+**result**: `debit_of` returning `nullopt` becomes `Result::debit_overflow`, and
+`envelope_checks` refuses `insufficient_balance` *before* `charged` runs, so
+`collect_fee` cannot fail afterwards. The remaining whole-block rejections are
+chain-state failures — a prologue, issue, expiry, or conservation failure — that
+no peer can induce by choosing bytes, and the two bounds that could disagree, the
+application's `kMaximumBlockInputsV9` and the kernel's `kMaxRawInputs`, are the
+same constant by construction.
+
+Four candidate transactions were built and offered to `execute_block` directly: a
+transfer at the `u64` maximum, a node mint with nothing to collect, a node mint
+naming a seat that does not exist, and a monthly pool mint with no claim. **All
+four were accepted as blocks and refused as results.** The suite therefore
+records the absence as a measurement rather than skipping it — a block of
+transactions the kernel refuses for several different reasons is offered and
+required to be `ACCEPTED`. Decision `7` stays implemented, because the
+chain-state failures it guards are real; what is now written down is that it is
+defence in depth rather than a vote a peer can provoke.
+
+**The second finding is that the probe which passed was the useful one.** Seven
+mutation probes were run against the finished suite and six failed it
+immediately. **The seventh — moving the resource-bound check in front of
+`calendar-v1`'s ordered conditions — passed.** That ordering's entire
+justification in the contract is that the vote is identical either way, so the
+order decides only what is *reported* and therefore what is testable — and
+nothing reported was being compared. Four cases were added, each violating a
+bound and a timestamp rule at once and each required to report the timestamp
+rule, and the probe then failed as it should. **A rule whose whole justification
+is "this is what makes it testable" is a rule whose test is worth checking for
+existence**, and the reading that produced the implementation did not produce the
+test.
+
+**One behaviour reads as a bug and is not.** A chain whose first block was
+finalized but never committed comes back at height zero, so the next process must
+call `init_chain` again. That is correct — `init_chain` happens once per chain,
+and a chain whose first block never committed has not had one — and a CometBFT
+node in exactly that state does call it again. It is recorded because the suite's
+first draft assumed otherwise and failed on it.
+
+**All seven probes are now caught**: applying C5 in `finalize_block`,
+regenerating the stamp at commit, reordering the bounds, dropping the
+genesis-stamp comparison, dropping Info's timestamp, reading the clock twice, and
+reporting C2's status for a C1 failure.
+
 ### How M3.20a was delivered
 
 **The local protocol finally uses the field that announces a shape change.**
