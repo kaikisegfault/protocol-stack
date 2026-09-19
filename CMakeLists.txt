@@ -241,8 +241,10 @@ add_library(
   STATIC
     src/application/application_block_v1.cpp
     src/application/application_block_v8.cpp
+    src/application/application_block_v9.cpp
     src/application/application_v1.cpp
     src/application/application_v8.cpp
+    src/application/application_v9.cpp
     src/application/dispatcher_v1.cpp
     src/application/dispatcher_v8.cpp
     src/application/response_v1.cpp
@@ -491,6 +493,14 @@ add_executable(
   tests/kernel/economy_v8_trace.cpp
   tests/kernel/economy_v8_scenarios_test.cpp
 )
+# The version-nine trace alone, for the reason the store suites take it alone:
+# the `restart` run it records is the only contiguous version-nine chain, and
+# the scenario checks read figures this suite does not.
+add_executable(
+  application_v9_tests
+  tests/application/application_v9_test.cpp
+  tests/kernel/economy_v9_trace.cpp
+)
 # The scenario translation units are the kernel execution suite's own: the
 # recorded scenarios are the third source a block driven over the wire is
 # checked against.
@@ -606,6 +616,12 @@ target_link_libraries(
     protocol_stack_sqlite
 )
 target_link_libraries(
+  application_v9_tests
+  PRIVATE
+    protocol_application
+    protocol_stack_sqlite
+)
+target_link_libraries(
   application_transport_v8_tests
   PRIVATE
     protocol_application
@@ -671,6 +687,7 @@ set(
   storage_archive_v1_tests
   application_v1_tests
   application_v8_tests
+  application_v9_tests
   application_transport_v8_tests
   application_wire_v1_tests
   application_wire_v2_tests
@@ -1117,6 +1134,13 @@ add_test(
     application_v8_tests
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v8-execution.txt"
     "${CMAKE_CURRENT_BINARY_DIR}/version-eight-application"
+)
+add_test(
+  NAME version-nine-application
+  COMMAND
+    application_v9_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v9-execution.txt"
+    "${CMAKE_CURRENT_BINARY_DIR}/version-nine-application"
 )
 # The directory name is deliberately short: this entry binds a Unix socket
 # inside it, and `sun_path` caps a socket pathname near 108 octets.
