@@ -250,6 +250,7 @@ add_library(
     src/application/unix_connection_v1.cpp
     src/application/unix_server_v1.cpp
     src/application/wire_v1.cpp
+    src/application/wire_v2.cpp
 )
 target_include_directories(
   protocol_application
@@ -504,6 +505,10 @@ add_executable(
   tests/application/wire_v1_test.cpp
 )
 add_executable(
+  application_wire_v2_tests
+  tests/application/wire_v2_test.cpp
+)
+add_executable(
   application_response_v1_tests
   tests/application/response_v1_test.cpp
 )
@@ -612,6 +617,11 @@ target_link_libraries(
     protocol_application
 )
 target_link_libraries(
+  application_wire_v2_tests
+  PRIVATE
+    protocol_application
+)
+target_link_libraries(
   application_response_v1_tests
   PRIVATE
     protocol_application
@@ -663,6 +673,7 @@ set(
   application_v8_tests
   application_transport_v8_tests
   application_wire_v1_tests
+  application_wire_v2_tests
   application_response_v1_tests
   application_unix_server_v1_tests
 )
@@ -712,6 +723,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     protocol_application_wire_fuzz
     STATIC
       src/application/wire_v1.cpp
+      src/application/wire_v2.cpp
   )
   target_include_directories(
     protocol_application_wire_fuzz
@@ -748,6 +760,10 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     application_wire_fuzz
     tests/fuzz/application_wire_fuzz.cpp
   )
+  add_executable(
+    application_wire_v2_fuzz
+    tests/fuzz/application_wire_v2_fuzz.cpp
+  )
   target_link_libraries(
     storage_archive_fuzz
     PRIVATE
@@ -773,6 +789,11 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     PRIVATE
       protocol_application_wire_fuzz
   )
+  target_link_libraries(
+    application_wire_v2_fuzz
+    PRIVATE
+      protocol_application_wire_fuzz
+  )
   target_link_libraries(kernel_genesis_fuzz PRIVATE protocol_kernel_fuzz)
   list(
     APPEND
@@ -789,6 +810,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     storage_archive_fuzz
     protocol_application_wire_fuzz
     application_wire_fuzz
+    application_wire_v2_fuzz
   )
 endif()
 
@@ -831,6 +853,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       storage_archive_fuzz
       protocol_application_wire_fuzz
       application_wire_fuzz
+      application_wire_v2_fuzz
   )
     target_compile_options(
       ${protocol_stack_fuzz_target}
@@ -850,6 +873,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       storage_snapshot_v9_fuzz
       storage_archive_fuzz
       application_wire_fuzz
+      application_wire_v2_fuzz
   )
     target_link_options(
       ${protocol_stack_fuzz_executable}
@@ -1106,6 +1130,10 @@ add_test(
 add_test(
   NAME application-wire-v1
   COMMAND application_wire_v1_tests
+)
+add_test(
+  NAME application-wire-v2
+  COMMAND application_wire_v2_tests
 )
 add_test(
   NAME application-response-v1
@@ -2150,6 +2178,15 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       -max_len=65536
       -len_control=0
   )
+  add_test(
+    NAME application-wire-v2-fuzz-smoke
+    COMMAND
+      application_wire_v2_fuzz
+      -seed=824312
+      -runs=512
+      -max_len=65536
+      -len_control=0
+  )
   set_tests_properties(
     kernel-admission-fuzz-smoke
     kernel-address-fuzz-smoke
@@ -2159,6 +2196,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     storage-snapshot-v8-fuzz-smoke
     storage-archive-fuzz-smoke
     application-wire-fuzz-smoke
+    application-wire-v2-fuzz-smoke
     PROPERTIES
       LABELS fuzz
       TIMEOUT 60
