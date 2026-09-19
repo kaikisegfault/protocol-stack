@@ -284,6 +284,7 @@ const v9::BlockOutcome& run(Scenario& scenario, const Signatures& signatures,
                                      std::to_string(scenario.ledger.height + 1));
   scenario.blocks.push_back(std::move(*block));
   scenario.labels.push_back(std::move(labels));
+  scenario.block_inputs.push_back(std::move(raw));
   return scenario.blocks.back();
 }
 
