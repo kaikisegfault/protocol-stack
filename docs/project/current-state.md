@@ -498,6 +498,14 @@ you need the history behind a claim here; read this one for what is true now.
   **The store applies C1 and C2 and never C5**: a store executes blocks the
   network already decided, so the proposal tolerance stays at `ProcessProposal`
   and this signature has no clock to give it.
+- **The local application protocol has a version-two frame.** As of 2026-09-19
+  `wire_v2` decodes a request at protocol version `2`, with the genesis timestamp
+  in kind 2 and the block timestamp in kinds 5 and 6. **Nothing serves it yet** —
+  the response encoder and `ApplicationV9` are the next slice — so this is a
+  codec rather than a running transport. What it already establishes is the
+  cross-version refusal in both directions: each decoder refuses the other's
+  frame at the header, on the first frame, rather than several fields into a
+  payload.
 - **A four-node version-eight network refuses a transaction, and all four
   replicas refuse it identically.** As of 2026-09-11 two transactions the
   contract must reject — a transfer at a consumed nonce and a second purchase of
@@ -2312,11 +2320,12 @@ application contract. What remains is `snapshot_v9`, the owning store, the
 application layer, the transport, the node process and the ABCI adapter — six
 ports, no contracts.
 
-**As of 2026-09-19 it is four.** M3.19b delivered `snapshot_v9` and M3.19c the
-owning store, so a version-nine chain now survives its own process. The
-application layer, the transport, the node process and the ABCI adapter are what
-is left, and all four have `consensus-application-v2` to satisfy rather than a
-shape to invent.
+**As of 2026-09-19 it is four, and one of the four is half delivered.** M3.19b
+delivered `snapshot_v9` and M3.19c the owning store, so a version-nine chain now
+survives its own process; M3.20a then delivered the transport's request half as
+`wire_v2`. The application layer, the transport's response encoder, the node
+process and the ABCI adapter are what is left, and all of them have
+`consensus-application-v2` to satisfy rather than a shape to invent.
 
 **One of those absences now carries a dependency rather than only a roadmap
 position.** The founder answer of 2026-08-16 makes external purchasability the
@@ -2506,11 +2515,16 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-**Write `ApplicationV9` and the version-nine transport responses.** The store
-holds a durable head; nothing drives one. ADR 0065's enumeration puts the
-application layer fifth, directly after the owning store: `ApplicationV9` and the
-responses, then `protocol-application-v9` and the Go client, then the deletion of
-`src/v8/`.
+**Write `ApplicationV9`, `response_v9`, and `dispatcher_v9`.** The store holds a
+durable head and the version-two frame can carry a request to it; nothing drives
+one. Version eight delivered these three as a single piece in M3.13r — three
+public headers, four translation units and an internal header — and version nine
+has the same shape to fill.
+
+**The frame is already done and is not part of that slice.** M3.20a delivered
+`wire_v2` on 2026-09-19, so the request decoder exists; what is owed is the
+response encoder, which needs `ApplicationV9`'s types, and the application that
+produces them.
 
 **Its contract is written and its acceptance criteria are already enumerated.**
 [`consensus-application-v2`](../specifications/consensus-application-v2.md)'s
@@ -2646,6 +2660,16 @@ the nearest slice is the application layer, which the paragraph at the head of
 this section states. Three sources, two suites, two ctest entries, and
 [ADR 0081](../decisions/0081-the-version-nine-owning-store.md).
 
+**M3.20a took the frame off the front of that slice the same day.** `wire_v2` is
+the version-two local application frame and
+[ADR 0082](../decisions/0082-the-version-two-application-frame.md) records it.
+**It is the first version of this protocol ever to use its own version field** —
+version seven changed the finalize response's shape, version eight kept it, and
+the version stayed at `1` through both, so the refusal landed at the result count
+on the first block rather than at the header on the first frame. It lands at the
+header now, and version one's decoder refuses a version-two frame for the same
+reason without a line of new code.
+
 **Three things M3.19a settled that the ports must not re-open.** The C++
 application reads its own clock, once per `ProcessProposal`, and the local
 protocol never carries a clock reading — a bridge-supplied reading could make a
@@ -2747,10 +2771,11 @@ the fixture rather than left to be rediscovered.
   **M3.19a accepted the application contract on 2026-09-17, M3.19b delivered
   `snapshot_v9` the same day, and M3.19c delivered `SQLiteLedgerV9` on
   2026-09-19**, so the three sentences that stood here naming each of them the
-  nearest slice are history. **The nearest slice is `ApplicationV9` and the
-  version-nine transport responses**, then the node process and the ABCI adapter —
-  all still version eight's, and all now holding an accepted contract that states
-  what each must satisfy. The paragraphs that stood here enumerating what the binding version had
+  nearest slice are history, and M3.20a delivered the version-two frame on
+  2026-09-19. **The nearest slice is `ApplicationV9`, `response_v9` and
+  `dispatcher_v9`**, then the node process and the ABCI adapter — all still
+  version eight's, and all now holding an accepted contract that states what each
+  must satisfy. The paragraphs that stood here enumerating what the binding version had
   to add are superseded by the specification itself and are not restated; three
   of them were **wrong**, and the corrections are the reason to read the
   document rather than this list.
@@ -3472,6 +3497,27 @@ later scenario change stops reaching one.
 
 **There is no blocker.** Every remaining version-nine slice is a port with an
 accepted contract behind it.
+
+**M3.20a ran the founder-decision gate and passed it.** Nine decisions were
+enumerated before any was judged: the frame's protocol version; the magic; the
+field order of kind 2's genesis timestamp; the placement of kinds 5 and 6's block
+timestamp; whether kind 4 gains one; the primitive encoding and framing rules;
+whether version two is a module or a parameter on version one; the raw-input
+bound's source; and the suite, fuzz, CTest, ADR, issue, branch and PR shape.
+**Five are fixed by
+[`consensus-application-v2`](../specifications/consensus-application-v2.md)** —
+the version, the magic, both payload layouts, and kind 4's deliberate exemption —
+and were cited rather than re-chosen. The remaining four are module structure,
+derivation and packaging.
+
+**The local protocol cannot reach a founder-reserved value by construction**, and
+the specification says so: it "remains operational framing rather than canonical
+ledger encoding". Nothing in the slice set or changed supply, allocation,
+beneficiaries, Founder ownership, creator hierarchy, commercial routing, AI
+institutional authority, bridge scope, content permanence, or what an end user
+must do, own, run, or receive, and **no accepted vector file, specification,
+manifest, encoding, or kernel source changed** — `wire_v1` is untouched and
+`CMakeLists.txt` only gains registrations.
 
 **M3.19c ran the founder-decision gate and passed it.** Nine decisions were
 enumerated before any was judged: whether `ledger_meta_v9` carries a timestamp

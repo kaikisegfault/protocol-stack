@@ -32,6 +32,93 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M3.20a was delivered
+
+**The local protocol finally uses the field that announces a shape change.**
+Issue #322 and PR #323 delivered `include/protocol/application/wire_v2.hpp`,
+`src/application/wire_v2.cpp`, a codec suite, a fuzz target, two CTest entries,
+and [ADR 0082](../decisions/0082-the-version-two-application-frame.md).
+`tools/verification_scope.py` classifies it `full`. Candidate run 35456872018
+passed all six jobs, with **174** ctest entries in the three debug and
+gcc-sanitizer presets and **184** under `clang-sanitizers` — one and two more than
+M3.19c's 173 and 182, because the slice adds `application-wire-v2` everywhere and
+`application-wire-v2-fuzz-smoke` only where fuzzing is enabled. **No accepted
+vector file, specification, manifest, encoding, or kernel source changed**,
+`wire_v1` is untouched, and `CMakeLists.txt` only gains registrations.
+
+**The reason this is a slice at all is one octet that had never moved.** Version
+seven added a block identifier to the finalized-block response, version eight
+kept it, and the protocol version stayed at `1` through both with no contract
+document recording the change. The consequence is not a misparse — both decoders
+are correct — but the refusal lands in the wrong place: a version-one reader
+paired with a version-eight writer refuses the response **at the result count, as
+a generic protocol failure, on the first block**, rather than at the header, as an
+unsupported version, on the first frame. M3.19a found it while writing the
+contract; this is where it stops being true.
+
+**What version two changes is two request payloads, and a third that must not
+change is checked precisely because it must not.** Kind 2 gains
+`genesis_timestamp` **before** `app_state`, because every fixed-width field
+precedes the one variable-length field — version one's own layout rule, and what
+lets a decoder bound a frame before it allocates. Kinds 5 and 6 gain a timestamp
+after the height. **Kind 4 gains nothing**: PrepareProposal names no block, and
+`economy-transition-v9` requires the proposer's algorithm for choosing a value to
+stay unconstrained, so a port that stamped every block-shaped payload would have
+stamped the one payload that must not carry one. The absence is a case rather
+than an omission.
+
+**Version two is a module of its own rather than a version parameter on version
+one, and the reason is the migration rather than taste.** Parameterising
+`wire_v1` by accepted version would mean editing a decoder that version one and
+version eight both depend on — the change that makes version two reachable is the
+same change that could make version one accept a frame it did not accept before.
+What *is* shared is everything that is genuinely one fact: the header size, the
+magic, the direction and kind enumerations, the wire-error set, the frame and
+header structs, and the three unchanged request payloads, all declared once in
+`wire_v1.hpp`. What is copied is the primitive reader and the payload decoder,
+because that is what version two edits, and the duplication is bounded by the
+deletion already owed — `wire_v1` goes when `src/v8/` does.
+
+**The finding is that the cross-version refusal had to be tested in both
+directions, and only one of them is the direction this slice created.** That
+version two refuses a version-one frame is the new behavior and the obvious case.
+That version one refuses a version-two frame is what makes the change *useful* —
+it is the deployment failure the field exists to name — and it needed no code at
+all, because version one already compares against its own constant. **A suite
+that tested only the new direction would have proved version two is strict and
+proved nothing about whether the drift is closed.** The pair is checked,
+including a version-one finalize frame carrying a whole well-formed version-one
+block body, which is refused on its sixth octet rather than at the result count
+several fields later. That case states the whole point of the version: the body
+never reaches a payload decoder.
+
+**One figure is derived rather than restated, and it is the M3.13r lesson applied
+before the fact.** `kMaximumBlockInputsV2` is `v9::kMaxRawInputs`, with a static
+assertion that it still equals version one's `kMaximumBlockInputs`. The two are
+the same number today. Deriving it means a version that moved the kernel's bound
+stops this file compiling rather than leaving a transport that admits a block the
+kernel will refuse. M3.13r's rule was that a figure moving with a version is
+either checked on the happy path or needs a boundary case; a figure **derived**
+from its source needs neither.
+
+**The frozen header bytes are pinned as bytes.** A test that encoded with
+`kWireVersionV2` and then asserted the octet equalled `kWireVersionV2` would pass
+against any value, including `1` — which is exactly the failure this whole slice
+exists to prevent, so the suite spells the twenty octets out.
+
+**Five mutation probes were run against the finished suite and all five were
+caught**: keeping version one's number in the encoder, accepting either version in
+the decoder, reading the InitChain stamp after the blob, dropping the block stamp,
+and restating the raw-input bound as a literal.
+
+**The fuzz target was driven before it was registered.** Its seed is a *block
+request* rather than version one's empty Info frame, because that is the payload
+that gained a field and therefore the one whose decoder has something to get
+wrong. It was compiled under AddressSanitizer and UndefinedBehaviorSanitizer and
+run over its seed and 255 structured single-octet mutations, so the
+`require_valid_seed` trap is known to hold rather than assumed — a fuzz target
+whose own seed does not decode traps on the first input of every smoke run.
+
 ### How M3.19c was delivered
 
 **A version-nine chain survives the process that built it.** Issue #319 and
