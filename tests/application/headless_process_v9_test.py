@@ -45,7 +45,9 @@ YEAR_2100_MILLIS = 4_102_444_800_000
 
 def load_values(path: pathlib.Path) -> dict[str, str]:
     values: dict[str, str] = {}
-    for raw_line in path.read_text(encoding="ascii").splitlines():
+    # UTF-8, not ASCII: the version-nine vector file's section comments carry
+    # em-dashes. The values themselves are ASCII.
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
         line = raw_line.strip()
         if not line or line.startswith("#"):
             continue
