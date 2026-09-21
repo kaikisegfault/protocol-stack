@@ -4,7 +4,9 @@
 
 #include "protocol/application/dispatcher_v1.hpp"
 #include "protocol/application/dispatcher_v8.hpp"
+#include "protocol/application/dispatcher_v9.hpp"
 #include "protocol/application/wire_v1.hpp"
+#include "protocol/application/wire_v2.hpp"
 
 #include <poll.h>
 #include <span>
@@ -113,11 +115,35 @@ WriteResult write_exact(
   return WriteResult::complete;
 }
 
-// The connection loop is one function over a dispatcher, because everything in
-// it — accepting, framing, the duplicate-request-id rule, the shutdown
-// descriptor — is a property of the wire rather than of a ledger version. Two
-// copies of it would be two places for a framing rule to be wrong.
-template <typename Dispatch>
+// The two wire versions, as the loop needs them: a header decoder, a request
+// decoder, and the request type the second produces. They differ in the accepted
+// version octet and in two payloads, and in nothing the loop reads.
+struct WireV1 {
+  using Request = DecodedRequest;
+  static HeaderResult header(std::span<const std::uint8_t> bytes) noexcept {
+    return decode_frame_header(bytes);
+  }
+  static RequestResult request(std::span<const std::uint8_t> bytes) {
+    return decode_request_frame(bytes);
+  }
+};
+
+struct WireV2 {
+  using Request = DecodedRequestV2;
+  static HeaderResult header(std::span<const std::uint8_t> bytes) noexcept {
+    return decode_frame_header_v2(bytes);
+  }
+  static RequestResultV2 request(std::span<const std::uint8_t> bytes) {
+    return decode_request_frame_v2(bytes);
+  }
+};
+
+// The connection loop is one function over a wire and a dispatcher, because
+// everything in it — accepting, framing, the duplicate-request-id rule, the
+// shutdown descriptor — is a property of the socket rather than of a ledger or
+// frame version. Two copies of it would be two places for a framing rule to be
+// wrong.
+template <typename Wire, typename Dispatch>
 ServeConnectionResult serve_with(
     int listener,
     int shutdown_descriptor,
@@ -145,7 +171,7 @@ ServeConnectionResult serve_with(
     if (header_read != ReadResult::complete) {
       return UnixServerError::protocol_failure;
     }
-    auto decoded_header = decode_frame_header(header);
+    auto decoded_header = Wire::header(header);
     if (!std::holds_alternative<FrameHeader>(decoded_header)) {
       return UnixServerError::protocol_failure;
     }
@@ -169,11 +195,12 @@ ServeConnectionResult serve_with(
     if (payload_read != ReadResult::complete) {
       return UnixServerError::protocol_failure;
     }
-    auto request = decode_request_frame(frame);
-    if (!std::holds_alternative<DecodedRequest>(request)) {
+    auto request = Wire::request(frame);
+    using Request = typename Wire::Request;
+    if (!std::holds_alternative<Request>(request)) {
       return UnixServerError::protocol_failure;
     }
-    auto response = dispatch(std::get<DecodedRequest>(std::move(request)));
+    auto response = dispatch(std::get<Request>(std::move(request)));
     if (!std::holds_alternative<Bytes>(response)) {
       return UnixServerError::application_failure;
     }
@@ -194,7 +221,7 @@ ServeConnectionResult serve_with(
 ServeConnectionResult UnixSocketServerV1::serve_connection(
     ApplicationV1& application,
     int shutdown_descriptor) {
-  return serve_with(
+  return serve_with<WireV1>(
       implementation_->listener, shutdown_descriptor,
       [&application](const DecodedRequest& request) {
         return dispatch_request(application, request);
@@ -204,10 +231,20 @@ ServeConnectionResult UnixSocketServerV1::serve_connection(
 ServeConnectionResult UnixSocketServerV1::serve_connection(
     ApplicationV8& application,
     int shutdown_descriptor) {
-  return serve_with(
+  return serve_with<WireV1>(
       implementation_->listener, shutdown_descriptor,
       [&application](const DecodedRequest& request) {
         return dispatch_request_v8(application, request);
+      });
+}
+
+ServeConnectionResult UnixSocketServerV1::serve_connection(
+    ApplicationV9& application,
+    int shutdown_descriptor) {
+  return serve_with<WireV2>(
+      implementation_->listener, shutdown_descriptor,
+      [&application](const DecodedRequestV2& request) {
+        return dispatch_request_v9(application, request);
       });
 }
 

@@ -247,8 +247,10 @@ add_library(
     src/application/application_v9.cpp
     src/application/dispatcher_v1.cpp
     src/application/dispatcher_v8.cpp
+    src/application/dispatcher_v9.cpp
     src/application/response_v1.cpp
     src/application/response_v8.cpp
+    src/application/response_v9.cpp
     src/application/unix_connection_v1.cpp
     src/application/unix_server_v1.cpp
     src/application/wire_v1.cpp
@@ -510,6 +512,15 @@ add_executable(
   tests/kernel/economy_v8_trace.cpp
   tests/kernel/economy_v8_scenarios_test.cpp
 )
+# The version-nine trace alone, for `application_v9_tests`' reason: the
+# `restart` run is the only contiguous version-nine chain.
+add_executable(
+  application_transport_v9_tests
+  tests/application/transport_v9_test.cpp
+  tests/application/transport_v9_encoder.cpp
+  tests/application/transport_v9_socket.cpp
+  tests/kernel/economy_v9_trace.cpp
+)
 add_executable(
   application_wire_v1_tests
   tests/application/wire_v1_test.cpp
@@ -628,6 +639,12 @@ target_link_libraries(
     protocol_stack_sqlite
 )
 target_link_libraries(
+  application_transport_v9_tests
+  PRIVATE
+    protocol_application
+    protocol_stack_sqlite
+)
+target_link_libraries(
   application_wire_v1_tests
   PRIVATE
     protocol_application
@@ -689,6 +706,7 @@ set(
   application_v8_tests
   application_v9_tests
   application_transport_v8_tests
+  application_transport_v9_tests
   application_wire_v1_tests
   application_wire_v2_tests
   application_response_v1_tests
@@ -1150,6 +1168,14 @@ add_test(
     application_transport_v8_tests
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v8-execution.txt"
     "${CMAKE_CURRENT_BINARY_DIR}/at-v8"
+)
+# Short for the same `sun_path` reason as `version-eight-transport`'s.
+add_test(
+  NAME version-nine-transport
+  COMMAND
+    application_transport_v9_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v9-execution.txt"
+    "${CMAKE_CURRENT_BINARY_DIR}/at-v9"
 )
 add_test(
   NAME application-wire-v1
