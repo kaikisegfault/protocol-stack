@@ -539,8 +539,16 @@ you need the history behind a claim here; read this one for what is true now.
   Commit's stamp, a `Decision` octet, and version-nine receipts. It admits
   statuses `7` and `8` only on a finalize and treats either anywhere else as a
   protocol failure. The frame version is a field of the client, so versions one
-  and eight are unchanged. **The bridge does not call it yet** — the ABCI
-  conversion is the next slice — so this is a client rather than an adapter.
+  and eight are unchanged.
+- **The bridge drives version nine.** As of 2026-09-21 the bridge carries the
+  engine's time into InitChain, ProcessProposal and FinalizeBlock.
+  `bridge.LocalV9` converts it by `consensus-application-v2`'s rule — checked,
+  three refusals, block times truncated, genesis times exact, a stamp past the
+  calendar passed through — and votes ACCEPT only on decision `0`. A rejection
+  is logged by the decision's name. `protocol-cometbft-bridge
+  --protocol-version 9` dials it. **No home can be initialised for version nine
+  yet** — `nodeconfig` writes no `genesis_time` and knows no version nine — so
+  this is a bridge rather than a node.
 - **A four-node version-eight network refuses a transaction, and all four
   replicas refuse it identically.** As of 2026-09-11 two transactions the
   contract must reject — a transfer at a consumed nonce and a second purchase of
@@ -2368,8 +2376,8 @@ process and the ABCI adapter.
 **Later the same day it is one, and it is all Go.** M3.20d delivered
 `protocol-application-v9`, so every C++ piece of a version-nine node exists.
 What is left is the adapter's version-two client, its ABCI conversion and
-launcher values, and the devnet that runs them. M3.20e delivered the client, so
-what is left is the ABCI conversion and the devnet.
+launcher values, and the devnet that runs them. M3.20e delivered the client and
+M3.20f the bridge, so what is left is the launcher values and the devnet.
 
 **One of those absences now carries a dependency rather than only a roadmap
 position.** The founder answer of 2026-08-16 makes external purchasability the
@@ -2559,43 +2567,36 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-**Write the bridge's version-nine ABCI conversion.** Every C++ piece of a
-version-nine node exists, `protocol-application-v9` serves it, and
-`localapp.ClientV9` speaks its frame. What remains is `internal/bridge` and
-`internal/nodeconfig`, which still drive version eight.
+**Teach `nodeconfig` and the identity about version nine.** The bridge drives a
+version-nine application (M3.20f), but nothing can initialise a CometBFT home for
+one: `nodeconfig.ParseProtocolVersion` accepts 1 and 8, every genesis it writes
+has `GenesisTime: time.Unix(0, 0)`, and `devnet.InspectIdentity` refuses any
+identity line but `chain_id` and `app_hash`.
 
-**What it owes, from `consensus-application-v2`:**
+**What it owes, from `consensus-application-v2`'s five derived genesis
+values:**
 
-- **The `Timestamp` to millisecond conversion.** It computes
-  `seconds * 1000 + nanos / 1000000` with a checked multiplication and three
-  refusals as an invalid request: negative `seconds`, `nanos` outside
-  `[0, 999999999]`, and an overflowing `seconds * 1000`. **Everything
-  representable is passed through**, so a stamp above `MAX_TIMESTAMP_MILLIS`
-  reaches the application and is refused there as decision `2` or status `7`. A
-  bridge that pre-filtered the range would make C1 untestable end to end. A
-  block stamp truncates; a genesis stamp must have a zero nanosecond remainder.
-- **ProcessProposal** votes ACCEPT on decision `0` and REJECT on every other
-  decision, and only a nonzero *status* is an ABCI exception. The version-eight
-  bridge's `validateBlock` pre-rejection stays, which is why decision `6` cannot
-  arrive over the wire (ADR 0084).
-- **FinalizeBlock** passes `request.Time` converted, and turns a status `7` or
-  `8` into an exception like every nonzero status.
-- **InitChain** compares a fourth value, the genesis stamp from
-  `request.Time`, exactly.
-- **`internal/nodeconfig`**: the `"protocol-stack-v9"` app state, and
-  `genesis_time` derived from identity mode's `genesis_timestamp=` line. It is
-  rendered with exactly millisecond precision and enforced against an existing
-  CometBFT genesis file, as `consensus-application-v2`'s fifth derived value.
-  `devnet.InspectIdentity` accepts exactly two keys today and needs a
-  version-nine parse.
-- **`--protocol-version 9`** on `protocol-cometbft-bridge`.
+- `ProtocolV9` and the `"protocol-stack-v9"` app state.
+- `genesis_time` derived from identity mode's `genesis_timestamp=` line,
+  exactly as `time.UnixMilli(stamp).UTC()`, in both the single-validator genesis
+  (`config.go`) and the four-validator one (`devnet.go`). **It is enforced, not
+  decorative**: `ensureGenesis` already refuses an existing file that differs in
+  any field, so a mismatching `genesis_time` is refused at initialisation. That
+  is the moment an operator is looking, rather than a chain that will not start.
+  Versions one and eight keep the epoch.
+- `devnet.InspectIdentity` reading the third key when the application prints
+  it, and refusing a version-nine identity without it.
+- `protocol-cometbft-init` and `protocol-cometbft-devnet` accepting version 9
+  through `ParseProtocolVersion`.
 
 **Then the devnet**, whose evidence `consensus-application-v2` already lists:
 four validators commit a signed transfer and a kind-22 monthly pool mint, agree
 on height, **timestamp**, and root, stop, restart, pass an independent audit,
 and continue. Then one replica's clock is moved beyond the tolerance and the
-other three continue while it votes against. ADR 0085 records that the way to
-skew one clock is that slice's decision.
+other three continue while it votes against. Two choices belong to that slice
+and are recorded where they arose: how to skew one clock (ADR 0085), and where
+the health check reads the durable stamp, since ABCI's Info carries none
+(ADR 0087).
 
 **Then `src/v8/` is deleted**, under ADR 0065's staged replacement, as version
 seven's was.
@@ -2731,6 +2732,11 @@ stood at the head of this section naming it is history: `ClientV9`, the
 version-two decoders, their tests and fuzz target, and
 [ADR 0086](../decisions/0086-the-go-local-client-speaks-the-version-two-frame.md).
 
+**M3.20f delivered the bridge's conversion the same day**, so the sentence
+that stood at the head of this section naming it is history: the time on the
+local interface, the conversion and `LocalV9`, the logged decision, and
+[ADR 0087](../decisions/0087-the-bridge-carries-the-engines-time.md).
+
 **Three things M3.19a settled that the ports must not re-open.** The C++
 application reads its own clock, once per `ProcessProposal`, and the local
 protocol never carries a clock reading — a bridge-supplied reading could make a
@@ -2835,9 +2841,10 @@ the fixture rather than left to be rediscovered.
   nearest slice are history; M3.20a delivered the version-two frame and M3.20b
   `ApplicationV9`, both on 2026-09-19, and M3.20c the transport — `response_v9`,
   `dispatcher_v9`, and the socket overload — M3.20d the node process, and M3.20e
-  the Go local client on 2026-09-21. **The nearest slice is the bridge's ABCI
-  conversion**, then the devnet — still version eight's, and holding an accepted
-  contract that states what each must satisfy. The paragraphs that stood here enumerating what the binding version had
+  the Go local client, and M3.20f the bridge on 2026-09-21. **The nearest slice
+  is `nodeconfig` and the identity**, then the devnet — still version eight's,
+  and holding an accepted contract that states what each must satisfy. The
+  paragraphs that stood here enumerating what the binding version had
   to add are superseded by the specification itself and are not restated; three
   of them were **wrong**, and the corrections are the reason to read the
   document rather than this list.
@@ -3575,6 +3582,17 @@ failures no peer can induce by choosing bytes. M3.20b established this with a
 probe rather than a reading and records the absence as a measurement. It is not a blocker — the decision stays implemented because the
 failures it guards are real — but a later session should not spend the slice
 hunting for the vector.
+
+**M3.20f ran the founder-decision gate and passed it.** Eight decisions were
+enumerated before any was judged: the conversion formula; its three refusals;
+truncation for a block time and exactness for a genesis time; passing a
+representable out-of-range stamp through; voting ACCEPT only on decision `0`;
+the version-nine codespace; where the conversion runs and whether a rejection is
+logged; and the file, test, ADR, issue, branch and PR shape. **Six are fixed by
+[`consensus-application-v2`](../specifications/consensus-application-v2.md)**
+and were cited rather than re-chosen. The rest are mechanism and packaging that
+[ADR 0087](../decisions/0087-the-bridge-carries-the-engines-time.md) records.
+Nothing founder-reserved is touched.
 
 **M3.20e ran the founder-decision gate and passed it.** Six decisions were
 enumerated before any was judged: the request and response payload shapes of
