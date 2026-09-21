@@ -38,13 +38,15 @@ handoff; `M3.15b` and anything after it was written here.
 delivered `response_v9` and `dispatcher_v9` with their headers, a version-nine
 `serve_connection` overload, a transport suite over three translation units and
 a support header, one CTest entry, and
-[ADR 0084](../decisions/0084-the-version-nine-transport.md).
-`tools/verification_scope.py` classifies it `full`, and the slice adds exactly
-one ctest entry and no fuzz target. **No accepted vector file, specification,
-manifest, encoding, or kernel source changed**, and versions one and eight read
-exactly the decoders they read before. The passing run on the final head and
-the merged commits are anchored below this record at closeout, because neither
-is knowable when it is written.
+[ADR 0084](../decisions/0084-the-version-nine-transport.md), merged by rebase
+as `07b55dc`, `a51f94d`, and `3841ec5` on 2026-09-21. Three commits, fourteen
+files, **1,949 insertions and 88 deletions**. `tools/verification_scope.py`
+classifies it `full`. Run 35606241208 on the final head passed all six jobs,
+with **176** ctest entries in the three debug and gcc-sanitizer presets and
+**186** under `clang-sanitizers`, one more than M3.20b in each because the slice
+adds exactly one entry and no fuzz target. **No accepted vector file,
+specification, manifest, encoding, or kernel source changed**, and versions one
+and eight read exactly the decoders they read before.
 
 **The first candidate failed, and the fault was the suite's.** Run 35604687902
 on `09c0c89` failed `version-nine-transport` in all four presets and **no other
