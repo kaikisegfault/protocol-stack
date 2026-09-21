@@ -1,15 +1,22 @@
 #pragma once
 
-// A Unix socket that speaks the version-one **wire**.
+// A Unix socket that speaks the local application **wire**.
 //
-// The `V1` in this name is the frame format's version, not the ledger's. The
-// header, the seven message kinds, and the five request payloads carry no
-// ledger-version meaning, so one socket serves every application and the only
-// version-specific step is which dispatcher the decoded request is handed to.
-// **That is why a new ledger version adds an overload here and not a wire.**
+// The `V1` in this name is the socket's version, not the ledger's: the path
+// rules, the bind, the ownership check, and the connection loop. The loop is one
+// function over a wire version and a dispatcher, so each ledger version adds an
+// overload here rather than a server.
+//
+// **Which wire an overload reads is part of its signature.** Versions one and
+// eight read version-one frames, because the header, the seven message kinds,
+// and the five request payloads carried no ledger-version meaning for them.
+// Version nine reads version-two frames, because its blocks carry a timestamp —
+// and a version-one frame offered to it is refused at the header, on the first
+// frame, which is the refusal the version-two frame exists to make possible.
 
 #include "protocol/application/application_v1.hpp"
 #include "protocol/application/application_v8.hpp"
+#include "protocol/application/application_v9.hpp"
 
 #include <filesystem>
 #include <memory>
@@ -47,6 +54,10 @@ class UnixSocketServerV1 {
       int shutdown_descriptor = -1);
   ServeConnectionResult serve_connection(
       ApplicationV8& application,
+      int shutdown_descriptor = -1);
+  // Version-two frames.
+  ServeConnectionResult serve_connection(
+      ApplicationV9& application,
       int shutdown_descriptor = -1);
 
  private:
