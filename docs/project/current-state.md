@@ -530,9 +530,17 @@ you need the history behind a claim here; read this one for what is true now.
   starts it six times. Against the real clock, the recorded January block is
   behind the tolerance and 2100 is ahead of it, while FinalizeBlock accepts
   January; the stamp survives a restart; and one millisecond of stamp moves an
-  empty block's root. **No consensus engine drives it yet** — the Go adapter
-  still speaks version one's frame to version eight — so this is a node process
-  rather than a network.
+  empty block's root. **No consensus engine drives it yet** — the Go bridge
+  still speaks to version eight — so this is a node process rather than a
+  network.
+- **The Go adapter's local client speaks version two.** As of 2026-09-21
+  `localapp.ClientV9` writes and requires version-two frames. It carries the
+  stamp in InitChain, ProcessProposal and FinalizeBlock, and reads Info's and
+  Commit's stamp, a `Decision` octet, and version-nine receipts. It admits
+  statuses `7` and `8` only on a finalize and treats either anywhere else as a
+  protocol failure. The frame version is a field of the client, so versions one
+  and eight are unchanged. **The bridge does not call it yet** — the ABCI
+  conversion is the next slice — so this is a client rather than an adapter.
 - **A four-node version-eight network refuses a transaction, and all four
   replicas refuse it identically.** As of 2026-09-11 two transactions the
   contract must reject — a transfer at a consumed nonce and a second purchase of
@@ -2360,7 +2368,8 @@ process and the ABCI adapter.
 **Later the same day it is one, and it is all Go.** M3.20d delivered
 `protocol-application-v9`, so every C++ piece of a version-nine node exists.
 What is left is the adapter's version-two client, its ABCI conversion and
-launcher values, and the devnet that runs them.
+launcher values, and the devnet that runs them. M3.20e delivered the client, so
+what is left is the ABCI conversion and the devnet.
 
 **One of those absences now carries a dependency rather than only a roadmap
 position.** The founder answer of 2026-08-16 makes external purchasability the
@@ -2550,40 +2559,43 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-**Write the Go adapter's version-two local client.** Every C++ piece of a
-version-nine node exists and `protocol-application-v9` serves it on a socket.
-`adapter/cometbft` still speaks version one's frame — `wireVersion = 1` in
-`internal/localapp/wire.go` is both what it writes and what it requires back —
-to a version-eight application, so nothing in Go can talk to version nine yet.
+**Write the bridge's version-nine ABCI conversion.** Every C++ piece of a
+version-nine node exists, `protocol-application-v9` serves it, and
+`localapp.ClientV9` speaks its frame. What remains is `internal/bridge` and
+`internal/nodeconfig`, which still drive version eight.
 
-**The adapter is three slices, and this is the first.** Each is small enough to
-verify on its own, and each is what the next one calls:
+**What it owes, from `consensus-application-v2`:**
 
-1. **`internal/localapp`: a version-two client.** The frame codec takes its
-   version as a parameter rather than a constant, as `application_driver.py`
-   now does. The client writes the timestamp in kinds 2, 5 and 6. It reads
-   Info's and Commit's stamp, and kind 5's `decision:u8` in place of a Boolean.
-   It admits statuses `7` and `8` **only** on kind 6 and treats either on any
-   other kind as a protocol failure. This slice owns the response-decoder tests
-   ADR 0084 recorded as the adapter's: truncation at every field of the changed
-   response payloads, an out-of-range decision byte, hostile counts and lengths,
-   and a version-one frame refused at the header.
-2. **`internal/bridge` and `internal/nodeconfig`: the ABCI conversion.** The
-   `Timestamp` to millisecond conversion with its three bridge refusals —
-   negative `seconds`, out-of-range `nanos`, an overflowing `seconds * 1000` —
-   truncating a block stamp and requiring an exact genesis stamp. Everything
-   representable is passed through, so a stamp above `MAX_TIMESTAMP_MILLIS`
-   reaches the application and is refused there. Also InitChain's fourth
-   compared value; the `"protocol-stack-v9"` app state; `genesis_time` derived
-   from identity mode's new `genesis_timestamp=` line, rendered with exactly
-   millisecond precision and enforced against an existing CometBFT genesis;
-   and `--protocol-version 9` on the bridge.
-3. **The devnet**, whose evidence `consensus-application-v2` already lists: four
-   validators commit a signed transfer and a kind-22 monthly pool mint, agree
-   on height, **timestamp**, and root, stop, restart, pass an independent audit,
-   and continue. Then one replica's clock is moved beyond the tolerance and the
-   other three continue while it votes against. ADR 0085 records that the way
-   to skew one clock is that slice's decision.
+- **The `Timestamp` to millisecond conversion.** It computes
+  `seconds * 1000 + nanos / 1000000` with a checked multiplication and three
+  refusals as an invalid request: negative `seconds`, `nanos` outside
+  `[0, 999999999]`, and an overflowing `seconds * 1000`. **Everything
+  representable is passed through**, so a stamp above `MAX_TIMESTAMP_MILLIS`
+  reaches the application and is refused there as decision `2` or status `7`. A
+  bridge that pre-filtered the range would make C1 untestable end to end. A
+  block stamp truncates; a genesis stamp must have a zero nanosecond remainder.
+- **ProcessProposal** votes ACCEPT on decision `0` and REJECT on every other
+  decision, and only a nonzero *status* is an ABCI exception. The version-eight
+  bridge's `validateBlock` pre-rejection stays, which is why decision `6` cannot
+  arrive over the wire (ADR 0084).
+- **FinalizeBlock** passes `request.Time` converted, and turns a status `7` or
+  `8` into an exception like every nonzero status.
+- **InitChain** compares a fourth value, the genesis stamp from
+  `request.Time`, exactly.
+- **`internal/nodeconfig`**: the `"protocol-stack-v9"` app state, and
+  `genesis_time` derived from identity mode's `genesis_timestamp=` line. It is
+  rendered with exactly millisecond precision and enforced against an existing
+  CometBFT genesis file, as `consensus-application-v2`'s fifth derived value.
+  `devnet.InspectIdentity` accepts exactly two keys today and needs a
+  version-nine parse.
+- **`--protocol-version 9`** on `protocol-cometbft-bridge`.
+
+**Then the devnet**, whose evidence `consensus-application-v2` already lists:
+four validators commit a signed transfer and a kind-22 monthly pool mint, agree
+on height, **timestamp**, and root, stop, restart, pass an independent audit,
+and continue. Then one replica's clock is moved beyond the tolerance and the
+other three continue while it votes against. ADR 0085 records that the way to
+skew one clock is that slice's decision.
 
 **Then `src/v8/` is deleted**, under ADR 0065's staged replacement, as version
 seven's was.
@@ -2714,6 +2726,11 @@ source, a version-two Python driver, a headless test that starts the binary six
 times against the real clock, one ctest entry, and
 [ADR 0085](../decisions/0085-the-version-nine-node-process-binds-the-platform-clock.md).
 
+**M3.20e delivered the Go local client the same day**, so the sentence that
+stood at the head of this section naming it is history: `ClientV9`, the
+version-two decoders, their tests and fuzz target, and
+[ADR 0086](../decisions/0086-the-go-local-client-speaks-the-version-two-frame.md).
+
 **Three things M3.19a settled that the ports must not re-open.** The C++
 application reads its own clock, once per `ProcessProposal`, and the local
 protocol never carries a clock reading — a bridge-supplied reading could make a
@@ -2817,10 +2834,10 @@ the fixture rather than left to be rediscovered.
   2026-09-19**, so the three sentences that stood here naming each of them the
   nearest slice are history; M3.20a delivered the version-two frame and M3.20b
   `ApplicationV9`, both on 2026-09-19, and M3.20c the transport — `response_v9`,
-  `dispatcher_v9`, and the socket overload — and M3.20d the node process on
-  2026-09-21. **The nearest slice is the Go adapter's version-two client**, then
-  its ABCI conversion and the devnet — still version eight's, and holding an
-  accepted contract that states what each must satisfy. The paragraphs that stood here enumerating what the binding version had
+  `dispatcher_v9`, and the socket overload — M3.20d the node process, and M3.20e
+  the Go local client on 2026-09-21. **The nearest slice is the bridge's ABCI
+  conversion**, then the devnet — still version eight's, and holding an accepted
+  contract that states what each must satisfy. The paragraphs that stood here enumerating what the binding version had
   to add are superseded by the specification itself and are not restated; three
   of them were **wrong**, and the corrections are the reason to read the
   document rather than this list.
@@ -3558,6 +3575,17 @@ failures no peer can induce by choosing bytes. M3.20b established this with a
 probe rather than a reading and records the absence as a measurement. It is not a blocker — the decision stays implemented because the
 failures it guards are real — but a later session should not spend the slice
 hunting for the vector.
+
+**M3.20e ran the founder-decision gate and passed it.** Six decisions were
+enumerated before any was judged: the request and response payload shapes of
+kinds 1, 2, 5, 6 and 7; the rule that statuses `7` and `8` belong to kind 6
+alone; the version-nine receipt prefix and result table; whether a ninth
+decision is refused; where the frame version lives; and the file, test, ADR,
+issue, branch and PR shape. **Three are fixed by
+[`consensus-application-v2`](../specifications/consensus-application-v2.md)
+and `economy-transition-v9`**, and the rest are mechanism and packaging that
+[ADR 0086](../decisions/0086-the-go-local-client-speaks-the-version-two-frame.md)
+records. Nothing founder-reserved is touched.
 
 **M3.20d ran the founder-decision gate and passed it.** Seven decisions were
 enumerated before any was judged: which platform clock and in what unit; what a
