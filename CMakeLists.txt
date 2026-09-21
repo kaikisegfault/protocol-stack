@@ -294,6 +294,20 @@ target_link_libraries(
   PRIVATE
     protocol_application
 )
+add_executable(
+  protocol_application_server_v9
+  src/application/main_v9.cpp
+)
+set_target_properties(
+  protocol_application_server_v9
+  PROPERTIES
+    OUTPUT_NAME protocol-application-v9
+)
+target_link_libraries(
+  protocol_application_server_v9
+  PRIVATE
+    protocol_application
+)
 target_include_directories(
   protocol_storage
   PUBLIC
@@ -675,6 +689,7 @@ set(
   protocol_application
   protocol_application_server
   protocol_application_server_v8
+  protocol_application_server_v9
   kernel_primitive_tests
   economy_v8_codec_tests
   economy_v8_execution_tests
@@ -1218,6 +1233,17 @@ add_test(
     "$<TARGET_FILE:protocol_application_server_v8>"
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v8-execution.txt"
     "${CMAKE_CURRENT_BINARY_DIR}/ah-v8"
+)
+# The same short-directory rule. This one starts six processes against the real
+# clock, so it is the entry that fails if a runner's clock is not civil time.
+add_test(
+  NAME version-nine-headless-process
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/application/headless_process_v9_test.py"
+    "$<TARGET_FILE:protocol_application_server_v9>"
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v9-execution.txt"
+    "${CMAKE_CURRENT_BINARY_DIR}/ah-v9"
 )
 # The same short-directory rule, and for the same reason: this entry starts a
 # node process against a Unix socket inside it.

@@ -33,7 +33,8 @@ import time
 from dataclasses import dataclass
 
 MAGIC = b"PSAP"
-# The frame format's version, which is version one's for every ledger version.
+# The frame format's version: version one's for ledger versions one through
+# eight. `application_driver_v2` speaks version two to version nine.
 WIRE_VERSION = 1
 HEADER = struct.Struct(">4sHBBQI")
 REQUEST = 0
@@ -116,6 +117,23 @@ def _block_payload(height: int, transactions: tuple[bytes, ...]) -> bytes:
     return encoded + b"".join(_blob(entry) for entry in transactions)
 
 
+def _finalized(body: bytes) -> Finalized:
+    """The finalize response body, whose layout both frame versions share."""
+    _require(len(body) >= 68, "finalize_block prefix width")
+    (count,) = struct.unpack(">I", body[64:68])
+    results: list[tuple[int, bytes]] = []
+    offset = 68
+    for _ in range(count):
+        _require(offset + 8 <= len(body), "finalize_block result header")
+        code, length = struct.unpack(">II", body[offset : offset + 8])
+        offset += 8
+        _require(offset + length <= len(body), "finalize_block receipt")
+        results.append((code, body[offset : offset + length]))
+        offset += length
+    _require(offset == len(body), "finalize_block trailing octets")
+    return Finalized(body[:32], body[32:64], tuple(results))
+
+
 class Connection:
     """One client connection, which carries the request identifiers.
 
@@ -123,6 +141,10 @@ class Connection:
     counter belongs here rather than to the process: a reconnect is a fresh
     conversation and starts over.
     """
+
+    # The frame version this connection writes and requires back. A subclass
+    # that speaks another version names it here and nowhere else.
+    wire_version = WIRE_VERSION
 
     def __init__(self, socket_path: pathlib.Path, timeout: float = 10.0) -> None:
         self._socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -153,7 +175,7 @@ class Connection:
         request_id = self._next_request_id
         self._next_request_id += 1
         frame = HEADER.pack(
-            MAGIC, WIRE_VERSION, REQUEST, int(kind), request_id, len(payload)
+            MAGIC, self.wire_version, REQUEST, int(kind), request_id, len(payload)
         )
         try:
             self._socket.sendall(frame + payload)
@@ -167,7 +189,7 @@ class Connection:
             header
         )
         _require(magic == MAGIC, "frame magic")
-        _require(version == WIRE_VERSION, "frame version")
+        _require(version == self.wire_version, "frame version")
         _require(direction == RESPONSE, "frame direction")
         _require(echoed_kind == int(kind), "echoed message kind")
         _require(echoed_id == request_id, "echoed request identifier")
@@ -232,19 +254,7 @@ class Connection:
         )
         if error is not None:
             return error
-        _require(len(body) >= 68, "finalize_block prefix width")
-        (count,) = struct.unpack(">I", body[64:68])
-        results: list[tuple[int, bytes]] = []
-        offset = 68
-        for _ in range(count):
-            _require(offset + 8 <= len(body), "finalize_block result header")
-            code, length = struct.unpack(">II", body[offset : offset + 8])
-            offset += 8
-            _require(offset + length <= len(body), "finalize_block receipt")
-            results.append((code, body[offset : offset + length]))
-            offset += length
-        _require(offset == len(body), "finalize_block trailing octets")
-        return Finalized(body[:32], body[32:64], tuple(results))
+        return _finalized(body)
 
     def commit(self) -> Committed | Error:
         error, body = self._answer(Kind.COMMIT)
