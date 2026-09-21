@@ -15,6 +15,10 @@ type Client struct {
 	connection net.Conn
 	requestID  uint64
 	terminal   error
+	// The frame version this client writes and requires back. `Dial` and
+	// `newClient` set version one's, and `newClientV9` sets version two's
+	// before the first call.
+	version uint16
 }
 
 func Dial(path string) (*Client, error) {
@@ -25,11 +29,11 @@ func Dial(path string) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("connect to local application: %w", err)
 	}
-	return &Client{connection: connection}, nil
+	return &Client{connection: connection, version: wireVersion}, nil
 }
 
 func newClient(connection net.Conn) *Client {
-	return &Client{connection: connection}
+	return &Client{connection: connection, version: wireVersion}
 }
 
 func (c *Client) fail(err error) error {
@@ -69,7 +73,7 @@ func (c *Client) call(kind Kind, payload []byte) ([]byte, error) {
 		return nil, c.fail(errors.New("local application request IDs exhausted"))
 	}
 	c.requestID++
-	frame, err := encodeFrame(kind, c.requestID, payload)
+	frame, err := encodeFrameAt(c.version, kind, c.requestID, payload)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +85,7 @@ func (c *Client) call(kind Kind, payload []byte) ([]byte, error) {
 	if _, err := io.ReadFull(c.connection, header); err != nil {
 		return nil, c.fail(fmt.Errorf("read local application response header: %w", err))
 	}
-	size, err := decodeHeader(header, kind, c.requestID)
+	size, err := decodeHeaderAt(c.version, header, kind, c.requestID)
 	if err != nil {
 		return nil, c.fail(err)
 	}
@@ -89,7 +93,7 @@ func (c *Client) call(kind Kind, payload []byte) ([]byte, error) {
 	if _, err := io.ReadFull(c.connection, payload); err != nil {
 		return nil, c.fail(fmt.Errorf("read local application response: %w", err))
 	}
-	value, err := decodeEnvelope(payload)
+	value, err := decodeEnvelopeWithin(payload, maximumStatus(c.version, kind))
 	if _, ok := err.(*ApplicationError); err != nil && !ok {
 		return nil, c.fail(err)
 	}

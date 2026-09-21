@@ -9,8 +9,14 @@ import (
 
 const (
 	wireHeaderSize = 20
+	// Version one's frame, which ledger versions one through eight speak.
+	// Version nine speaks `wireVersionV2`; a client names its version once, at
+	// construction, and every frame it writes or reads is checked against it.
 	wireVersion    = 1
 	maximumMessage = 4_096
+	// Version one's six statuses. Version two adds two more, reachable only on
+	// kind 6; `maximumStatus` is where that rule lives.
+	maximumStatusV1 = 6
 )
 
 var wireMagic = [4]byte{'P', 'S', 'A', 'P'}
@@ -149,6 +155,15 @@ func (r *reader) transactions() ([][]byte, error) {
 }
 
 func encodeFrame(kind Kind, requestID uint64, payload []byte) ([]byte, error) {
+	return encodeFrameAt(wireVersion, kind, requestID, payload)
+}
+
+func encodeFrameAt(
+	version uint16,
+	kind Kind,
+	requestID uint64,
+	payload []byte,
+) ([]byte, error) {
 	if kind < KindInfo || kind > KindCommit || requestID == 0 {
 		return nil, errors.New("invalid local application frame identity")
 	}
@@ -157,7 +172,7 @@ func encodeFrame(kind Kind, requestID uint64, payload []byte) ([]byte, error) {
 	}
 	frame := make([]byte, wireHeaderSize, wireHeaderSize+len(payload))
 	copy(frame[:4], wireMagic[:])
-	binary.BigEndian.PutUint16(frame[4:6], wireVersion)
+	binary.BigEndian.PutUint16(frame[4:6], version)
 	frame[6] = 0
 	frame[7] = byte(kind)
 	binary.BigEndian.PutUint64(frame[8:16], requestID)
@@ -166,10 +181,19 @@ func encodeFrame(kind Kind, requestID uint64, payload []byte) ([]byte, error) {
 }
 
 func decodeHeader(header []byte, kind Kind, requestID uint64) (uint32, error) {
+	return decodeHeaderAt(wireVersion, header, kind, requestID)
+}
+
+func decodeHeaderAt(
+	version uint16,
+	header []byte,
+	kind Kind,
+	requestID uint64,
+) (uint32, error) {
 	if len(header) != wireHeaderSize || !bytes.Equal(header[:4], wireMagic[:]) {
 		return 0, errors.New("invalid local application response magic")
 	}
-	if binary.BigEndian.Uint16(header[4:6]) != wireVersion {
+	if binary.BigEndian.Uint16(header[4:6]) != version {
 		return 0, errors.New("unsupported local application response version")
 	}
 	if header[6] != 1 || header[7] != byte(kind) ||
@@ -184,6 +208,10 @@ func decodeHeader(header []byte, kind Kind, requestID uint64) (uint32, error) {
 }
 
 func decodeEnvelope(payload []byte) ([]byte, error) {
+	return decodeEnvelopeWithin(payload, maximumStatusV1)
+}
+
+func decodeEnvelopeWithin(payload []byte, maximum uint16) ([]byte, error) {
 	input := reader{value: payload}
 	status, err := input.u16()
 	if err != nil {
@@ -199,7 +227,7 @@ func decodeEnvelope(payload []byte) ([]byte, error) {
 		}
 		return input.value[input.offset:], nil
 	}
-	if status > 6 || !utf8.Valid(message) {
+	if status > maximum || !utf8.Valid(message) {
 		return nil, errors.New("invalid local application error response")
 	}
 	if err := input.finish(); err != nil {
