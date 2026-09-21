@@ -32,6 +32,64 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M3.20d was delivered
+
+**A version-nine node runs against a real clock.** Issue #330 and PR #331
+delivered `src/application/main_v9.cpp` and the `protocol-application-v9`
+binary, a version-two mode of the Python application driver, a headless process
+test, one CTest entry, and
+[ADR 0085](../decisions/0085-the-version-nine-node-process-binds-the-platform-clock.md).
+`tools/verification_scope.py` classifies it `full`, and the slice adds exactly
+one ctest entry and no fuzz target. **No accepted vector file, specification,
+manifest, encoding, or kernel source changed.** The passing run and the merged
+commits are anchored below this record at closeout.
+
+**The first candidate failed, and again the fault was the suite's.** Run
+35608609748 on `f24b94e` failed `version-nine-headless-process` in both debug
+presets, and nothing else, of 177. The test read the vector file as ASCII, and
+version nine's vector file carries em-dashes in its section comments;
+version eight's does not, which is why the loader it was copied from had never
+met one. The binary had built and every other entry passed. **The loader was
+the one part of the suite that needed no binary and it had not been run
+locally**, so the repair was followed by running the whole suite against a
+throwaway stand-in server in the session scratchpad. That checks the test's
+own plumbing, not the C++, and it passed before the repair was pushed.
+
+**It is the first binary in this repository that reads a clock**, and the three
+questions a real clock raises were answered once each. The clock is
+`CLOCK_REALTIME` in milliseconds, truncated as the contract truncates a block
+stamp, because `calendar-v1` names the POSIX convention; `CLOCK_TAI` would sit
+37 seconds off every peer. It is read before anything is opened, so a machine
+without one never gets far enough to be asked for a vote. And a clock that stops
+being readable throws out of `ProcessProposal`, which has written and staged
+nothing by then, and stops the process. **Every substitute value was rejected
+for a named reason**: `0` would log a clock fault as `AHEAD_OF_TOLERANCE`, a
+peer's fault; the maximum the same as `BEHIND`; and the last good reading is
+exactly the assumed value the contract forbids.
+
+**The recorded chain placed the real clock without a fake one.** Its stamps are
+January 2026, so a proposal carrying the first recorded stamp is behind the
+tolerance and one carrying 2100 is ahead of it, and the two decisions bound this
+process's clock between them. A zero, frozen, or missing clock cannot produce
+that pair. `FinalizeBlock` then accepts January, which is ADR 0083's central test
+observed through a process. So the binary needed no clock-injection option, and
+the choice of how to skew one replica is left to the devnet slice that first
+needs it.
+
+**The same chain could not be replayed, and why is worth knowing.** It is signed
+under a stand-in verifier table and this binary verifies with Ed25519, so the
+recorded transactions would be refused as results. The test therefore finalizes
+an **empty** block and checks what needs no recorded root: two databases agree
+on it, the stamp survives a restart, and **one millisecond of stamp moves its
+root** — the stamp entering the state root, observed from outside the process.
+
+**The Python driver gained a wire version rather than a copy.**
+`application_driver.Connection` names its frame version in a class attribute
+and shares its finalize parser. `application_driver_v2.Connection` overrides
+the attribute and the five operations whose payloads changed. It treats a status
+`7` or `8` on any kind but a finalize as a malformed response rather than an
+answer, because the contract makes them unreachable anywhere else.
+
 ### How M3.20c was delivered
 
 **A version-nine application answers on a socket.** Issue #327 and PR #328

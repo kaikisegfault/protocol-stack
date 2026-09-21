@@ -519,8 +519,20 @@ you need the history behind a claim here; read this one for what is true now.
   four-block run over frames and a real socket and counts the clock over the
   wire. `wire_v2`'s request decoder, delivered on 2026-09-19, is what the socket
   reads, and **each version's socket refuses the other's frame at the header**
-  with nothing written. **No process serves it yet** — `protocol-application-v9`
-  is the next slice — so this is a transport rather than a running node.
+  with nothing written.
+- **A version-nine node process runs against the platform clock.** As of
+  2026-09-21 `protocol-application-v9` puts the store, the application, and the
+  version-two socket in one process and binds `CLOCK_REALTIME` in milliseconds.
+  It reads the clock before opening anything and refuses to start without one,
+  and a clock that stops being readable stops the process rather than voting on
+  an assumed value. `--genesis-identity` prints the genesis stamp beside the
+  chain identity and the height-zero root. `version-nine-headless-process`
+  starts it six times. Against the real clock, the recorded January block is
+  behind the tolerance and 2100 is ahead of it, while FinalizeBlock accepts
+  January; the stamp survives a restart; and one millisecond of stamp moves an
+  empty block's root. **No consensus engine drives it yet** — the Go adapter
+  still speaks version one's frame to version eight — so this is a node process
+  rather than a network.
 - **A four-node version-eight network refuses a transaction, and all four
   replicas refuse it identically.** As of 2026-09-11 two transactions the
   contract must reject — a transfer at a consumed nonce and a second purchase of
@@ -2345,6 +2357,11 @@ dispatcher, the node process, and the ABCI adapter — and all three have
 dispatcher, and the socket overload that serves them. What is left is the node
 process and the ABCI adapter.
 
+**Later the same day it is one, and it is all Go.** M3.20d delivered
+`protocol-application-v9`, so every C++ piece of a version-nine node exists.
+What is left is the adapter's version-two client, its ABCI conversion and
+launcher values, and the devnet that runs them.
+
 **One of those absences now carries a dependency rather than only a roadmap
 position.** The founder answer of 2026-08-16 makes external purchasability the
 permanent funding path for a new participant once the entry airdrop's
@@ -2533,49 +2550,43 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-**Write `protocol-application-v9`, the node process.** Everything it serves
-exists: `SQLiteLedgerV9` holds the chain, `ApplicationV9` drives it,
-`response_v9` and `dispatcher_v9` frame its answers, and
-`UnixSocketServerV1::serve_connection(ApplicationV9&)` reads version-two frames
-on a socket. Nothing yet puts them in one process with a real clock.
+**Write the Go adapter's version-two local client.** Every C++ piece of a
+version-nine node exists and `protocol-application-v9` serves it on a socket.
+`adapter/cometbft` still speaks version one's frame — `wireVersion = 1` in
+`internal/localapp/wire.go` is both what it writes and what it requires back —
+to a version-eight application, so nothing in Go can talk to version nine yet.
 
-**What it owes that version eight's did not.** `main_v8.cpp` is the shape — it
-reads and decodes a genesis file with an allocation bound from
-`kGenesisPrefixBytes`, opens or creates the store, binds the socket, and serves
-until a signal. Version nine's differs in three places:
+**The adapter is three slices, and this is the first.** Each is small enough to
+verify on its own, and each is what the next one calls:
 
-- **It binds a platform real-time clock**, milliseconds since `calendar-v1`'s
-  `TIMESTAMP_EPOCH` (the Unix epoch), and hands it to `make_application_v9`. The
-  contract requires a deployment that cannot read a clock to **fail to start**
-  rather than vote on an assumed value, so a clock read that fails at startup is
-  a refusal, not a default.
-- **Canonical genesis validation applies C1 and reads no clock.** A genesis file
-  whose `genesis_timestamp` is outside `[MIN_TIMESTAMP_MILLIS,
-  MAX_TIMESTAMP_MILLIS]` is refused; one inside is well-formed whatever the
-  machine's clock says, because the chain identity is a hash of the genesis
-  bytes and a clock-dependent validity rule would give two machines different
-  identities for one chain. **The kernel already enforces it**: the genesis
-  validity rule in `src/v9/economy_genesis.cpp` applies `timestamp_in_range`, and
-  `decode_genesis` refuses any file its encoder would not have produced. The
-  process needs a test of the refusal, not a second statement of the rule.
-- **The genesis prefix is 150 octets**, read from `v9::kGenesisPrefixBytes`.
+1. **`internal/localapp`: a version-two client.** The frame codec takes its
+   version as a parameter rather than a constant, as `application_driver.py`
+   now does. The client writes the timestamp in kinds 2, 5 and 6. It reads
+   Info's and Commit's stamp, and kind 5's `decision:u8` in place of a Boolean.
+   It admits statuses `7` and `8` **only** on kind 6 and treats either on any
+   other kind as a protocol failure. This slice owns the response-decoder tests
+   ADR 0084 recorded as the adapter's: truncation at every field of the changed
+   response payloads, an out-of-range decision byte, hostile counts and lengths,
+   and a version-one frame refused at the header.
+2. **`internal/bridge` and `internal/nodeconfig`: the ABCI conversion.** The
+   `Timestamp` to millisecond conversion with its three bridge refusals —
+   negative `seconds`, out-of-range `nanos`, an overflowing `seconds * 1000` —
+   truncating a block stamp and requiring an exact genesis stamp. Everything
+   representable is passed through, so a stamp above `MAX_TIMESTAMP_MILLIS`
+   reaches the application and is refused there. Also InitChain's fourth
+   compared value; the `"protocol-stack-v9"` app state; `genesis_time` derived
+   from identity mode's new `genesis_timestamp=` line, rendered with exactly
+   millisecond precision and enforced against an existing CometBFT genesis;
+   and `--protocol-version 9` on the bridge.
+3. **The devnet**, whose evidence `consensus-application-v2` already lists: four
+   validators commit a signed transfer and a kind-22 monthly pool mint, agree
+   on height, **timestamp**, and root, stop, restart, pass an independent audit,
+   and continue. Then one replica's clock is moved beyond the tolerance and the
+   other three continue while it votes against. ADR 0085 records that the way
+   to skew one clock is that slice's decision.
 
-**Its evidence is a headless process test**, as `headless_process_v8_test.py` is
-version eight's: the binary is started against a genesis and a socket, driven
-through version-two frames by a Python driver, stopped, restarted, and found at
-the committed head. `consensus-application-v2`'s required-evidence section is
-the acceptance list; the parts that belong to the process rather than to the
-adapter are the clockless-deployment refusal, the genesis-range refusal, and the
-restart. `tests/application/application_driver.py` speaks version-one frames
-today, so it needs a version-two mode or a sibling.
-
-**Then the ABCI adapter.** `adapter/cometbft` speaks version-one frames to a
-version-eight application. Its version-two client owes the timestamp conversion
-and its three bridge refusals, the `genesis_time` value, and **the response
-decoder tests the contract lists** — truncation at every field of the changed
-response payloads, an out-of-range decision byte, hostile counts and lengths —
-which ADR 0084 records as the adapter's because the C++ side only writes
-responses.
+**Then `src/v8/` is deleted**, under ADR 0065's staged replacement, as version
+seven's was.
 
 **One verification gap is recorded and open.** `tools/verify_metadata.py`
 validates that a Markdown link's file exists and **does not validate its anchor
@@ -2697,6 +2708,12 @@ two sources and two headers, a socket overload that reads version-two frames,
 a transport suite over three translation units, one ctest entry, and
 [ADR 0084](../decisions/0084-the-version-nine-transport.md).
 
+**M3.20d delivered the node process the same day**, so the sentence that stood
+at the head of this section naming `protocol-application-v9` is history: one
+source, a version-two Python driver, a headless test that starts the binary six
+times against the real clock, one ctest entry, and
+[ADR 0085](../decisions/0085-the-version-nine-node-process-binds-the-platform-clock.md).
+
 **Three things M3.19a settled that the ports must not re-open.** The C++
 application reads its own clock, once per `ProcessProposal`, and the local
 protocol never carries a clock reading — a bridge-supplied reading could make a
@@ -2800,9 +2817,10 @@ the fixture rather than left to be rediscovered.
   2026-09-19**, so the three sentences that stood here naming each of them the
   nearest slice are history; M3.20a delivered the version-two frame and M3.20b
   `ApplicationV9`, both on 2026-09-19, and M3.20c the transport — `response_v9`,
-  `dispatcher_v9`, and the socket overload — on 2026-09-21. **The nearest slice
-  is the node process**, then the ABCI adapter — still version eight's, and
-  holding an accepted contract that states what each must satisfy. The paragraphs that stood here enumerating what the binding version had
+  `dispatcher_v9`, and the socket overload — and M3.20d the node process on
+  2026-09-21. **The nearest slice is the Go adapter's version-two client**, then
+  its ABCI conversion and the devnet — still version eight's, and holding an
+  accepted contract that states what each must satisfy. The paragraphs that stood here enumerating what the binding version had
   to add are superseded by the specification itself and are not restated; three
   of them were **wrong**, and the corrections are the reason to read the
   document rather than this list.
@@ -3540,6 +3558,22 @@ failures no peer can induce by choosing bytes. M3.20b established this with a
 probe rather than a reading and records the absence as a measurement. It is not a blocker — the decision stays implemented because the
 failures it guards are real — but a later session should not spend the slice
 hunting for the vector.
+
+**M3.20d ran the founder-decision gate and passed it.** Seven decisions were
+enumerated before any was judged: which platform clock and in what unit; what a
+process does when it cannot read one at startup; what it does when one stops
+being readable; the genesis width and its C1-only validation; what identity mode
+prints; whether the process takes a clock-injection option; and the binary,
+driver, test, CTest, ADR, issue, branch and PR shape. **Three are fixed by
+[`consensus-application-v2`](../specifications/consensus-application-v2.md),
+`calendar-v1`, and `economy-transition-v9`** — the platform real-time clock in
+milliseconds since the Unix epoch, the refusal to start without one, and the
+genesis rule — and were cited rather than re-chosen. The runtime stop is deduced
+from the same refusal. The rest are mechanism and packaging, and
+[ADR 0085](../decisions/0085-the-version-nine-node-process-binds-the-platform-clock.md)
+records each. **Requiring a machine to hold a roughly correct clock is not new
+here**: `calendar-v1`'s C5 made it a precondition for voting, and the contract's
+own gate classified it delegated for that reason.
 
 **M3.20c ran the founder-decision gate and passed it.** Eight decisions were
 enumerated before any was judged: the seven response payload shapes; the
