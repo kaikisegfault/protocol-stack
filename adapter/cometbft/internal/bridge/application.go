@@ -10,8 +10,10 @@ import (
 	"math"
 	"strings"
 	"sync"
+	"time"
 
 	abci "github.com/cometbft/cometbft/abci/types"
+	cmtlog "github.com/cometbft/cometbft/libs/log"
 	"github.com/cometbft/cometbft/version"
 
 	"github.com/kaikisegfault/protocol-stack/adapter/cometbft/internal/localapp"
@@ -22,9 +24,11 @@ const (
 	applicationVersion = "1.0.0"
 	// The result codes an executed transaction can carry are the ledger
 	// version's, so the codespace that names them is too: version one has
-	// eight and version eight forty-five.
+	// eight, and versions eight and nine forty-five each. Version nine adds no
+	// result code but is a different contract, so it names its own codespace.
 	codespaceV1 = "protocol-stack-v1"
 	codespaceV8 = "protocol-stack-v8"
+	codespaceV9 = "protocol-stack-v9"
 )
 
 // FinalizedBlock is what this bridge needs out of a finalized block, whichever
@@ -37,13 +41,30 @@ type FinalizedBlock struct {
 	TransactionResults []localapp.TransactionResult
 }
 
+// Vote is a proposal's answer. **Version nine says why**: its application
+// answers one of eight decisions, and an operator diagnoses a skewed clock from
+// decisions 4 and 5 in this adapter's log. Versions one and eight answer only
+// yes or no, so their reason is empty.
+type Vote struct {
+	Accept bool
+	Reason string
+}
+
+// The engine's times reach every local application, and only version nine
+// reads them. Versions one and eight ignore them, which is exactly what those
+// versions did before the parameter existed.
 type localApplication interface {
 	Info() (localapp.Info, error)
-	InitChain(localapp.Hash, uint64, []byte) (localapp.Hash, error)
+	InitChain(
+		chainID localapp.Hash,
+		initialHeight uint64,
+		genesisTime time.Time,
+		appState []byte,
+	) (localapp.Hash, error)
 	CheckTransaction([]byte) (uint32, error)
 	PrepareProposal(int64, [][]byte) ([][]byte, error)
-	ProcessProposal(uint64, [][]byte) (bool, error)
-	FinalizeBlock(uint64, [][]byte) (FinalizedBlock, error)
+	ProcessProposal(uint64, time.Time, [][]byte) (Vote, error)
+	FinalizeBlock(uint64, time.Time, [][]byte) (FinalizedBlock, error)
 	Commit() (localapp.CommittedHead, error)
 }
 
@@ -52,6 +73,7 @@ type Application struct {
 	mutex     sync.Mutex
 	local     localApplication
 	codespace string
+	logger    cmtlog.Logger
 	// The greatest height the local application has said it has committed,
 	// learned from its own answers to Info and Commit and never counted here.
 	// A local application refuses a finalize at any height that is not its
@@ -65,14 +87,35 @@ var _ abci.Application = (*Application)(nil)
 
 // New bridges a version-one local application.
 func New(local localApplication) *Application {
-	return &Application{local: local, codespace: codespaceV1}
+	return newApplication(local, codespaceV1)
 }
 
 // NewV8 bridges a version-eight local application. The seven ABCI operations
 // are the same operations; what differs is the codespace its result codes
 // belong to and the block identifier its finalized block carries.
 func NewV8(local localApplication) *Application {
-	return &Application{local: local, codespace: codespaceV8}
+	return newApplication(local, codespaceV8)
+}
+
+// NewV9 bridges a version-nine local application, which reads the engine's
+// times and says why it votes against a proposal.
+func NewV9(local localApplication) *Application {
+	return newApplication(local, codespaceV9)
+}
+
+func newApplication(local localApplication, codespace string) *Application {
+	return &Application{
+		local:     local,
+		codespace: codespace,
+		logger:    cmtlog.NewNopLogger(),
+	}
+}
+
+// SetLogger names where a rejected proposal's reason is written.
+func (a *Application) SetLogger(logger cmtlog.Logger) {
+	a.mutex.Lock()
+	defer a.mutex.Unlock()
+	a.logger = logger
 }
 
 func (a *Application) Info(
@@ -132,8 +175,8 @@ func (a *Application) InitChain(
 	}
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
-	root, err := a.local.InitChain(
-		chainID, uint64(request.InitialHeight), request.AppStateBytes)
+	root, err := a.local.InitChain(chainID, uint64(request.InitialHeight),
+		request.Time, request.AppStateBytes)
 	if err != nil {
 		return nil, fmt.Errorf("local InitChain: %w", err)
 	}
@@ -245,16 +288,25 @@ func (a *Application) ProcessProposal(
 	}
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
-	accept, err := a.local.ProcessProposal(
-		uint64(request.Height), request.Txs)
+	vote, err := a.local.ProcessProposal(
+		uint64(request.Height), request.Time, request.Txs)
 	if err != nil {
 		return nil, fmt.Errorf("local ProcessProposal: %w", err)
 	}
-	status := abci.ResponseProcessProposal_REJECT
-	if accept {
-		status = abci.ResponseProcessProposal_ACCEPT
+	if vote.Accept {
+		return &abci.ResponseProcessProposal{
+			Status: abci.ResponseProcessProposal_ACCEPT,
+		}, nil
 	}
-	return &abci.ResponseProcessProposal{Status: status}, nil
+	// A vote against is an ordinary event on a live network, so it is logged
+	// at info rather than as an error.
+	if vote.Reason != "" {
+		a.logger.Info("rejected proposal", "height", request.Height,
+			"decision", vote.Reason)
+	}
+	return &abci.ResponseProcessProposal{
+		Status: abci.ResponseProcessProposal_REJECT,
+	}, nil
 }
 
 // The local application has told this adapter which heights it has committed.
@@ -307,7 +359,7 @@ func (a *Application) FinalizeBlock(
 			"FinalizeBlock at height %d, which the application has committed "+
 				"through height %d", height, a.committedHeight)
 	}
-	block, err := a.local.FinalizeBlock(height, request.Txs)
+	block, err := a.local.FinalizeBlock(height, request.Time, request.Txs)
 	if err != nil {
 		return nil, fmt.Errorf("local FinalizeBlock: %w", err)
 	}

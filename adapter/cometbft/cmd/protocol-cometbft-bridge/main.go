@@ -24,7 +24,7 @@ func run() error {
 		"absolute path to the C++ application Unix socket")
 	protocolVersion := flag.Uint(
 		"protocol-version", 1,
-		"protocol ledger version to bridge (1 or 8)")
+		"protocol ledger version to bridge (1, 8, or 9)")
 	flag.Parse()
 	if *applicationSocket == "" {
 		return errors.New("-application-socket is required")
@@ -38,8 +38,10 @@ func run() error {
 	defer closeClient()
 
 	abciServer := server.NewSocketServer(*abciAddress, application)
-	logger := cmtlog.NewTMLogger(cmtlog.NewSyncWriter(os.Stderr))
-	abciServer.SetLogger(logger.With("module", "protocol-cometbft-bridge"))
+	logger := cmtlog.NewTMLogger(cmtlog.NewSyncWriter(os.Stderr)).
+		With("module", "protocol-cometbft-bridge")
+	abciServer.SetLogger(logger)
+	application.SetLogger(logger)
 	if err := abciServer.Start(); err != nil {
 		return fmt.Errorf("start ABCI server: %w", err)
 	}
@@ -76,6 +78,13 @@ func dial(
 			return nil, nil, err
 		}
 		return bridge.NewV8(bridge.LocalV8{ClientV8: client}),
+			func() { _ = client.Close() }, nil
+	case 9:
+		client, err := localapp.DialV9(socketPath)
+		if err != nil {
+			return nil, nil, err
+		}
+		return bridge.NewV9(bridge.LocalV9{ClientV9: client}),
 			func() { _ = client.Close() }, nil
 	}
 	return nil, nil, fmt.Errorf(

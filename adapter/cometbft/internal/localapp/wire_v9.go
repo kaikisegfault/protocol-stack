@@ -3,6 +3,7 @@ package localapp
 import (
 	"bytes"
 	"errors"
+	"fmt"
 )
 
 // Version nine speaks the version-two frame. It is version one's frame with its
@@ -211,4 +212,24 @@ func decodeFinalizeV9(
 		BlockID:            blockID,
 		TransactionResults: results,
 	}, nil
+}
+
+var decisionNames = [...]string{
+	"ACCEPTED",
+	"HEIGHT_NOT_NEXT",
+	"TIMESTAMP_RANGE",
+	"TIMESTAMP_NOT_MONOTONIC",
+	"TIMESTAMP_AHEAD_OF_TOLERANCE",
+	"TIMESTAMP_BEHIND_TOLERANCE",
+	"RESOURCE_BOUND",
+	"NOT_EXECUTABLE",
+}
+
+// String is the decision's name in `consensus-application-v2`'s table, which is
+// what an operator reads in the bridge's log.
+func (d Decision) String() string {
+	if int(d) < len(decisionNames) {
+		return decisionNames[d]
+	}
+	return fmt.Sprintf("DECISION_%d", uint8(d))
 }

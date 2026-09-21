@@ -20,12 +20,14 @@ type fakeLocal struct {
 	checkCode     uint32
 	prepared      [][]byte
 	processAccept bool
+	processReason string
 	finalized     FinalizedBlock
 	committed     localapp.CommittedHead
 	lastChain     localapp.Hash
 	lastHeight    uint64
 	lastState     []byte
 	lastTxs       [][]byte
+	lastTime      time.Time
 	finalizeCalls int
 	infoEntered   chan struct{}
 	releaseInfo   chan struct{}
@@ -60,10 +62,12 @@ func (f *fakeLocal) Info() (localapp.Info, error) {
 func (f *fakeLocal) InitChain(
 	chain localapp.Hash,
 	height uint64,
+	genesisTime time.Time,
 	state []byte,
 ) (localapp.Hash, error) {
 	f.enter()
 	defer f.leave()
+	f.lastTime = genesisTime
 	f.lastChain = chain
 	f.lastHeight = height
 	f.lastState = append([]byte(nil), state...)
@@ -92,23 +96,27 @@ func (f *fakeLocal) PrepareProposal(
 
 func (f *fakeLocal) ProcessProposal(
 	height uint64,
+	blockTime time.Time,
 	txs [][]byte,
-) (bool, error) {
+) (Vote, error) {
 	f.enter()
 	defer f.leave()
 	f.lastHeight = height
+	f.lastTime = blockTime
 	f.lastTxs = txs
-	return f.processAccept, nil
+	return Vote{Accept: f.processAccept, Reason: f.processReason}, nil
 }
 
 func (f *fakeLocal) FinalizeBlock(
 	height uint64,
+	blockTime time.Time,
 	txs [][]byte,
 ) (FinalizedBlock, error) {
 	f.enter()
 	defer f.leave()
 	f.finalizeCalls++
 	f.lastHeight = height
+	f.lastTime = blockTime
 	f.lastTxs = txs
 	return f.finalized, nil
 }
