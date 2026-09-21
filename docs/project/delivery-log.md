@@ -39,10 +39,13 @@ engine's time on the bridge's local-application interface, `bridge.LocalV9`
 and `bridge.NewV9`, the timestamp conversion, the logged decision,
 `--protocol-version 9`, and
 [ADR 0087](../decisions/0087-the-bridge-carries-the-engines-time.md).
-`tools/verification_scope.py` classifies it `full`, and no ctest entry is added.
+Merged by rebase as `d17e7fb` and `e771929` on 2026-09-21. Two commits, twelve
+files, **829 insertions and 64 deletions**. `tools/verification_scope.py`
+classifies it `full`, and no ctest entry is added. Run 35619188290 on the final
+head passed all six jobs, with `internal/bridge` passing and ctest at **177** in
+the three debug and gcc-sanitizer presets and **187** under `clang-sanitizers`.
 **No accepted vector file, specification, manifest, encoding, or kernel source
-changed.** The passing run and the merged commits are anchored below this record
-at closeout.
+changed.**
 
 **The time is on every version's interface and only version nine reads it.**
 That kept one bridge for every ledger version. The conversion runs in `LocalV9`
