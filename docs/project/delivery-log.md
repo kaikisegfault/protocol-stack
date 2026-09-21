@@ -39,10 +39,14 @@ delivered `src/application/main_v9.cpp` and the `protocol-application-v9`
 binary, a version-two mode of the Python application driver, a headless process
 test, one CTest entry, and
 [ADR 0085](../decisions/0085-the-version-nine-node-process-binds-the-platform-clock.md).
-`tools/verification_scope.py` classifies it `full`, and the slice adds exactly
-one ctest entry and no fuzz target. **No accepted vector file, specification,
-manifest, encoding, or kernel source changed.** The passing run and the merged
-commits are anchored below this record at closeout.
+Merged by rebase as `720a843`, `ab54ddd`, and `0d0b288` on 2026-09-21. Three
+commits, eight files, **1,038 insertions and 64 deletions**.
+`tools/verification_scope.py` classifies it `full`. Run 35610013449 on the final
+head passed all six jobs, with **177** ctest entries in the three debug and
+gcc-sanitizer presets and **187** under `clang-sanitizers`, one more than M3.20c
+in each because the slice adds exactly one entry and no fuzz target. **No
+accepted vector file, specification, manifest, encoding, or kernel source
+changed.**
 
 **The first candidate failed, and again the fault was the suite's.** Run
 35608609748 on `f24b94e` failed `version-nine-headless-process` in both debug
