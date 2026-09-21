@@ -32,6 +32,80 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M3.20c was delivered
+
+**A version-nine application answers on a socket.** Issue #327 and PR #328
+delivered `response_v9` and `dispatcher_v9` with their headers, a version-nine
+`serve_connection` overload, a transport suite over three translation units and
+a support header, one CTest entry, and
+[ADR 0084](../decisions/0084-the-version-nine-transport.md).
+`tools/verification_scope.py` classifies it `full`, and the slice adds exactly
+one ctest entry and no fuzz target. **No accepted vector file, specification,
+manifest, encoding, or kernel source changed**, and versions one and eight read
+exactly the decoders they read before. The passing run on the final head and
+the merged commits are anchored below this record at closeout, because neither
+is knowable when it is written.
+
+**The first candidate failed, and the fault was the suite's.** Run 35604687902
+on `09c0c89` failed `version-nine-transport` in all four presets and **no other
+ctest entry**, of 176 in the debug and gcc-sanitizer presets and 186 under
+`clang-sanitizers`. The debug presets reported `expected decision 0, got 107`
+and `got 228`; both sanitizer presets named it exactly, a heap-use-after-free in
+`Reader::number`. The suite's `Reader` held a `std::span`, and the cases
+construct one straight from a returned response —
+`Reader reader(require_ok(...).body)` — so the view dangled the moment the
+declaration ended. `-fsyntax-only` cannot see a lifetime. The repair makes the reader own a
+copy, which closes every such call site at once rather than the one the run
+happened to reach first.
+
+**Statuses `7` and `8` are written through a signature.**
+`encode_timestamp_failure_v9` takes no `MessageKind`, so it writes a finalize
+response or nothing. That is the contract's rule that the two statuses belong to
+kind 6 alone, stated as a function's shape. It is the move ADR 0083 made for the
+clock. The version-one error path refuses the same two values cast into an
+`ApplicationError`, because otherwise the kind-free function would be a
+convention that the other path could bypass.
+
+**The socket had to learn which wire it reads, and its header said the
+opposite.** `unix_server_v1.hpp` said the `V1` was the frame version and that "a
+new ledger version adds an overload here and not a wire". That held through
+version eight and is false of version nine. `serve_with` now takes a wire policy
+beside its dispatcher, each overload names its wire, and the header says the
+`V1` is the socket's. A server that picked its decoder from each frame's version
+octet was rejected, because it would let a version-one bridge talk to a
+version-nine application, which is the pairing the frame version exists to stop.
+
+**The finding is that `RESOURCE_BOUND` cannot arrive over the wire.** The
+transport suite set out to produce decisions `1` through `6` from frames, and
+`6` cannot be produced. `wire_v2`'s request decoder enforces the same three
+bounds as the application's `within_block_bounds` and refuses the frame as
+`resource_limit` before it is dispatched. The Go bridge's `validateBlock` votes
+REJECT before it builds a frame at all. With M3.20b's finding about `7`, both
+whole-block decisions are defence in depth. The suite measures the absence: it
+builds the over-count and over-length frames, requires the decoder to refuse
+them, and requires the clock to be untouched. It proves both bytes at the
+encoder.
+
+**The clock is counted over the wire, not only in-process.** M3.20b's counter
+measured the application. This suite measures the dispatcher with it. A
+dispatcher that asked for a vote before finalizing, or checked a proposal on the
+way to Info, would move the count. Each decided proposal frame reads it once. A
+proposal while a block is staged answers status `3` without reading it. Every
+other frame reads it zero times.
+
+**Every refusal has an accepted control beside it.** The receipt cases take one
+real version-nine receipt and require it to be written beside its own code
+before requiring each mutation of it to be refused. A suite of refusals alone
+would pass against an encoder that refused everything.
+
+**What could not be done locally, and why that is recorded rather than
+hidden.** The dependencies are built from source by CMake. Building libsodium,
+SQLite, and the kernel is what the owner's resource rules reserve for hosted
+runners. The new sources and all three test units were checked with
+`-fsyntax-only` under GCC 12 and Clang with the project's warnings, against stub
+dependency headers in the session scratchpad. No mutation probes were run,
+because they need a built suite. Every runtime claim is the hosted matrix's.
+
 ### How M3.20b was delivered
 
 **Something drives a version-nine chain.** Issue #324 and PR #325 delivered

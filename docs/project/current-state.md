@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-09-17
+Last updated: 2026-09-21
 
 ## Phase
 
@@ -507,17 +507,20 @@ you need the history behind a claim here; read this one for what is true now.
   staged stamp. The suite drives the recorded four-block run through
   propose-finalize-commit across three real restarts and **counts** the clock:
   every operation but `process_proposal` must leave the count where it found it.
-  **No engine drives it yet** — the response encoder, the node process and the
-  ABCI adapter are still owed — so this is a driveable application rather than a
-  running node.
-- **The local application protocol has a version-two frame.** As of 2026-09-19
-  `wire_v2` decodes a request at protocol version `2`, with the genesis timestamp
-  in kind 2 and the block timestamp in kinds 5 and 6. **Nothing serves it yet** —
-  the response encoder is the next slice — so this is a codec rather than a
-  running transport. What it already establishes is the
-  cross-version refusal in both directions: each decoder refuses the other's
-  frame at the header, on the first frame, rather than several fields into a
-  payload.
+  **No engine drives it yet** — the node process and the ABCI adapter are still
+  owed — so this is a driveable application rather than a running node.
+- **A version-nine application answers version-two frames on a socket.** As of
+  2026-09-21 `response_v9` and `dispatcher_v9` turn `ApplicationV9`'s answers
+  into version-two frames, and `UnixSocketServerV1::serve_connection` has a
+  version-nine overload that reads them. Info and Commit report the durable
+  **timestamp**, a proposal answers a `decision:u8`, and statuses `7` and `8` are
+  written by a function that **takes no kind**, so they cannot be written for
+  anything but a finalize. `version-nine-transport` drives the recorded
+  four-block run over frames and a real socket and counts the clock over the
+  wire. `wire_v2`'s request decoder, delivered on 2026-09-19, is what the socket
+  reads, and **each version's socket refuses the other's frame at the header**
+  with nothing written. **No process serves it yet** — `protocol-application-v9`
+  is the next slice — so this is a transport rather than a running node.
 - **A four-node version-eight network refuses a transaction, and all four
   replicas refuse it identically.** As of 2026-09-11 two transactions the
   contract must reject — a transfer at a consumed nonce and a second purchase of
@@ -2338,6 +2341,10 @@ owning store, M3.20a the transport's request half as `wire_v2`, and M3.20b
 dispatcher, the node process, and the ABCI adapter — and all three have
 `consensus-application-v2` to satisfy rather than a shape to invent.
 
+**As of 2026-09-21 it is two.** M3.20c delivered the response encoder, its
+dispatcher, and the socket overload that serves them. What is left is the node
+process and the ABCI adapter.
+
 **One of those absences now carries a dependency rather than only a roadmap
 position.** The founder answer of 2026-08-16 makes external purchasability the
 permanent funding path for a new participant once the entry airdrop's
@@ -2526,54 +2533,49 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-**Write `response_v9` and `dispatcher_v9`.** `ApplicationV9` produces
-`ApplicationInfoV9`, `FinalizedBlockV9`, `CommittedHeadV9` and a
-`ProposalDecision`; `wire_v2` can carry a request to it; nothing turns its
-answers into version-two frames.
+**Write `protocol-application-v9`, the node process.** Everything it serves
+exists: `SQLiteLedgerV9` holds the chain, `ApplicationV9` drives it,
+`response_v9` and `dispatcher_v9` frame its answers, and
+`UnixSocketServerV1::serve_connection(ApplicationV9&)` reads version-two frames
+on a socket. Nothing yet puts them in one process with a real clock.
 
-**What the response encoder owes that version eight's did not.** Kind 1 and kind
-7 responses gain a timestamp, kind 5's response becomes a `decision:u8` rather
-than an `accept:Boolean`, kind 6's carries the block identifier the message table
-now records, and the status space gains `7` and `8` — reachable **only** from
-kind 6, because kind 5 reports the same two conditions as decisions `2` and `3`
-under a zero status. `consensus-application-v2`'s decoder and fuzz requirements
-for the six changed payloads are this slice's; the rest of its
-required-evidence section belongs to the node process and the adapter.
+**What it owes that version eight's did not.** `main_v8.cpp` is the shape — it
+reads and decodes a genesis file with an allocation bound from
+`kGenesisPrefixBytes`, opens or creates the store, binds the socket, and serves
+until a signal. Version nine's differs in three places:
 
-**Its contract is written and its acceptance criteria are already enumerated.**
-[`consensus-application-v2`](../specifications/consensus-application-v2.md)'s
-required-evidence section is the list; do not re-derive it. The parts that belong
-to this slice rather than to the node or the adapter are the eight-value decision
-space and the eight statuses, `calendar-v1`'s first-condition-wins ordering, both
-sides of C5 with a supplied clock, the test that `FinalizeBlock` accepts a stamp
-`ProcessProposal` would have refused for tolerance, the proof that no path from
-`FinalizeBlock`, Commit, restart, or reconstruction reaches the bound clock
-source, the timestamp-conversion cases, the InitChain cases, and the decoder and
-fuzz cases for the six changed payloads.
+- **It binds a platform real-time clock**, milliseconds since `calendar-v1`'s
+  `TIMESTAMP_EPOCH` (the Unix epoch), and hands it to `make_application_v9`. The
+  contract requires a deployment that cannot read a clock to **fail to start**
+  rather than vote on an assumed value, so a clock read that fails at startup is
+  a refusal, not a default.
+- **Canonical genesis validation applies C1 and reads no clock.** A genesis file
+  whose `genesis_timestamp` is outside `[MIN_TIMESTAMP_MILLIS,
+  MAX_TIMESTAMP_MILLIS]` is refused; one inside is well-formed whatever the
+  machine's clock says, because the chain identity is a hash of the genesis
+  bytes and a clock-dependent validity rule would give two machines different
+  identities for one chain. **The kernel already enforces it**: the genesis
+  validity rule in `src/v9/economy_genesis.cpp` applies `timestamp_in_range`, and
+  `decode_genesis` refuses any file its encoder would not have produced. The
+  process needs a test of the refusal, not a second statement of the rule.
+- **The genesis prefix is 150 octets**, read from `v9::kGenesisPrefixBytes`.
 
-**Two things the store slice settled that the application must not re-open.**
-The store applies C1 and C2 and **never C5** — it executes blocks the network
-already decided, and a store that re-applied the proposal tolerance would refuse
-the chain's own past one tolerance-width after producing it. And `apply_block`
-takes the agreed stamp as a parameter, so the application supplies it and the
-store never reads a clock; `SQLiteLedgerV9::apply_block` has no clock to read,
-which is the enforcement rather than the convention.
+**Its evidence is a headless process test**, as `headless_process_v8_test.py` is
+version eight's: the binary is started against a genesis and a socket, driven
+through version-two frames by a Python driver, stopped, restarted, and found at
+the committed head. `consensus-application-v2`'s required-evidence section is
+the acceptance list; the parts that belong to the process rather than to the
+adapter are the clockless-deployment refusal, the genesis-range refusal, and the
+restart. `tests/application/application_driver.py` speaks version-one frames
+today, so it needs a version-two mode or a sibling.
 
-**The frame version is the one trap already identified and not yet sprung.**
-M3.19a found that version seven added a block identifier to the finalize response,
-version eight kept it, the frame version stayed at `1`, and no contract document
-recorded it. Version nine changes six payloads, so this is the slice where the
-frame version has to move and where version one's decoder must refuse a
-version-two frame at the **frame** rather than at the first block as a generic
-protocol failure.
-
-**The contract the remaining ports must satisfy is now written.**
-[`consensus-application-v2`](../specifications/consensus-application-v2.md) and
-[ADR 0079](../decisions/0079-the-version-nine-application-contract.md) were
-accepted on 2026-09-17, so the application layer, the transport, the node process
-and the ABCI adapter each have a stated shape and a stated evidence list rather
-than one to invent. Its required-evidence section is the acceptance criteria for
-those four slices; do not re-derive them.
+**Then the ABCI adapter.** `adapter/cometbft` speaks version-one frames to a
+version-eight application. Its version-two client owes the timestamp conversion
+and its three bridge refusals, the `genesis_time` value, and **the response
+decoder tests the contract lists** — truncation at every field of the changed
+response payloads, an out-of-range decision byte, hostile counts and lengths —
+which ADR 0084 records as the adapter's because the C++ side only writes
+responses.
 
 **One verification gap is recorded and open.** `tools/verify_metadata.py`
 validates that a Markdown link's file exists and **does not validate its anchor
@@ -2689,6 +2691,12 @@ on the first block rather than at the header on the first frame. It lands at the
 header now, and version one's decoder refuses a version-two frame for the same
 reason without a line of new code.
 
+**M3.20c delivered the transport on 2026-09-21**, so the sentence that stood at
+the head of this section naming `response_v9` and `dispatcher_v9` is history:
+two sources and two headers, a socket overload that reads version-two frames,
+a transport suite over three translation units, one ctest entry, and
+[ADR 0084](../decisions/0084-the-version-nine-transport.md).
+
 **Three things M3.19a settled that the ports must not re-open.** The C++
 application reads its own clock, once per `ProcessProposal`, and the local
 protocol never carries a clock reading — a bridge-supplied reading could make a
@@ -2791,9 +2799,10 @@ the fixture rather than left to be rediscovered.
   `snapshot_v9` the same day, and M3.19c delivered `SQLiteLedgerV9` on
   2026-09-19**, so the three sentences that stood here naming each of them the
   nearest slice are history; M3.20a delivered the version-two frame and M3.20b
-  `ApplicationV9`, both on 2026-09-19. **The nearest slice is `response_v9` and
-  `dispatcher_v9`**, then the node process and the ABCI adapter — still version
-  eight's, and holding an accepted contract that states what each must satisfy. The paragraphs that stood here enumerating what the binding version had
+  `ApplicationV9`, both on 2026-09-19, and M3.20c the transport — `response_v9`,
+  `dispatcher_v9`, and the socket overload — on 2026-09-21. **The nearest slice
+  is the node process**, then the ABCI adapter — still version eight's, and
+  holding an accepted contract that states what each must satisfy. The paragraphs that stood here enumerating what the binding version had
   to add are superseded by the specification itself and are not restated; three
   of them were **wrong**, and the corrections are the reason to read the
   document rather than this list.
@@ -3516,16 +3525,34 @@ later scenario change stops reaching one.
 **There is no blocker.** Every remaining version-nine slice is a port with an
 accepted contract behind it.
 
-**One piece of accepted required evidence cannot be produced, and it is recorded
-rather than waived.** `consensus-application-v2` asks for a vector for every
-`ProcessProposal` decision `0` through `7`. **Decision `7`, `NOT_EXECUTABLE`, is
-not reachable from a proposal's contents**: the kernel turns every
-transaction-level problem into a result, and the whole-block rejections that
-remain are chain-state failures no peer can induce by choosing bytes. M3.20b
-established this with a probe rather than a reading and records the absence as a
-measurement. It is not a blocker — the decision stays implemented because the
+**Two pieces of accepted required evidence cannot be produced over the wire, and
+both are recorded rather than waived.** The second is M3.20c's: **decision `6`,
+`RESOURCE_BOUND`, cannot arrive over the wire**, because `wire_v2`'s request
+decoder enforces the same three bounds and refuses the frame before dispatch,
+and the Go bridge's `validateBlock` votes REJECT before building one at all. The
+application produces it in-process and the encoder proves the byte. The first
+is M3.20b's, and the rest of this paragraph is about it.
+`consensus-application-v2` asks for a vector for every `ProcessProposal`
+decision `0` through `7`. **Decision `7`, `NOT_EXECUTABLE`, is not reachable
+from a proposal's contents**: the kernel turns every transaction-level problem
+into a result, and the whole-block rejections that remain are chain-state
+failures no peer can induce by choosing bytes. M3.20b established this with a
+probe rather than a reading and records the absence as a measurement. It is not a blocker — the decision stays implemented because the
 failures it guards are real — but a later session should not spend the slice
 hunting for the vector.
+
+**M3.20c ran the founder-decision gate and passed it.** Eight decisions were
+enumerated before any was judged: the seven response payload shapes; the
+decision byte's eight values; the status space and the rule that `7` and `8`
+belong to kind 6 alone; the response frame version; the result-code mapping and
+the receipt version; whether a diagnostic is written; how the socket chooses its
+wire; and the module, suite, CTest, ADR, issue, branch and PR shape. **Five are
+fixed by [`consensus-application-v2`](../specifications/consensus-application-v2.md),
+[ADR 0082](../decisions/0082-the-version-two-application-frame.md), and
+`economy-transition-v9`** and were cited rather than re-chosen; the remaining
+three are mechanism and packaging. Nothing in the slice sets or changes a
+founder-reserved value, and **no accepted vector file, specification, manifest,
+encoding, or kernel source changed**.
 
 **M3.20b ran the founder-decision gate and passed it.** Eleven decisions were
 enumerated before any was judged: the clock's binding point; whether it has a
