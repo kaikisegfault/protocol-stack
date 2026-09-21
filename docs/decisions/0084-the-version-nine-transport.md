@@ -161,6 +161,12 @@ support header:
   and commit, and reads the clock once. A version-one frame then offered to it
   ends the connection as a `protocol_failure` **with no response written**.
 
+**The first hosted run found a defect in the suite, not in the transport.** The
+suite's response reader held a `std::span` over a returned temporary, so every
+case that built one from `require_ok(...).body` read freed memory. Both sanitizer
+presets named it as a heap-use-after-free and no other entry failed. The reader
+now owns a copy.
+
 **What this slice could not do locally.** The dependencies are built from source
 by CMake, and building libsodium, SQLite, and the kernel is what the owner's
 resource rules reserve for hosted runners. The new sources and all three test

@@ -91,9 +91,15 @@ inline Bytes request_frame(pa::MessageKind kind, std::uint64_t request_id,
 
 // A reader over a response payload, walking the octets the way an adapter must
 // and refusing to finish with anything left over.
+//
+// **It owns a copy of what it reads.** The cases construct one straight from a
+// returned `Response`'s body — `Reader reader(require_ok(...).body)` — and a
+// view would dangle the moment that declaration ends. The first hosted run of
+// this suite read freed memory exactly there and reported decision `107`.
 class Reader {
  public:
-  explicit Reader(std::span<const std::uint8_t> bytes) : bytes_(bytes) {}
+  explicit Reader(std::span<const std::uint8_t> bytes)
+      : bytes_(bytes.begin(), bytes.end()) {}
 
   std::uint64_t number(std::size_t width) {
     pv::require(bytes_.size() - offset_ >= width, "the payload is too short");
@@ -131,7 +137,7 @@ class Reader {
   }
 
  private:
-  std::span<const std::uint8_t> bytes_;
+  Bytes bytes_;
   std::size_t offset_ = 0;
 };
 
