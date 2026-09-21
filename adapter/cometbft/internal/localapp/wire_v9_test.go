@@ -281,3 +281,24 @@ func FuzzVersionNineResponseDecoders(f *testing.F) {
 		}
 	})
 }
+
+// The names an operator reads in the bridge's log are the contract's, and a
+// value past the eight is named by number rather than mistaken for one of them.
+func TestDecisionNamesAreTheContracts(t *testing.T) {
+	names := map[Decision]string{
+		DecisionAccepted:                  "ACCEPTED",
+		DecisionHeightNotNext:             "HEIGHT_NOT_NEXT",
+		DecisionTimestampRange:            "TIMESTAMP_RANGE",
+		DecisionTimestampNotMonotonic:     "TIMESTAMP_NOT_MONOTONIC",
+		DecisionTimestampAheadOfTolerance: "TIMESTAMP_AHEAD_OF_TOLERANCE",
+		DecisionTimestampBehindTolerance:  "TIMESTAMP_BEHIND_TOLERANCE",
+		DecisionResourceBound:             "RESOURCE_BOUND",
+		DecisionNotExecutable:             "NOT_EXECUTABLE",
+		Decision(8):                       "DECISION_8",
+	}
+	for decision, name := range names {
+		if decision.String() != name {
+			t.Fatalf("decision %d is named %q, not %q", decision, decision.String(), name)
+		}
+	}
+}
