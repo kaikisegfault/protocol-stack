@@ -32,6 +32,43 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M3.20e was delivered
+
+**The Go adapter can talk to version nine.** Issue #333 and PR #334 delivered
+`localapp.ClientV9`, the version-nine response decoders, their decoder and pipe
+tests, a fuzz target, and
+[ADR 0086](../decisions/0086-the-go-local-client-speaks-the-version-two-frame.md).
+`tools/verification_scope.py` classifies it `full`. The hosted matrix runs
+`go test ./...` and `go vet ./...` in every preset job, so no ctest entry is
+added. **No accepted vector file, specification, manifest, encoding, or kernel
+source changed**, and versions one and eight write and require exactly the
+octets they did. The passing run and the merged commits are anchored below this
+record at closeout.
+
+**The frame version became a field of the client rather than a constant.**
+That is the whole of the change to the shared code. `Dial` and `newClient` set
+version one's; `newClientV9` sets version two's before the first call. It is
+the Go form of the Python driver's class attribute from M3.20d, and it means the
+adapter can hold a version-eight client and a version-nine client in one process
+while the devnet migrates.
+
+**The client does not believe a status the contract says cannot be sent.**
+`maximumStatus(version, kind)` admits `7` and `8` only on a finalize over
+version two. Either one anywhere else ends the connection as a protocol failure,
+because the C++ encoder cannot write them on any other kind (ADR 0084) and a
+peer that does is not the application this client was dialled at.
+
+**This slice could be probed locally, and the probing found a real gap.** The
+package is standard-library-only, so it was copied into a scratch module and
+built with the local Go 1.23 toolchain, without the module's pinned toolchain
+or its dependency graph. Reading the pipe tests with probes in mind showed they
+computed the expected request **with the encoder under test**, so a swapped
+height and stamp would have passed. They now hand-write the octets, and ten
+mutation probes were all caught. The first probe run hung and had to be stopped
+by process ID, because a refused request left the client blocked on a pipe
+until `go test`'s ten-minute timeout. The test server now closes its end on a
+mismatch, and such a probe fails in under a second.
+
 ### How M3.20d was delivered
 
 **A version-nine node runs against a real clock.** Issue #330 and PR #331
