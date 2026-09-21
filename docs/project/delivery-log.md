@@ -32,6 +32,41 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M3.20f was delivered
+
+**The bridge drives version nine.** Issue #336 and PR #337 delivered the
+engine's time on the bridge's local-application interface, `bridge.LocalV9`
+and `bridge.NewV9`, the timestamp conversion, the logged decision,
+`--protocol-version 9`, and
+[ADR 0087](../decisions/0087-the-bridge-carries-the-engines-time.md).
+`tools/verification_scope.py` classifies it `full`, and no ctest entry is added.
+**No accepted vector file, specification, manifest, encoding, or kernel source
+changed.** The passing run and the merged commits are anchored below this record
+at closeout.
+
+**The time is on every version's interface and only version nine reads it.**
+That kept one bridge for every ledger version. The conversion runs in `LocalV9`
+rather than in the bridge, so versions one and eight gain no refusal, reachable
+or not. The rule itself is one pure function, because Go's ABCI types deliver a
+`time.Time` that cannot hold an out-of-range nanosecond: the contract's refusal
+for one is tested where it can be reached.
+
+**A vote now has a reason.** `consensus-application-v2` expects an operator to
+diagnose a skewed clock from decisions `4` and `5` in "the application log", and
+the C++ application writes none. The bridge is the first process that holds both
+the decision and a logger, so `Vote` carries the decision's name and the bridge
+logs a rejection with it at info level.
+
+**It is the first slice whose main package could not be built locally.** The
+bridge imports CometBFT, and resolving that dependency graph is what the owner's
+resource rules keep on hosted runners. `gofmt` and a careful read are all it had
+before the matrix. The read found one real defect: a data race in the proposal
+test, where the stand-in server read a value the test goroutine rewrote between
+calls with only a socket between them. **The code candidate `fb8aa13` then
+built and passed on its first hosted run**, 35617556732, in all six jobs:
+`internal/bridge` and `internal/localapp` passed under the pinned toolchain with
+`go vet` clean, and ctest stayed at 177 and 187.
+
 ### How M3.20e was delivered
 
 **The Go adapter can talk to version nine.** Issue #333 and PR #334 delivered
