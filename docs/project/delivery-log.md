@@ -38,12 +38,15 @@ handoff; `M3.15b` and anything after it was written here.
 `localapp.ClientV9`, the version-nine response decoders, their decoder and pipe
 tests, a fuzz target, and
 [ADR 0086](../decisions/0086-the-go-local-client-speaks-the-version-two-frame.md).
-`tools/verification_scope.py` classifies it `full`. The hosted matrix runs
-`go test ./...` and `go vet ./...` in every preset job, so no ctest entry is
-added. **No accepted vector file, specification, manifest, encoding, or kernel
-source changed**, and versions one and eight write and require exactly the
-octets they did. The passing run and the merged commits are anchored below this
-record at closeout.
+Merged by rebase as `1a3b719` and `22529a9` on 2026-09-21. Two commits, nine
+files, **1,151 insertions and 50 deletions**. `tools/verification_scope.py`
+classifies it `full`. The hosted matrix runs `go test ./...` and `go vet ./...`
+under the pinned toolchain in every preset job, so no ctest entry is added.
+Run 35615255336 on the final head passed all six jobs, with `internal/localapp`
+passing and ctest at **177** in the three debug and gcc-sanitizer presets and
+**187** under `clang-sanitizers`. **No accepted vector file, specification,
+manifest, encoding, or kernel source changed**, and versions one and eight write
+and require exactly the octets they did.
 
 **The frame version became a field of the client rather than a constant.**
 That is the whole of the change to the shared code. `Dial` and `newClient` set
