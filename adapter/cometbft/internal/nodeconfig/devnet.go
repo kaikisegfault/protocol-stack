@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	cfg "github.com/cometbft/cometbft/config"
 	"github.com/cometbft/cometbft/p2p"
@@ -121,6 +120,12 @@ func (devnet Devnet) Ensure(
 	identity Identity,
 	protocol ProtocolVersion,
 ) error {
+	// Before preflight writes the root, and long before any key exists: a
+	// refused pairing that left keys without a genesis would be an incomplete
+	// home, which preflight then refuses on every later start.
+	if _, _, err := genesisValues(identity, protocol); err != nil {
+		return err
+	}
 	_, err := devnet.preflight()
 	if err != nil {
 		return err
@@ -274,7 +279,7 @@ func devnetGenesis(
 	validators []*privval.FilePV,
 	protocol ProtocolVersion,
 ) (*types.GenesisDoc, error) {
-	state, err := protocol.appState()
+	state, genesisTime, err := genesisValues(identity, protocol)
 	if err != nil {
 		return nil, err
 	}
@@ -294,7 +299,7 @@ func devnetGenesis(
 		}
 	}
 	document := &types.GenesisDoc{
-		GenesisTime:     time.Unix(0, 0).UTC(),
+		GenesisTime:     genesisTime,
 		ChainID:         identity.CometChainID(),
 		InitialHeight:   1,
 		ConsensusParams: types.DefaultConsensusParams(),

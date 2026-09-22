@@ -18,59 +18,18 @@ import (
 	"github.com/cometbft/cometbft/types"
 )
 
-const (
-	appStateV1 = `"protocol-stack-v1"`
-	appStateV8 = `"protocol-stack-v8"`
-	// CometBFTVersion is the exact accepted module release.
-	CometBFTVersion = "0.39.4"
-)
-
-// ProtocolVersion is the ledger version a home is initialised for. It reaches
-// the application as the genesis application state, and **that is what stops a
-// node started against a version-one genesis and a version-eight engine**: the
-// application refuses at InitChain rather than at the first block.
-//
-// The refusal is exact rather than a range. `ApplicationV8::init_chain` still
-// names the retired version-seven app state as a case of its own, because that
-// is the string a stale deployment would be sending long after this adapter
-// stopped offering to write one, so a home initialised at the wrong version
-// fails at the handshake with the version it was initialised for.
-type ProtocolVersion uint8
-
-const (
-	ProtocolV1 ProtocolVersion = 1
-	ProtocolV8 ProtocolVersion = 8
-)
-
-// ParseProtocolVersion accepts only the versions this adapter bridges, so an
-// operator who mistypes one gets an error rather than a chain nobody joins.
-func ParseProtocolVersion(value uint) (ProtocolVersion, error) {
-	// Compared as the wider type on purpose: converting first would truncate,
-	// and 257 would be admitted as version one.
-	switch value {
-	case uint(ProtocolV1):
-		return ProtocolV1, nil
-	case uint(ProtocolV8):
-		return ProtocolV8, nil
-	}
-	return 0, fmt.Errorf("unsupported protocol version %d", value)
-}
-
-func (p ProtocolVersion) appState() (string, error) {
-	switch p {
-	case ProtocolV1:
-		return appStateV1, nil
-	case ProtocolV8:
-		return appStateV8, nil
-	}
-	return "", fmt.Errorf("unsupported protocol version %d", uint8(p))
-}
+// CometBFTVersion is the exact accepted module release.
+const CometBFTVersion = "0.39.4"
 
 type Hash [32]byte
 
 type Identity struct {
 	ChainID Hash
 	AppHash Hash
+	// GenesisTimestamp is version nine's, and absent for versions one and
+	// eight. ParseIdentity leaves it absent; a caller holding a version-nine
+	// identity sets it from ParseGenesisTimestamp.
+	GenesisTimestamp GenesisTimestamp
 }
 
 type Endpoints struct {
@@ -122,6 +81,11 @@ func Ensure(
 ) error {
 	if !filepath.IsAbs(home) || filepath.Clean(home) == string(filepath.Separator) {
 		return errors.New("home must be an absolute non-root path")
+	}
+	// Before anything is written, so a refused version and stamp pairing
+	// leaves no half-made home behind it.
+	if _, _, err := genesisValues(identity, protocol); err != nil {
+		return err
 	}
 	config, err := nodeConfig(home, endpoints, nodeOptions{
 		moniker: "protocol-stack-m1",
@@ -283,7 +247,7 @@ func singleValidatorGenesis(
 	validator *privval.FilePV,
 	protocol ProtocolVersion,
 ) (*types.GenesisDoc, error) {
-	state, err := protocol.appState()
+	state, genesisTime, err := genesisValues(identity, protocol)
 	if err != nil {
 		return nil, err
 	}
@@ -292,7 +256,7 @@ func singleValidatorGenesis(
 		return nil, fmt.Errorf("validator public key: %w", err)
 	}
 	document := &types.GenesisDoc{
-		GenesisTime:     time.Unix(0, 0).UTC(),
+		GenesisTime:     genesisTime,
 		ChainID:         identity.CometChainID(),
 		InitialHeight:   1,
 		ConsensusParams: types.DefaultConsensusParams(),
