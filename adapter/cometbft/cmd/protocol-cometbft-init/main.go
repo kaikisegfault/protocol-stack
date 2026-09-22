@@ -15,6 +15,7 @@ func main() {
 	var proxyApp string
 	var rpcListen string
 	var p2pListen string
+	var genesisTimestamp string
 	var protocolVersion uint
 	flag.StringVar(&home, "home", "", "absolute CometBFT home")
 	flag.StringVar(&chainID, "chain-id", "", "32-byte protocol chain ID in hex")
@@ -22,8 +23,10 @@ func main() {
 	flag.StringVar(&proxyApp, "proxy-app", "", "ABCI socket address")
 	flag.StringVar(&rpcListen, "rpc-listen", "", "CometBFT RPC listen address")
 	flag.StringVar(&p2pListen, "p2p-listen", "", "CometBFT P2P listen address")
+	flag.StringVar(&genesisTimestamp, "genesis-timestamp", "",
+		"canonical genesis timestamp in decimal milliseconds (version 9 only)")
 	flag.UintVar(&protocolVersion, "protocol-version", 1,
-		"protocol ledger version this home is initialized for (1 or 8)")
+		"protocol ledger version this home is initialized for (1, 8, or 9)")
 	flag.Parse()
 	if flag.NArg() != 0 {
 		exitWithError(fmt.Errorf("unexpected positional arguments"))
@@ -35,6 +38,16 @@ func main() {
 	protocol, err := nodeconfig.ParseProtocolVersion(protocolVersion)
 	if err != nil {
 		exitWithError(err)
+	}
+	// An empty flag is the absence of a stamp, which is what versions one and
+	// eight bind. Whether this version wants one is Ensure's to refuse, so the
+	// rule lives in one place for this command and the devnet alike.
+	if genesisTimestamp != "" {
+		identity.GenesisTimestamp, err = nodeconfig.ParseGenesisTimestamp(
+			genesisTimestamp)
+		if err != nil {
+			exitWithError(err)
+		}
 	}
 	endpoints := nodeconfig.Endpoints{
 		ProxyApp: proxyApp,

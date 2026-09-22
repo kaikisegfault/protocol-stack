@@ -258,6 +258,7 @@ func TestProtocolVersionSelectsTheGenesisApplicationState(t *testing.T) {
 	for protocol, expected := range map[ProtocolVersion]string{
 		ProtocolV1: appStateV1,
 		ProtocolV8: appStateV8,
+		ProtocolV9: appStateV9,
 	} {
 		state, err := protocol.appState()
 		if err != nil || state != expected {
@@ -300,14 +301,15 @@ func TestProtocolVersionSelectsTheGenesisApplicationState(t *testing.T) {
 	}
 }
 
-// The two application states must be two distinct strings. Nothing above would
-// catch two versions sharing one: every check there compares a version's state
+// The application states must be distinct strings. Nothing above would catch
+// two versions sharing one: every check there compares a version's state
 // against the same constant `appState` returned for it, so a rebound copy that
 // forgot its own constant would agree with itself.
-func TestTheTwoApplicationStatesAreDistinct(t *testing.T) {
+func TestTheApplicationStatesAreDistinct(t *testing.T) {
 	expected := map[ProtocolVersion]string{
 		ProtocolV1: `"protocol-stack-v1"`,
 		ProtocolV8: `"protocol-stack-v8"`,
+		ProtocolV9: `"protocol-stack-v9"`,
 	}
 	for protocol, want := range expected {
 		state, err := protocol.appState()
@@ -346,18 +348,21 @@ func TestParseProtocolVersion(t *testing.T) {
 	for value, expected := range map[uint]ProtocolVersion{
 		1: ProtocolV1,
 		8: ProtocolV8,
+		9: ProtocolV9,
 	} {
 		parsed, err := ParseProtocolVersion(value)
 		if err != nil || parsed != expected {
 			t.Fatalf("ParseProtocolVersion(%d) = %d, %v", value, parsed, err)
 		}
 	}
-	// 257 truncates to one in a byte and 264 to eight; neither may be
-	// admitted as the version it truncates to. **Seven is in this list rather
-	// than the one above**: ADR 0065's step 7 deleted the version-seven stack,
-	// so an operator who still passes it must get an error here rather than a
-	// home no binary can serve.
-	for _, value := range []uint{0, 2, 6, 7, 9, 256, 257, 263, 264} {
+	// 257 truncates to one in a byte, 264 to eight, and 265 to nine; none may
+	// be admitted as the version it truncates to. **Seven is in this list
+	// rather than the one above**: ADR 0065's step 7 deleted the version-seven
+	// stack, so an operator who still passes it must get an error here rather
+	// than a home no binary can serve.
+	for _, value := range []uint{
+		0, 2, 6, 7, 10, 256, 257, 263, 264, 265,
+	} {
 		if _, err := ParseProtocolVersion(value); err == nil {
 			t.Fatalf("ParseProtocolVersion(%d) was accepted", value)
 		}

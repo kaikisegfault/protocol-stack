@@ -53,7 +53,8 @@ func Run(
 	if err := validateInputs(genesis, binaries); err != nil {
 		return err
 	}
-	identity, err := InspectIdentity(ctx, binaries.Application, genesis)
+	identity, err := InspectIdentity(
+		ctx, binaries.Application, genesis, protocol)
 	if err != nil {
 		return err
 	}
