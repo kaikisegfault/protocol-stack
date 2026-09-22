@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-09-21
+Last updated: 2026-09-22
 
 ## Phase
 
@@ -546,9 +546,16 @@ you need the history behind a claim here; read this one for what is true now.
   three refusals, block times truncated, genesis times exact, a stamp past the
   calendar passed through — and votes ACCEPT only on decision `0`. A rejection
   is logged by the decision's name. `protocol-cometbft-bridge
-  --protocol-version 9` dials it. **No home can be initialised for version nine
-  yet** — `nodeconfig` writes no `genesis_time` and knows no version nine — so
-  this is a bridge rather than a node.
+  --protocol-version 9` dials it.
+- **A CometBFT home can be initialised for version nine.** As of 2026-09-22
+  `protocol-cometbft-init -protocol-version 9 -genesis-timestamp <millis>` and
+  `protocol-cometbft-devnet start -protocol-version 9` write
+  `"protocol-stack-v9"` and a `genesis_time` that is the canonical stamp at
+  exactly millisecond precision, and refuse an existing genesis that differs in
+  it. The devnet reads the stamp from the application's identity mode and
+  requires exactly the keys the version prints, so the wrong binary for the
+  version is refused before a home exists. **No version-nine chain has run under
+  CometBFT yet**, so this is a launcher rather than a network.
 - **A four-node version-eight network refuses a transaction, and all four
   replicas refuse it identically.** As of 2026-09-11 two transactions the
   contract must reject — a transfer at a consumed nonce and a second purchase of
@@ -2376,8 +2383,9 @@ process and the ABCI adapter.
 **Later the same day it is one, and it is all Go.** M3.20d delivered
 `protocol-application-v9`, so every C++ piece of a version-nine node exists.
 What is left is the adapter's version-two client, its ABCI conversion and
-launcher values, and the devnet that runs them. M3.20e delivered the client and
-M3.20f the bridge, so what is left is the launcher values and the devnet.
+launcher values, and the devnet that runs them. M3.20e delivered the client,
+M3.20f the bridge, and M3.20g the launcher values, so what is left is running
+it: a version-nine chain under CometBFT, then the four-validator devnet.
 
 **One of those absences now carries a dependency rather than only a roadmap
 position.** The founder answer of 2026-08-16 makes external purchasability the
@@ -2567,27 +2575,37 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-**Teach `nodeconfig` and the identity about version nine.** The bridge drives a
-version-nine application (M3.20f), but nothing can initialise a CometBFT home for
-one: `nodeconfig.ParseProtocolVersion` accepts 1 and 8, every genesis it writes
-has `GenesisTime: time.Unix(0, 0)`, and `devnet.InspectIdentity` refuses any
-identity line but `chain_id` and `app_hash`.
+**Run a version-nine chain under one CometBFT node.** Every piece of a
+version-nine node exists and can now be launched (M3.20g), and none of it has met
+a consensus engine. The nearest runnable result is version eight's
+`tests/integration/cometbft_version_eight_test.py` rebound to version nine: one
+validator, a canonical genesis minted by the independent Python model, a signed
+transfer gossiped, proposed, finalized and committed, and the engine required to
+report the root the model derives. It is the first time a version-nine block
+would be decided by anything but a test driver.
 
-**What it owes, from `consensus-application-v2`'s five derived genesis
-values:**
+**Two things make it more than a rebind:**
 
-- `ProtocolV9` and the `"protocol-stack-v9"` app state.
-- `genesis_time` derived from identity mode's `genesis_timestamp=` line,
-  exactly as `time.UnixMilli(stamp).UTC()`, in both the single-validator genesis
-  (`config.go`) and the four-validator one (`devnet.go`). **It is enforced, not
-  decorative**: `ensureGenesis` already refuses an existing file that differs in
-  any field, so a mismatching `genesis_time` is refused at initialisation. That
-  is the moment an operator is looking, rather than a chain that will not start.
-  Versions one and eight keep the epoch.
-- `devnet.InspectIdentity` reading the third key when the application prints
-  it, and refusing a version-nine identity without it.
-- `protocol-cometbft-init` and `protocol-cometbft-devnet` accepting version 9
-  through `ParseProtocolVersion`.
+- **The genesis must be minted at run time with a current stamp.** Under
+  CometBFT `v0.39.4` block 1 is stamped with the genesis time exactly, and C5
+  refuses it as decision `5` once civil time is more than 60 seconds past that,
+  in every round, for good.
+  [ADR 0088](../decisions/0088-the-launcher-derives-the-genesis-time-and-the-first-block-carries-it.md)
+  records it. **A recorded vector genesis therefore never produces a block.**
+  `simulation/economy_transition_v9/genesis.py`'s `Genesis` already carries
+  `genesis_timestamp`, so the stamp is a constructor argument. Set it at or a
+  few seconds ahead of the node's start and inside the harness's readiness
+  bound, because CometBFT serves no RPC while it sleeps toward a future genesis
+  time.
+- **The expected root depends on the engine's timestamp**, which the test learns
+  only after the block commits, because version nine's state commits to the
+  head's timestamp. The model's expectation has to be computed from the
+  committed header's time, truncated to milliseconds as the bridge does, which
+  makes the comparison an end-to-end check of the conversion as well.
+
+It also needs a `version_nine_chain.py` beside `version_eight_chain.py`, and
+`inspect_identity` in `tests/integration/cometbft_process.py` reading the third
+key for version nine, as the Go parser now does.
 
 **Then the devnet**, whose evidence `consensus-application-v2` already lists:
 four validators commit a signed transfer and a kind-22 monthly pool mint, agree
@@ -2596,7 +2614,21 @@ and continue. Then one replica's clock is moved beyond the tolerance and the
 other three continue while it votes against. Two choices belong to that slice
 and are recorded where they arose: how to skew one clock (ADR 0085), and where
 the health check reads the durable stamp, since ABCI's Info carries none
-(ADR 0087).
+(ADR 0087). It inherits the launch constraint above.
+
+**The devnet has one open question, and it should be settled before the slice
+starts.** A kind-22 monthly pool mint needs the chain's clock to cross a
+calendar month while a seat is in scope. After block 1, CometBFT stamps each
+block with the median of the validators' vote times, which come from the Go node
+processes' own clocks, and C5 keeps that within 60 seconds of every C++
+application's clock. The node binary is built with `CGO_ENABLED=0` and is
+statically linked, so an `LD_PRELOAD` time shim reaches the application and not
+the engine. A bounded run therefore cannot simply be moved to a month's end.
+Three routes are available: a clock mechanism that reaches both processes,
+waiting for a real month boundary, or proving the kind-22 mint through the
+driven application with a supplied clock while the devnet proves the transfer.
+Choosing among them is that slice's first decision. It is evidence method, not
+founder-reserved.
 
 **Then `src/v8/` is deleted**, under ADR 0065's staged replacement, as version
 seven's was.
@@ -2737,6 +2769,14 @@ that stood at the head of this section naming it is history: the time on the
 local interface, the conversion and `LocalV9`, the logged decision, and
 [ADR 0087](../decisions/0087-the-bridge-carries-the-engines-time.md).
 
+**M3.20g delivered the launcher values on 2026-09-22**, so the sentence that
+stood at the head of this section naming `nodeconfig` and the identity is
+history: `ProtocolV9`, the stamp on the identity, `genesis_time` in both genesis
+writers, the exact per-version identity parse, `-genesis-timestamp`, and
+[ADR 0088](../decisions/0088-the-launcher-derives-the-genesis-time-and-the-first-block-carries-it.md). **Reading the pinned engine to write it found that block 1's stamp is
+the genesis time itself**, which the paragraph at the head of this section
+carries forward.
+
 **Three things M3.19a settled that the ports must not re-open.** The C++
 application reads its own clock, once per `ProcessProposal`, and the local
 protocol never carries a clock reading — a bridge-supplied reading could make a
@@ -2841,9 +2881,10 @@ the fixture rather than left to be rediscovered.
   nearest slice are history; M3.20a delivered the version-two frame and M3.20b
   `ApplicationV9`, both on 2026-09-19, and M3.20c the transport — `response_v9`,
   `dispatcher_v9`, and the socket overload — M3.20d the node process, and M3.20e
-  the Go local client, and M3.20f the bridge on 2026-09-21. **The nearest slice
-  is `nodeconfig` and the identity**, then the devnet — still version eight's,
-  and holding an accepted contract that states what each must satisfy. The
+  the Go local client, and M3.20f the bridge on 2026-09-21, and M3.20g the
+  launcher values on 2026-09-22. **The nearest slice is a version-nine chain
+  under one CometBFT node**, then the devnet — still version eight's, and
+  holding an accepted contract that states what each must satisfy. The
   paragraphs that stood here enumerating what the binding version had
   to add are superseded by the specification itself and are not restated; three
   of them were **wrong**, and the corrections are the reason to read the
@@ -3582,6 +3623,23 @@ failures no peer can induce by choosing bytes. M3.20b established this with a
 probe rather than a reading and records the absence as a measurement. It is not a blocker — the decision stays implemented because the
 failures it guards are real — but a later session should not spend the slice
 hunting for the vector.
+
+**M3.20g ran the founder-decision gate and passed it.** Nine decisions were
+enumerated before any was judged: the `genesis_time` derivation; the app-state
+string; the refusal of an existing genesis that differs; versions one and eight
+keeping the epoch; how the identity represents a missing stamp; refusing the
+version and stamp pairing, and when; the exact per-version identity key set; the
+stamp's operator spelling and range; and the flag name and the file, test, ADR,
+issue, branch and PR shape. **The first four are fixed by
+[`consensus-application-v2`](../specifications/consensus-application-v2.md)**
+and were cited rather than re-chosen; the range is `calendar-v1`'s C1. The rest
+are mechanism, encoding of an operator input, and packaging, which [ADR 0088](../decisions/0088-the-launcher-derives-the-genesis-time-and-the-first-block-carries-it.md)
+records. **One was close enough to name**: the finding that a version-nine
+network must decide its first block within 60 seconds of its genesis stamp is a
+statement about what a launcher must do. It is classified delegated because it
+is a consequence of `calendar-v1`'s accepted C5 rather than a new rule, it binds
+whoever launches a network rather than a participant, and no rule changed.
+Nothing founder-reserved is touched.
 
 **M3.20f ran the founder-decision gate and passed it.** Eight decisions were
 enumerated before any was judged: the conversion formula; its three refusals;

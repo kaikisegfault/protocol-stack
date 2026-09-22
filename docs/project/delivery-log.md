@@ -32,6 +32,59 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M3.20g was delivered
+
+**A CometBFT home can be initialised for version nine.** Issue #339 and PR #340
+delivered `ProtocolV9` and the `"protocol-stack-v9"` app state, a genesis stamp
+on `nodeconfig.Identity`, `genesis_time` in both genesis writers, the exact
+per-version identity parse, `-genesis-timestamp` on the initializer, version 9
+on both commands, and
+[ADR 0088](../decisions/0088-the-launcher-derives-the-genesis-time-and-the-first-block-carries-it.md).
+`tools/verification_scope.py` classifies it `full`, and no ctest entry is added.
+**No accepted vector file, specification rule, manifest, encoding, or kernel
+source changed**; three accepted documents gained correction notes, and versions
+one and eight write exactly the octets they did. The passing run and the merged
+commits are anchored below this record at closeout.
+
+**Absence is not a number.** `calendar-v1`'s range starts at zero, so a stamp of
+zero is a real chain's, and the identity's `GenesisTimestamp` is a value whose
+zero means "none" rather than a `uint64` with a sentinel. `genesisTime` is the
+one place a version and a stamp become a genesis time, and it refuses the pairing
+both ways. Both `Ensure` functions ask it **before writing anything**, because
+the devnet's `preflight` treats keys without a genesis as an incomplete home and
+refuses it on every later start, so a late refusal would have needed someone to
+delete the home by hand.
+
+**The identity parse is exact per version rather than "read the stamp when it
+is printed"**, which is how the handoff put it. The looser rule would let a
+version-nine binary started as version eight write a version-eight home, which
+the application would then refuse at InitChain with a vaguer error. Exact key
+sets refuse both mismatches before a home exists.
+
+**The finding is worth more than the code.** Writing `genesis_time` meant asking
+what the engine does with it, and CometBFT `v0.39.4` answers precisely:
+`state.MakeBlock` stamps the initial block with the genesis time,
+`state.validateBlock` refuses any other value, and `Node.OnStart` sleeps until a
+future genesis time. So `t(1) = g` always, and C5 at height one becomes
+`|g − own_clock| <= 60,000` ms. **A network that has not decided its first block
+within a minute of its genesis stamp never will**, since every round re-proposes
+a block stamped `g` and every correct machine refuses it as decision `5`.
+`economy-transition-v9` said a genesis far in the past "starts normally", and
+`calendar-v1`'s BFT-time argument for C5 silently assumed a median at every
+height. Both were reasoned from the contract without reading the engine. The
+rule is unchanged and the documents carry correction notes. The exemption that
+would change it — a first-block stamp equal to the agreed genesis value is not a
+proposer's reading — is named in ADR 0088 and not taken, because the current
+rule keeps every committed stamp near civil time and a missed launch window
+costs only a new genesis before any block exists.
+
+**It changes the next two slices, not this one.** A recorded vector genesis can
+never start a real network, so the single-node chain and the devnet both mint
+their genesis at run time. Following the same thread showed that the devnet's
+kind-22 evidence needs the chain's clock to cross a calendar month, and that
+the engine's clock is a statically linked Go binary's, which no `LD_PRELOAD`
+shim reaches. The handoff records both.
+
 ### How M3.20f was delivered
 
 **The bridge drives version nine.** Issue #336 and PR #337 delivered the

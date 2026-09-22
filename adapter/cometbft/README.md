@@ -8,14 +8,19 @@ and, under `-protocol-version 8`, the version-eight responses recorded in
 [ADR 0068](../../docs/decisions/0068-the-version-eight-application-layer.md) and
 [ADR 0069](../../docs/decisions/0069-the-version-eight-node-process-and-adapter.md).
 
-**It does not yet implement version nine.**
-[`consensus-application-v2.md`](../../docs/specifications/consensus-application-v2.md)
-is accepted and is what a version-nine adapter must satisfy: local frame version
-2, a timestamp on `ProcessProposal`, `FinalizeBlock`, and `InitChain`, the
-protobuf-to-millisecond conversion, and the eight-value proposal decision. Note
-that `wireVersion` is 1 for both clients here although version eight's
-finalized-block payload differs from version one's, so a mismatched pair is
-refused at the result count rather than at the frame header — a drift
+Under `-protocol-version 9` it implements
+[`consensus-application-v2.md`](../../docs/specifications/consensus-application-v2.md):
+local frame version 2, a timestamp on `ProcessProposal`, `FinalizeBlock`, and
+`InitChain`, the protobuf-to-millisecond conversion, the eight-value proposal
+decision, and the fifth derived genesis value, as
+[ADR 0086](../../docs/decisions/0086-the-go-local-client-speaks-the-version-two-frame.md),
+[ADR 0087](../../docs/decisions/0087-the-bridge-carries-the-engines-time.md), and
+[ADR 0088](../../docs/decisions/0088-the-launcher-derives-the-genesis-time-and-the-first-block-carries-it.md)
+record. **Version nine has not yet run on a network**; the devnet evidence the
+contract lists is still owed. Versions one and eight both use frame version 1,
+although version eight's finalized-block payload differs from version one's, so
+a mismatched pair between them is refused at the result count rather than at the
+frame header. That is a drift
 [ADR 0079](../../docs/decisions/0079-the-version-nine-application-contract.md)
 records and version two closes by moving the version field.
 
@@ -212,6 +217,45 @@ a bundled version-eight genesis of its own.
 version eight across seven slices and its step 7 deleted version seven's kernel,
 storage, application, node binary, and client, so `-protocol-version 7` is now
 refused where it once initialized a home no binary could serve.
+
+## Version nine
+
+Version nine's canonical genesis carries a timestamp, and its CometBFT genesis
+gains a fifth derived value, `genesis_time`. Identity mode prints it as a third
+line of decimal milliseconds, and the initializer takes it as
+`-genesis-timestamp`:
+
+```sh
+protocol-application-v9 --genesis-identity /absolute/path/protocol.genesis
+# chain_id=...
+# app_hash=...
+# genesis_timestamp=1790000000123
+
+protocol-cometbft-init -protocol-version 9 \
+  -genesis-timestamp 1790000000123 ...
+
+protocol-cometbft-bridge -protocol-version 9 \
+  -application-socket /absolute/path/application.sock \
+  -abci-listen tcp://127.0.0.1:26658
+```
+
+The initializer writes the stamp at exactly millisecond precision, which is the
+only form the bridge accepts at `InitChain`. It refuses a version-nine home
+without a stamp, a version-one or version-eight home with one, and an existing
+genesis whose `genesis_time` differs. The devnet reads the stamp from the
+application itself. It requires exactly the identity lines the version prints,
+so a version-eight binary started as version nine is refused before any home is
+written, and so is the reverse.
+
+**The first block is stamped with the genesis time, exactly.** CometBFT fixes
+it that way and refuses any other value, and version nine's proposal check
+requires every stamp to be within 60 seconds of the machine's own clock. So a
+version-nine network has to decide its first block within 60 seconds of its
+genesis timestamp, or it never will. Set the stamp at, or shortly ahead of, the
+moment the validators start. CometBFT sleeps until a future genesis time, and
+serves no RPC while it does.
+[ADR 0088](../../docs/decisions/0088-the-launcher-derives-the-genesis-time-and-the-first-block-carries-it.md)
+records why.
 
 ## Single-node lifecycle
 

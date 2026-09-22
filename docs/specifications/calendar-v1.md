@@ -224,6 +224,14 @@ the committed stamp is too, and any correct machine's own reading differs from i
 by at most `2d` plus the one commit interval by which BFT time lags. The
 tolerance is chosen to cover that; see below.
 
+**Correction of 2026-09-22: the argument above holds at every height but the
+first.** CometBFT `v0.39.4` stamps the block at the initial height with the
+genesis time rather than a median, and refuses any other value, so at height one
+C5 holds only when civil time is within the tolerance of `g`. The rule is
+unchanged.
+[ADR 0088](../decisions/0088-the-launcher-derives-the-genesis-time-and-the-first-block-carries-it.md)
+records what it requires of a launcher.
+
 **C5 is not re-applied on replay, and C1 and C2 are.** C5 is the only rule here
 whose input is not in the block. A machine replaying history, restoring from a
 snapshot, or reconstructing state must re-check C1 and C2 and must **not**
@@ -595,3 +603,6 @@ is round:
   of the genesis bytes, and a chain whose genesis is in the future reports
   `TIMESTAMP_NOT_MONOTONIC` at its first block, which is what the ordered
   conditions above reach first.
+  [ADR 0088](../decisions/0088-the-launcher-derives-the-genesis-time-and-the-first-block-carries-it.md)
+  corrects that answer for CometBFT, which stamps the first block with the
+  genesis time itself.
