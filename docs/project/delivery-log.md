@@ -40,11 +40,17 @@ on `nodeconfig.Identity`, `genesis_time` in both genesis writers, the exact
 per-version identity parse, `-genesis-timestamp` on the initializer, version 9
 on both commands, and
 [ADR 0088](../decisions/0088-the-launcher-derives-the-genesis-time-and-the-first-block-carries-it.md).
+Merged by rebase as `389739a` and `2a85baa` on 2026-09-22. Two commits,
+seventeen files, **1,017 insertions and 108 deletions**.
 `tools/verification_scope.py` classifies it `full`, and no ctest entry is added.
-**No accepted vector file, specification rule, manifest, encoding, or kernel
-source changed**; three accepted documents gained correction notes, and versions
-one and eight write exactly the octets they did. The passing run and the merged
-commits are anchored below this record at closeout.
+Run 35752400239 on the final head passed all six jobs, with `internal/nodeconfig`
+and `internal/devnet` passing and ctest at **177** in the three debug and
+gcc-sanitizer presets and **187** under `clang-sanitizers`. The code candidate's
+run was cancelled by the concurrency group when the record commit was pushed,
+and the final head carries the same Go source. **No accepted vector file,
+specification rule, manifest, encoding, or kernel source changed**; three
+accepted documents gained correction notes, and versions one and eight write
+exactly the octets they did.
 
 **Absence is not a number.** `calendar-v1`'s range starts at zero, so a stamp of
 zero is a real chain's, and the identity's `GenesisTimestamp` is a value whose
@@ -83,7 +89,12 @@ never start a real network, so the single-node chain and the devnet both mint
 their genesis at run time. Following the same thread showed that the devnet's
 kind-22 evidence needs the chain's clock to cross a calendar month, and that
 the engine's clock is a statically linked Go binary's, which no `LD_PRELOAD`
-shim reaches. The handoff records both.
+shim reaches. **At closeout a second wall turned up in front of the same
+evidence**, and it was already on record: ADR 0071 found that a seat is in scope
+only from height 28,800, and version nine keeps `CYCLE_BLOCKS` at 28,800, so no
+seat can be a monthly candidate on a devnet begun at genesis whatever its clock
+does. `consensus-application-v2`'s evidence list was written without either
+wall. The handoff records both.
 
 ### How M3.20f was delivered
 

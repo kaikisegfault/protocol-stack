@@ -2617,18 +2617,31 @@ the health check reads the durable stamp, since ABCI's Info carries none
 (ADR 0087). It inherits the launch constraint above.
 
 **The devnet has one open question, and it should be settled before the slice
-starts.** A kind-22 monthly pool mint needs the chain's clock to cross a
-calendar month while a seat is in scope. After block 1, CometBFT stamps each
-block with the median of the validators' vote times, which come from the Go node
-processes' own clocks, and C5 keeps that within 60 seconds of every C++
-application's clock. The node binary is built with `CGO_ENABLED=0` and is
-statically linked, so an `LD_PRELOAD` time shim reaches the application and not
-the engine. A bounded run therefore cannot simply be moved to a month's end.
-Three routes are available: a clock mechanism that reaches both processes,
-waiting for a real month boundary, or proving the kind-22 mint through the
-driven application with a supplied clock while the devnet proves the transfer.
-Choosing among them is that slice's first decision. It is evidence method, not
-founder-reserved.
+starts: `consensus-application-v2`'s kind-22 evidence stands behind two walls.**
+A kind-22 monthly pool mint needs a seat to be in scope during a calendar month
+that then closes.
+
+- **The height wall, already on record.** ADR 0071 found that a seat is in
+  scope only from the window after the one it activated in, and a window is
+  `CYCLE_BLOCKS` = 28,800 heights. Version nine keeps that constant, so no seat
+  on a devnet begun at genesis is a monthly candidate before height 28,800.
+  ADR 0071 declined to build a way round it for version eight's audit, and the
+  same arithmetic applies here.
+- **The clock wall, found in M3.20g.** After block 1, CometBFT stamps each block
+  with the median of the validators' vote times, which come from the Go node
+  processes' own clocks. C5 keeps that median within 60 seconds of every C++
+  application's clock. The node binary is built with `CGO_ENABLED=0` and is
+  statically linked, so an `LD_PRELOAD` time shim reaches the application and
+  not the engine, and a bounded run cannot simply be moved to a month's end.
+
+The evidence list was written without either wall. **Kind 22 already executes
+in C++ below the engine**: `economy-transition-v9-execution-cpp` reproduces all
+125 execution vectors over chains of 115,200 and 144,000 heights, including the
+payout and the mint. So the route that looks right is to leave kind 22's
+evidence there, and have the devnet prove the transfer, agreement on the
+timestamp, restart, the audit, and the skewed replica. The list would then
+carry a correction note, as ADR 0071 gave version eight's. This is evidence
+method, not founder-reserved, and it is that slice's first decision.
 
 **Then `src/v8/` is deleted**, under ADR 0065's staged replacement, as version
 seven's was.
