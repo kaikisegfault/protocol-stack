@@ -351,6 +351,23 @@ chain's first month index is an old one. The cost that reading would otherwise
 have imposed — a first settlement closing tens of thousands of months — is
 removed by the single-pass rule below rather than by a bound on genesis.
 
+**Correction of 2026-09-22: the two paragraphs above do not describe the pinned
+engine, and the rules they rest on stand.** They assume a proposer stamps the
+first block from its own clock. CometBFT `v0.39.4` does not: it stamps the block
+at the initial height with the genesis time and refuses any other value, and it
+sleeps until a future genesis time before running consensus at all. So under it
+`t(1) = g` always. A genesis in the future is never refused as
+`TIMESTAMP_NOT_MONOTONIC`, because the first block's stamp is `g` itself and
+consensus does not start before it. **A genesis
+far in the past never starts**: C5 at height one reduces to
+`|g − own_clock| <= TIMESTAMP_TOLERANCE_MILLIS`, and a network that has not
+decided its first block within the tolerance of `g` refuses it as
+`TIMESTAMP_BEHIND_TOLERANCE` in every round. No rule, encoding, vector, or root
+here changes.
+[ADR 0088](../decisions/0088-the-launcher-derives-the-genesis-time-and-the-first-block-carries-it.md)
+records the finding, what it requires of a launcher, and the first-block
+exemption it names for later.
+
 ## Canonical economy state
 
 Version eight's key space with four entry kinds added and one value extended.

@@ -170,6 +170,12 @@ machines disagree about a chain's own identifier.
 states the consequence, and it is a liveness one: a genesis in the future halts
 the chain at its first block until civil time reaches it, refused as
 `TIMESTAMP_NOT_MONOTONIC` rather than as a tolerance failure.
+**Correction of 2026-09-22:** under CometBFT `v0.39.4` the first block's stamp
+*is* the genesis time, so a future genesis only delays the start, and a genesis
+more than `TIMESTAMP_TOLERANCE_MILLIS` in the past halts the chain at height one
+for good;
+[ADR 0088](../decisions/0088-the-launcher-derives-the-genesis-time-and-the-first-block-carries-it.md)
+records it.
 
 The CometBFT genesis values become **five**:
 
