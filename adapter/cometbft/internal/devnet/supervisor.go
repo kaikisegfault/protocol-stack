@@ -32,23 +32,28 @@ type Binaries struct {
 // Every field is touched only on the main loop. The control channel does not
 // share it; it hands parsed requests over a channel and the loop runs them.
 type supervisor struct {
-	devnet   nodeconfig.Devnet
-	genesis  string
-	binaries Binaries
-	protocol nodeconfig.ProtocolVersion
-	events   chan childExit
+	devnet      nodeconfig.Devnet
+	genesis     string
+	binaries    Binaries
+	protocol    nodeconfig.ProtocolVersion
+	environment ApplicationEnvironment
+	events      chan childExit
 	// phases[phase][index] is replica `index`'s child in that phase, so a
 	// replica's three processes are addressable without a second index.
 	phases [][]*childProcess
 }
 
 // Run initializes and foreground-supervises the complete local network.
+//
+// `environment` is added to each replica's application process and to nothing
+// else; the zero value adds nothing to any of them.
 func Run(
 	ctx context.Context,
 	devnet nodeconfig.Devnet,
 	genesis string,
 	binaries Binaries,
 	protocol nodeconfig.ProtocolVersion,
+	environment ApplicationEnvironment,
 ) (runError error) {
 	if err := validateInputs(genesis, binaries); err != nil {
 		return err
@@ -78,12 +83,13 @@ func Run(
 	}()
 
 	network := &supervisor{
-		devnet:   devnet,
-		genesis:  genesis,
-		binaries: binaries,
-		protocol: protocol,
-		events:   make(chan childExit, nodeconfig.DevnetNodeCount*3),
-		phases:   make([][]*childProcess, 3),
+		devnet:      devnet,
+		genesis:     genesis,
+		binaries:    binaries,
+		protocol:    protocol,
+		environment: environment,
+		events:      make(chan childExit, nodeconfig.DevnetNodeCount*3),
+		phases:      make([][]*childProcess, 3),
 	}
 	for phase := range network.phases {
 		network.phases[phase] = make(
@@ -282,6 +288,7 @@ func (network *supervisor) startApplication(
 		fmt.Sprintf("node%d-application", node.Index),
 		node.Root,
 		filepath.Join(node.LogDirectory, "application.log"),
+		network.environment[node.Index],
 		network.binaries.Application,
 		node.Database,
 		network.genesis,
@@ -297,6 +304,7 @@ func (network *supervisor) startBridge(
 		fmt.Sprintf("node%d-bridge", node.Index),
 		node.Root,
 		filepath.Join(node.LogDirectory, "bridge.log"),
+		nil,
 		network.binaries.Bridge,
 		"-application-socket",
 		node.ApplicationSocket,
@@ -315,6 +323,7 @@ func (network *supervisor) startNode(
 		fmt.Sprintf("node%d-cometbft", node.Index),
 		node.Root,
 		filepath.Join(node.LogDirectory, "cometbft.log"),
+		nil,
 		network.binaries.Node,
 		"start",
 		"--home",

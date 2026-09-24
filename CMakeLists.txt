@@ -308,6 +308,20 @@ target_link_libraries(
   PRIVATE
     protocol_application
 )
+# A test-only `LD_PRELOAD` library that moves one process's real-time clock
+# (ADR 0091). Nothing links it. It takes the project's flags like every other
+# target, so under a sanitizer preset it is instrumented too and is loaded into
+# an application instrumented the same way.
+add_library(
+  protocol_clock_offset_shim
+  MODULE
+  tests/application/clock_offset_shim.cpp
+)
+set_target_properties(
+  protocol_clock_offset_shim
+  PROPERTIES
+    OUTPUT_NAME protocol-clock-offset
+)
 target_include_directories(
   protocol_storage
   PUBLIC
@@ -690,6 +704,7 @@ set(
   protocol_application_server
   protocol_application_server_v8
   protocol_application_server_v9
+  protocol_clock_offset_shim
   kernel_primitive_tests
   economy_v8_codec_tests
   economy_v8_execution_tests
@@ -1236,6 +1251,8 @@ add_test(
 )
 # The same short-directory rule. This one starts six processes against the real
 # clock, so it is the entry that fails if a runner's clock is not civil time.
+# Two more run through the clock-offset shim to reach an unreadable clock, and a
+# last one reopens the store that failure left.
 add_test(
   NAME version-nine-headless-process
   COMMAND
@@ -1244,6 +1261,7 @@ add_test(
     "$<TARGET_FILE:protocol_application_server_v9>"
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v9-execution.txt"
     "${CMAKE_CURRENT_BINARY_DIR}/ah-v9"
+    "$<TARGET_FILE:protocol_clock_offset_shim>"
 )
 # The same short-directory rule, and for the same reason: this entry starts a
 # node process against a Unix socket inside it.

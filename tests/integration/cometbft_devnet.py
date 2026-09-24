@@ -51,6 +51,11 @@ class Network:
     genesis: pathlib.Path
     base_port: int
     protocol_version: int = 1
+    # Variables one replica's application process gets and its peers do not,
+    # as `(index, name, value)`. The supervisor applies them to the application
+    # alone and keeps them across `stop-replica` and `start-replica`, because a
+    # machine keeps its clock across a restart (ADR 0091).
+    application_environment: tuple[tuple[int, str, str], ...] = ()
 
     def common_arguments(self) -> list[str]:
         return [
@@ -100,6 +105,11 @@ def start_network(
             network.node,
             "-protocol-version",
             str(network.protocol_version),
+            *(
+                argument
+                for index, name, value in network.application_environment
+                for argument in ("-application-env", f"{index}:{name}={value}")
+            ),
         ],
         workspace,
     )

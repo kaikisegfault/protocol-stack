@@ -171,6 +171,27 @@ protocol-cometbft-devnet start-replica -root /absolute/path -index 3
 port needs privileges the harness does not have, and a two-two split would
 commit nothing on either side.
 
+### One replica whose machine differs from its peers
+
+`start` takes a repeatable `-application-env index:NAME=VALUE`. It adds a
+variable to that replica's application process and to nothing else, and it
+survives `stop-replica` and `start-replica`. The devnet uses it to run one
+version-nine replica on a wrong clock, by preloading the test-only
+`libprotocol-clock-offset.so` into that application
+([ADR 0091](../../docs/decisions/0091-the-skewed-replica-is-skewed-below-the-process.md)):
+
+```sh
+protocol-cometbft-devnet start -root /absolute/path ... -protocol-version 9 \
+  -application-env 3:LD_PRELOAD=/absolute/path/libprotocol-clock-offset.so \
+  -application-env 3:PROTOCOL_STACK_CLOCK_OFFSET_FILE=/absolute/path/skew
+```
+
+The file holds a signed count of milliseconds, such as `+120000`, and is read
+on every clock read, so rewriting it moves that replica's clock while it runs.
+The replica keeps agreeing on every root. Its bridge logs `rejected proposal`
+with decision `TIMESTAMP_BEHIND_TOLERANCE` or `TIMESTAMP_AHEAD_OF_TOLERANCE`
+for each proposal it votes against.
+
 Use a different absolute `PROTOCOL_STACK_DEVNET_ROOT` to initialize a new
 network without deleting retained evidence. Set
 `PROTOCOL_STACK_DEVNET_SOCKET_ROOT` to the same absolute short-lived directory

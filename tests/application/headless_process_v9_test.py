@@ -23,13 +23,23 @@ The block this suite finalizes is therefore **empty**, and what it checks about
 it is what needs no recorded root: that two processes over the same genesis
 agree on it, that one millisecond of stamp changes it, and that the stamp
 survives a restart.
+
+**Last, the two paths ADR 0085 could not reach without faking the clock.**
+Through the clock-offset shim (ADR 0091) the same binary is started with a clock
+it cannot read, and must exit before it opens anything. It is then started with
+its clock moved onto the recorded January stamp, which it must now accept — the
+proof that the shim reaches the process at all. Then the clock is made unreadable
+under it, and the next proposal must stop it without writing anything.
 """
 
+import os
 import pathlib
 import subprocess
 import sys
+import time
 
 import application_driver_v2 as driver
+import clock_offset
 
 PROTOCOL_VERSION = 9
 APP_STATE = b'"protocol-stack-v9"'
@@ -136,12 +146,91 @@ def expect(value, wanted, subject: str) -> None:
         raise RuntimeError(f"{subject}: expected {wanted!r}, got {value!r}")
 
 
+def require_stderr(stderr: bytes, message: bytes, subject: str) -> None:
+    if message not in stderr:
+        raise RuntimeError(
+            f"{subject} said {stderr.decode('utf-8', 'replace')!r}, not {message!r}")
+
+
+def run_without_a_clock(executable, directory, genesis, shim, chain) -> None:
+    """A clock unreadable at startup, and one that stops being readable.
+
+    `chain` is the chain identity, the genesis stamp, the genesis root, and the
+    January stamp.
+    """
+    chain_id, genesis_stamp, root, january = chain
+    offset_file = directory / "o"
+    socket_path = directory / "s"
+    home = directory / "c"
+    environment = clock_offset.environment(shim, offset_file)
+
+    # **Startup.** There is no offset file, so there is no clock, and the process
+    # must refuse before it creates a database or a socket.
+    refused = subprocess.Popen(
+        [str(executable), str(home), str(genesis), str(socket_path)],
+        env={**os.environ, **environment},
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+    )
+    try:
+        _, stderr = refused.communicate(timeout=10)
+    except subprocess.TimeoutExpired:
+        refused.kill()
+        refused.communicate()
+        raise RuntimeError("a process without a clock started and kept running")
+    if refused.returncode == 0:
+        raise RuntimeError("a process without a clock exited cleanly")
+    require_stderr(stderr, b"the platform real-time clock cannot be read",
+                   "a process without a clock")
+    if home.exists() or socket_path.exists():
+        raise RuntimeError("a process without a clock opened its database or socket")
+
+    # **Runtime.** On a clock moved to January the January stamp is accepted,
+    # which a real clock refuses above. Then the clock stops being readable.
+    clock_offset.set_offset(offset_file, january - time.time_ns() // 1_000_000)
+    process = driver.start(executable, home, genesis, socket_path, environment)
+    try:
+        with driver.Connection(socket_path) as connection:
+            expect(connection.init_chain(chain_id, 1, genesis_stamp, APP_STATE), root,
+                   "init_chain on a moved clock")
+            expect(connection.process_proposal(1, january), driver.Decision.ACCEPTED,
+                   "a January proposal on a January clock")
+            clock_offset.make_unreadable(offset_file)
+            try:
+                answer = connection.process_proposal(1, january)
+            except (driver.Disconnected, ConnectionError):
+                pass
+            else:
+                raise RuntimeError(
+                    f"a process whose clock became unreadable answered {answer!r}")
+        process.wait(timeout=10)
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.wait(timeout=5)
+    stderr = process.stderr.read()
+    process.stderr.close()
+    if process.returncode == 0:
+        raise RuntimeError("a process whose clock became unreadable exited cleanly")
+    require_stderr(stderr, b"stopping rather than voting on an assumed value",
+                   "a process whose clock became unreadable")
+    if socket_path.exists():
+        raise RuntimeError("a process stopped by its clock left its socket behind")
+
+    # Nothing was written: the store is at genesis, on the real clock.
+    with Process(executable, home, genesis, socket_path) as connection:
+        expect(connection.info(), driver.Info(PROTOCOL_VERSION, 0, genesis_stamp, root),
+               "the store a clock failure stopped")
+
+
 def main() -> int:
-    if len(sys.argv) != 4:
-        raise SystemExit("usage: headless_process_v9_test.py EXECUTABLE VECTORS DIRECTORY")
+    if len(sys.argv) != 5:
+        raise SystemExit(
+            "usage: headless_process_v9_test.py EXECUTABLE VECTORS DIRECTORY SHIM")
     executable = pathlib.Path(sys.argv[1]).resolve()
     values = load_values(pathlib.Path(sys.argv[2]))
     directory = pathlib.Path(sys.argv[3]).resolve()
+    shim = pathlib.Path(sys.argv[4]).resolve()
     if directory.exists():
         for entry in sorted(directory.iterdir()):
             entry.unlink()
@@ -221,6 +310,9 @@ def main() -> int:
             raise RuntimeError(f"the moved stamp was refused: {moved!r}")
         if moved.state_root == finalized.state_root:
             raise RuntimeError("one millisecond of stamp did not change the root")
+
+    run_without_a_clock(executable, directory, genesis, shim,
+                        (chain_id, genesis_stamp, root, january))
 
     for entry in sorted(directory.iterdir()):
         entry.unlink()

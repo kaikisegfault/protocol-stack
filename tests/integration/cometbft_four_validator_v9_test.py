@@ -45,11 +45,12 @@ block whose stamp runs backwards. It must refuse it with status `8`, latch
 terminal, and leave its store where the network left it.
 
 **Two pieces of the contract's evidence are not here, and each has its own
-record.** The skewed replica needs a way to offset one process's clock, which
-ADR 0085 left to the slice that first needs it. The kind-22 monthly pool mint
-stands behind two walls: no seat is in scope before height 28,800, and the
-engine's clock cannot be moved to a month's end. Kind 22 executes in C++
-against all 125 recorded execution vectors instead. ADR 0090 records both.
+record.** The skewed replica is `cometbft_skewed_replica_v9_test.py`, which
+reuses this run's model and moves one application's clock from outside the
+process (ADR 0091). The kind-22 monthly pool mint stands behind two walls: no
+seat is in scope before height 28,800, and the engine's clock cannot be moved to
+a month's end. Kind 22 executes in C++ against all 125 recorded execution
+vectors instead, which ADR 0090 records.
 """
 
 from __future__ import annotations

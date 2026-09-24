@@ -24,6 +24,7 @@ must not be readable as one.
 from __future__ import annotations
 
 import enum
+import os
 import pathlib
 import signal
 import socket
@@ -291,14 +292,20 @@ def start(
     database: pathlib.Path,
     genesis: pathlib.Path,
     socket_path: pathlib.Path,
+    environment: dict[str, str] | None = None,
 ) -> "subprocess.Popen[bytes]":
-    """Run the application against a home and wait until it answers."""
+    """Run the application against a home and wait until it answers.
+
+    `environment` is added to this process's own, for a test that has to change
+    something the binary reads from outside, such as its clock.
+    """
     if len(str(socket_path)) >= 100:
         raise RuntimeError("the socket pathname is too long for sun_path")
     process = subprocess.Popen(
         [str(executable), str(database), str(genesis), str(socket_path)],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.PIPE,
+        env=None if environment is None else {**os.environ, **environment},
     )
     try:
         await_socket(process, socket_path)

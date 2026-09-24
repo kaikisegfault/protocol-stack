@@ -28,11 +28,17 @@ type childProcess struct {
 	stopped bool
 }
 
+// startChild starts one child in `directory`, logging to `logPath`.
+//
+// `environment` is added to the supervisor's own, and an entry wins over an
+// inherited variable of the same name. An empty list leaves the child exactly
+// as it always was: inheriting everything and adding nothing.
 func startChild(
 	events chan<- childExit,
 	name string,
 	directory string,
 	logPath string,
+	environment []string,
 	command string,
 	arguments ...string,
 ) (*childProcess, error) {
@@ -46,6 +52,11 @@ func startChild(
 	}
 	cmd := exec.Command(command, arguments...)
 	cmd.Dir = directory
+	if len(environment) != 0 {
+		// `exec` keeps the last value of a repeated name, so appending is
+		// what makes an entry here override an inherited one.
+		cmd.Env = append(os.Environ(), environment...)
+	}
 	cmd.Stdout = logFile
 	cmd.Stderr = logFile
 	process := &childProcess{
