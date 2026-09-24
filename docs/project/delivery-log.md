@@ -42,9 +42,12 @@ empty blocks with a ninth check, and
 [ADR 0090](../decisions/0090-the-version-nine-devnet.md).
 `tools/verification_scope.py` classifies it `full`. The record commit was pushed
 while the code candidate `e306ba0`'s run was still in progress, which cancelled
-it. The final head carries the same code. The run on the final head, and the
-commits the slice merged as, are named when the record is anchored. **No
-accepted vector file, specification rule, manifest, encoding, kernel source,
+it. The final head carries the same code. Run 35946403883 on the final head
+`9bee8e7` then passed all six jobs. Each preset printed "CometBFT four-validator
+version-nine integration: passed", in about 44 seconds under each sanitizer
+preset. ctest stayed at 178 and 188, because the slice adds no entry. Merged by
+rebase as `009be9c` and `89f5a6b` on 2026-09-24. Two commits, ten files,
+**1,040 insertions and 81 deletions**. **No accepted vector file, specification rule, manifest, encoding, kernel source,
 or Go source changed.** One accepted document gained correction notes.
 
 **It is version eight's scenario on purpose.** The same transactions go through
