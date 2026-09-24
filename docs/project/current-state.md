@@ -4,6 +4,28 @@ Last updated: 2026-09-24
 
 ## Phase
 
+**M3.20j ran the skewed replica on 2026-09-24, and with it
+`consensus-application-v2`'s devnet evidence is met** apart from the kind-22
+mint, which stays below the engine. One replica of a four-validator version-nine
+network runs its clock 120 seconds ahead, then 120 seconds behind, then
+corrected, while the network runs. Ahead, it votes against every proposal it
+processes as `TIMESTAMP_BEHIND_TOLERANCE`; behind, as
+`TIMESTAMP_AHEAD_OF_TOLERANCE`; corrected, against none. The other three never
+vote against anything. The chain keeps committing and all four keep the model's
+root. The skewed replica's own blocks are committed, and transactions enter
+through it. [ADR 0091](../decisions/0091-the-skewed-replica-is-skewed-below-the-process.md)
+records it.
+
+**The clock is moved below the process, not by an option on it.** A test-only
+`LD_PRELOAD` library offsets `CLOCK_REALTIME` by a figure it re-reads from a
+file on every call. So the binary that ships is the one skewed, and the
+contract's "a deployment's clock is the platform real-time clock" stays true
+without amendment. The same library let the headless process test reach the two
+paths ADR 0085 recorded as unreachable: a clock unreadable at startup, and one
+that stops being readable under a running process. **One finding:** the pinned
+engine asks a proposer to process its own proposal, so a skewed replica votes
+against its own blocks too, and they still commit.
+
 **M3.20i ran the version-nine four-validator devnet on 2026-09-24.** Four
 independent replicas run version eight's whole scenario:
 
@@ -17,7 +39,7 @@ The model follows every height the engine closes, using each block's committed
 stamp. [ADR 0090](../decisions/0090-the-version-nine-devnet.md) records it.
 Two items of `consensus-application-v2`'s devnet evidence are not in the run. The
 kind-22 mint is covered by the C++ execution vectors instead, behind two recorded
-walls. The skewed replica is the next slice.
+walls. The skewed replica was the next slice, and M3.20j delivered it.
 
 **M3.20h ran a version-nine chain under one CometBFT node on 2026-09-24**, and
 it is the first time a version-nine block was decided by anything but a test
@@ -566,9 +588,11 @@ you need the history behind a claim here; read this one for what is true now.
   starts it six times. Against the real clock, the recorded January block is
   behind the tolerance and 2100 is ahead of it, while FinalizeBlock accepts
   January; the stamp survives a restart; and one millisecond of stamp moves an
-  empty block's root. **No consensus engine drives it yet** — the Go bridge
-  still speaks to version eight — so this is a node process rather than a
-  network.
+  empty block's root. **Since M3.20j it also reaches both clock-failure paths**
+  through the clock-offset shim. With no readable clock the process exits before
+  creating a database or a socket. Moved onto January, it accepts the January
+  stamp. When its clock becomes unreadable under it, the next proposal stops it
+  nonzero and leaves the store at genesis.
 - **The Go adapter's local client speaks version two.** As of 2026-09-21
   `localapp.ClientV9` writes and requires version-two frames. It carries the
   stamp in InitChain, ProcessProposal and FinalizeBlock, and reads Info's and
@@ -609,8 +633,18 @@ you need the history behind a claim here; read this one for what is true now.
   stamp. Every stop is followed by an audit that reads each store's durable
   height, **stamp**, and root through an independent C++ process. The driven
   replica refuses a block two heights ahead as a sequence failure, and a stamp
-  below its head as status `8`, and its store is unchanged afterwards. **No
-  replica's clock is skewed yet**, which is the next slice.
+  below its head as status `8`, and its store is unchanged afterwards.
+- **A version-nine network carries on around a replica with a wrong clock.** As
+  of 2026-09-24 `cometbft_skewed_replica_v9_test.py` preloads
+  `libprotocol-clock-offset.so` into replica 3's application only, through the
+  devnet's new `-application-env`, and moves its clock three times while the
+  network runs. At 120 s ahead it names `TIMESTAMP_BEHIND_TOLERANCE`; at 120 s
+  behind, `TIMESTAMP_AHEAD_OF_TOLERANCE`; corrected, nothing. Which heights each
+  clock governed is read from the replica's own committed height. The three
+  correct replicas never vote against a proposal. The chain commits throughout,
+  and all four keep the model's root and pass the durable audit. A block the
+  skewed replica proposed is committed. Two of the four transactions enter
+  through it.
 - **A four-node version-eight network refuses a transaction, and all four
   replicas refuse it identically.** As of 2026-09-11 two transactions the
   contract must reject — a transfer at a consumed nonce and a second purchase of
@@ -2442,9 +2476,9 @@ launcher values, and the devnet that runs them. M3.20e delivered the client,
 M3.20f the bridge, and M3.20g the launcher values, so what is left is running
 it: a version-nine chain under CometBFT, then the four-validator devnet.
 
-**As of 2026-09-24 what is left is the skewed replica.** M3.20h ran the chain
-under one node and M3.20i ran the four-validator devnet. After the skewed replica,
-`src/v8/` is deleted.
+**As of 2026-09-24 nothing of the port is left.** M3.20h ran the chain under one
+node, M3.20i the four-validator devnet, and M3.20j the skewed replica. What
+follows is deleting `src/v8/`.
 
 **One gap is not a port, and it must be settled before any network is expected
 to survive an outage.** Under CometBFT `v0.39.4` the first block after an outage
@@ -2648,34 +2682,29 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-**Run the skewed replica.** M3.20i ran the version-nine four-validator devnet
-([ADR 0090](../decisions/0090-the-version-nine-devnet.md)). One item of
-`consensus-application-v2`'s devnet evidence is still owed: *a devnet test moves
-one replica's clock beyond the tolerance and proves the remaining three continue
-while the skewed replica votes against proposals the others accept.*
-`tests/integration/cometbft_four_validator_v9_test.py` is the harness to extend,
-and its first decision is ADR 0085's owed one: how to offset one application's
-clock.
+**Delete `src/v8/`.** M3.20j ran the skewed replica
+([ADR 0091](../decisions/0091-the-skewed-replica-is-skewed-below-the-process.md)),
+so every version-nine layer now runs under a four-validator network, and every
+decision record from ADR 0080 to ADR 0085 names this deletion as the end of the
+migration. It is what M3.13t was to version seven, and
+[ADR 0070](../decisions/0070-the-version-seven-deletion.md) is the method: the
+kernel, storage, application, transport, node process, their tests, targets and
+CTest entries, and the Go adapter's version-eight client, codespace, protocol
+version and app state all go. Version eight's prose history stays, and so do its
+accepted vector files and Python model, which version nine's are pinned against
+or built on.
 
-- **An operator option on `protocol-application-v9`** that offsets the platform
-  reading. It adds no power an operator lacks, since they own the machine's
-  clock. It is a C++ source change, and the Go supervisor needs a per-replica way
-  to pass it.
-- **An `LD_PRELOAD` time shim**, which touches no source and adds a dependency.
-  It reaches the C++ application, which is dynamically linked, and not the
-  statically linked engine. That is enough, because C5 reads the application's
-  clock.
-
-**What the run must show.** Three validators hold 30 of 40 voting power, so the
-other three keep committing. The skewed replica's bridge logs decision `4` or `5`
-by name (ADR 0087). It still applies every decided block through `FinalizeBlock`,
-which applies no tolerance, so it keeps agreeing on roots while voting against
-proposals. The skew must exceed 60 seconds. When the skewed replica proposes,
-the stamp is still the engine's median rather than its own clock, so the other
-three accept its block and it alone votes against it.
-
-**Then `src/v8/` is deleted**, under ADR 0065's staged replacement, as version
-seven's was.
+**Check each item for a version-nine counterpart before deleting it, because
+the trap ADR 0070 found is set again.** `economy_v8_fuzz` exists and **there is
+no `economy_v9_fuzz`**. Deleting the first as a version-eight item would leave
+the live contract with no economy-codec fuzz target. The deletion slice must add
+`economy_v9_fuzz` first, with a smoke entry and a bounded timeout, as M3.13t
+added `economy_v8_fuzz`. **And one recorded sentence is wrong as it stands.**
+ADR 0082 says "`wire_v1` goes when `src/v8/` does". But version one's
+application still serves `wire_v1` (`serve_connection(ApplicationV1&)`), and
+`wire_v2.hpp` takes its shared declarations from `wire_v1.hpp`. So `wire_v1`
+stays, for the reason ADR 0070 kept version one, and ADR 0082 needs a correction
+note.
 
 **One verification gap is recorded and open.** `tools/verify_metadata.py`
 validates that a Markdown link's file exists and **does not validate its anchor
@@ -2951,9 +2980,9 @@ the fixture rather than left to be rediscovered.
   `dispatcher_v9`, and the socket overload — M3.20d the node process, and M3.20e
   the Go local client, and M3.20f the bridge on 2026-09-21, and M3.20g the
   launcher values on 2026-09-22, and M3.20h a version-nine chain under one
-  CometBFT node and M3.20i the four-validator devnet on 2026-09-24. **The nearest
-  slice is the skewed replica**, the last item of `consensus-application-v2`'s
-  devnet evidence. The
+  CometBFT node, M3.20i the four-validator devnet, and M3.20j the skewed replica
+  on 2026-09-24, the last item of `consensus-application-v2`'s devnet evidence.
+  **The nearest slice is deleting `src/v8/`.** The
   paragraphs that stood here enumerating what the binding version had
   to add are superseded by the specification itself and are not restated; three
   of them were **wrong**, and the corrections are the reason to read the
@@ -3692,6 +3721,27 @@ failures no peer can induce by choosing bytes. M3.20b established this with a
 probe rather than a reading and records the absence as a measurement. It is not a blocker — the decision stays implemented because the
 failures it guards are real — but a later session should not spend the slice
 hunting for the vector.
+
+**M3.20j ran the founder-decision gate and passed it.** Eight decisions were
+enumerated before any was judged:
+
+1. how one application's clock is offset;
+2. the size of the skew;
+3. which replica is skewed;
+4. whether both directions and a correction are run;
+5. how the supervisor hands one replica a different environment;
+6. what counts as a vote against;
+7. the thresholds a run must meet;
+8. the packaging.
+
+**The first was named as this slice's by ADR 0085 and ADR 0090 §6**, and
+[ADR 0091](../decisions/0091-the-skewed-replica-is-skewed-below-the-process.md)
+records the choice. The sixth is ADR 0087's logged decision. The rest are test
+mechanism and packaging. The one close to reserved is that a participant must
+run a roughly correct clock to vote. It is not new here: `calendar-v1`'s C5 made
+it a precondition, and `consensus-application-v2`'s own gate classified it
+delegated for that reason. This slice tests the rule and sets none. Nothing
+founder-reserved is touched.
 
 **M3.20i ran the founder-decision gate and passed it.** Nine decisions were
 enumerated before any was judged:
