@@ -595,7 +595,11 @@ Three deltas:
   `genesis_time`, and a differing value is fatal and never repaired in place;
 - the network-health observation adds the durable **timestamp** to the set of
   values all nodes must report identically, beside the chain ID, block height,
-  block-header application hash, ABCI Info height, and current application root;
+  block-header application hash, ABCI Info height, and current application root.
+  ABCI's Info carries no stamp, so the durable stamp is compared where the
+  durable head is read, by the independent audit over version two's Info. The
+  live observation compares the root, which commits to the stamp
+  ([ADR 0090](../decisions/0090-the-version-nine-devnet.md));
 - a replica whose clock is outside `TIMESTAMP_TOLERANCE_MILLIS` of its peers'
   votes against proposals it should accept. **This is a liveness condition, not a
   safety one**, it is invisible to every value the health check compares, and it
@@ -741,6 +745,15 @@ Before this contract is considered implemented:
   mint, exposes the same height, timestamp, and root on all four replicas, stops,
   restarts, audits every stopped ledger through an independent C++ process, and
   continues at a later height;
+  **Correction of 2026-09-24:** the kind-22 mint's evidence stays below the
+  engine, and this list was written without the two walls in front of it. No
+  seat on a devnet begun at genesis is in scope before height 28,800, and the
+  engine's clock cannot be moved to a month's end.
+  `economy-transition-v9-execution-cpp` reproduces all 125 recorded execution
+  vectors, the payout and the mint included.
+  [ADR 0090](../decisions/0090-the-version-nine-devnet.md) records it. The
+  durable timestamp is compared by the independent audit, which reads it over
+  Info;
 - a devnet test moves one replica's clock beyond the tolerance and proves the
   remaining three continue while the skewed replica votes against proposals the
   others accept;
