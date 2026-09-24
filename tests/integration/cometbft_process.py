@@ -240,11 +240,31 @@ def application_info(
     wired to the wrong binary.
 
     **Version nine answers over the version-two frame** and refuses a version-one
-    frame at the header, and its answer carries the durable stamp between the
-    height and the root. The stamp is not returned: the version-nine root
-    commits to it, so a caller comparing the root against an independent
-    derivation has compared the stamp as well.
+    frame at the header. Its answer also carries the durable stamp, which this
+    function drops. The version-nine root commits to the stamp, so comparing the
+    root against an independent derivation compares the stamp too.
+    `application_head_v9` returns the stamp itself for a caller that states it.
     """
+    height, _stamp, root = _application_head(path, protocol_version)
+    return height, root
+
+
+def application_head_v9(path: pathlib.Path) -> tuple[int, int, bytes]:
+    """A version-nine application's durable height, stamp, and root.
+
+    ABCI's Info carries no stamp, so this, over the application's own socket, is
+    the one place a replica's durable stamp can be read at all.
+    """
+    height, stamp, root = _application_head(path, 9)
+    if stamp is None:
+        raise RuntimeError("a version-two Info answer carried no stamp")
+    return height, stamp, root
+
+
+def _application_head(
+    path: pathlib.Path,
+    protocol_version: int,
+) -> tuple[int, int | None, bytes]:
     wire_version, payload_size = (2, 62) if protocol_version == 9 else (1, 54)
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
         connection.connect(str(path))
@@ -273,7 +293,10 @@ def application_info(
             f"application reports protocol version {app_version}, "
             f"not {protocol_version}"
         )
-    return height, payload[-32:]
+    stamp = (
+        struct.unpack(">Q", payload[22:30])[0] if wire_version == 2 else None
+    )
+    return height, stamp, payload[-32:]
 
 
 def inspect_identity(

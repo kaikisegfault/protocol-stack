@@ -33,6 +33,7 @@ into one block in a chosen order.
 
 from __future__ import annotations
 
+import copy
 import pathlib
 import sys
 from dataclasses import dataclass
@@ -270,19 +271,25 @@ class Session:
             },
         )
 
-    def alice_pays_bob(self, nonce: int) -> bytes:
-        """A confirmed transfer: the signer authorizes, the HUB key confirms."""
+    def alice_pays_bob(self, nonce: int, amount: int = TRANSFER_AMOUNT) -> bytes:
+        """A confirmed transfer: the signer authorizes, the HUB key confirms.
+
+        `amount` exists for the one caller that needs two transfers at one
+        nonce: the same bytes twice never reach an application, because the
+        engine's mempool discards a hash it has seen, so a stale nonce the
+        kernel refuses has to be a *different* transaction.
+        """
         recipient = escrow_id(BOB_IDENTITY, 0)
         message = messages.transfer_confirm_message(
             self.chain_id, ALICE_IDENTITY, escrow_id(ALICE_IDENTITY, 0),
-            recipient, TRANSFER_AMOUNT, VALID_UNTIL,
+            recipient, amount, VALID_UNTIL,
         )
         return _build(
             self._signer, self.chain_id, c.TRANSFER_VERIFIED, self.alice_signer,
             nonce,
             {
                 "recipient_escrow_id": recipient,
-                "amount_atomic": TRANSFER_AMOUNT,
+                "amount_atomic": amount,
                 "hub_signature": self._signer.sign(self.alice_hub, message),
             },
         )
@@ -322,6 +329,36 @@ class Session:
         """
         return self._apply([], timestamp)
 
+    def apply_refused(self, raw: bytes, timestamp: int, expected: int) -> Block:
+        """Execute one block whose transaction the contract must refuse by name.
+
+        A refusal is admitted, not dropped: only three things fail admission,
+        all readable from the bytes, so everything a running network can be made
+        to refuse arrives here with a receipt. The code is passed in because two
+        different defects both refuse, and only one refuses for the stated
+        reason.
+        """
+        block = self._apply([raw], timestamp)
+        actual = block.receipts[0][RESULT_OFFSET]
+        if actual != expected or actual == 0:
+            raise RuntimeError(
+                f"fixture transaction produced result {actual}, expected "
+                f"{expected}"
+            )
+        return block
+
+    def block_if_empty(self, timestamp: int) -> Block:
+        """The block the next height would be with no transaction at `timestamp`.
+
+        The ledger is deep-copied rather than advanced, because asking the
+        question must not spend the height. A refused transaction writes no
+        state and charges no fee, so a block whose only transaction was refused
+        must land on exactly this root at the same height and stamp.
+        """
+        probe = copy.deepcopy(self._ledger)
+        outcome = execute_block(probe, timestamp, [], self._signer)
+        return self._block(outcome, [])
+
     def _apply(self, raw_inputs: list[bytes], timestamp: int) -> Block:
         outcome = execute_block(self._ledger, timestamp, raw_inputs, self._signer)
         if len(outcome.admissions) != len(raw_inputs):
@@ -332,6 +369,10 @@ class Session:
                     "fixture transaction was refused at admission: "
                     f"{admission.code}"
                 )
+        return self._block(outcome, raw_inputs)
+
+    @staticmethod
+    def _block(outcome, raw_inputs: list[bytes]) -> Block:
         return Block(
             height=outcome.height,
             timestamp=outcome.timestamp,

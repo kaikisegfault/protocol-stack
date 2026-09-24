@@ -24,6 +24,7 @@ from dataclasses import dataclass
 
 from cometbft_process import (
     ManagedProcess,
+    application_head_v9,
     application_info,
     await_unix_socket,
     reserve_non_ephemeral_port_block,
@@ -370,13 +371,22 @@ def audit_durable_heads(
     workspace: pathlib.Path,
     expected_height: int,
     expected_application_root: bytes,
+    expected_timestamp: int | None = None,
 ) -> None:
     """Open every replica's own database and require the same head from each.
 
     This is the claim requirement 13 is about, and it is asked of the store
     rather than of the engine: four processes that were never told each other's
     answer must hold the same root at the same height.
+
+    **Version nine adds the durable stamp**, which `consensus-application-v2`
+    requires all four replicas to hold identically. ABCI's Info carries none,
+    so it is read here, over each application's own socket, and a version-nine
+    network must be audited with one.
     """
+    if (network.protocol_version == 9) != (expected_timestamp is not None):
+        raise RuntimeError(
+            "a durable stamp is audited for version nine and only for it")
     network.socket_root.mkdir(mode=0o700)
     try:
         for index in range(NODE_COUNT):
@@ -393,7 +403,16 @@ def audit_durable_heads(
             )
             try:
                 await_unix_socket(process, socket_path)
-                if application_info(
+                if expected_timestamp is not None:
+                    if application_head_v9(socket_path) != (
+                        expected_height,
+                        expected_timestamp,
+                        expected_application_root,
+                    ):
+                        raise RuntimeError(
+                            f"node {index} durable C++ head mismatch"
+                        )
+                elif application_info(
                     socket_path, network.protocol_version
                 ) != (expected_height, expected_application_root):
                     raise RuntimeError(
