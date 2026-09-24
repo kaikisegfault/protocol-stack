@@ -32,6 +32,73 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M3.20j was delivered
+
+**One replica of a version-nine network runs on a wrong clock, and the network
+does not notice.** Issue #348 delivered
+`tests/integration/cometbft_skewed_replica_v9_test.py` in `tools/verify.sh`, the
+test-only `libprotocol-clock-offset.so` and its Python helper, the devnet
+supervisor's `-application-env`, two RPC helpers, the headless process test's
+two clock-failure paths, and
+[ADR 0091](../decisions/0091-the-skewed-replica-is-skewed-below-the-process.md).
+`tools/verification_scope.py` classifies it `full`. The code and its record were
+pushed together so one hosted run covers the final head. That run, and the
+commits the slice merged as, are named when the record is anchored. ctest stays
+at 178 and 188, because the slice adds a build target and an argument to an
+existing entry rather than an entry. **No accepted vector file, specification
+rule, manifest, encoding, kernel source, or production process changed.**
+`protocol-application-v9` is untouched.
+
+**The decision was where to move the clock, and the answer was below the
+process.** ADR 0085 had left two candidates: an operator option that offsets
+the reading, and an `LD_PRELOAD` shim. The option contradicts two accepted
+statements as written. The contract says a deployment's clock *is* the platform
+real-time clock, and ADR 0085 §5 says the process takes no flag that moves it.
+It would also put the skew arithmetic in the shipped binary. A shim of one
+function, built in the repository, leaves both statements true. It skews the
+binary that ships, at the level where a real machine's clock is wrong.
+`libfaketime` would have been an unpinned dependency installed on every runner,
+and a Linux time namespace cannot move `CLOCK_REALTIME` at all.
+
+**The shim re-reads its offset on every call, and that is what made one run
+cover three clocks.** Replica 3 starts 120 s ahead, moves to 120 s behind, and
+is corrected, all while the network runs. Which heights each clock governed is
+read from the replica's own committed height before and after each rewrite. Its
+`ProcessProposal` for `h` runs while it stands at `h - 1`, so the bracket is
+exact rather than timed. **An unreadable offset is an unreadable clock**, never
+real time, so a misconfigured run cannot pass as a skewed one. That same
+property let the headless process test reach the startup refusal and the
+runtime stop ADR 0085 recorded as unreachable. Two shim mutants were each
+caught, one falling back to real time and one ignoring the offset.
+
+**The sanitizer interplay was found before the first push, not by the matrix.**
+This container cannot reach the pinned libsodium and SQLite hosts. The two
+targets were built in a scratch copy against the system libraries, the Go
+binaries with the pinned toolchain through the module proxy, and both new tests
+run there under a debug and a GCC sanitizer build. GCC's dynamic ASan runtime
+refuses to start behind any preloaded library. The harness sets
+`verify_asan_link_order=0`, which is safe because the shim defines no function
+that check protects. Clang's static runtime intercepts `clock_gettime` itself and
+chains to the shim. The guard that every target take the project's flags then
+failed on the first draft, which had kept the shim out of
+`PROTOCOL_STACK_TARGETS`. Moving it in gave its parser UBSan coverage, and an
+instrumented shim loads cleanly into an instrumented application under both
+compilers.
+
+**The run found what the contract predicted, and one thing it did not say.** In
+the first local run, replica 3 voted against every proposal from height 1 to 9,
+by the right name on each side, and against none from 10 to 14. The other three
+voted against nothing, and all four held the model's root throughout. **It also
+voted against its own blocks** at heights 1, 5, and 9, because the pinned engine
+asks a proposer to process its own proposal. All three were committed by the
+other three, because a block's stamp is the engine's median of vote times and
+not the proposer's clock.
+
+**The deletion that follows is set with the trap M3.13t found.** Surveying
+`src/v8/` for the handoff showed `economy_v8_fuzz` has no version-nine
+counterpart. It also showed that ADR 0082's "`wire_v1` goes when `src/v8/` does"
+is wrong, because version one still serves `wire_v1`. The handoff records both.
+
 ### How M3.20i was delivered
 
 **A four-validator version-nine network runs.** Issue #345 and PR #346 delivered
