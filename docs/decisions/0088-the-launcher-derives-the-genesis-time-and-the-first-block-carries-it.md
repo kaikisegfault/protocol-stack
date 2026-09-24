@@ -150,6 +150,14 @@ normally" true. It is not taken now, for three reasons:
 
 If launching a network proves fragile in practice, this is the change to make.
 
+**Extended on 2026-09-24 by
+[ADR 0089](0089-a-version-nine-chain-resumes-only-inside-the-tolerance.md).**
+The same halt holds at every height once a quorum has been down for longer than
+the tolerance: the first block after the outage carries the median of precommits
+cast before it. The exemption above does not reach that case. The application
+cannot check a median whose vote times ABCI does not give it, and ADR 0089 lists
+the candidates that do.
+
 ## Consequences
 
 - `protocol-cometbft-init` and `protocol-cometbft-devnet` accept version 9, and
