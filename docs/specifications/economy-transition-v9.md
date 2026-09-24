@@ -654,6 +654,12 @@ months between, and a chain whose genesis timestamp is decades in the past would
 close hundreds at its first assignment. Iterating them would make one block's
 work proportional to how long the network was down. Paying `a` and jumping is
 exact and costs the same on every assignment.
+**Correction of 2026-09-24:** under CometBFT `v0.39.4` neither chain reaches that
+assignment. A halted chain's next block carries a stamp from before the halt,
+and a genesis far in the past stamps block 1 with itself, and C5 refuses both
+([ADR 0089](../decisions/0089-a-version-nine-chain-resumes-only-inside-the-tolerance.md),
+[ADR 0088](../decisions/0088-the-launcher-derives-the-genesis-time-and-the-first-block-carries-it.md)).
+The single pass is unchanged, and it is what an engine that can resume needs.
 
 **The ascending-order rule is preserved and is not decorative.**
 `unreferred-pool-payout-v1` makes the order normative so that a carry from an

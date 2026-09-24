@@ -32,6 +32,68 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M3.20h was delivered
+
+**A version-nine chain runs under CometBFT.** Issue #342 and PR #343 delivered
+`tests/integration/version_nine_chain.py` and its own contract as the ctest
+entry `version-nine-chain-fixture`. They also delivered
+`tests/integration/cometbft_version_nine_test.py` in `tools/verify.sh`, the
+version-nine identity, stamp, and `Info` in the integration helpers, and
+[ADR 0089](../decisions/0089-a-version-nine-chain-resumes-only-inside-the-tolerance.md).
+`tools/verification_scope.py` classifies it `full`. On the code candidate
+`56f16d2`, run 35943159888 passed gcc-debug, clang-debug, and clang-sanitizers
+before the record commit was pushed. Each printed "CometBFT version-nine
+integration: passed" at durable height 6, about eighteen seconds after the
+version-eight run. ctest reached **178** in the debug presets and **188** under
+`clang-sanitizers`, one more than M3.20g because the slice adds exactly one
+entry, `version-nine-chain-fixture`. The run on the final head, and the commits
+the slice merged as, are named when the record is anchored. **No accepted vector
+file, specification rule, manifest, encoding, kernel source, or Go source
+changed.** Three accepted documents gained correction notes.
+
+**The empty block was the one assumption only a node could confirm.** It rests
+on reading `needProofBlock`, and the run waited for the engine to close height 3
+on its own. It did in every preset, well inside the 15-second wait.
+
+**Nothing about a version-nine block is known before it commits.** Version
+eight's fixture froze five blocks before any node ran. Version nine cannot,
+because its root commits to the head's stamp and the engine chooses the stamp.
+So the fixture is a live ledger that is handed each stamp. The run commits
+first, reads the header's time, and converts it by the contract's rule, restated
+in Python. Only then does it ask the model. The model and the node agree only if
+both derived the same millisecond, so every comparison checks the bridge's
+conversion without a line of code aimed at it. The genesis is stamped with the
+harness's clock when the run starts, a few seconds **behind** the node's start
+rather than ahead of it, as the handoff had suggested. A future genesis makes
+`Node.OnStart` sleep before its RPC server exists, and C5 already allows 60
+seconds behind.
+
+**The empty block is the sharpest check the run makes, and the engine supplies
+it.** CometBFT proposes without waiting for a transaction whenever the last
+block changed the app hash (`needProofBlock`). A version-nine block always
+changes it, so the engine closes a block three seconds after every block,
+whether or not anyone sent anything. Its root depends on its height, its stamp,
+and the state before it, so a mismatch there has one cause. The fixture's own
+probes confirm the checks bite. Rounding up instead of truncating, reading the
+header's fraction from the wrong end, and an empty block ignoring its stamp were
+each caught by the check written for them.
+
+**The finding came from asking what the restart costs.** The first block after a
+restart carries the median of the previous height's precommit times. A restarted
+node rebuilds those from its stored commit (`reconstructLastCommit`), no
+validator re-signs a committed height, and every validator runs
+`ProcessProposal`. So that block's stamp is always from before the stop. Under
+C5, once a quorum has been down for longer than 60 seconds, every correct machine
+refuses that block in every round, and the chain never produces another.
+**ADR 0088's height-one halt is one instance of this.** At height one the
+"outage" is the time before the network first starts. The run restarts in
+seconds and is unaffected. A devnet that stops every replica must restart inside
+the window, and one that stops a single replica is unaffected, because block
+sync never calls `ProcessProposal`. A production network cannot promise to be
+down for less than a minute. ADR 0089 records the source evidence and three
+candidate fixes, and takes none of them. Every candidate is a new contract
+version, and no current slice depends on the choice.
+
 ### How M3.20g was delivered
 
 **A CometBFT home can be initialised for version nine.** Issue #339 and PR #340

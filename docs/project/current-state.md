@@ -1,8 +1,29 @@
 # Current state
 
-Last updated: 2026-09-22
+Last updated: 2026-09-24
 
 ## Phase
+
+**M3.20h ran a version-nine chain under one CometBFT node on 2026-09-24**, and
+it is the first time a version-nine block was decided by anything but a test
+driver. The genesis is stamped with the harness's clock when the run starts.
+Every block is compared with the independent Python model: its receipt, its
+root, its header hash, and its published identifier. The model computes each
+from the stamp the engine committed, so every comparison is also an end-to-end
+check of the bridge's time conversion.
+[ADR 0089](../decisions/0089-a-version-nine-chain-resumes-only-inside-the-tolerance.md)
+records it.
+
+**Its finding outweighs the run.** Under CometBFT `v0.39.4` the first block
+after an outage carries the median of precommits cast **before** the outage,
+because a restarted node rebuilds them from its stored commit. So under the
+accepted C5, **a version-nine chain whose quorum is down for more than 60 seconds
+never produces another block**. ADR 0088's height-one halt is the special case
+where the outage is the time before the network first starts. The run restarts
+within seconds and is unaffected. The devnet can restart a whole network inside
+the window. **A production network cannot promise that**, so the rule's cost is
+recorded under "Remaining gap" as the thing to settle before any network is
+expected to survive an outage.
 
 **The owner directed a second, larger pivot on 2026-08-19, and it changes the
 architecture rather than the milestone.** The ecosystem AI moves off
@@ -554,8 +575,17 @@ you need the history behind a claim here; read this one for what is true now.
   exactly millisecond precision, and refuse an existing genesis that differs in
   it. The devnet reads the stamp from the application's identity mode and
   requires exactly the keys the version prints, so the wrong binary for the
-  version is refused before a home exists. **No version-nine chain has run under
-  CometBFT yet**, so this is a launcher rather than a network.
+  version is refused before a home exists.
+- **A version-nine chain runs under one CometBFT node.** As of 2026-09-24
+  `cometbft_version_nine_test.py` mints a genesis stamped with the current time.
+  It commits six blocks through a real node, restarting it after the third, and
+  compares every receipt, root, header hash and block identifier with the Python
+  model. The model derives each from the header time the engine committed.
+  Block 1 carries the genesis stamp to the nanosecond. Block 3 is one the engine
+  closed with no transaction, and its root is the model's for its height and
+  stamp alone. `version-nine-chain-fixture` checks the fixture's own contract in
+  under a second. **It is one validator**, so the four-validator devnet is still
+  owed.
 - **A four-node version-eight network refuses a transaction, and all four
   replicas refuse it identically.** As of 2026-09-11 two transactions the
   contract must reject — a transfer at a consumed nonce and a second purchase of
@@ -2387,6 +2417,23 @@ launcher values, and the devnet that runs them. M3.20e delivered the client,
 M3.20f the bridge, and M3.20g the launcher values, so what is left is running
 it: a version-nine chain under CometBFT, then the four-validator devnet.
 
+**As of 2026-09-24 what is left is the devnet.** M3.20h ran the chain under one
+node.
+
+**One gap is not a port, and it must be settled before any network is expected
+to survive an outage.** Under CometBFT `v0.39.4` the first block after an outage
+carries the median of precommits cast before the outage. Under the accepted C5,
+a version-nine chain whose quorum is down for more than 60 seconds therefore
+halts at its next height for good.
+[ADR 0089](../decisions/0089-a-version-nine-chain-resumes-only-inside-the-tolerance.md)
+records the pinned-source evidence and three candidates. The first takes C5's
+behind side from BFT time rather than the machine's clock. The second moves to
+an engine whose proposer stamps its own clock. The third is ADR 0088's
+exemption generalised, which collapses into the first. Each is a new contract
+version, because `consensus-application-v2` freezes the acceptance rules. It
+blocks no current slice: the devnet can restart a network inside the window.
+**It blocks any claim that a version-nine network recovers from an outage.**
+
 **One of those absences now carries a dependency rather than only a roadmap
 position.** The founder answer of 2026-08-16 makes external purchasability the
 permanent funding path for a new participant once the entry airdrop's
@@ -2575,46 +2622,41 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-**Run a version-nine chain under one CometBFT node.** Every piece of a
-version-nine node exists and can now be launched (M3.20g), and none of it has met
-a consensus engine. The nearest runnable result is version eight's
-`tests/integration/cometbft_version_eight_test.py` rebound to version nine: one
-validator, a canonical genesis minted by the independent Python model, a signed
-transfer gossiped, proposed, finalized and committed, and the engine required to
-report the root the model derives. It is the first time a version-nine block
-would be decided by anything but a test driver.
+**Run the version-nine devnet.** M3.20h ran a version-nine chain under one
+CometBFT node, so every piece of a version-nine network exists and has met a
+consensus engine. The nearest runnable result is version eight's
+`tests/integration/cometbft_four_validator_v8_test.py` rebound to version nine.
+Its evidence is already listed in `consensus-application-v2`: four validators
+commit a signed transfer and a kind-22 monthly pool mint, and agree on height,
+**timestamp**, and root. They stop, restart, pass an independent audit, and
+continue. Then one replica's clock is moved beyond the tolerance, and the other
+three continue while it votes against. Two choices belong to that slice and are
+recorded where they arose: how to skew one clock (ADR 0085), and where the health
+check reads the durable stamp, since ABCI's Info carries none (ADR 0087).
 
-**Two things make it more than a rebind:**
+**M3.20h built most of what it reuses.** `version_nine_chain.Session` is a live
+ledger that `apply` and `apply_empty` advance with the stamp the engine chose, so
+it can follow a network that closes blocks nobody asked for. The engine closes
+one three seconds after any block that moved the root, and a version-nine block
+always does. `cometbft_rpc.committed_block` and `version_nine_chain.engine_millis`
+turn a header into that stamp. The process helpers speak version nine's identity
+and `Info`.
 
-- **The genesis must be minted at run time with a current stamp.** Under
-  CometBFT `v0.39.4` block 1 is stamped with the genesis time exactly, and C5
-  refuses it as decision `5` once civil time is more than 60 seconds past that,
-  in every round, for good.
-  [ADR 0088](../decisions/0088-the-launcher-derives-the-genesis-time-and-the-first-block-carries-it.md)
-  records it. **A recorded vector genesis therefore never produces a block.**
-  `simulation/economy_transition_v9/genesis.py`'s `Genesis` already carries
-  `genesis_timestamp`, so the stamp is a constructor argument. Set it at or a
-  few seconds ahead of the node's start and inside the harness's readiness
-  bound, because CometBFT serves no RPC while it sleeps toward a future genesis
-  time.
-- **The expected root depends on the engine's timestamp**, which the test learns
-  only after the block commits, because version nine's state commits to the
-  head's timestamp. The model's expectation has to be computed from the
-  committed header's time, truncated to milliseconds as the bridge does, which
-  makes the comparison an end-to-end check of the conversion as well.
+**It inherits two windows, and the single-node harness already checks both by
+name** (`require_inside_window`):
 
-It also needs a `version_nine_chain.py` beside `version_eight_chain.py`, and
-`inspect_identity` in `tests/integration/cometbft_process.py` reading the third
-key for version nine, as the Go parser now does.
-
-**Then the devnet**, whose evidence `consensus-application-v2` already lists:
-four validators commit a signed transfer and a kind-22 monthly pool mint, agree
-on height, **timestamp**, and root, stop, restart, pass an independent audit,
-and continue. Then one replica's clock is moved beyond the tolerance and the
-other three continue while it votes against. Two choices belong to that slice
-and are recorded where they arose: how to skew one clock (ADR 0085), and where
-the health check reads the durable stamp, since ABCI's Info carries none
-(ADR 0087). It inherits the launch constraint above.
+- **The launch window** (ADR 0088). Mint the genesis at run time with the
+  harness's clock. The supervisor's 90-second readiness bound is longer than the
+  60-second tolerance, so check the window after the network reports ready
+  rather than trusting the bound.
+- **The restart window** (ADR 0089). A stop of the **whole** network must end
+  inside the tolerance, counted from the last committed stamp. Version eight's
+  run does work while all four replicas are down, and all of it spends the
+  window: a durable audit of four databases, and a driven replica staged and fed
+  a block at a height its peers never proposed. Keep that work short, or move it
+  after the restart. **A single replica may stay down as long as it likes**,
+  because the other three keep the chain live and a returning replica catches up
+  through block sync, which never calls `ProcessProposal`.
 
 **The devnet has one open question, and it should be settled before the slice
 starts: `consensus-application-v2`'s kind-22 evidence stands behind two walls.**
@@ -2790,6 +2832,16 @@ writers, the exact per-version identity parse, `-genesis-timestamp`, and
 the genesis time itself**, which the paragraph at the head of this section
 carries forward.
 
+**M3.20h delivered the single-node chain on 2026-09-24**, so the sentence that
+stood at the head of this section naming it is history. Delivered: a live
+fixture over a caller-stamped genesis and its own ctest entry, a run that
+computes every block from the engine's committed stamp, the helpers' version-nine
+identity and `Info`, and
+[ADR 0089](../decisions/0089-a-version-nine-chain-resumes-only-inside-the-tolerance.md).
+**Reading the pinned engine for its restart found that ADR 0088's height-one
+halt holds at every height after an outage of a quorum**, which "Remaining gap"
+now carries.
+
 **Three things M3.19a settled that the ports must not re-open.** The C++
 application reads its own clock, once per `ProcessProposal`, and the local
 protocol never carries a clock reading — a bridge-supplied reading could make a
@@ -2895,9 +2947,10 @@ the fixture rather than left to be rediscovered.
   `ApplicationV9`, both on 2026-09-19, and M3.20c the transport — `response_v9`,
   `dispatcher_v9`, and the socket overload — M3.20d the node process, and M3.20e
   the Go local client, and M3.20f the bridge on 2026-09-21, and M3.20g the
-  launcher values on 2026-09-22. **The nearest slice is a version-nine chain
-  under one CometBFT node**, then the devnet — still version eight's, and
-  holding an accepted contract that states what each must satisfy. The
+  launcher values on 2026-09-22, and M3.20h a version-nine chain under one
+  CometBFT node on 2026-09-24. **The nearest slice is the version-nine devnet**,
+  which replaces version eight's and has an accepted contract stating what it
+  must satisfy. The
   paragraphs that stood here enumerating what the binding version had
   to add are superseded by the specification itself and are not restated; three
   of them were **wrong**, and the corrections are the reason to read the
@@ -3636,6 +3689,31 @@ failures no peer can induce by choosing bytes. M3.20b established this with a
 probe rather than a reading and records the absence as a measurement. It is not a blocker — the decision stays implemented because the
 failures it guards are real — but a later session should not spend the slice
 hunting for the vector.
+
+**M3.20h ran the founder-decision gate and passed it.** Seven decisions were
+enumerated before any was judged:
+
+- the fixture genesis's figures;
+- which transitions the run commits, and in what order;
+- where the restart falls;
+- how the genesis is stamped and when;
+- how an engine time becomes the model's millisecond;
+- the launch and restart margin; and
+- the packaging: the helpers, the file, test, ADR, issue, branch and PR shape.
+
+**The figures are the version-nine trace's**, reused rather than chosen. The
+order is the only one the contract admits. The conversion is
+`consensus-application-v2`'s rule, restated rather than re-chosen. The stamp's
+timing follows from ADR 0088. The rest are test mechanism and packaging, which
+[ADR 0089](../decisions/0089-a-version-nine-chain-resumes-only-inside-the-tolerance.md)
+records.
+
+**One finding was close enough to name.** A version-nine chain cannot resume
+from an outage of a quorum longer than the tolerance. It is classified as
+delegated for four reasons: it is a consequence of the accepted C5 under the
+pinned engine rather than a new rule, no rule changed, every candidate fix is a
+consensus mechanism, and none of them changes what a participant must do, own,
+run, or receive. Nothing founder-reserved is touched.
 
 **M3.20g ran the founder-decision gate and passed it.** Nine decisions were
 enumerated before any was judged: the `genesis_time` derivation; the app-state

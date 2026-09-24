@@ -230,7 +230,12 @@ genesis time rather than a median, and refuses any other value, so at height one
 C5 holds only when civil time is within the tolerance of `g`. The rule is
 unchanged.
 [ADR 0088](../decisions/0088-the-launcher-derives-the-genesis-time-and-the-first-block-carries-it.md)
-records what it requires of a launcher.
+records what it requires of a launcher. **Extended on 2026-09-24:** the argument
+also fails at the first height after a quorum has been down for longer than the
+tolerance. That block's median is taken over precommits cast before the outage,
+so every correct machine refuses it.
+[ADR 0089](../decisions/0089-a-version-nine-chain-resumes-only-inside-the-tolerance.md)
+records it.
 
 **C5 is not re-applied on replay, and C1 and C2 are.** C5 is the only rule here
 whose input is not in the block. A machine replaying history, restoring from a
@@ -423,6 +428,13 @@ C2 requires only that time not go backwards. A chain that halts for six weeks
 resumes with a stamp six weeks later, so `month_of_height(h)` may exceed
 `month_of_height(h - 1)` by more than one. Every index strictly between them is
 an **empty month**: a month with no heights at all.
+
+**Correction of 2026-09-24:** under CometBFT `v0.39.4` a chain whose quorum is
+down for longer than the tolerance does not resume at all, because its next
+block carries a stamp from before the halt, which C5 refuses.
+[ADR 0089](../decisions/0089-a-version-nine-chain-resumes-only-inside-the-tolerance.md)
+records it. The rule here is unchanged. It is what a chain that can resume must
+satisfy.
 
 An opening block therefore closes **every** index in
 `[month_of_height(h - 1), month_of_height(h))` — its predecessor's own month and
