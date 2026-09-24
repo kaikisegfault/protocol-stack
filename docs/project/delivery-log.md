@@ -46,8 +46,12 @@ before the record commit was pushed. Each printed "CometBFT version-nine
 integration: passed" at durable height 6, about eighteen seconds after the
 version-eight run. ctest reached **178** in the debug presets and **188** under
 `clang-sanitizers`, one more than M3.20g because the slice adds exactly one
-entry, `version-nine-chain-fixture`. The run on the final head, and the commits
-the slice merged as, are named when the record is anchored. **No accepted vector
+entry, `version-nine-chain-fixture`. The record commit's push cancelled that
+run's last job, gcc-sanitizers. Run 35944130993 on the final head `6cb74b7`
+then passed all six jobs, gcc-sanitizers included, and each preset printed the
+same version-nine line. Merged by rebase as `9833369` and `10ee8bd` on
+2026-09-24. Two commits, thirteen files, **1,649 insertions and 66 deletions**.
+**No accepted vector
 file, specification rule, manifest, encoding, kernel source, or Go source
 changed.** Three accepted documents gained correction notes.
 
