@@ -42,10 +42,13 @@ supervisor's `-application-env`, two RPC helpers, the headless process test's
 two clock-failure paths, and
 [ADR 0091](../decisions/0091-the-skewed-replica-is-skewed-below-the-process.md).
 `tools/verification_scope.py` classifies it `full`. The code and its record were
-pushed together so one hosted run covers the final head. That run, and the
-commits the slice merged as, are named when the record is anchored. ctest stays
-at 178 and 188, because the slice adds a build target and an argument to an
-existing entry rather than an entry. **No accepted vector file, specification
+pushed together, so one hosted run covers the final head. Run 36067243440 on
+`aab7993` passed all six jobs. Each preset printed "CometBFT skewed-replica
+version-nine integration: passed", in about 46 seconds under each sanitizer
+preset. ctest stayed at 178 and 188, because the slice adds a build target and
+an argument to an existing entry rather than an entry. Merged by rebase as
+`7de55e2` and `fa68b69` on 2026-09-24 through PR #349. Two commits, nineteen
+files, **1,330 insertions and 60 deletions**. **No accepted vector file, specification
 rule, manifest, encoding, kernel source, or production process changed.**
 `protocol-application-v9` is untouched.
 
