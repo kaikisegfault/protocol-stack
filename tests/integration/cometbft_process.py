@@ -234,21 +234,30 @@ def application_info(
 ) -> tuple[int, bytes]:
     """The application's own durable head, read straight off its Unix socket.
 
-    `Info` is the one operation whose request and response are identical in both
-    ledger versions, so the only version-specific thing here is which protocol
-    version the application must report -- and requiring it is what catches a
-    stack wired to the wrong binary.
+    Versions one and eight answer `Info` identically over the version-one frame,
+    so for them the only version-specific thing here is which protocol version
+    the application must report -- and requiring it is what catches a stack
+    wired to the wrong binary.
+
+    **Version nine answers over the version-two frame** and refuses a version-one
+    frame at the header, and its answer carries the durable stamp between the
+    height and the root. The stamp is not returned: the version-nine root
+    commits to it, so a caller comparing the root against an independent
+    derivation has compared the stamp as well.
     """
+    wire_version, payload_size = (2, 62) if protocol_version == 9 else (1, 54)
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
         connection.connect(str(path))
-        connection.sendall(HEADER.pack(b"PSAP", 1, 0, INFO_KIND, 1, 0))
+        connection.sendall(
+            HEADER.pack(b"PSAP", wire_version, 0, INFO_KIND, 1, 0)
+        )
         header = receive_exact(connection, HEADER.size)
         magic, version, direction, kind, request_id, size = HEADER.unpack(
             header
         )
         if (
             magic != b"PSAP"
-            or version != 1
+            or version != wire_version
             or direction != 1
             or kind != INFO_KIND
             or request_id != 1
@@ -256,7 +265,7 @@ def application_info(
         ):
             raise RuntimeError("invalid application Info response header")
         payload = receive_exact(connection, size)
-    if len(payload) != 54 or payload[:6] != b"\0\0\0\0\0\0":
+    if len(payload) != payload_size or payload[:6] != b"\0\0\0\0\0\0":
         raise RuntimeError("invalid application Info response")
     app_version, height = struct.unpack(">QQ", payload[6:22])
     if app_version != protocol_version:
@@ -264,7 +273,7 @@ def application_info(
             f"application reports protocol version {app_version}, "
             f"not {protocol_version}"
         )
-    return height, payload[22:]
+    return height, payload[-32:]
 
 
 def inspect_identity(
@@ -277,6 +286,47 @@ def inspect_identity(
     caller comparing them against its own derivation is comparing two
     independent implementations of the same genesis.
     """
+    values = _identity_values(
+        application_binary, genesis, {"chain_id", "app_hash"}
+    )
+    return bytes.fromhex(values["chain_id"]), bytes.fromhex(values["app_hash"])
+
+
+def inspect_identity_v9(
+    application_binary: pathlib.Path,
+    genesis: pathlib.Path,
+) -> tuple[bytes, bytes, int]:
+    """The three figures a version-nine binary prints, and no other key.
+
+    The key set is exact per version, as the Go parser's is (ADR 0088): a
+    version-eight binary omits the stamp and is refused for it, and
+    `inspect_identity` refuses a version-nine binary for the key it adds. The
+    stamp is read as canonical decimal because that is the only spelling the
+    initializer accepts, so a value this accepted and it refused would fail one
+    step later with a vaguer error.
+    """
+    values = _identity_values(
+        application_binary,
+        genesis,
+        {"chain_id", "app_hash", "genesis_timestamp"},
+    )
+    stamp = values["genesis_timestamp"]
+    if not stamp.isdigit() or not stamp.isascii() or (
+        len(stamp) > 1 and stamp[0] == "0"
+    ):
+        raise RuntimeError(f"genesis stamp {stamp!r} is not canonical decimal")
+    return (
+        bytes.fromhex(values["chain_id"]),
+        bytes.fromhex(values["app_hash"]),
+        int(stamp),
+    )
+
+
+def _identity_values(
+    application_binary: pathlib.Path,
+    genesis: pathlib.Path,
+    keys: set[str],
+) -> dict[str, str]:
     result = subprocess.run(
         [application_binary, "--genesis-identity", genesis],
         check=True,
@@ -286,10 +336,12 @@ def inspect_identity(
     values: dict[str, str] = {}
     for line in result.stdout.decode("ascii").splitlines():
         key, value = line.split("=", 1)
+        if key in values:
+            raise RuntimeError(f"genesis identity repeats {key}")
         values[key] = value
-    if set(values) != {"chain_id", "app_hash"}:
+    if set(values) != keys:
         raise RuntimeError("unexpected genesis identity output")
-    return bytes.fromhex(values["chain_id"]), bytes.fromhex(values["app_hash"])
+    return values
 
 
 def initialize_home(
@@ -301,6 +353,7 @@ def initialize_home(
     rpc_port: int,
     p2p_port: int,
     protocol_version: int = 1,
+    genesis_timestamp: int | None = None,
 ) -> None:
     """Initialize or exact-validate a CometBFT home.
 
@@ -308,7 +361,17 @@ def initialize_home(
     version-eight application requires at InitChain: a home written for one
     ledger version and a bridge started for the other is refused there rather
     than at the first block.
+
+    `genesis_timestamp` is version nine's, and the initializer derives
+    `genesis_time` from it. It is passed only when given, so the initializer
+    rather than this helper decides that a version-nine home without one, or an
+    earlier version's home with one, is refused.
     """
+    stamp = (
+        []
+        if genesis_timestamp is None
+        else ["-genesis-timestamp", str(genesis_timestamp)]
+    )
     subprocess.run(
         [
             initializer,
@@ -326,6 +389,7 @@ def initialize_home(
             f"tcp://127.0.0.1:{p2p_port}",
             "-protocol-version",
             str(protocol_version),
+            *stamp,
         ],
         check=True,
         stdout=subprocess.PIPE,
