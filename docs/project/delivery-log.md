@@ -32,6 +32,56 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M3.20i was delivered
+
+**A four-validator version-nine network runs.** Issue #345 and PR #346 delivered
+`tests/integration/cometbft_four_validator_v9_test.py` in `tools/verify.sh`, a
+durable-stamp audit in `cometbft_devnet.audit_durable_heads` over the new
+`cometbft_process.application_head_v9`, the fixture's refused and predicted
+empty blocks with a ninth check, and
+[ADR 0090](../decisions/0090-the-version-nine-devnet.md).
+`tools/verification_scope.py` classifies it `full`. The record commit was pushed
+while the code candidate `e306ba0`'s run was still in progress, which cancelled
+it. The final head carries the same code. The run on the final head, and the
+commits the slice merged as, are named when the record is anchored. **No
+accepted vector file, specification rule, manifest, encoding, kernel source,
+or Go source changed.** One accepted document gained correction notes.
+
+**It is version eight's scenario on purpose.** The same transactions go through
+the same nodes, and the same refusals, restarts, driven replica, and departure
+follow. So anything that differs between the two runs is the version's doing.
+What version nine changes is how the model keeps up. Every block moves the root,
+so the network closes one roughly every three seconds. The model follows it one
+height at a time, reading each committed header for its stamp and its
+transaction count, so an empty height cannot hide a transaction. Before spending
+a hosted cycle, that following logic was driven offline against a fake header
+source through five transactions, two refusals, and interleaved empty heights.
+It caught both faults it was handed: a transaction at a height it expected
+empty, and a block 1 one millisecond away from its genesis stamp.
+
+**The durable stamp is compared where the durable head is.** The contract asks
+for the stamp among the values all four replicas report identically, and ABCI's
+Info carries none. The Go health command could only have reported the header
+time converted a second time, and replicas that agree on a block agree on its
+header by construction. So the independent C++ audit reads each store's height,
+stamp, and root over version two's Info, and requires all three. The live check
+keeps comparing roots, which commit to the stamp. `audit_durable_heads` refuses
+to audit a version-nine network without a stamp, so a caller cannot skip it by
+omission.
+
+**The driven replica is asked the one thing only version nine can be asked**: a
+decided block at the right height whose stamp is one millisecond before its
+head's. It must answer status `8` and latch terminal, and a fresh process must
+find its store untouched.
+
+**Two items of the contract's devnet evidence are not in the run, and each is
+recorded rather than waived.** The kind-22 mint stands behind the height wall
+(ADR 0071) and the clock wall (M3.20g), so its evidence stays with the 125
+execution vectors the C++ kernel reproduces. The contract's list carries a
+correction note, as ADR 0071 gave version eight's. The skewed replica needs ADR
+0085's owed way to offset one application's clock, which is more than a port, so
+it is the next slice.
+
 ### How M3.20h was delivered
 
 **A version-nine chain runs under CometBFT.** Issue #342 and PR #343 delivered

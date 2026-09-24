@@ -4,6 +4,21 @@ Last updated: 2026-09-24
 
 ## Phase
 
+**M3.20i ran the version-nine four-validator devnet on 2026-09-24.** Four
+independent replicas run version eight's whole scenario:
+
+- transactions through all four nodes, including two refusals by name;
+- two full restarts, each inside the window;
+- a replica interrupted mid-block and handed blocks its peers never proposed;
+- a replica that leaves while three keep committing, then catches up.
+
+At every stop, each store must report the model's height, **stamp**, and root.
+The model follows every height the engine closes, using each block's committed
+stamp. [ADR 0090](../decisions/0090-the-version-nine-devnet.md) records it.
+Two items of `consensus-application-v2`'s devnet evidence are not in the run. The
+kind-22 mint is covered by the C++ execution vectors instead, behind two recorded
+walls. The skewed replica is the next slice.
+
 **M3.20h ran a version-nine chain under one CometBFT node on 2026-09-24**, and
 it is the first time a version-nine block was decided by anything but a test
 driver. The genesis is stamped with the harness's clock when the run starts.
@@ -584,8 +599,18 @@ you need the history behind a claim here; read this one for what is true now.
   Block 1 carries the genesis stamp to the nanosecond. Block 3 is one the engine
   closed with no transaction, and its root is the model's for its height and
   stamp alone. `version-nine-chain-fixture` checks the fixture's own contract in
-  under a second. **It is one validator**, so the four-validator devnet is still
-  owed.
+  under a second.
+- **A four-validator version-nine network runs, restarts, and audits its stamp.**
+  As of 2026-09-24 `cometbft_four_validator_v9_test.py` runs version eight's
+  scenario over version nine: two registrations, a seat bought and activated,
+  five confirmed transfers, and two named refusals, through four nodes. It
+  covers two full restarts, a driven replica, and a departure and return.
+  Every height the network closes is computed by the model from its committed
+  stamp. Every stop is followed by an audit that reads each store's durable
+  height, **stamp**, and root through an independent C++ process. The driven
+  replica refuses a block two heights ahead as a sequence failure, and a stamp
+  below its head as status `8`, and its store is unchanged afterwards. **No
+  replica's clock is skewed yet**, which is the next slice.
 - **A four-node version-eight network refuses a transaction, and all four
   replicas refuse it identically.** As of 2026-09-11 two transactions the
   contract must reject — a transfer at a consumed nonce and a second purchase of
@@ -2417,8 +2442,9 @@ launcher values, and the devnet that runs them. M3.20e delivered the client,
 M3.20f the bridge, and M3.20g the launcher values, so what is left is running
 it: a version-nine chain under CometBFT, then the four-validator devnet.
 
-**As of 2026-09-24 what is left is the devnet.** M3.20h ran the chain under one
-node.
+**As of 2026-09-24 what is left is the skewed replica.** M3.20h ran the chain
+under one node and M3.20i ran the four-validator devnet. After the skewed replica,
+`src/v8/` is deleted.
 
 **One gap is not a port, and it must be settled before any network is expected
 to survive an outage.** Under CometBFT `v0.39.4` the first block after an outage
@@ -2622,68 +2648,31 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-**Run the version-nine devnet.** M3.20h ran a version-nine chain under one
-CometBFT node, so every piece of a version-nine network exists and has met a
-consensus engine. The nearest runnable result is version eight's
-`tests/integration/cometbft_four_validator_v8_test.py` rebound to version nine.
-Its evidence is already listed in `consensus-application-v2`: four validators
-commit a signed transfer and a kind-22 monthly pool mint, and agree on height,
-**timestamp**, and root. They stop, restart, pass an independent audit, and
-continue. Then one replica's clock is moved beyond the tolerance, and the other
-three continue while it votes against. Two choices belong to that slice and are
-recorded where they arose: how to skew one clock (ADR 0085), and where the health
-check reads the durable stamp, since ABCI's Info carries none (ADR 0087).
+**Run the skewed replica.** M3.20i ran the version-nine four-validator devnet
+([ADR 0090](../decisions/0090-the-version-nine-devnet.md)). One item of
+`consensus-application-v2`'s devnet evidence is still owed: *a devnet test moves
+one replica's clock beyond the tolerance and proves the remaining three continue
+while the skewed replica votes against proposals the others accept.*
+`tests/integration/cometbft_four_validator_v9_test.py` is the harness to extend,
+and its first decision is ADR 0085's owed one: how to offset one application's
+clock.
 
-**M3.20h built most of what it reuses.** `version_nine_chain.Session` is a live
-ledger that `apply` and `apply_empty` advance with the stamp the engine chose, so
-it can follow a network that closes blocks nobody asked for. The engine closes
-one three seconds after any block that moved the root, and a version-nine block
-always does. `cometbft_rpc.committed_block` and `version_nine_chain.engine_millis`
-turn a header into that stamp. The process helpers speak version nine's identity
-and `Info`.
+- **An operator option on `protocol-application-v9`** that offsets the platform
+  reading. It adds no power an operator lacks, since they own the machine's
+  clock. It is a C++ source change, and the Go supervisor needs a per-replica way
+  to pass it.
+- **An `LD_PRELOAD` time shim**, which touches no source and adds a dependency.
+  It reaches the C++ application, which is dynamically linked, and not the
+  statically linked engine. That is enough, because C5 reads the application's
+  clock.
 
-**It inherits two windows, and the single-node harness already checks both by
-name** (`require_inside_window`):
-
-- **The launch window** (ADR 0088). Mint the genesis at run time with the
-  harness's clock. The supervisor's 90-second readiness bound is longer than the
-  60-second tolerance, so check the window after the network reports ready
-  rather than trusting the bound.
-- **The restart window** (ADR 0089). A stop of the **whole** network must end
-  inside the tolerance, counted from the last committed stamp. Version eight's
-  run does work while all four replicas are down, and all of it spends the
-  window: a durable audit of four databases, and a driven replica staged and fed
-  a block at a height its peers never proposed. Keep that work short, or move it
-  after the restart. **A single replica may stay down as long as it likes**,
-  because the other three keep the chain live and a returning replica catches up
-  through block sync, which never calls `ProcessProposal`.
-
-**The devnet has one open question, and it should be settled before the slice
-starts: `consensus-application-v2`'s kind-22 evidence stands behind two walls.**
-A kind-22 monthly pool mint needs a seat to be in scope during a calendar month
-that then closes.
-
-- **The height wall, already on record.** ADR 0071 found that a seat is in
-  scope only from the window after the one it activated in, and a window is
-  `CYCLE_BLOCKS` = 28,800 heights. Version nine keeps that constant, so no seat
-  on a devnet begun at genesis is a monthly candidate before height 28,800.
-  ADR 0071 declined to build a way round it for version eight's audit, and the
-  same arithmetic applies here.
-- **The clock wall, found in M3.20g.** After block 1, CometBFT stamps each block
-  with the median of the validators' vote times, which come from the Go node
-  processes' own clocks. C5 keeps that median within 60 seconds of every C++
-  application's clock. The node binary is built with `CGO_ENABLED=0` and is
-  statically linked, so an `LD_PRELOAD` time shim reaches the application and
-  not the engine, and a bounded run cannot simply be moved to a month's end.
-
-The evidence list was written without either wall. **Kind 22 already executes
-in C++ below the engine**: `economy-transition-v9-execution-cpp` reproduces all
-125 execution vectors over chains of 115,200 and 144,000 heights, including the
-payout and the mint. So the route that looks right is to leave kind 22's
-evidence there, and have the devnet prove the transfer, agreement on the
-timestamp, restart, the audit, and the skewed replica. The list would then
-carry a correction note, as ADR 0071 gave version eight's. This is evidence
-method, not founder-reserved, and it is that slice's first decision.
+**What the run must show.** Three validators hold 30 of 40 voting power, so the
+other three keep committing. The skewed replica's bridge logs decision `4` or `5`
+by name (ADR 0087). It still applies every decided block through `FinalizeBlock`,
+which applies no tolerance, so it keeps agreeing on roots while voting against
+proposals. The skew must exceed 60 seconds. When the skewed replica proposes,
+the stamp is still the engine's median rather than its own clock, so the other
+three accept its block and it alone votes against it.
 
 **Then `src/v8/` is deleted**, under ADR 0065's staged replacement, as version
 seven's was.
@@ -2842,6 +2831,20 @@ identity and `Info`, and
 halt holds at every height after an outage of a quorum**, which "Remaining gap"
 now carries.
 
+**M3.20i delivered the four-validator devnet the same day**, so the sentence
+that stood at the head of this section naming it is history. The run is version
+eight's scenario with the model following each committed stamp. Every audit now
+compares the durable stamp in all four stores. The driven replica also refuses a
+stamp that runs backwards as status `8`.
+[ADR 0090](../decisions/0090-the-version-nine-devnet.md) records it. **It also
+settled the devnet's one open question the way the handoff recommended:** the
+kind-22 mint's evidence stays in `economy-transition-v9-execution-cpp`, below the
+engine, behind the height wall (ADR 0071) and the clock wall (M3.20g), and
+`consensus-application-v2`'s evidence list carries a correction note. It also
+settled ADR 0087's owed choice: the durable stamp is compared by the independent
+audit, which reads it over version two's Info, and the live health check
+compares the root, which commits to the stamp.
+
 **Three things M3.19a settled that the ports must not re-open.** The C++
 application reads its own clock, once per `ProcessProposal`, and the local
 protocol never carries a clock reading — a bridge-supplied reading could make a
@@ -2948,9 +2951,9 @@ the fixture rather than left to be rediscovered.
   `dispatcher_v9`, and the socket overload — M3.20d the node process, and M3.20e
   the Go local client, and M3.20f the bridge on 2026-09-21, and M3.20g the
   launcher values on 2026-09-22, and M3.20h a version-nine chain under one
-  CometBFT node on 2026-09-24. **The nearest slice is the version-nine devnet**,
-  which replaces version eight's and has an accepted contract stating what it
-  must satisfy. The
+  CometBFT node and M3.20i the four-validator devnet on 2026-09-24. **The nearest
+  slice is the skewed replica**, the last item of `consensus-application-v2`'s
+  devnet evidence. The
   paragraphs that stood here enumerating what the binding version had
   to add are superseded by the specification itself and are not restated; three
   of them were **wrong**, and the corrections are the reason to read the
@@ -3689,6 +3692,27 @@ failures no peer can induce by choosing bytes. M3.20b established this with a
 probe rather than a reading and records the absence as a measurement. It is not a blocker — the decision stays implemented because the
 failures it guards are real — but a later session should not spend the slice
 hunting for the vector.
+
+**M3.20i ran the founder-decision gate and passed it.** Nine decisions were
+enumerated before any was judged:
+
+1. the evidence set;
+2. where the kind-22 mint's evidence lives;
+3. whether the skewed replica is in scope;
+4. where durable-stamp agreement is read;
+5. the transactions and which nodes submit them;
+6. how the genesis is stamped;
+7. how the restart window is guarded;
+8. how unrequested heights are followed;
+9. the packaging.
+
+**The second was already classified by the handoff** as evidence method rather
+than founder-reserved, and it was settled as the handoff recommended. It changes
+where a piece of evidence is produced, not what any participant gets. The sixth
+and seventh follow ADR 0088 and ADR 0089. The rest are test mechanism and
+packaging, which
+[ADR 0090](../decisions/0090-the-version-nine-devnet.md) records. Nothing
+founder-reserved is touched.
 
 **M3.20h ran the founder-decision gate and passed it.** Seven decisions were
 enumerated before any was judged:
