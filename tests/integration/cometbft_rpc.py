@@ -106,6 +106,19 @@ def parse_header_time(text: str) -> tuple[int, int]:
     return seconds, int(fraction.ljust(9, "0"))
 
 
+def validator_address(rpc_port: int) -> bytes:
+    """The validator address of the node serving this RPC port."""
+    return bytes.fromhex(rpc_call(rpc_port, "status", {})["validator_info"]["address"])
+
+
+def block_proposer(rpc_port: int, height: int) -> bytes:
+    """The validator address that proposed the block committed at `height`."""
+    header = rpc_call(rpc_port, "block", {"height": str(height)})["block"]["header"]
+    if int(header["height"]) != height:
+        raise RuntimeError(f"RPC returned height {header['height']} for {height}")
+    return bytes.fromhex(header["proposer_address"])
+
+
 def committed_block(rpc_port: int, height: int) -> tuple[tuple[int, int], int]:
     """A committed block's header time and how many transactions it holds."""
     block = rpc_call(rpc_port, "block", {"height": str(height)})["block"]
