@@ -36,6 +36,7 @@ from simulation.economy_transition_v8.slots import (  # noqa: E402
     first_cycle_window,
     window_first_height,
 )
+from simulation.economy_transition_v9 import contract as c  # noqa: E402
 from simulation.economy_transition_v9.block import InvalidBlock  # noqa: E402
 from version_nine_chain import (  # noqa: E402
     BLOCKS_BEFORE_RESTART,
@@ -249,6 +250,40 @@ def check_the_seat_table_was_written(sodium: Sodium) -> None:
     )
 
 
+def check_refusals_land_on_the_empty_root(sodium: Sodium) -> None:
+    """Both refusals the devnet provokes, each at the root an empty block makes.
+
+    A stale nonce and a second purchase of an owned seat are refused for
+    unrelated reasons, and each must write nothing and charge nothing, so the
+    block holding it lands on the root the same height and stamp would produce
+    empty. Asking for that root must not spend the height, which is checked by
+    asking twice.
+    """
+    session, blocks = run(sodium)
+    at = blocks[-1].timestamp + PACE
+    predicted = session.block_if_empty(at)
+    require(
+        session.block_if_empty(at) == predicted and session.height == len(blocks),
+        "predicting an empty block spent the height",
+    )
+    stale = session.apply_refused(
+        session.alice_pays_bob(3, amount=7), at, c.CODE_NUMBER["NONCE_MISMATCH"])
+    require(stale.state_root == predicted.state_root,
+            "a stale nonce moved the state")
+    at += PACE
+    predicted = session.block_if_empty(at)
+    twice = session.apply_refused(
+        session.alice_buys_seat(4), at, c.CODE_NUMBER["REPLAY"])
+    require(twice.state_root == predicted.state_root,
+            "a second purchase of an owned seat moved the state")
+    try:
+        session.apply_refused(session.alice_pays_bob(4), at + PACE, 6)
+    except RuntimeError:
+        pass
+    else:
+        raise RuntimeError("a transfer that succeeds was accepted as a refusal")
+
+
 def check_the_audit_is_out_of_reach(sodium: Sodium) -> None:
     """Version eight's wall, derived again: the run's seat is never audited.
 
@@ -295,11 +330,12 @@ def main() -> int:
         check_the_first_block_may_carry_the_genesis_stamp,
         check_the_conversions,
         check_the_seat_table_was_written,
+        check_refusals_land_on_the_empty_root,
         check_the_audit_is_out_of_reach,
         check_signatures_are_real,
     ):
         check(sodium)
-    print("version-nine chain fixture: passed (8 checks)")
+    print("version-nine chain fixture: passed (9 checks)")
     return 0
 
 
