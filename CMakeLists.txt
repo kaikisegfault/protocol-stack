@@ -306,6 +306,7 @@ add_executable(
   tests/kernel/economy_v9_execution_test.cpp
   tests/kernel/economy_v9_trace.cpp
   tests/kernel/economy_v9_execution_checks.cpp
+  tests/kernel/economy_v9_referral_mark.cpp
 )
 target_link_libraries(economy_v9_execution_tests PRIVATE protocol_kernel)
 add_executable(
@@ -1271,6 +1272,12 @@ add_test(
   COMMAND
     "${Python3_EXECUTABLE}"
     "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_v9_execution_test.py"
+)
+add_test(
+  NAME economy-transition-v9-referral-mark
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_v9_referral_mark_test.py"
 )
 add_test(
   NAME uptime-measurement-vectors

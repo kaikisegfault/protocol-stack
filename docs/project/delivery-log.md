@@ -32,6 +32,54 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M3.21b was delivered
+
+**The fourth scenario suite found a consensus defect before any of its code was
+written.** Its design needed a closed form for what each referrer accrues, so
+the version-three rule for a new referral balance was read against the code
+that executes it. The rule starts the referrer's mark at the window before
+their first accrual. Every implementation starts it at zero. A scratch run on
+the version-nine model settled it: a seat activated in window 100 credited its
+referrer once, and sent every later leg to the unreferred pool.
+
+**The first question was whether the rule is still normative, and it is.**
+Version six carries cycle assignment "unchanged from version three in every
+respect", and version nine incorporates "every rule of versions one through
+seven" by reference. No later ADR or founder answer revisits the starting
+mark. So the chain is not following its accepted contract, and the
+repair changes no rule.
+
+**The second was whether any accepted artifact recorded the defect.** The
+corrected Python models were run against every vector file from version six to
+version nine, 2,977 vectors in eight files, first in a scratch copy and then in
+the tree. All pass unchanged. The recorded referral scenario mints in the block
+that makes its first accrual, so the zero mark never reaches a root.
+
+**That made it a repair inside version nine rather than a version ten**, and
+[ADR 0094](../decisions/0094-a-new-referral-balance-starts-at-the-window-before.md)
+gives the reasoning. The repair is `first_referral_balance` in version six's
+ledger, called by the version-six and version-seven ledgers, and a
+`try_emplace` in `src/v9/economy_assignment.cpp`. Both refuse a zero window
+rather than wrapping it.
+
+**Each test was shown to fail on the defect before it was trusted.**
+
+- The C++ check drives the kernel's own `derive_schedule`,
+  `derive_assignment`, and `apply_assignment` over windows 101 to 131. Built
+  against the unrepaired kernel, it failed on its first assertion.
+- The Python test runs a chain with signed registrations, a referred purchase,
+  and an activation in window 100, then opens windows through the version-nine
+  prologue. Restoring the zero mark in version seven's ledger alone failed four
+  of its nine tests. The other five pass either way: they cover the helper's
+  own arithmetic, the channel identity, and a referrer who mints at once, none
+  of which the defect touches.
+
+Locally, under `gcc-debug`, every suite that restores or replays a recorded
+version-nine chain passed against the repaired kernel: the snapshot, the owning
+store, the application, the transport, and both headless processes. The socket
+tests needed a short path to run, and the two failures left were the known
+container limits: the SQLite version pin and the pinned-libsodium differential.
+
 ### How M3.21a was delivered
 
 **The exit audit exists because no single place stated all sixteen requirements
@@ -77,6 +125,10 @@ stopped being the requirement's subject when the contract changed.
   code**, not assumed. Kind 6 refuses every sender while its predicate is
   undecided, so no eligibility mechanic was invented for the reserved
   channels.
+
+It merged by rebase on 2026-09-27 through PR #356 as `23384bb`, closing issue
+#355. Run 36350685138 on the PR head `ce28a9a` took the metadata path and
+passed, as a documentation-only change should.
 
 ### How M3.20l was delivered
 

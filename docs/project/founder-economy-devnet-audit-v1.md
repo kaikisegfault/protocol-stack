@@ -103,6 +103,16 @@ must show four things across the whole distribution:
 Its fixture is a research population and a stated uptime pattern. Neither is a
 founder value.
 
+**Found after the audit.** Designing that suite surfaced a consensus defect this
+audit did not see. Every implementation started a new referral balance's mark
+at zero, where the accepted rule starts it at the window before the first
+accrual. So a referrer first credited after window 30 lost every later leg to
+the unreferred pool until they minted. No recorded vector reached it. M3.21b
+repaired it inside version nine, and
+[ADR 0094](../decisions/0094-a-new-referral-balance-starts-at-the-window-before.md)
+records it. It is the strongest argument for the suite: the defect sits exactly
+where targeted scenarios stop and a population's whole life continues.
+
 ## Recorded limits
 
 - **Requirement 7.** Validator-duty evidence is satisfied vacuously.

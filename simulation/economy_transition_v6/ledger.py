@@ -70,6 +70,25 @@ class ReferralBalance:
     collected_through_window: int = 0
 
 
+def first_referral_balance(cycle_window: int) -> ReferralBalance:
+    """The balance a referrer's first accrual creates, before it is added.
+
+    `economy-transition-v3` creates the entry "with `collected_through_window`
+    set to the window before that accrual, so a referrer is never capped before
+    anything has been credited to them", and every later version carries that
+    rule unchanged. **The mark is not zero.** A zero mark caps a referrer from
+    their second accrual onward whenever the first lands after window
+    `MINT_ACCUMULATION_CAP`, routing every later leg to the unreferred pool until
+    they mint. ADR 0094 records the defect and the repair.
+
+    A referral accrues only for an in-span seat, and no seat is in span before
+    window 1, so the window before is never negative.
+    """
+    if cycle_window < 1:
+        raise ConservationFailure("a referral accrued before any seat was in span")
+    return ReferralBalance(collected_through_window=cycle_window - 1)
+
+
 @dataclass
 class Ledger:
     """One node's complete canonical state at a height.
@@ -223,7 +242,9 @@ class Ledger:
         for channel in dict(c.BASE_PERMISSION_LEGS):
             self.carry[channel] += assignment.carry_per_channel[channel]
         for identity, amount in accruals.items():
-            entry = self.referral.get(identity, ReferralBalance())
+            entry = self.referral.get(identity) or first_referral_balance(
+                assignment.cycle_window
+            )
             self.referral[identity] = replace(
                 entry, accrued_atomic=entry.accrued_atomic + amount
             )

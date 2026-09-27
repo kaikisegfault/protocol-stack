@@ -4,6 +4,23 @@ Last updated: 2026-09-27
 
 ## Phase
 
+**M3.21b repaired a consensus defect on 2026-09-27: a new referral balance now
+starts its mark at the window before its first accrual.** Version three states
+that rule, and every later version carries it unchanged. Every executed
+implementation instead started the mark at zero: the Python models from version
+six on, and the version-nine C++ kernel. So a referrer whose first accrual
+landed after window 30 was capped from their second accrual onward, and every
+later leg went to the unreferred pool until they minted.
+
+No accepted vector recorded the defect. All 2,977 vectors from version six to
+version nine pass unchanged against the repaired models, so the repair is made
+inside version nine and is not a new version.
+[ADR 0094](../decisions/0094-a-new-referral-balance-starts-at-the-window-before.md)
+records it. A Python test and a C++ check each fail on the zero mark.
+
+The defect was found while designing `economy-scenario-suite-v4`, which is
+still the next action.
+
 **M3.21a ran M3's exit audit on 2026-09-27, and M3 does not close yet.**
 [`founder-economy-devnet-audit-v1.md`](founder-economy-devnet-audit-v1.md)
 states all sixteen `first-goal.md` requirements against the accepted artifact,
@@ -2798,12 +2815,17 @@ things the run must show:
 Record the suite as `economy-scenario-suite-v4`, with vectors, a verifier that
 fails closed, and the multi-year, market, and property tests the M2 standard
 set. **Its fixture is research, not founder values**, and its gate must say
-so. Once it passes, requirement 16 is the audit's last row: close M3 in the
+so. **Its population must include a referrer whose referred seat activates
+after window 30 and who does not mint at once**, so that the ADR 0094 repair is
+exercised at population scale, not only in its two targeted tests. Once it passes, requirement 16 is the audit's last row: close M3 in the
 roadmap and name the first M4 slice, after running the founder-decision gate
 on it.
 
 **The candidates behind it are unchanged and none is blocked**: ADR 0071's two
 routes to the audit on a network, and ADR 0089's outage wall.
+
+**M3.21b was inserted ahead of it**: the referral-mark repair that designing
+the suite surfaced.
 
 **M3.21a delivered what stood here before it**: M3's exit audit, which found
 requirement 14 unmet.
