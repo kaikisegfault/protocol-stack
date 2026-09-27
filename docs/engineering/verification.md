@@ -56,7 +56,8 @@ Verification is risk-proportionate. A changed-path set containing only
 Markdown, static image assets below `docs/`, `SKILL.md`, `LICENSE`, or `NOTICE`
 uses the lightweight metadata path: whitespace, required repository paths,
 settings JSON parsing, repository skill frontmatter, template-marker absence,
-internal Markdown links, and focused verifier unit tests. It does not run
+internal Markdown links and the heading each `#fragment` names, and focused
+verifier unit tests. It does not run
 compilers, sanitizers, fuzzers, simulations, or live networks.
 
 Any executable script, source, test, build file, workflow, dependency file,

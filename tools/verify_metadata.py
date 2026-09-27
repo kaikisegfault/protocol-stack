@@ -12,6 +12,10 @@ from urllib.parse import unquote, urlsplit
 
 SKILL_NAME = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 MARKDOWN_LINK = re.compile(r"!?\[[^]]*\]\(([^)]+)\)")
+ATX_HEADING = re.compile(r"^ {0,3}#{1,6}[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$")
+FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
+INLINE_LINK = re.compile(r"!?\[([^]]*)\]\([^)]*\)")
+SLUG_REMOVED = re.compile(r"[^\w\- ]")
 REQUIRED_PATHS = (
     "CLAUDE.md",
     ".claude/settings.json",
@@ -75,9 +79,58 @@ def link_target(raw_target: str) -> str:
     return target
 
 
+def heading_slug(heading: str) -> str:
+    """GitHub's anchor for one heading's text, before duplicate numbering.
+
+    **Each space becomes a hyphen, and runs are not collapsed.** So a heading
+    reading "Kind 10 — hub_register" anchors as `kind-10--hub_register`:
+    removing the em-dash leaves two spaces. A checker that collapsed them would
+    report a false failure against nearly every heading here that carries a
+    dash.
+    """
+    text = INLINE_LINK.sub(r"\1", heading).strip().lower()
+    return SLUG_REMOVED.sub("", text).replace(" ", "-")
+
+
+def markdown_anchors(path: Path) -> set[str]:
+    """Every anchor GitHub renders for a file's ATX headings.
+
+    Headings inside fenced code blocks are text, not headings. A repeated slug
+    takes `-1`, `-2`, and so on, in document order.
+    """
+    anchors: set[str] = set()
+    seen: dict[str, int] = {}
+    fence = ""
+    for line in path.read_text(encoding="utf-8").splitlines():
+        opened = FENCE.match(line)
+        if opened:
+            marker = opened.group(1)
+            if not fence:
+                fence = marker
+            elif marker[0] == fence[0] and len(marker) >= len(fence):
+                fence = ""
+            continue
+        if fence:
+            continue
+        heading = ATX_HEADING.match(line)
+        if not heading:
+            continue
+        slug = heading_slug(heading.group(1))
+        count = seen.get(slug, 0)
+        seen[slug] = count + 1
+        anchors.add(slug if count == 0 else f"{slug}-{count}")
+    return anchors
+
+
 def validate_markdown_links(root: Path, errors: list[str]) -> int:
+    """Check every internal link's file, and its fragment when it names one.
+
+    A fragment is checked only against a Markdown target, the linking file
+    itself included, because that is the only kind whose anchors are known here.
+    """
     checked = 0
     resolved_root = root.resolve()
+    anchors: dict[Path, set[str]] = {}
     for markdown in sorted(root.rglob("*.md")):
         if any(part in {".git", ".cache", "out"} for part in markdown.parts):
             continue
@@ -85,16 +138,24 @@ def validate_markdown_links(root: Path, errors: list[str]) -> int:
         for match in MARKDOWN_LINK.finditer(text):
             target = link_target(match.group(1))
             parsed = urlsplit(target)
-            if parsed.scheme or parsed.netloc or target.startswith("#"):
+            if parsed.scheme or parsed.netloc:
                 continue
             relative = unquote(parsed.path)
             if not relative:
-                continue
-            candidate = root / relative.lstrip("/") if relative.startswith("/") else markdown.parent / relative
-            resolved = candidate.resolve()
+                resolved = markdown.resolve()
+            else:
+                candidate = root / relative.lstrip("/") if relative.startswith("/") else markdown.parent / relative
+                resolved = candidate.resolve()
             checked += 1
             if not resolved.is_relative_to(resolved_root) or not resolved.exists():
                 errors.append(f"{markdown}: missing or out-of-tree link target {target!r}")
+                continue
+            if not parsed.fragment or resolved.suffix != ".md" or not resolved.is_file():
+                continue
+            if resolved not in anchors:
+                anchors[resolved] = markdown_anchors(resolved)
+            if unquote(parsed.fragment) not in anchors[resolved]:
+                errors.append(f"{markdown}: link target {target!r} names no heading")
     return checked
 
 
