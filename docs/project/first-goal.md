@@ -1,109 +1,118 @@
-# Current operational goal: Founder Economy Devnet
+# Current operational goal: Founder identity, seats, and authority
+
+Status: active from 2026-09-27, when M3 closed. Drafted from the roadmap's M4
+scope and the accepted identity decisions under the standing delegation; the
+owner may revise it.
 
 ## Objective
 
-Make the founder-directed economy real consensus behavior. Specify the revised
-economic contract, implement it in the C++20 ledger, and operate a
-four-validator devnet that enforces the fixed cap and the accepted Founder,
-referral, commercial, fee, and escrow accounting with deterministic replica
-agreement across restart.
+Make a Founder's identity, seat, and authority real on a running network. A
+test Founder must be able to:
 
-M2 proved the accounting in independent Python models that activate nothing.
-This milestone turns that into a running network, under the direction revised on
-2026-08-07 by
-[ADR 0023](../decisions/0023-founder-decisions-activity-referrals-and-supply.md).
+- enroll;
+- activate a node;
+- add and revoke a manager;
+- exercise eligible economic rights;
+- recover an address;
+- complete tested legacy flows.
 
-## What changed since M2
+**No wallet key alone may ever rewrite identity.**
 
-The accepted M2 models implement `founder-economy-manifest-v1`, which the
-Founder Constitution has superseded. Before any C++ work, the contract must be
-restated:
+M3 made the economy consensus behaviour.
+[`goals/m3-founder-economy-devnet.md`](goals/m3-founder-economy-devnet.md) is
+its retained contract, and
+[`founder-economy-devnet-audit-v1.md`](founder-economy-devnet-audit-v1.md) is
+its evidence.
 
-- the maximum supply is 56,993,950,100 display units, not 55,743,940,100;
-- the Founder referral benefit is 34.2 units per cycle, not 17.1;
-- the referral channel is a direct-mint channel capped at 2,500,020,000, not a
-  Founder Node distribution channel capped at 1,250,010,000;
-- a referral is unconditional, so `evaluate_referral_permission` and its
-  `inactive_referral_result` research input disappear;
-- an unreferred seat routes its referral allocation to a monthly performance
-  pool; and
-- activity and performance reallocation are derived rules rather than supplied
-  research inputs.
+## What M3 already delivers
+
+The version-nine chain already executes most of the identity surface, specified
+from the founder decisions of August 2026 (ADRs 0039 to 0044):
+
+- a HUB registration under the ecosystem verifier's signature (kind 10), with
+  the entry airdrop;
+- keyless escrows an identity creates and deletes (kinds 13 and 14);
+- signers it adds and revokes, including under the HUB key when every signer
+  is lost (kinds 15 and 16);
+- a security posture per escrow (kind 17);
+- a seat purchased and activated under the owner's HUB signature (kinds 2 and
+  3), tied to the identity, never to an address;
+- the 1,000-seat-per-person bound.
+
+**What has never happened is a person using that surface on a network.** The
+four-validator devnet registers, sells and activates a seat, and transfers. It
+has never:
+
+- added a signer;
+- lost one and recovered;
+- minted.
 
 ## Required evidence
 
-[`founder-economy-devnet-audit-v1.md`](founder-economy-devnet-audit-v1.md)
-states each requirement below against its evidence as of 2026-09-27.
-
 Completion requires all of the following:
 
-1. An accepted `founder-economy-manifest-v2` whose ten channel caps sum
-   exactly to 56,993,950,100 display units in the unchanged eight-decimal
-   denomination, with fixed vectors and a digest.
-2. A revised independent Python model implementing the v2 transitions,
-   including the unconditional direct-mint referral and the unreferred
-   performance pool, with the accepted M2 evidence method preserved.
-3. Re-verified seat, routing, escrow, and scenario-suite models against v2,
-   with every recorded digest regenerated and every verifier still failing
-   closed.
-4. An exact cycle boundary defined in chain heights or epochs, with no wall
-   clock reachable from a transition.
-5. Canonical state keys, transaction encodings, and numeric consensus receipt
-   codes for seat activation, permission evaluation, permission exercise,
-   referral issuance, and capped direct issuance, extending
-   `protocol-primitives-v1` and `ledger-transition-v1`.
-6. An exact compatibility boundary against accepted M1 transaction bytes,
-   state, and roots.
-7. A deterministic uptime record: validator duties derived from on-chain
-   participation, resource provision proved by challenge-response, and a
-   bounded AI dispute window whose expiry finalises a cycle without a
-   signature.
-8. Activity evaluated at 18 hours or more of cumulative fully operational
-   uptime per cycle, with a fragmentable 6-hour grace allowance.
-9. Performance reallocation to the highest uptime in the same cycle, split
-   equally among exact ties, restricted to seats that met the cycle, with the
-   integer remainder and any zero-winner cycle's whole permission going to the
-   recovery pool, which the earliest subsequent winning cycle takes entirely.
-   Revised on 2026-08-19 by ADR 0049; the requirement previously carried the
-   remainder forward in a per-channel carry that nothing ever released.
-10. C++20 implementation of the accepted v2 economy in the deterministic
-    ledger kernel, with checked integer arithmetic and no floating point on any
-    monetary or consensus path.
-11. Cross-language fixed vectors that the C++ implementation and the
-    independent Python model both reproduce exactly.
-12. Storage bounds for per-seat balances, per-cycle uptime records, and
-    recipient balances at 100,000 seats.
-13. Adversarial four-node economic scenarios through restart and recovery,
-    proving deterministic replica agreement on state roots.
-14. Positive, negative, boundary, replay, overflow, atomicity, and multi-year
-    scenarios against the v2 contract, at the standard the M2 suite set.
-15. Accepted ADRs stating the selected consensus transition shape, encoding,
-    compatibility boundary, and remaining independent review requirements.
-16. Risk-proportionate GitHub-hosted verification on the exact accepted commit
-    and a clean repository handoff naming the first M4 implementation slice.
+1. **A test Founder's lifecycle on the four-validator devnet**, with every
+   replica agreeing on every root through a restart:
+   - enroll;
+   - buy and activate a seat;
+   - add a signer, create a holding escrow, and revoke the signer;
+   - lose every signer and recover under the HUB key;
+   - transact again.
+2. **Eligible economic rights exercised on a network.** A kind-4 mint and a
+   kind-18 mint must execute on a network, which needs one of ADR 0071's two
+   routes to a network past the assignment lag.
+3. **The per-machine attestation-key registry** that
+   [ADR 0048](../decisions/0048-hub-verification-runs-locally-with-an-ai-integrity-monitor.md)
+   decided, replacing genesis's single verifier key in a new contract version.
+   A registration is valid only under a key of an active, attested machine.
+4. **A deterministic test verifier** as a replaceable component. It produces the
+   signed decision envelopes the chain checks, behind the interface a
+   production verifier will later implement.
+5. **Sensitive-action authorization.** A specified envelope says which actions
+   need a fresh HUB decision, with expiry and replay protection.
+6. **Legacy succession mechanics**, as the constitution states them:
+   - permanent versioned legacy statements;
+   - successor nomination with an evidence reference;
+   - supersession without deletion;
+   - authority that stays stuck when no valid successor exists;
+   - the original founder's superior right to reclaim.
+7. **The separate threat model for local HUB verification** that ADR 0048 and
+   the constitution require, naming what goes to independent review.
+8. **Storage bounds** for every new state entry at 100,000 seats and
+   1,000,000 identities.
+9. **Cross-language vectors** that the C++ kernel and the independent Python
+   model both reproduce, with negative, boundary, replay, and atomicity cases
+   for every new transition.
+10. **Accepted ADRs** stating each new transition's shape, encoding,
+    compatibility boundary, and remaining independent review.
+11. **Risk-proportionate GitHub-hosted verification** on the exact accepted
+    commit, and a clean handoff naming the first M5 implementation slice.
 
 ## Founder-decision gate
 
-The implementation must not invent eligibility or anti-abuse mechanics for the
-liquidity-mining, impermanent-loss, HUB-verified-user, or mini-gamified
-channels, nor the AI funding framework. If one is required to satisfy a test, use an
-explicitly research-only bounded input and record the owner decision still
-required.
+These are founder-reserved and must not be invented:
 
-Activity, performance ranking, referral treatment, and referral eligibility are
-no longer open. They are decided in the Founder Constitution and ADR 0023 and
-must be implemented as stated rather than re-litigated.
+- **Legacy limits.** The constitution reserves "exact inactivity limits,
+  dispute evidence, conflicting statement precedence, and reclaim transitions".
+  Requirement 6 builds the record and its mechanics. It asks for these values
+  at the point each becomes the nearest dependency.
+- **Inactivity**, and what an inactive seat or identity loses or keeps.
+- **Verifier key rotation**, and who holds the build-signing authority before
+  ADR 0047's end of initialization.
+- **Seat payment.** A seat purchase's external payment proof: which chains,
+  which assets, which prices. That is bridge scope, M9, and M4 specifies no
+  proof source.
+- **Production biometrics.** Any camera verifier, capture threshold, or
+  uniqueness commitment. ADR 0048 names the stabilization scheme as an open
+  dependency needing independent cryptographic review, and nothing is built on
+  it until that review exists.
 
 ## Explicitly out of scope
 
-- Production biometric capture, identity decisions, or private evidence
-  storage.
-- A production Founder Node installer, packaged all-in-one service, or
-  validator-set change beyond the deterministic active-set protocol.
-- AI inference, model serving, moderation, or real treasury authority.
-- Controlled application execution or resource hosting.
-- Real BTC, ETH, stablecoin custody, liquidity, pricing, or bridge proofs.
-- Wallet, graphical interface, public testnet, mainnet, NodeOS, or hardware.
-
-These systems remain roadmap commitments. Their constraints are inputs to this
-goal, not premature implementation requirements.
+- Production biometric capture and matching, and any fuzzy extractor or secure
+  sketch.
+- Real BTC, ETH, or stablecoin payment, custody, or bridge proofs.
+- The all-in-one Founder Node package (M5), the Ecosystem AI's runtime (M6), and
+  the wallet (M10).
+- Any change to supply, allocation, beneficiaries, channels, or the economy's
+  settlement rules.

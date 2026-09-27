@@ -6,12 +6,15 @@
   end-state requirements, decision ownership, and unresolved founder gates.
 - `project/vision.md`: long-term direction and boundaries.
 - `project/charter.md`: current architecture and governing principles.
-- `project/first-goal.md`: current operational outcome and acceptance evidence.
+- `project/first-goal.md`: current operational outcome and acceptance evidence,
+  M4's since 2026-09-27.
 - `project/goals/m1-sovereign-devnet-alpha.md`: retained acceptance contract
   for the completed first runnable devnet milestone.
 - `project/goals/m2-founder-economy-proof.md`: retained acceptance contract for
   the completed Founder Economy proof milestone, whose figures predate the
   2026-08-07 direction revision.
+- `project/goals/m3-founder-economy-devnet.md`: retained acceptance contract
+  for the completed Founder Economy devnet milestone, closed on 2026-09-27.
 - `project/roadmap.md`: ordered milestones.
 - `project/current-state.md`: verified handoff between sessions. What is true
   now, what is missing, what the next unblocked action is, and what is blocked.
@@ -39,9 +42,9 @@
   about deterministic accounting from the policy, provenance, identity,
   storage, and production-safety claims none of them establishes.
 - `project/founder-economy-devnet-audit-v1.md`: the M3 exit audit, stating all
-  sixteen `first-goal.md` requirements against artifact, check, and hosted run,
-  with their recorded limits, the independent review owed, and the one
-  requirement not yet met.
+  sixteen M3 requirements against artifact, check, and hosted run, with their
+  recorded limits and the independent review owed; every requirement is met
+  since 2026-09-27.
 
 ## Architecture
 

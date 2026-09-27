@@ -4,6 +4,23 @@ Last updated: 2026-09-27
 
 ## Phase
 
+**M3 is complete: M3.21d met requirement 16 on 2026-09-27, and M4 is the
+active milestone.** Requirement 16 asks for three things, and each is done:
+
+- hosted verification on the accepted commit, `e79ea4d`, M3.21c's merge;
+- M3 marked complete in the roadmap;
+- a handoff naming the first M4 implementation slice.
+
+All sixteen M3 requirements are met, three with recorded limits: 7, 13,
+and 14.
+[`founder-economy-devnet-audit-v1.md`](founder-economy-devnet-audit-v1.md)
+states each against its evidence. The M3 goal is retained unedited as
+[`goals/m3-founder-economy-devnet.md`](goals/m3-founder-economy-devnet.md), as
+M1's and M2's were. [`first-goal.md`](first-goal.md) now states M4's
+operational goal, drafted from the roadmap's M4 scope and ADRs 0039 to 0048,
+with the founder-reserved legacy, inactivity, key-rotation, payment, and
+biometric details gated.
+
 **M3.21c met requirement 14's multi-year leg on 2026-09-27 against the contract
 the chain executes.** `economy-scenario-suite-v4` runs six research seats
 through every window of their 731 cycles. It uses version nine's own prologue,
@@ -2807,29 +2824,47 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-**Close M3: requirement 16.** Every other requirement is met, three of them
-(7, 13, and 14) with recorded limits, in
-[`founder-economy-devnet-audit-v1.md`](founder-economy-devnet-audit-v1.md).
-Requirement 16 asks for three things:
+**M4.1: a test Founder's lifecycle on the four-validator devnet.** It is
+requirement 1 of [`first-goal.md`](first-goal.md). The version-nine kernel
+already executes every step, but no network has ever run one past a
+transfer. The run is:
 
-- hosted verification on the accepted commit;
-- M3 closed in the roadmap;
-- a handoff that names the first M4 slice.
+1. register;
+2. buy and activate a seat;
+3. add a second signer under the HUB key (kind 15, scheme 2);
+4. create a holding escrow (kind 13) and transact from it;
+5. revoke the first signer (kind 16);
+6. revoke the last signer, so the identity holds no signer;
+7. recover by adding a new one under the HUB key;
+8. transfer again.
 
-Take M3.21c's merge commit as the accepted commit and cite its hosted run.
-Mark M3 complete in `docs/project/roadmap.md` with the audit as its evidence.
-Then choose the first M4 slice from the roadmap, and **run the founder-decision
-gate on it before naming it**, because M4's scope reaches identity and HUB
-decisions that `first-goal.md` placed outside M3.
+Every replica must agree on every root, through one restart in the middle.
+Add the builders to `tests/integration/version_nine_chain.py` beside the four
+it has. Assert each step's receipt by result name, including the refusals a
+revoked signer must meet. Register the run as a ctest entry.
 
-**One more candidate joined the list this session**: drive the C++ kernel over
-the `economy-scenario-suite-v4` population and compare its roots with the seven
-the vector file pins. It would lift the suite's second limit. It is not
-required for M3's exit, because requirement 11 is met by the version-nine
-vectors.
+**Founder-decision gate for M4.1: it held, and nothing is reserved.** Every
+step is an accepted transition:
 
-**The candidates behind it are unchanged and none is blocked**: ADR 0071's two
-routes to the audit on a network, and ADR 0089's outage wall.
+- ADR 0040 decides signers and holding escrows;
+- ADR 0041 decides that the seat is tied to the identity;
+- ADR 0044 decides that the HUB key recovers.
+
+The verifier and HUB keys are test fixtures, which the roadmap's "deterministic
+test verifier before production biometrics" directs. The slice needs no legacy,
+inactivity, payment, or biometric value.
+
+**Requirement 2 of the M4 goal comes next**: a mint on a network. It needs one
+of ADR 0071's two routes past the assignment lag, a nonzero initial height or a
+snapshot-seeded devnet, and choosing between them is its first step.
+
+**The candidates behind those are unchanged and none is blocked**:
+
+- drive the C++ kernel over the `economy-scenario-suite-v4` population against
+  its seven pinned roots;
+- ADR 0089's outage wall.
+
+**M3.21d delivered what stood here before it**: requirement 16, closing M3.
 
 **M3.21c delivered what stood here before it**: `economy-scenario-suite-v4`,
 meeting requirement 14's multi-year leg.

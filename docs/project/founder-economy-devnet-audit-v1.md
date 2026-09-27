@@ -10,6 +10,11 @@ Requirement 14 is not met against the current contract. Requirement 16 is the
 closing act, and it waits on 14. So M3 does not close yet.** The slice that
 meets requirement 14 is named below.
 
+**Update, 2026-09-27, M3.21d: all sixteen are met and M3 is closed.**
+Requirement 16's hosted verification is push run 36354823837 on `e79ea4d`,
+M3.21c's merge, which is the accepted commit. The handoff names M4.1 as the
+first M4 implementation slice, and the roadmap marks M3 complete.
+
 **Update, 2026-09-27, M3.21c: requirement 14 is now met with a limit.**
 [`economy-scenario-suite-v4`](../specifications/economy-scenario-suite-v4.md)
 runs a research population through every window of every seat's 731 cycles in
@@ -51,7 +56,7 @@ never folded into "met".
 | 13 | Adversarial four-node scenarios through restart and recovery | Met with a limit | ADR 0090, ADR 0091; the two version-nine four-validator integration runs |
 | 14 | Positive, negative, boundary, replay, overflow, atomicity, and multi-year scenarios at the M2 standard | Met with a limit, since M3.21c | `economy-scenario-suite-v4` (ADR 0095); ctest `scenario-suite-v4-vectors`, `scenario-v4`, `scenario-v4-properties`; the other legs below |
 | 15 | ADRs stating transition shape, encoding, compatibility boundary, and remaining independent review | Met | ADRs 0077 to 0081; each specification's "does not establish" section, consolidated below |
-| 16 | Hosted verification on the accepted commit, and a handoff naming the first M4 slice | Open | waits on requirement 14 |
+| 16 | Hosted verification on the accepted commit, and a handoff naming the first M4 slice | Met, since M3.21d | push run 36354823837 on `e79ea4d`; `current-state.md` names M4.1; `roadmap.md` marks M3 complete |
 
 ## Requirement 14 is the one not met
 
