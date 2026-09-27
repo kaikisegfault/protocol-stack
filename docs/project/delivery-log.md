@@ -32,6 +32,37 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M3.21d was delivered
+
+**Requirement 16 is three acts, and none of them is code.** Its evidence is:
+
+- push run 36354823837 on `e79ea4d`, M3.21c's merge;
+- `roadmap.md`, which marks M3 complete and M4 active;
+- the handoff, which names M4.1.
+
+**The M3 goal was retired by the M2 precedent.** `first-goal.md` moved to
+`goals/m3-founder-economy-devnet.md` under a "Completed operational goal"
+header. Its body is unedited except for the relative links the move broke.
+That is what `goals/m2-founder-economy-proof.md` did.
+
+**The new `first-goal.md` is drafted, not dictated, and says so.** It restates
+the roadmap's M4 scope, and the accepted identity ADRs 0039 to 0048, as eleven
+requirements. It starts from what the chain already executes. Every value the
+constitution reserves is gated:
+
+- legacy limits, precedence, and reclaim;
+- inactivity;
+- verifier key rotation;
+- seat payment proofs;
+- production biometrics.
+
+**The first M4 slice was chosen by reading what the network has never done,
+not what the kernel lacks.** The version-nine kernel executes escrow creation,
+signer addition and revocation, and recovery under the HUB key. No integration
+run has submitted one of them. So M4.1 needs no contract, only a lifecycle on
+four validators. Its founder-decision gate held: every step is an accepted
+transition, and the keys are test fixtures the roadmap directs.
+
 ### How M3.21c was delivered
 
 **The suite drives the contract itself, not a fourth simulator**, and ADR 0095
@@ -83,6 +114,11 @@ every seat passes through every residue once and all six figures are equal.
 The verifier refuses seven mutations. They include ADR 0094's zero mark
 restored in the model, and a walk that ignores the cap, which reproduces every
 channel total and is still refused on the count of cycles the cap cost.
+
+It merged by rebase on 2026-09-27 through PR #360 as `e79ea4d`, closing issue
+#359. Run 36353987502 on the PR head `c6797cf` passed all six checks, and push
+run 36354823837 on `e79ea4d` is the hosted verification M3.21d cites for
+requirement 16.
 
 ### How M3.21b was delivered
 

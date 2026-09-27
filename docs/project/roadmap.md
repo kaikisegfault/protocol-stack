@@ -66,12 +66,26 @@ The founder direction those contracts encode was revised on 2026-08-07 by ADR
 0023. The M2 evidence stands as proof about `founder-economy-manifest-v1`; the
 revised contract is M3 work.
 
-## M3 — Founder Economy devnet — active
+## M3 — Founder Economy devnet — complete
 
 Restate the economy contract under the revised direction, specify canonical
 transactions and state, implement it in C++, extend the independent Python
 model and fixed cross-language vectors, and operate adversarial four-node
 economic scenarios through restart and recovery.
+
+**Closed on 2026-09-27.** All sixteen requirements of the retained
+[`goals/m3-founder-economy-devnet.md`](goals/m3-founder-economy-devnet.md) are
+met, three with recorded limits. [`founder-economy-devnet-audit-v1.md`](founder-economy-devnet-audit-v1.md)
+states each against its artifact, its check, and its hosted run. The chain
+executes `economy-transition-v9`:
+
+- the recovery pool;
+- activity measured from challenge-response uptime;
+- the monthly unreferred pool payout on a consensus calendar.
+
+It does so on a four-validator CometBFT devnet, and
+`economy-scenario-suite-v4` runs every seat's whole life through that contract.
+The subsections below are the milestone's history as each was written.
 
 ### M3.1 Revised economic contract — accepted
 
@@ -149,7 +163,10 @@ Implement the accepted contract in the deterministic ledger kernel with
 cross-language vectors, then operate adversarial four-node scenarios through
 restart and recovery.
 
-It implements `economy-transition-v5`, the newest accepted transition version.
+It implemented `economy-transition-v5` first. Versions six to nine followed, and
+version nine is the contract at the milestone's close. ADRs 0070 and 0092
+record the deletion of versions seven and eight, and version nine's is the only
+economy kernel left in `src/`.
 
 Take it in two pieces. The pure codec — the envelope and its bodies, the
 verifier messages, the receipt, the state keys, the trees, the roots, and
@@ -162,7 +179,9 @@ Exit: every requirement in [`first-goal.md`](first-goal.md) passes and the
 devnet enforces the fixed cap and accepted Founder, referral, commercial, fee,
 and escrow accounting with deterministic replica agreement.
 
-## M4 — Founder identity, seats, and authority
+## M4 — Founder identity, seats, and authority — active
+
+The operational goal is [`first-goal.md`](first-goal.md).
 
 Specify permanent seat records, the 100,000-seat capacity, per-human limit,
 manager history, external-payment proof interface, biometric decision
