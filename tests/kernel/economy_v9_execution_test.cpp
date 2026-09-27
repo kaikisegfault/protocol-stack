@@ -52,6 +52,7 @@ int main(int argc, char** argv) {
     fixture::verify_coverage(values);
 
     fixture::verify_contract_sections(contract);
+    fixture::verify_referral_mark();
 
     std::cout << "C++ economy transition v9 execution: passed\n";
     return 0;

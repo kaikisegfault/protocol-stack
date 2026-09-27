@@ -346,6 +346,9 @@ void verify_restart_run(const pv::Values& values);
 // The contract file's sections a chain is needed for, which the codec target
 // defers to this one by name.
 void verify_contract_sections(const pv::Values& contract);
+// A referrer's first accrual starts its mark at the window before it, which no
+// recorded vector reaches (ADR 0094).
+void verify_referral_mark();
 void verify_coverage(const pv::Values& values);
 
 }  // namespace economy_v9_execution

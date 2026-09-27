@@ -37,6 +37,7 @@ from simulation.economy_transition_v6.ledger import (
     Ledger as LedgerV6,
     ReferralBalance,
     Seat,
+    first_referral_balance,
 )
 
 from . import contract as c
@@ -149,7 +150,9 @@ class Ledger(LedgerV6):
             self.channel_outstanding[channel] += delta
         self.pool = dict(assignment.pool_after)
         for identity, amount in accruals.items():
-            entry = self.referral.get(identity, ReferralBalance())
+            entry = self.referral.get(identity) or first_referral_balance(
+                assignment.cycle_window
+            )
             self.referral[identity] = replace(
                 entry, accrued_atomic=entry.accrued_atomic + amount
             )

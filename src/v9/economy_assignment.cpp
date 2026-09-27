@@ -223,8 +223,19 @@ bool apply_assignment(Ledger& ledger, const Assignment& assignment) {
   }
   ledger.pool = assignment.pool_after;
 
+  // A referrer's first accrual creates the balance with its mark at the window
+  // before that accrual, which is `economy-transition-v3`'s rule carried
+  // unchanged: "so a referrer is never capped before anything has been credited
+  // to them". A zero mark would cap every referrer whose first accrual lands
+  // after window 30 from their second accrual onward (ADR 0094). An accrual
+  // needs an in-span seat and none is in span before window 1.
   for (const auto& [identity, amount] : assignment.referral_accruals) {
-    auto& balance = ledger.referral[identity];
+    const auto [found, created] = ledger.referral.try_emplace(identity);
+    auto& balance = found->second;
+    if (created) {
+      if (assignment.cycle_window == 0) return false;
+      balance.collected_through_window = assignment.cycle_window - 1;
+    }
     if (amount > kMaxU64 - balance.accrued_atomic) return false;
     balance.accrued_atomic += amount;
     if (amount > kMaxU64 - ledger.channel_outstanding[kReferralChannel]) return false;
