@@ -176,5 +176,7 @@ void check_column_bounds(const pv::Values& values,
                          const std::filesystem::path& directory);
 void check_page_corruption(const pv::Values& values,
                            const std::filesystem::path& directory);
+void check_seeding(const pv::Values& values,
+                   const std::filesystem::path& directory);
 
 }  // namespace sqlite_ledger_v9_tests

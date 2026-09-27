@@ -4,6 +4,27 @@ Last updated: 2026-09-27
 
 ## Phase
 
+**M4.2a made a store seedable from a snapshot on 2026-09-27**, which is the
+first of three slices toward a mint on a network.
+[ADR 0096](../decisions/0096-a-devnet-may-begin-from-a-restored-snapshot.md)
+chose ADR 0071's snapshot route. CometBFT v0.39.4 skips `InitChain` when its
+store is empty and the application reports a nonzero height, so a network can
+launch at `H + 1` over seeded stores with no contract change. The chain's
+genesis stays at height zero. The slice added:
+
+- `seed_sqlite_ledger_v9`, which accepts a payload only through the
+  snapshot's three gates, refuses height zero and non-canonical octets, and
+  leaves no file when it refuses;
+- `protocol-application-v9 --seed <database> <genesis> <snapshot>`, which prints
+  the chain identity, height, stamp, and root a launcher needs;
+- `tests/integration/version_nine_snapshot.py`, a Python encoder for the
+  payload.
+
+**Every successful seed is a cross-language check of that encoder.** The C++
+seed re-encodes the decoded state and requires the same octets.
+`version-nine-seed` seeds four model ledgers, up to height 5,760,000, which
+carry all 19 entry kinds a block can write. It also refuses four bad seeds.
+
 **M4.1 put a test Founder's lifecycle on the four-validator devnet on
 2026-09-27.** This is requirement 1 of [`first-goal.md`](first-goal.md). The
 run is `tests/integration/cometbft_founder_lifecycle_v9_test.py`, and
@@ -2849,33 +2870,47 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-**M4.2: a mint on a network, requirement 2 of [`first-goal.md`](first-goal.md).**
-A network begun at genesis cannot reach either mint in a test's lifetime. A
-kind-18 mint collects completed windows after enrollment, so it first has
-something at height 57,600, about two days at the commit target. A kind-4 mint
-collects assigned cycles, and a seat activated in window 0 has its first cycle
-assigned at height 86,400, about three days. [ADR 0071](../decisions/0071-a-devnet-cannot-reach-the-uptime-audit.md)
-recorded two routes past that wall:
+**M4.2b: let the CometBFT adapter launch a seeded network.** It is the second of
+ADR 0096's three slices, toward requirement 2 of [`first-goal.md`](first-goal.md).
+Today `nodeconfig.readGenesis` refuses any `InitialHeight` but 1, and
+`devnet.go` and `config.go` write 1 with the genesis root as `app_hash` and the
+genesis stamp as the time. A seeded launch takes three values from one seeded
+head, as `--seed` prints it:
 
-- a nonzero initial height;
-- a snapshot-seeded devnet.
+- `initial_height` is the height plus 1;
+- `app_hash` is the seeded root;
+- `genesis_time` is no earlier than the seeded stamp.
 
-**The slice's first step is choosing between them, and the choice is
-mechanism, not founder-reserved.** Read ADR 0071 for what each costs the
-CometBFT adapter, the owning store, and the snapshot restore rules of ADRs 0080
-and 0093. Then record the choice in an ADR. After that, run a four-validator
-network whose seat collects a kind-4 mint and whose identity collects a kind-18
-mint, with every replica agreeing.
+**The rule to keep is that the three come together.** The adapter accepts a
+nonzero launch height only with the app hash of the head it launches from, never
+as independent options. So a genesis document whose height and hash disagree is
+refused before any engine starts. Today's blanket refusal of every other height
+protects exactly that, and the change must keep the protection while narrowing
+the refusal.
 
-**Founder-decision gate for M4.2: it held.** A mint's amounts, legs, and caps
-are the accepted contract's. The route is test infrastructure. No legacy,
-inactivity, payment, or biometric value is involved.
+The time needs care, because the first block carries the engine's genesis time:
+
+- C2 needs it to be no earlier than the seeded stamp;
+- C5 needs it within 60 seconds of every node's clock.
+
+A seed built from a history stamped just before launch satisfies both. Record
+the rule in the ADR's M4.2b section or a successor.
+
+**Then M4.2c**: a four-validator run seeded past the assignment lag, whose seat
+collects a kind-4 mint and whose identity collects a kind-18 mint, with every
+replica agreeing.
+
+**Founder-decision gate for M4.2b: it held.** A launch height is engine
+configuration; no contract, amount, or participant rule moves.
 
 **The candidates behind those are unchanged and none is blocked**:
 
 - drive the C++ kernel over the `economy-scenario-suite-v4` population against
   its seven pinned roots;
 - ADR 0089's outage wall.
+
+**M4.2a delivered what stood here before it**: choosing a route and seeding
+a store from a snapshot, ADR 0096.
 
 **M4.1 delivered what stood here before it**: a test Founder's lifecycle on
 the four-validator devnet.

@@ -401,6 +401,7 @@ add_executable(
   storage_sqlite_ledger_v9_tests
   tests/storage/sqlite_ledger_v9_test.cpp
   tests/storage/sqlite_ledger_v9_refusals.cpp
+  tests/storage/sqlite_ledger_v9_seed.cpp
   tests/kernel/economy_v9_trace.cpp
 )
 add_executable(
@@ -1029,6 +1030,16 @@ add_test(
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v9-execution.txt"
     "${CMAKE_CURRENT_BINARY_DIR}/ah-v9"
     "$<TARGET_FILE:protocol_clock_offset_shim>"
+)
+# A Python-encoded model ledger seeds a C++ store through the snapshot's three
+# gates, which checks the Python encoder byte for byte (ADR 0096).
+add_test(
+  NAME version-nine-seed
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/integration/version_nine_seed_test.py"
+    "$<TARGET_FILE:protocol_application_server_v9>"
+    "${CMAKE_CURRENT_BINARY_DIR}/seed-v9"
 )
 add_test(
   NAME cometbft-port-allocation

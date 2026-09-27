@@ -16,6 +16,7 @@
 
 #include "sqlite_ledger_v9_internal.hpp"
 
+#include <algorithm>
 #include <memory>
 #include <utility>
 #include <variant>
@@ -93,6 +94,66 @@ SQLiteLedgerV9Result open_sqlite_ledger_v9(
     auto implementation = std::make_unique<SQLiteLedgerV9::Impl>(
         normalized, std::move(trusted.canonical_bytes), trusted.parameters,
         std::move(verify), std::move(resources), std::move(restored),
+        durable.state_root, std::move(payload));
+    return SQLiteLedgerV9Result{
+        std::variant<SQLiteLedgerV9, SQLiteLedgerV9Error>(
+            std::in_place_type<SQLiteLedgerV9>,
+            SQLiteLedgerV9(std::move(implementation))),
+    };
+  } catch (const FailureV9& failure) {
+    return error_result(failure.error);
+  } catch (const internal::Failure& failure) {
+    return error_result(translate(failure.error));
+  } catch (...) {
+    return error_result(SQLiteLedgerV9Error::storage_failure);
+  }
+}
+
+SQLiteLedgerV9Result seed_sqlite_ledger_v9(
+    const std::filesystem::path& path, const v9::Genesis& genesis,
+    std::span<const std::uint8_t> snapshot, v9::SignatureVerifier verify) {
+  try {
+    auto trusted = load_trusted_genesis(genesis);
+    // **Every check on the payload runs before the path is reserved**, so a
+    // refused seed leaves no file behind to be mistaken for a store.
+    auto decoded = decode_snapshot_v9(snapshot, trusted.parameters);
+    if (!std::holds_alternative<DecodedSnapshotV9>(decoded)) {
+      throw FailureV9{SQLiteLedgerV9Error::invalid_snapshot};
+    }
+    auto seeded = std::get<DecodedSnapshotV9>(std::move(decoded));
+    if (seeded.ledger.height == 0) {
+      throw FailureV9{SQLiteLedgerV9Error::invalid_snapshot};
+    }
+    auto durable = durable_head_of(seeded.ledger);
+    if (!std::ranges::equal(durable.snapshot, snapshot) ||
+        durable.state_root != seeded.state_root) {
+      throw FailureV9{SQLiteLedgerV9Error::invalid_snapshot};
+    }
+
+    const auto normalized = internal::normalize_database_path(path);
+    auto resources = std::make_unique<internal::SQLiteResources>(
+        internal::reserve_sqlite_database(normalized));
+    internal::configure_connection(resources->connection);
+    internal::acquire_lifetime_lock(resources->connection);
+    internal::set_creation_journal_mode(resources->connection);
+
+    auto payload = durable.snapshot;
+    internal::begin_exclusive(resources->connection);
+    try {
+      internal::install_schema_v9(resources->connection,
+                                  bytes_view(trusted.canonical_bytes),
+                                  trusted.ledger.chain_id, durable);
+      internal::verify_stable_path(*resources, normalized);
+    } catch (...) {
+      internal::rollback_or_terminate(resources->connection);
+      throw;
+    }
+    internal::commit(resources->connection);
+    internal::verify_stable_path(*resources, normalized);
+
+    auto implementation = std::make_unique<SQLiteLedgerV9::Impl>(
+        normalized, std::move(trusted.canonical_bytes), trusted.parameters,
+        std::move(verify), std::move(resources), std::move(seeded.ledger),
         durable.state_root, std::move(payload));
     return SQLiteLedgerV9Result{
         std::variant<SQLiteLedgerV9, SQLiteLedgerV9Error>(
