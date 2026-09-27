@@ -1,8 +1,48 @@
 # Current state
 
-Last updated: 2026-09-24
+Last updated: 2026-09-27
 
 ## Phase
+
+**M3.20k deleted version eight on 2026-09-27, and the repository compiles one
+economy contract again.** Version eight's C++ kernel, owning store, snapshot,
+application, transport, and node process are gone, with their tests, targets,
+and CTest entries. The Go adapter no longer bridges version eight, and
+`-protocol-version 8` is refused beside 7. Version eight's accepted vector
+files, its Python model, and its specification stay. Version nine is pinned
+against the first two and built on the third.
+[ADR 0092](../decisions/0092-the-version-eight-deletion.md) records it.
+
+**Version nine was borrowing evidence from version eight in three places the
+handoff had not listed, and each is now version nine's own.**
+
+- **Nineteen checks in version nine's codec suite ran against the live
+  version-eight kernel.** Each is now pinned to the accepted version-six,
+  version-seven, or version-eight file that recorded the fact. Six are claims
+  only an implementation can answer: that version eight *refuses* a
+  version-nine artifact. They are owed to the Python verifier, which still runs
+  version eight's model. Fifteen mutation probes of the recorded figures each
+  fail the suite by name.
+- **Version nine's snapshot suite sampled the inherited value rules** and left
+  the full sweep to version eight's suite. Twenty-three refusals are ported, two
+  of them over synthetic entries with a control that must reach gate 3. Seven
+  decoder mutants each fail the suite.
+- **`receiptResultOffset` lived in `wire_v8.go`**, which is ADR 0070's trap
+  exactly, one version on.
+
+The two traps the handoff did name are closed. `economy_v9_fuzz` replaces
+`economy_v8_fuzz` with six new entry points, and ADR 0082 carries a correction:
+`wire_v1` stays. **The omission ADR 0070 found happened again**:
+`storage-snapshot-v9-fuzz-smoke` had never been given the fuzz label and the
+60-second bound. It has both now.
+
+**One finding is recorded rather than fixed.** A snapshot restore accepts a
+referral balance that owes nothing, keyed to an identity that referred no seat.
+No block writes one. Gate 3 checks the referral channel against what balances
+*owe*, so an orphan that owes anything is refused and **no unit can be minted
+from it**. The invariant is version eight's, ported unchanged. It is the exact
+next action, and it belongs in the snapshot's `complete` step, where an uptime
+entry naming an unsold seat is already refused.
 
 **M3.20j ran the skewed replica on 2026-09-24, and with it
 `consensus-application-v2`'s devnet evidence is met** apart from the kind-22
@@ -485,6 +525,13 @@ you need the history behind a claim here; read this one for what is true now.
 
 ## What works now
 
+- **The repository compiles one economy contract, version nine**, as of
+  2026-09-27 (ADR 0092). The bullets below that describe a version-eight
+  network, kernel, store, or process record what version eight's stack did
+  before it was deleted. None of them can be run now. What carries their
+  evidence forward is version nine's own, and every figure version nine is
+  measured against is pinned to version eight's accepted vector files, which
+  stay.
 - The completed M1 C++20 ledger processes canonical signed native transfers,
   exact nonces, and fixed fees while rejecting malformed, replayed,
   unauthorized, overflowing, and insufficient-balance transactions.
@@ -2682,29 +2729,41 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-**Delete `src/v8/`.** M3.20j ran the skewed replica
-([ADR 0091](../decisions/0091-the-skewed-replica-is-skewed-below-the-process.md)),
-so every version-nine layer now runs under a four-validator network, and every
-decision record from ADR 0080 to ADR 0085 names this deletion as the end of the
-migration. It is what M3.13t was to version seven, and
-[ADR 0070](../decisions/0070-the-version-seven-deletion.md) is the method: the
-kernel, storage, application, transport, node process, their tests, targets and
-CTest entries, and the Go adapter's version-eight client, codespace, protocol
-version and app state all go. Version eight's prose history stays, and so do its
-accepted vector files and Python model, which version nine's are pinned against
-or built on.
+**Refuse an orphan referral balance at restore.** M3.20k found that a snapshot
+restore accepts a referral balance keyed to an identity no seat names as its
+referrer, provided the balance owes nothing
+([ADR 0092](../decisions/0092-the-version-eight-deletion.md)). No block writes
+one: a referral balance comes into existence only when an assignment accrues to
+a referrer. Gate 3's referral check sums what balances *owe*, so an orphan that
+owes nothing passes it. Every restart of a version-nine node decodes its head
+through this path, because the owning store holds the head as one snapshot
+payload.
 
-**Check each item for a version-nine counterpart before deleting it, because
-the trap ADR 0070 found is set again.** `economy_v8_fuzz` exists and **there is
-no `economy_v9_fuzz`**. Deleting the first as a version-eight item would leave
-the live contract with no economy-codec fuzz target. The deletion slice must add
-`economy_v9_fuzz` first, with a smoke entry and a bounded timeout, as M3.13t
-added `economy_v8_fuzz`. **And one recorded sentence is wrong as it stands.**
-ADR 0082 says "`wire_v1` goes when `src/v8/` does". But version one's
-application still serves `wire_v1` (`serve_connection(ApplicationV1&)`), and
-`wire_v2.hpp` takes its shared declarations from `wire_v1.hpp`. So `wire_v1`
-stays, for the reason ADR 0070 kept version one, and ADR 0082 needs a correction
-note.
+**Close it in `snapshot_v9_entries.cpp`'s `complete` step**, beside the rule
+that already refuses an uptime entry naming a seat the chain never sold. There
+it is a storage rule, so no block's acceptance can move. In
+`conservation_failures` it would be a kernel invariant that execution reads
+too. The evidence is ready-made: `snapshot_v9_inherited_refusals.cpp`'s
+`with_entry` helper inserts a resealed entry. The case is a fully minted balance
+for the registered identity, which must be refused as `invalid_state`, and a
+balance for an identity a seat does refer to, which must still restore. Check
+first whether any version-nine scenario writes a referral balance at all. The
+recorded trace buys every seat without a referrer, so the positive control may
+need a seat built with one.
+
+**Then the remaining candidates, none blocked.**
+
+- **The anchor-fragment gap in `tools/verify_metadata.py`**, recorded below. It
+  is a Python source change.
+- **ADR 0071's two routes to the uptime audit on a network**: a nonzero initial
+  height, which is a `change-protocol` matter, or a snapshot-seeded devnet,
+  which is a node-process matter. Either would let a four-validator network
+  reach the audit, and in time the monthly pool's kind-22 mint, that
+  `consensus-application-v2`'s devnet evidence leaves below the engine. It is
+  the next vertical result.
+- **ADR 0089's outage wall.** No claim that a version-nine network survives an
+  outage longer than 60 seconds can be made until one of its candidates is a
+  new contract version. It blocks no current slice.
 
 **One verification gap is recorded and open.** `tools/verify_metadata.py`
 validates that a Markdown link's file exists and **does not validate its anchor
@@ -2722,6 +2781,9 @@ spaces. A checker that collapses whitespace runs reports false positives against
 every heading containing a dash, which is most of them here. Closing the gap is a
 Python source change that fails closed to the full matrix, so it is a candidate
 slice rather than a fold-in.
+
+**M3.20k delivered what stood here before it**: deleting `src/v8/`, with
+`economy_v9_fuzz` added first and ADR 0082 corrected.
 
 **Everything below this paragraph is the accumulated history of how the slices
 that led here were chosen, newest reasoning last.** It is kept because the
@@ -3703,8 +3765,26 @@ later scenario change stops reaching one.
 
 ## Blockers
 
-**There is no blocker.** Every remaining version-nine slice is a port with an
-accepted contract behind it.
+**There is no blocker.** Every candidate under "Exact next action" is unblocked.
+
+**M3.20k ran the founder-decision gate and passed it.** Six decisions were
+enumerated before any was judged:
+
+1. whether to delete version eight;
+2. what the deletion keeps;
+3. what becomes of `-protocol-version 8`;
+4. how the version-nine checks pinned to version eight are re-pinned;
+5. what replaces the economy fuzz target and the inherited snapshot sweep;
+6. what becomes of the orphan referral balance the port found.
+
+**The first is decided by ADRs 0080 through 0085**, each of which names this
+deletion as the migration's end, and ADR 0070 is the method. The second follows
+ADR 0070's rule and the repository's own dependencies. The third is the
+adapter's compatibility mechanism for a devnet tool, and it changes nothing a
+participant must do, own, run, or receive. The fourth and fifth are test
+engineering. The sixth is a restore-validation rule over a state no block writes.
+It moves no value, and it is recorded as the next slice rather than settled
+inside a deletion. Nothing founder-reserved is touched.
 
 **Two pieces of accepted required evidence cannot be produced over the wire, and
 both are recorded rather than waived.** The second is M3.20c's: **decision `6`,

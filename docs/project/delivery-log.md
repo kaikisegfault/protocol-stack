@@ -32,6 +32,82 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M3.20k was delivered
+
+**Version eight is deleted, and the repository compiles one economy contract
+again.** Issue #351 delivered the deletion under ADR 0070's method, recorded in
+[ADR 0092](../decisions/0092-the-version-eight-deletion.md). It removed version
+eight's C++ kernel, owning store, snapshot, application, transport, and node
+process. It removed their tests, targets, CTest entries, and two `tools/verify.sh`
+runs. The Go adapter lost its version-eight client, decoder, bridge constructor,
+codespace, protocol version, and application state. ctest falls from 178 to 168
+under the GCC presets and from 188 to 177 under `clang-sanitizers`.
+`tools/verification_scope.py` classifies it `full`. **No accepted vector file,
+specification rule, manifest, encoding, or version-nine kernel source changed.**
+
+**The handoff named two traps and there were five, and the larger two were
+evidence version nine had borrowed.** The two named ones were `economy_v8_fuzz`
+and ADR 0082's line about `wire_v1`. The survey then checked every deleted item
+for a version-nine counterpart, as that handoff asked. It found three more:
+
+- three version-nine kernel test files that included `protocol/v8/economy.hpp`;
+- a version-nine snapshot suite whose header said version eight's suite "holds
+  the full set" of the inherited refusals;
+- `receiptResultOffset` declared in `wire_v8.go` and read by `wire_v9.go`.
+
+**The re-pin used files, not a surviving kernel.** Nineteen checks now read
+version six's, seven's, and eight's accepted files through
+`economy_v9_carried.hpp`. Two of them are stronger than what they replaced.
+**Version nine's kind and entry tables must now equal the recorded
+predecessor's plus exactly what version nine adds**, where before the suite
+asked only that each new number was unassigned. And the mint message is
+compared with version six's *recorded* bytes, rather than with a sibling kernel
+that was itself a port. One old comment said version eight's file "does not
+record the count". It does, as `result.code_count=45`, and that is now the pin.
+**Six claims are behaviour of version eight**, such as that it refuses a kind-22
+transaction. No C++ can answer those any more. The coverage guard hands them to
+`tools/economy-transition-v9-vectors/verify.py`, which already ran all six
+against the version-eight Python model. Fifteen probes each corrupted one
+recorded figure in a scratch copy, and each failed the suite by name.
+
+**The snapshot sweep needed a fixture version nine did not have.** Version
+eight's uptime cases ran on its `deadline` scenario, the one state holding an
+open challenge beside a window record. No recorded version-nine height holds
+one. A probe over the settled chain's audit heights found the first audit after
+setup does, so the new file rebuilds the chain to
+`settled.audit_blocks[1].height` rather than naming a height. Referral balances
+and custody entries appear in no version-nine chain at all. Their cases insert a
+resealed entry, and each is paired with a lawful twin that must fail at gate 3.
+
+**Writing that control is what found the orphan balance.** Its first draft was a
+fully minted balance, and the restore accepted it. A probe then showed the gap
+is narrow. An inserted balance that owes anything is refused, and so is one for
+an unregistered identity. Only an orphan that owes nothing passes. It is
+recorded, not fixed here, and it is the next action.
+
+**The driven-application test was mapped, not ported.** Each of its scenarios
+has a version-nine counterpart in the four-validator driven replica, the
+headless process test, or the transport suite over a real socket. ADR 0092
+lists them.
+
+**The local evidence ran in this container against system libraries**, because
+the pinned libsodium and SQLite hosts are unreachable from it. `libsodium-dev`
+and Clang's runtime were installed for the purpose. The scratch build copied the
+tree, swapped the two external projects for system libraries, and built every
+target under GCC. All tests passed except three kinds, each for an environmental
+reason that was checked:
+
+- the SQLite pin assertion;
+- the two suites that require libsodium 1.0.22;
+- four socket suites whose scratch path exceeds `sun_path`. All four pass when
+  run from the repository's own `out/` directory.
+
+The Go module builds, vets, and passes its tests with the pinned toolchain. The
+new fuzz target and version nine's snapshot target were built under
+`clang-sanitizers`. Both smoke entries passed, now under the `fuzz` label, and a
+200,000-run pass of `economy_v9_fuzz` was clean. The hosted matrix is the
+evidence of record.
+
 ### How M3.20j was delivered
 
 **One replica of a version-nine network runs on a wrong clock, and the network
