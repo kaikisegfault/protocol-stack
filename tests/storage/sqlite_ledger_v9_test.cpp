@@ -197,6 +197,7 @@ int main(int argc, char** argv) {
     tests::check_tampering(values, directory);
     tests::check_column_bounds(values, directory);
     tests::check_page_corruption(values, directory);
+    tests::check_seeding(values, directory);
     std::filesystem::remove_all(directory);
 
     std::cout << "C++ version-nine owning store: passed\n";

@@ -197,6 +197,69 @@ int print_genesis_identity(const std::filesystem::path& genesis_path) {
   return 0;
 }
 
+// The largest snapshot file `--seed` reads into memory. Like the genesis width
+// check, this is an **allocation bound, not a validity rule**: the snapshot's
+// own decoder and its three gates decide what a valid seed is (ADR 0096).
+constexpr std::uintmax_t kMaximumSnapshotBytes = 1ULL << 30;
+
+std::optional<v9::Bytes> read_snapshot(const std::filesystem::path& path) {
+  std::error_code error;
+  if (!path.is_absolute() || !std::filesystem::is_regular_file(path, error) ||
+      error) {
+    return std::nullopt;
+  }
+  const auto size = std::filesystem::file_size(path, error);
+  if (error || size == 0 || size > kMaximumSnapshotBytes) return std::nullopt;
+  v9::Bytes bytes(static_cast<std::size_t>(size));
+  std::ifstream input(path, std::ios::binary);
+  if (!input || !input.read(reinterpret_cast<char*>(bytes.data()),
+                            static_cast<std::streamsize>(size))) {
+    return std::nullopt;
+  }
+  return bytes;
+}
+
+// Create a store whose head is a restored snapshot, and print what a launcher
+// must start the engine from: the chain identity, the seeded height, its stamp,
+// and its root, which becomes the engine's genesis `app_hash` (ADR 0096). The
+// store's own refusals are the only validation, so a seed this prints is one
+// that passed every restore gate and was written.
+int seed_store(const std::filesystem::path& database_path,
+               const std::filesystem::path& genesis_path,
+               const std::filesystem::path& snapshot_path) {
+  if (!database_path.is_absolute()) {
+    return fail("the database path must be absolute");
+  }
+  auto genesis = read_genesis(genesis_path);
+  if (!std::holds_alternative<v9::Genesis>(genesis)) {
+    return fail(std::get<std::string_view>(genesis));
+  }
+  const auto payload = read_snapshot(snapshot_path);
+  if (!payload) return fail("the snapshot is not an absolute, readable file");
+  auto seeded = ps::seed_sqlite_ledger_v9(
+      database_path, std::get<v9::Genesis>(genesis), *payload);
+  if (!std::holds_alternative<ps::SQLiteLedgerV9>(seeded.result)) {
+    const auto error = std::get<ps::SQLiteLedgerV9Error>(seeded.result);
+    if (error == ps::SQLiteLedgerV9Error::path_already_exists) {
+      return fail("the database already exists; a seed never overwrites one");
+    }
+    if (error == ps::SQLiteLedgerV9Error::invalid_snapshot) {
+      return fail("the snapshot is not a state this chain can be seeded with");
+    }
+    return fail("failed to create the seeded SQLite ledger");
+  }
+  const auto head = std::get<ps::SQLiteLedgerV9>(seeded.result).read_head();
+  if (!std::holds_alternative<ps::LedgerHeadV9>(head)) {
+    return fail("the seeded store cannot report its head");
+  }
+  const auto& value = std::get<ps::LedgerHeadV9>(head);
+  std::cout << "chain_id=" << uppercase_hex(value.ledger.chain_id) << '\n'
+            << "height=" << value.ledger.height << '\n'
+            << "timestamp=" << value.ledger.timestamp << '\n'
+            << "app_hash=" << uppercase_hex(value.state_root) << '\n';
+  return 0;
+}
+
 int serve(pa::ApplicationV9& app, pa::UnixSocketServerV1& listener,
           int shutdown) {
   for (;;) {
@@ -220,11 +283,18 @@ int run_application(int argc, char** argv) {
   if (argc == 3 && std::string_view(argv[1]) == "--genesis-identity") {
     return print_genesis_identity(std::filesystem::path(argv[2]));
   }
+  if (argc == 5 && std::string_view(argv[1]) == "--seed") {
+    return seed_store(std::filesystem::path(argv[2]),
+                      std::filesystem::path(argv[3]),
+                      std::filesystem::path(argv[4]));
+  }
   if (argc != 4) {
     return fail(
         "usage: protocol-application-v9 <absolute-database> "
         "<absolute-genesis> <absolute-socket> | "
-        "protocol-application-v9 --genesis-identity <absolute-genesis>");
+        "protocol-application-v9 --genesis-identity <absolute-genesis> | "
+        "protocol-application-v9 --seed <absolute-database> "
+        "<absolute-genesis> <absolute-snapshot>");
   }
   const std::filesystem::path database_path(argv[1]);
   const std::filesystem::path genesis_path(argv[2]);

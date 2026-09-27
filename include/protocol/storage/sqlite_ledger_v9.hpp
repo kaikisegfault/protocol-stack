@@ -153,6 +153,11 @@ class SQLiteLedgerV9 {
       const std::filesystem::path& path,
       const protocol::v9::Genesis& genesis,
       protocol::v9::SignatureVerifier verify);
+  friend SQLiteLedgerV9Result seed_sqlite_ledger_v9(
+      const std::filesystem::path& path,
+      const protocol::v9::Genesis& genesis,
+      std::span<const std::uint8_t> snapshot,
+      protocol::v9::SignatureVerifier verify);
 
   std::unique_ptr<Impl> implementation_;
 };
@@ -175,6 +180,25 @@ SQLiteLedgerV9Result create_sqlite_ledger_v9(
 // snapshot's three gates and the conservation invariants do the validating.
 SQLiteLedgerV9Result open_sqlite_ledger_v9(
     const std::filesystem::path& path, const protocol::v9::Genesis& genesis,
+    protocol::v9::SignatureVerifier verify = protocol::v9::ed25519_verifier());
+
+// Create a database whose head is a restored snapshot, for a network that
+// begins above height zero (ADR 0096). `path` must not exist, as for a create.
+//
+// **The payload is accepted only through `decode_snapshot_v9`'s three gates,
+// under the parameters `genesis` fixes**, so a seed is a state some sequence of
+// blocks could have produced on this chain, or it is `invalid_snapshot` and no
+// file is written. A height-zero payload is refused the same way, because it
+// is a genesis and `create_sqlite_ledger_v9` makes those. So is a payload that
+// does not re-encode to exactly its own octets: the head column is compared
+// byte for byte on every commit, and a seed must already be canonical.
+//
+// The store holds no block rows below the seeded head. Nothing reads them to
+// open or to execute, and a seeded store is thereafter indistinguishable from
+// any other at the same head.
+SQLiteLedgerV9Result seed_sqlite_ledger_v9(
+    const std::filesystem::path& path, const protocol::v9::Genesis& genesis,
+    std::span<const std::uint8_t> snapshot,
     protocol::v9::SignatureVerifier verify = protocol::v9::ed25519_verifier());
 
 }  // namespace protocol::storage

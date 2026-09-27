@@ -32,6 +32,59 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M4.2a was delivered
+
+**The route was chosen by reading the engine, not the ADR that named it.**
+
+- ADR 0071 left two routes open, and one of them, a nonzero initial height,
+  is a contract change.
+- CometBFT v0.39.4's `Handshaker.ReplayBlocks` in `consensus/replay.go` was
+  read from the module cache. It sends `InitChain` only at application height
+  0. When its own store is empty and the application reports a nonzero height,
+  it only compares app hashes.
+- `ApplicationV9` is ready whenever its store's height is nonzero, and opening
+  a store never reads its block rows.
+
+So the snapshot route needs no contract change, and ADR 0096 records that with
+the line numbers.
+
+**The seed's provenance question was settled before the code.** The candidate
+sources were:
+
+- the model executing real blocks;
+- the network replaying the history into each node over its socket, about
+  90,000 durable commits on four nodes;
+- a C++ tool that would sign challenge responses live.
+
+The model won. It already has a real signer and a responder, and the C++
+restore gates, not the harness, decide whether its state is one a chain could
+hold.
+
+**The encoder was checked by the path that uses it.** A seed succeeds only if
+the C++ decoder accepts the Python octets through all three gates and
+re-encodes the decoded state to the same octets. The first run passed on the
+restart and settled chains.
+
+**The test's own claim was then found false and fixed.** Its docstring said
+the two chains covered every entry kind. They carried 16 of 20: no referral
+balance, typed custody, open challenge, or direct decision. Two ledgers were
+added:
+
+- a seated chain stopped at the first outstanding challenge;
+- the M3.21c population at window 200, labelled as encoding coverage rather
+  than provenance, because its uptime was supplied.
+
+The test now requires all 19 writable kinds. Kind 5 is excluded because kind 6
+refuses every sender.
+
+**Three mutations each failed by name:**
+
+- dropping the store's height-zero refusal;
+- swapping two prefix fields in the encoder, which made the real seed refuse;
+- a stale `.pyc` from that second mutation, found while restoring it. The
+  mutated and restored files had the same size and the same second, so Python
+  reused the bytecode. The cache was cleared and the test re-run.
+
 ### How M4.1 was delivered
 
 **The lifecycle was proved on the model first, then on the C++ application, and
@@ -68,6 +121,12 @@ deterministic-test-verifier line directs.
   offline check ran against a scratch copy with the pin relaxed, and CI runs
   the pinned build.
 - CometBFT does not run here, so the network run itself is the hosted matrix's.
+
+It merged by rebase on 2026-09-27 through PR #364 as `f6a06d6`, closing issue
+#363. Run 36356341647 on the PR head `42585c9` passed all six checks. The
+gcc-debug job's log shows the network run's own line, "CometBFT founder-lifecycle
+version-nine integration: passed", with its eighteen transactions and five
+refusals on four replicas, beside the 172 ctest entries.
 
 ### How M3.21d was delivered
 
