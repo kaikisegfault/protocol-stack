@@ -36,6 +36,7 @@
 
 #include <algorithm>
 #include <optional>
+#include <set>
 #include <utility>
 
 namespace protocol::storage::snapshot_v9 {
@@ -107,7 +108,10 @@ bool apply_referral_balance(Rebuild& rebuild, std::span<const std::uint8_t> key,
   const auto minted = read_u64(value, 8);
   const auto collected = read_u64(value, 16);
   if (!identity || !accrued || !minted || !collected) return false;
-  if (*minted > *accrued) return false;
+  // A balance comes into existence only when an assignment accrues a whole
+  // referral leg to it, and `accrued` never falls, so a balance of zero is a
+  // second encoding of absence (ADR 0093).
+  if (*accrued == 0 || *minted > *accrued) return false;
   rebuild.ledger.referral.emplace(
       *identity, v9::ReferralBalance{*accrued, *minted, *collected});
   return true;
@@ -443,6 +447,22 @@ bool complete(Rebuild& rebuild) {
   // in naming a seat and all four sort after it.
   for (const auto seat_id : rebuild.referenced_seats) {
     if (!rebuild.ledger.seats.contains(seat_id)) return false;
+  }
+
+  // **A referral balance belongs to an identity some seat names as its
+  // referrer**, because the assignment accrues to a seat's referrer and to
+  // nobody else, and no transition deletes a seat or changes its referrer. The
+  // conservation gate cannot see an orphan that owes nothing: it sums what
+  // balances owe, and such an orphan owes zero. So it is refused here, beside
+  // the seat rule above, where it moves no block's acceptance (ADR 0093).
+  std::set<v9::Octets32> referrers;
+  for (const auto& [seat_id, seat] : rebuild.ledger.seats) {
+    (void)seat_id;
+    if (seat.has_referrer) referrers.insert(seat.referrer_hub_identity);
+  }
+  for (const auto& [identity, balance] : rebuild.ledger.referral) {
+    (void)balance;
+    if (!referrers.contains(identity)) return false;
   }
 
   const auto assigned = derive_assigned_permissions(rebuild.ledger);

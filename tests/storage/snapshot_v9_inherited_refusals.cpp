@@ -16,10 +16,12 @@
 // **Two inherited kinds no version-nine chain writes**, because the trace buys
 // every seat without a referrer and issues nothing directly: the referral
 // balance and the typed custody entry. Each is inserted, and each refusal is
-// paired with a control that inserts the same entry with a lawful value and
-// requires the restore to get *past* the decoder and fail at gate 3. The
-// control is what makes the refusal the decoder rule's: without it, an inserted
-// entry refused for being out of place would pass a test about its value.
+// paired with a control that inserts the same entry lawfully and requires the
+// restore either to succeed or to get *past* the decoder and fail at gate 3.
+// The control is what makes the refusal the decoder rule's: without it, an
+// inserted entry refused for being out of place would pass a test about its
+// value. The referral balance also carries version nine's two rules of its own,
+// that it belongs to an identity some seat refers from and is never zero.
 
 #include "snapshot_v9_fixture.hpp"
 
@@ -254,30 +256,74 @@ void require_control(const Payload& payload,
                   subject + ", with a lawful value");
 }
 
-void check_inserted(const Payload& base,
+void require_restores(const Payload& payload,
+                      const ps::SnapshotParametersV9& parameters,
+                      const std::string& subject) {
+  const auto decoded = ps::decode_snapshot_v9(payload.encode(), parameters);
+  pv::require(std::holds_alternative<ps::DecodedSnapshotV9>(decoded),
+              subject + " must restore");
+}
+
+// **The fixture's last seat is given a referrer**, because no version-nine chain
+// writes one: the trace buys every seat without. The referrer is a registered
+// identity other than the seat's owner, since a purchase refuses to refer
+// oneself, and the payload is resealed and required to restore before any case
+// uses it. Every lawful balance below is keyed to that identity; the orphan is
+// the same entry on the payload where no seat names it.
+void check_referral(const Payload& base,
                     const ps::SnapshotParametersV9& parameters) {
-  // Keyed by an identity the chain registered, so nothing but the value is
-  // foreign to the state.
-  auto source = base;
-  const auto identity = entry_of(source, v9::Entry::hub_identity).key;
-  const auto referral = [&identity](std::uint64_t accrued, std::uint64_t minted) {
+  auto referred = base;
+  auto& seat = last_of(referred, v9::Entry::seat);
+  pv::require(seat.value[32] == 0, "the fixture's last seat has no referrer");
+  const v9::Bytes owner(seat.value.begin(), seat.value.begin() + 32);
+  v9::Bytes referrer;
+  for (const auto& entry : referred.economy) {
+    if (entry.key.front() != static_cast<std::uint8_t>(v9::Entry::hub_identity)) {
+      continue;
+    }
+    const v9::Bytes identity(entry.key.begin() + 1, entry.key.end());
+    if (identity != owner) referrer = identity;
+  }
+  pv::require(referrer.size() == 32, "a second registered identity exists");
+  seat.value[32] = 1;
+  std::copy(referrer.begin(), referrer.end(), seat.value.begin() + 33);
+  reseal(referred);
+  require_restores(referred, parameters, "a seat naming another identity");
+
+  const auto referral = [&referrer](std::uint64_t accrued, std::uint64_t minted) {
     v9::EconomyEntry entry;
     entry.key = {static_cast<std::uint8_t>(v9::Entry::referral_balance)};
-    entry.key.insert(entry.key.end(), identity.begin() + 1, identity.end());
+    entry.key.insert(entry.key.end(), referrer.begin(), referrer.end());
     entry.value = v9::referral_balance_value(accrued, minted, 0);
     return entry;
   };
-  // **The control owes something, and has to.** An inserted balance that owes
-  // nothing restores: gate 3 checks the referral channel against what balances
-  // *owe*, so a fully minted balance for an identity that referred no seat
-  // passes, although no block writes one. ADR 0092 records that gap. One that
-  // owes ten units is refused there, which is the gate this control must reach.
-  require_control(with_entry(base, referral(10, 0)), parameters,
+
+  // **A balance its referrer owns restores, and the same balance with nobody
+  // referring from it does not** (ADR 0093). The pair differs in the seat's
+  // flag and nothing else, and the balance owes nothing, which is exactly what
+  // gate 3 cannot see: it sums what balances owe.
+  require_restores(with_entry(referred, referral(10, 10)), parameters,
+                   "a fully minted balance its referrer owns");
+  require_refusal(with_entry(base, referral(10, 10)), parameters,
+                  ps::SnapshotV9Error::invalid_state,
+                  "a referral balance no seat's referrer owns");
+  // A balance is created by accruing a whole leg to it, so zero is absence.
+  require_refusal(with_entry(referred, referral(0, 0)), parameters,
+                  ps::SnapshotV9Error::invalid_state,
+                  "a referral balance that accrued nothing");
+
+  // The inherited rule, over a balance the referrer owns so that nothing but
+  // the value is wrong. Its control owes ten units that the referral channel
+  // never counted, so gate 3 is where it must stop.
+  require_control(with_entry(referred, referral(10, 0)), parameters,
                   "a referral balance");
-  require_refusal(with_entry(base, referral(10, 11)), parameters,
+  require_refusal(with_entry(referred, referral(10, 11)), parameters,
                   ps::SnapshotV9Error::invalid_state,
                   "a referral balance that minted more than it accrued");
+}
 
+void check_custody(const Payload& base,
+                   const ps::SnapshotParametersV9& parameters) {
   // The four institutional legs are channels 1 through 4 and every one credits
   // the singleton beneficiary, which is the zero identifier.
   const auto custody = [](std::uint8_t leg, std::uint8_t beneficiary) {
@@ -338,7 +384,8 @@ void verify_inherited_refusals() {
   check_identity_and_escrow(settled.payload, settled.parameters);
   check_cycle_assignment(settled.payload, settled.parameters);
   check_uptime(audited.payload, audited.parameters);
-  check_inserted(settled.payload, settled.parameters);
+  check_referral(settled.payload, settled.parameters);
+  check_custody(settled.payload, settled.parameters);
 }
 
 }  // namespace snapshot_v9_tests
