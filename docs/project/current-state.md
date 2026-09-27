@@ -4,6 +4,35 @@ Last updated: 2026-09-27
 
 ## Phase
 
+**M3.21a ran M3's exit audit on 2026-09-27, and M3 does not close yet.**
+[`founder-economy-devnet-audit-v1.md`](founder-economy-devnet-audit-v1.md)
+states all sixteen `first-goal.md` requirements against the accepted artifact,
+the executed check, and the hosted run on `main` at `3c5347b`. **Fourteen are
+met, two of them with recorded limits.** Requirement 16, the closing act, waits
+on requirement 14.
+**Requirement 14's multi-year leg is not met against the contract the chain now
+executes.** `economy-scenario-suite-v3` runs every seat's 731 cycles against
+`founder-economy-simulator-v3`, which still has the per-channel carry. It has
+none of the three rules added since:
+
+- the recovery pool;
+- activity decided from measured uptime;
+- the calendar-month unreferred pool payout.
+
+The current contract's models reach long horizons only in targeted scenarios.
+This handoff recorded requirement 14 as "met against the v3 contract", and that
+was true of a contract since replaced.
+
+**The audit settled three open items as not M3's.**
+
+- ADR 0048's threat model belongs to M4.
+- ADR 0089's outage wall is a limit on requirement 13, to be settled before any
+  network is expected to survive an outage.
+- ADR 0071's audit on a network is outside M3 by its own decision.
+
+It also consolidates, in one list, the independent review requirement 15 says
+the ADRs owe.
+
 **M3.20l closed the two gaps the handoff recorded on 2026-09-27.** First, a
 restore now refuses a referral balance that no seat's referrer owns, and one
 that accrued nothing. Both are storage rules in `snapshot_v9`, so no block's
@@ -2742,41 +2771,42 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-**Run M3's exit audit.** `first-goal.md` requirement 16 asks for two things:
-hosted verification on the exact accepted commit, and a clean handoff naming
-the first M4 implementation slice. The roadmap's M3 exit is that every
-requirement passes.
+**Meet requirement 14's multi-year leg against the current contract.** Build a
+fourth scenario suite that assigns every window of a staggered research
+population's 731 cycles through the current contract's settlement, as
+`economy-scenario-suite-v3` drove its simulator. Uptime is a supplied
+per-window pattern, and calendar months come through `calendar-v1` from a
+stated block cadence.
 
-This document asserts most of the sixteen one paragraph at a time, across two
-months of slices. **No single place states all sixteen against the evidence
-that meets them**, and several assertions predate the pivot and the version
-changes that followed it. The audit is that single place.
+**The chain cannot be driven this way, and the slice should not try.** Version
+nine's `advance_to` refuses to skip heights once a seat is active, because every
+height audits. **The settlement can be.** Version nine's own `_assignment`, in
+`simulation/economy_transition_v9/block.py`, handles one due window. It
+composes `derive_assignment` (version seven's step, with the recovery pool),
+`referral_accrual`, `close_month` (`unreferred-pool-payout-v1`'s payout), and
+`Ledger.apply_assignment`, and reads the window's uptime records from the
+ledger. So the suite writes those records per window and calls that
+composition. It should expose it rather than copy it. The audit states four
+things the run must show:
 
-For each requirement, name the accepted artifact, the executed check, and the
-hosted run that meet it on today's `main`. Then settle, from `first-goal.md`'s
-words, whether three open items belong to M3 or to a later milestone:
+- every Founder Node channel delivers exactly what the manifest promised for
+  the cycles that ran, with the recovery pool drained;
+- the referral identity holds at every window;
+- every month's pool reaches that month's best performers;
+- no unit is issued twice or lost.
 
-- ADR 0048's threat model, listed as still owed;
-- ADR 0089's outage wall;
-- ADR 0071's audit on a network, which ADR 0071 placed outside this milestone.
+Record the suite as `economy-scenario-suite-v4`, with vectors, a verifier that
+fails closed, and the multi-year, market, and property tests the M2 standard
+set. **Its fixture is research, not founder values**, and its gate must say
+so. Once it passes, requirement 16 is the audit's last row: close M3 in the
+roadmap and name the first M4 slice, after running the founder-decision gate
+on it.
 
-Then either close M3 in the roadmap, naming the first M4 slice, or name the
-requirement that is unmet and the slice that meets it. **Run the
-founder-decision gate on the M4 slice before naming it.** M4 carries reserved
-questions, including legacy inactivity bounds and contested succession, which
-the constitution lists as unresolved.
+**The candidates behind it are unchanged and none is blocked**: ADR 0071's two
+routes to the audit on a network, and ADR 0089's outage wall.
 
-**Then the remaining candidates, none blocked, and all subject to what the
-audit decides:**
-
-- **ADR 0071's two routes to the uptime audit on a network**: a nonzero initial
-  height, which is a `change-protocol` matter, or a snapshot-seeded devnet,
-  which is a node-process matter. Either would let a four-validator network
-  reach the audit, the referral mint, and the monthly pool's kind-22 mint, none
-  of which a devnet begun at genesis can reach.
-- **ADR 0089's outage wall.** No claim that a version-nine network survives an
-  outage longer than 60 seconds can be made until one of its candidates is a
-  new contract version.
+**M3.21a delivered what stood here before it**: M3's exit audit, which found
+requirement 14 unmet.
 
 **M3.20l delivered what stood here before it**: the orphan referral balance
 refused at restore, and the anchor-fragment gap in `tools/verify_metadata.py`
@@ -3766,6 +3796,15 @@ later scenario change stops reaching one.
 ## Blockers
 
 **There is no blocker.** Every candidate under "Exact next action" is unblocked.
+
+**M3.21a ran the founder-decision gate and passed it.** Three decisions were
+enumerated: each requirement's status, where three open items belong, and
+whether M3 closes. The first follows from evidence, and the audit shows it. The
+second follows from `first-goal.md`'s scope and ADR 0071's own words. The third
+follows from the first, read fail-closed: a requirement met only against a
+replaced contract is not met. None sets a value or changes what a participant
+must do. The next slice's fixture, a research population and uptime pattern, is
+not a founder value either.
 
 **M3.20l ran the founder-decision gate and passed it.** Four decisions were
 enumerated before any was judged:

@@ -38,6 +38,10 @@
   separating what the six Founder Economy contracts and their verifiers prove
   about deterministic accounting from the policy, provenance, identity,
   storage, and production-safety claims none of them establishes.
+- `project/founder-economy-devnet-audit-v1.md`: the M3 exit audit, stating all
+  sixteen `first-goal.md` requirements against artifact, check, and hosted run,
+  with their recorded limits, the independent review owed, and the one
+  requirement not yet met.
 
 ## Architecture
 

@@ -32,6 +32,9 @@ restated:
 
 ## Required evidence
 
+[`founder-economy-devnet-audit-v1.md`](founder-economy-devnet-audit-v1.md)
+states each requirement below against its evidence as of 2026-09-27.
+
 Completion requires all of the following:
 
 1. An accepted `founder-economy-manifest-v2` whose ten channel caps sum
