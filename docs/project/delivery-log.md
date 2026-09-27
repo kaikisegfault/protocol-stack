@@ -32,6 +32,52 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M3.21a was delivered
+
+**The exit audit exists because no single place stated all sixteen requirements
+against their evidence**, and the one leg it found unmet had been reported met.
+It is a documentation slice:
+[`founder-economy-devnet-audit-v1.md`](founder-economy-devnet-audit-v1.md), a
+pointer to it from `first-goal.md`, and its entry in the documentation index.
+It uses the metadata path. **It closes nothing**: M3 stays active.
+
+**Each requirement was checked in three places**:
+
+- the accepted artifact that defines it;
+- the ctest entry that runs it, taken from the 168-entry inventory of a scratch
+  build of `main`;
+- the hosted run that executed that entry.
+
+Where a requirement's words were met and something a reader might assume was
+not, the audit says "met with a limit" and states the limit.
+
+**Requirement 14 was found by reading what the multi-year suite imports, not
+what the handoff said about it.** `economy-scenario-suite-v3` imports
+`founder-economy-simulator-v3`, whose state still has
+`performance_carry_atomic`. The recovery pool replaced that carry on 2026-08-19.
+Version seven's contract vectors record an eight-cycle schedule. Version nine's
+settlement machine runs a sampled sequence to window 155. So the contract the
+chain executes has never been run over a whole distribution. The handoff's
+"requirement 14 is met against the v3 contract" was true when written and
+stopped being the requirement's subject when the contract changed.
+
+**Three checks guarded against over-claiming.**
+
+- **Requirement 8's row was corrected before the first push.** It said
+  "enforced from version seven". The 18-of-24 rule is `uptime-measurement-v1`'s,
+  and a cycle is decided from *measured* evidence only from version eight.
+- **The next slice's wording was narrowed twice.** A research population does
+  not bring a channel to its cap, so the claim became "delivers what the
+  manifest promised for the cycles that ran". And the chain cannot be driven
+  over a whole distribution, because `advance_to` refuses once a seat is
+  active. Scouting then found that version nine's own `_assignment` is already
+  the window-level composition the suite needs, so the handoff points there
+  instead of at two older models stitched together.
+- **The first-goal's own founder-decision gate was checked against the
+  code**, not assumed. Kind 6 refuses every sender while its predicate is
+  undecided, so no eligibility mechanic was invented for the reserved
+  channels.
+
 ### How M3.20l was delivered
 
 **The two gaps the handoff recorded are closed, and each closed with its own
