@@ -46,7 +46,10 @@ for _entry in (REPOSITORY, REPOSITORY / "tests" / "differential"):
 
 from pinned_sodium import Sodium  # noqa: E402
 from simulation.economy_transition_v6 import messages  # noqa: E402
-from simulation.economy_transition_v6.identity import escrow_id  # noqa: E402
+from simulation.economy_transition_v6.identity import (  # noqa: E402
+    escrow_id,
+    signer_id,
+)
 from simulation.economy_transition_v9 import contract as c  # noqa: E402
 from simulation.economy_transition_v9 import genesis as g  # noqa: E402
 from simulation.economy_transition_v9.block import execute_block  # noqa: E402
@@ -71,6 +74,13 @@ RESULT_OFFSET = 39
 ALICE_IDENTITY = bytes.fromhex("a1" * 32)
 BOB_IDENTITY = bytes.fromhex("b1" * 32)
 TRANSFER_AMOUNT = 1_000_000
+
+# Alice's first escrow, which registration creates, and the holding escrow her
+# HUB key creates second. An escrow is derived from its owner and an index, so
+# both are known before the chain exists.
+ALICE_ESCROW = escrow_id(ALICE_IDENTITY, 0)
+ALICE_HOLDING_ESCROW = escrow_id(ALICE_IDENTITY, 1)
+BOB_ESCROW = escrow_id(BOB_IDENTITY, 0)
 
 # The seat the fixture sells. Zero is the first identifier the capacity admits
 # and carries no meaning beyond being inside it.
@@ -201,6 +211,11 @@ class Session:
         self.alice_signer = self._signer.derive("alice-signer")
         self.bob_hub = self._signer.derive("bob-hub")
         self.bob_signer = self._signer.derive("bob-signer")
+        # The keys a Founder's lifecycle adds and loses. None of them is ever a
+        # registration key, so the chains the other runs build are unchanged.
+        self.alice_second_signer = self._signer.derive("alice-second-signer")
+        self.alice_holding_signer = self._signer.derive("alice-holding-signer")
+        self.alice_recovered_signer = self._signer.derive("alice-recovered-signer")
         genesis = _genesis(
             genesis_timestamp, self.verifier_key, self.dispute_authority_key
         )
@@ -280,18 +295,90 @@ class Session:
         engine's mempool discards a hash it has seen, so a stale nonce the
         kernel refuses has to be a *different* transaction.
         """
-        recipient = escrow_id(BOB_IDENTITY, 0)
+        return self.alice_pays(
+            self.alice_signer, ALICE_ESCROW, BOB_ESCROW, nonce, amount
+        )
+
+    def alice_pays(
+        self,
+        signer_key: bytes,
+        source: bytes,
+        recipient: bytes,
+        nonce: int,
+        amount: int = TRANSFER_AMOUNT,
+    ) -> bytes:
+        """A confirmed transfer from any of Alice's escrows, by any signer key.
+
+        The signer key decides which escrow pays, because a signer belongs to
+        one escrow; `source` is what the HUB confirmation binds. A key that is
+        not, or is no longer, a signer is refused as `SIGNER_NOT_FOUND`.
+        """
         message = messages.transfer_confirm_message(
-            self.chain_id, ALICE_IDENTITY, escrow_id(ALICE_IDENTITY, 0),
-            recipient, amount, VALID_UNTIL,
+            self.chain_id, ALICE_IDENTITY, source, recipient, amount, VALID_UNTIL,
         )
         return _build(
-            self._signer, self.chain_id, c.TRANSFER_VERIFIED, self.alice_signer,
-            nonce,
+            self._signer, self.chain_id, c.TRANSFER_VERIFIED, signer_key, nonce,
             {
                 "recipient_escrow_id": recipient,
                 "amount_atomic": amount,
                 "hub_signature": self._signer.sign(self.alice_hub, message),
+            },
+        )
+
+    # --- what an identity does with its own keys --------------------------
+
+    def alice_adds_signer(
+        self,
+        escrow: bytes,
+        signer_key: bytes,
+        nonce: int,
+        authority: bytes | None = None,
+    ) -> bytes:
+        """Kind 15: an identity admits a signer to one of its escrows.
+
+        It is authorized by the identity's HUB key, never by a signer, and the
+        escrow it names pays the fee at that escrow's nonce. **This is also
+        recovery** (ADR 0044): an identity whose every signer is gone adds a new
+        one exactly this way. `authority` replaces the HUB key only to be refused.
+        """
+        return _build(
+            self._signer, self.chain_id, c.SIGNER_ADD, authority or self.alice_hub,
+            nonce,
+            {
+                "hub_identity_hash": ALICE_IDENTITY,
+                "escrow_id": escrow,
+                "signer_public_key": signer_key,
+            },
+        )
+
+    def alice_revokes_signer(
+        self, escrow: bytes, signer_key: bytes, nonce: int
+    ) -> bytes:
+        """Kind 16: the HUB key removes a signer, the last one included."""
+        return _build(
+            self._signer, self.chain_id, c.SIGNER_REVOKE, self.alice_hub, nonce,
+            {
+                "hub_identity_hash": ALICE_IDENTITY,
+                "escrow_id": escrow,
+                "signer_id": signer_id(signer_key),
+            },
+        )
+
+    def alice_creates_escrow(self, nonce: int) -> bytes:
+        """Kind 13: a keyless holding escrow, its fee paid by the first escrow."""
+        return _build(
+            self._signer, self.chain_id, c.ESCROW_CREATE, self.alice_hub, nonce,
+            {"hub_identity_hash": ALICE_IDENTITY, "fee_escrow_id": ALICE_ESCROW},
+        )
+
+    def alice_deletes_escrow(self, target: bytes, nonce: int) -> bytes:
+        """Kind 14, which refuses an escrow still holding value."""
+        return _build(
+            self._signer, self.chain_id, c.ESCROW_DELETE, self.alice_hub, nonce,
+            {
+                "hub_identity_hash": ALICE_IDENTITY,
+                "target_escrow_id": target,
+                "fee_escrow_id": ALICE_ESCROW,
             },
         )
 
@@ -307,6 +394,17 @@ class Session:
     def activations(self) -> dict[int, int]:
         """Activated seats and the heights they were activated at."""
         return self._ledger.activations()
+
+    def balance(self, escrow: bytes) -> int:
+        return self._ledger.balance(escrow)
+
+    def signers_of(self, escrow: bytes) -> set[bytes]:
+        """The signer identifiers an escrow currently has, possibly none."""
+        return {
+            signer
+            for signer, owner in self._ledger.registry.signers.items()
+            if owner == escrow
+        }
 
     def apply(self, raw: bytes, timestamp: int) -> Block:
         """Execute one block holding this transaction, and require it to succeed.

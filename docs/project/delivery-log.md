@@ -32,6 +32,43 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M4.1 was delivered
+
+**The lifecycle was proved on the model first, then on the C++ application, and
+only then written as a network run.**
+
+1. A scratchpad prototype ran the whole script through the version-nine model
+   with stand-in signatures. It confirmed the three refusal names the run would
+   assert: `SIGNER_NOT_FOUND` for a revoked key, `UNAUTHORIZED` for a foreign
+   or signer authority, and `ESCROW_NOT_EMPTY`. It also confirmed that
+   revoking an identity's last signer is permitted and leaves recovery open.
+2. The builders went into `version_nine_chain.Session`, and the script into
+   `founder_lifecycle_v9.py`, so the network run and the offline check read
+   one list.
+3. `version_nine_chain_test.py` gained a tenth check that runs it with real
+   Ed25519.
+4. A scratch driver started the locally built `protocol-application-v9` over
+   its socket and finalized and committed all eighteen blocks. It restarted the
+   process where the network run restarts the network, and compared every
+   receipt and root with the model's. All eighteen matched byte for byte.
+
+That last step is what makes the first hosted run a confirmation rather than a
+discovery. The network run adds consensus, four replicas, and the engine's
+stamps, but the transitions it exercises were already shown to agree across
+languages.
+
+**The run asks nothing the contract does not already decide.** Signers and
+holding escrows are ADR 0040's. Recovery is an ordinary `signer_add` under the
+identity, which is ADR 0044's. The keys are fixtures, as the roadmap's
+deterministic-test-verifier line directs.
+
+**Two local limits were worked around, not hidden.**
+
+- The pinned-libsodium check refuses this container's system library. The
+  offline check ran against a scratch copy with the pin relaxed, and CI runs
+  the pinned build.
+- CometBFT does not run here, so the network run itself is the hosted matrix's.
+
 ### How M3.21d was delivered
 
 **Requirement 16 is three acts, and none of them is code.** Its evidence is:
@@ -62,6 +99,11 @@ signer addition and revocation, and recovery under the HUB key. No integration
 run has submitted one of them. So M4.1 needs no contract, only a lifecycle on
 four validators. Its founder-decision gate held: every step is an accepted
 transition, and the keys are test fixtures the roadmap directs.
+
+It merged by rebase on 2026-09-27 through PR #362 as `155ae65`, closing issue
+#361. Run 36355082297 on the PR head `6d1dc18` took the metadata path and
+passed. Push run 36354823837 on `e79ea4d`, which requirement 16 cites, had
+passed all six jobs before the merge.
 
 ### How M3.21c was delivered
 

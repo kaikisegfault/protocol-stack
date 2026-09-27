@@ -4,6 +4,31 @@ Last updated: 2026-09-27
 
 ## Phase
 
+**M4.1 put a test Founder's lifecycle on the four-validator devnet on
+2026-09-27.** This is requirement 1 of [`first-goal.md`](first-goal.md). The
+run is `tests/integration/cometbft_founder_lifecycle_v9_test.py`, and
+`tools/verify.sh` runs it after the four-validator run. It asks four independent
+replicas for eighteen blocks, through all four nodes and two full restarts:
+
+- Alice enrolls, buys a seat, and activates it.
+- Her HUB key admits a second signer, creates a holding escrow, and funds it.
+  The holding escrow gets its own signer and pays.
+- The HUB key revokes every signer she has, and each revoked key is refused as
+  `SIGNER_NOT_FOUND`.
+- After a restart during which she holds no signer, the HUB key recovers her,
+  and the new signer pays.
+
+Another person's HUB key, and her own signer presented as the authority, are
+both refused as `UNAUTHORIZED` to admit a signer, so no wallet key alone
+rewrites an identity. A holding escrow with value cannot be deleted. The script
+is `founder_lifecycle_v9.lifecycle`, and `version_nine_chain_test.py` checks it
+offline as its tenth check.
+
+No contract changed, because the kernel already executed every step. **Before
+any hosted run, the locally built `protocol-application-v9` reproduced all
+eighteen receipts and roots byte for byte**, through two process restarts. It
+was driven directly over its socket.
+
 **M3 is complete: M3.21d met requirement 16 on 2026-09-27, and M4 is the
 active milestone.** Requirement 16 asks for three things, and each is done:
 
@@ -2824,45 +2849,36 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-**M4.1: a test Founder's lifecycle on the four-validator devnet.** It is
-requirement 1 of [`first-goal.md`](first-goal.md). The version-nine kernel
-already executes every step, but no network has ever run one past a
-transfer. The run is:
+**M4.2: a mint on a network, requirement 2 of [`first-goal.md`](first-goal.md).**
+A network begun at genesis cannot reach either mint in a test's lifetime. A
+kind-18 mint collects completed windows after enrollment, so it first has
+something at height 57,600, about two days at the commit target. A kind-4 mint
+collects assigned cycles, and a seat activated in window 0 has its first cycle
+assigned at height 86,400, about three days. [ADR 0071](../decisions/0071-a-devnet-cannot-reach-the-uptime-audit.md)
+recorded two routes past that wall:
 
-1. register;
-2. buy and activate a seat;
-3. add a second signer under the HUB key (kind 15, scheme 2);
-4. create a holding escrow (kind 13) and transact from it;
-5. revoke the first signer (kind 16);
-6. revoke the last signer, so the identity holds no signer;
-7. recover by adding a new one under the HUB key;
-8. transfer again.
+- a nonzero initial height;
+- a snapshot-seeded devnet.
 
-Every replica must agree on every root, through one restart in the middle.
-Add the builders to `tests/integration/version_nine_chain.py` beside the four
-it has. Assert each step's receipt by result name, including the refusals a
-revoked signer must meet. Register the run as a ctest entry.
+**The slice's first step is choosing between them, and the choice is
+mechanism, not founder-reserved.** Read ADR 0071 for what each costs the
+CometBFT adapter, the owning store, and the snapshot restore rules of ADRs 0080
+and 0093. Then record the choice in an ADR. After that, run a four-validator
+network whose seat collects a kind-4 mint and whose identity collects a kind-18
+mint, with every replica agreeing.
 
-**Founder-decision gate for M4.1: it held, and nothing is reserved.** Every
-step is an accepted transition:
-
-- ADR 0040 decides signers and holding escrows;
-- ADR 0041 decides that the seat is tied to the identity;
-- ADR 0044 decides that the HUB key recovers.
-
-The verifier and HUB keys are test fixtures, which the roadmap's "deterministic
-test verifier before production biometrics" directs. The slice needs no legacy,
-inactivity, payment, or biometric value.
-
-**Requirement 2 of the M4 goal comes next**: a mint on a network. It needs one
-of ADR 0071's two routes past the assignment lag, a nonzero initial height or a
-snapshot-seeded devnet, and choosing between them is its first step.
+**Founder-decision gate for M4.2: it held.** A mint's amounts, legs, and caps
+are the accepted contract's. The route is test infrastructure. No legacy,
+inactivity, payment, or biometric value is involved.
 
 **The candidates behind those are unchanged and none is blocked**:
 
 - drive the C++ kernel over the `economy-scenario-suite-v4` population against
   its seven pinned roots;
 - ADR 0089's outage wall.
+
+**M4.1 delivered what stood here before it**: a test Founder's lifecycle on
+the four-validator devnet.
 
 **M3.21d delivered what stood here before it**: requirement 16, closing M3.
 
