@@ -9,7 +9,7 @@ import unittest
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPOSITORY_ROOT / "tools"))
 
-from verify_metadata import validate_markdown_links, validate_skill  # noqa: E402
+from verify_metadata import heading_slug, validate_markdown_links, validate_skill  # noqa: E402
 
 
 VALID_SKILL = """---
@@ -55,6 +55,40 @@ class VerifyMetadataTest(unittest.TestCase):
             source.write_text("[missing](missing.md)\n", encoding="utf-8")
             self.assertEqual(validate_markdown_links(root, errors), 1)
             self.assertEqual(len(errors), 1)
+
+    def test_heading_slugs_follow_github(self) -> None:
+        # Each space is a hyphen, so a dash between spaces leaves two.
+        self.assertEqual(heading_slug("Kind 10 — `hub_register`"), "kind-10--hub_register")
+        self.assertEqual(heading_slug("**Bold** and [a link](x.md)"), "bold-and-a-link")
+        self.assertEqual(heading_slug("ADR 0070: What, and why?"), "adr-0070-what-and-why")
+
+    def test_fragments_must_name_a_heading(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "target.md").write_text(
+                "# Target\n\n## Kind 10 — `hub_register`\n\n## Twice\n\n## Twice\n\n"
+                "```text\n## Fenced\n```\n",
+                encoding="utf-8",
+            )
+            source = root / "source.md"
+            source.write_text(
+                "# Source\n\n[a](target.md#kind-10--hub_register) [b](target.md#twice-1) "
+                "[c](#source) [d](target.md#target)\n",
+                encoding="utf-8",
+            )
+            errors: list[str] = []
+            self.assertEqual(validate_markdown_links(root, errors), 4)
+            self.assertEqual(errors, [])
+            for broken in (
+                "target.md#kind-10-hub_register",
+                "target.md#twice-2",
+                "target.md#fenced",
+                "#nowhere",
+            ):
+                source.write_text(f"# Source\n\n[x]({broken})\n", encoding="utf-8")
+                errors = []
+                validate_markdown_links(root, errors)
+                self.assertEqual(len(errors), 1, broken)
 
 
 if __name__ == "__main__":
