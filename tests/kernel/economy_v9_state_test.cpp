@@ -8,21 +8,21 @@
 // are all refused, because each would give one fact two encodings or record a
 // state no conforming settlement can reach.
 //
-// **The cross-version claims are executed rather than asserted.** Version eight
-// is still compiled, so "a version-eight decoder refuses a version-nine entry"
-// is checked by handing the entry to version eight's own tree and requiring it
-// to refuse, not by comparing two width tables.
+// **The cross-version claims are pinned to the files that accepted version
+// eight.** Its kernel is deleted (ADR 0092), so "a version-eight decoder refuses
+// a version-nine entry" is no longer something this suite can execute; the
+// verifier that still can, against the version-eight Python model, is named in
+// the coverage guard. What stays here is the half version nine owns: its entry
+// table is version eight's recorded one plus exactly four kinds, and it refuses
+// version eight's pool value by width.
 
-#include "economy_v9_fixture.hpp"
+#include "economy_v9_carried.hpp"
 
-#include "protocol/v8/economy.hpp"
-
+#include <set>
 #include <string>
 
 namespace economy_v9_fixture {
 namespace {
-
-namespace v8 = protocol::v8;
 
 // The recorded fixture's settlement figures. They are magnitudes rather than
 // founder-directed values — what the vectors fix is the encoding, and the
@@ -47,7 +47,8 @@ std::uint32_t fixture_window_month() {
   return *month;
 }
 
-void verify_widths(const pv::Values& values, const pv::Values& carried_eight) {
+void verify_widths(const pv::Values& values, const Carried& carried) {
+  auto expected = version_eight_entry_kinds(carried);
   struct Declared {
     const char* prefix;
     v9::Entry entry;
@@ -82,7 +83,7 @@ void verify_widths(const pv::Values& values, const pv::Values& carried_eight) {
                 "the value width is its field sum");
     // Version eight assigned none of these numbers, so each extends the space
     // rather than reinterpreting it.
-    pv::require(!v8::is_entry_kind(kind),
+    pv::require(expected.insert(kind).second,
                 "version eight never assigned this entry kind");
   }
 
@@ -91,22 +92,31 @@ void verify_widths(const pv::Values& values, const pv::Values& carried_eight) {
   pv::require(widened.has_value(), "the pool value is a fixed width");
   pv::require(expect_size(values, "state.unreferred_pool.value_bytes") == *widened,
               "the pool value is 24 octets");
-  // Version eight's width comes from the file that accepted it and from the
-  // kernel still compiling it, rather than from a figure this file restates.
-  const auto carried = v8::entry_value_bytes(pool);
-  pv::require(carried.has_value(), "version eight's pool value is fixed too");
+  // Version eight's width is version seven's, which the file that accepted it
+  // records under the pool's own name, rather than a figure this file restates.
+  pv::require(carried.seven.at("state.kind" + std::to_string(pool) + ".name") ==
+                  "unreferred_pool",
+              "version seven's table names the pool's kind");
+  const auto narrow = version_seven_width(carried, pool, "value_bytes");
   pv::require(
       expect_size(values, "state.unreferred_pool.value_bytes_in_version_eight") ==
-          *carried,
+          narrow,
       "version eight's pool value is 16 octets");
-  pv::require(*widened == *carried + 8, "the pool value grew by one u64");
-  (void)carried_eight;
+  pv::require(*widened == narrow + 8, "the pool value grew by one u64");
 
-  std::size_t assigned = 0;
+  // **Version nine's table is version eight's plus the four above, exactly.** A
+  // kind either side has and the other lacks fails here by number, so the four
+  // being new is checked against the whole recorded table rather than one entry
+  // at a time.
+  std::set<std::uint8_t> assigned;
   for (std::uint16_t kind = 0; kind <= 255; ++kind) {
-    if (v9::is_entry_kind(static_cast<std::uint8_t>(kind))) ++assigned;
+    if (v9::is_entry_kind(static_cast<std::uint8_t>(kind))) {
+      assigned.insert(static_cast<std::uint8_t>(kind));
+    }
   }
-  pv::require(expect_size(values, "state.entry_kind_count") == assigned,
+  pv::require(assigned == expected,
+              "version nine assigns version eight's entry kinds and four more");
+  pv::require(expect_size(values, "state.entry_kind_count") == assigned.size(),
               "twenty entry kinds are assigned");
 
   pv::require(expect_size(values, "state.live_window_months") ==
@@ -244,59 +254,38 @@ void verify_refusals(const pv::Values& values) {
   expect_true(values, "state.refuses_a_pool_minting_more_than_it_assigned");
 }
 
-// Version eight's tree is asked to accept each version-nine entry and required
-// to refuse it. Handing it the entry is what makes the boundary behaviour rather
-// than a sentence about lengths: a width table can agree with itself.
-void verify_cross_version(const pv::Values& values) {
-  const auto month = fixture_window_month();
-  const auto refused = [](const v9::Bytes& key, const v9::Bytes& value) {
-    std::vector<v8::EconomyEntry> entries;
-    entries.push_back({v8::Bytes(key.begin(), key.end()),
-                       v8::Bytes(value.begin(), value.end())});
-    pv::require(!v8::economy_root(entries),
-                "version eight refuses the entry rather than hashing it");
-  };
-
-  refused(v9::window_month_key(kFixtureWindow), *v9::window_month_value(month));
-  expect_true(values, "state.version_eight_refuses_the_window_month");
-
-  refused(*v9::monthly_figure_key(month, kFixtureSeat),
-          *v9::monthly_figure_value(kFixtureFigureSeconds));
-  expect_true(values, "state.version_eight_refuses_the_monthly_figure");
-
-  refused(v9::monthly_claim_key(kFixtureSeat),
-          *v9::monthly_claim_value({kFixtureClaimAccrued, 0}));
-  expect_true(values, "state.version_eight_refuses_the_monthly_claim");
-
-  refused(v9::settlement_cursor_key(), *v9::settlement_cursor_value(month));
-  expect_true(values, "state.version_eight_refuses_the_settlement_cursor");
-
-  // The pool is the one entry whose *kind* version eight knows, so this is the
-  // width refusal rather than the unknown-kind refusal, and it is the reason the
-  // widening is a version rather than an edit.
-  const auto widened =
-      *v9::unreferred_pool_value({kFixturePoolAccrued, kFixturePoolPayable, 0});
-  const auto pool_key = v9::unreferred_pool_key();
-  pv::require(v8::is_entry_kind(pool_key.front()),
-              "version eight knows the pool's kind");
-  refused(pool_key, widened);
-  expect_true(values, "state.version_eight_refuses_the_widened_pool");
-
-  // And the converse, which the specification states and nothing else here
-  // reaches: a version-eight pool value is not a version-nine one.
-  const auto narrow = v8::unreferred_pool_value(1, 0);
-  pv::require(!v9::decode_unreferred_pool_value(
-                  v9::Bytes(narrow.begin(), narrow.end())),
+// **One direction of the boundary survives the version-eight kernel.** Version
+// eight refusing each version-nine entry went with the only C++ that could
+// refuse it; the five `state.version_eight_refuses_*` vectors are owed to the
+// verifier that still runs version eight's Python model. This is the direction
+// that matters to a chain running version nine: a version-eight pool value,
+// written out as the literal version seven's table fixes rather than produced by
+// a sibling encoder, is refused by width, and a positive control of the same
+// quantities at version nine's width is accepted, so the refusal is about the
+// width rather than the numbers.
+void verify_cross_version(const Carried& carried) {
+  const auto pool = static_cast<std::uint8_t>(v9::Entry::unreferred_pool);
+  const auto narrow_width = version_seven_width(carried, pool, "value_bytes");
+  // `accrued` 1, `minted` 0: two big-endian u64s, version eight's layout.
+  v9::Bytes narrow(narrow_width, 0);
+  narrow[7] = 1;
+  pv::require(!v9::decode_unreferred_pool_value(narrow),
               "version nine refuses version eight's pool value by width");
+  const auto control = v9::unreferred_pool_value({1, 0, 0});
+  pv::require(control.has_value() &&
+                  v9::decode_unreferred_pool_value(*control).has_value(),
+              "the same quantities at version nine's width are accepted");
+  pv::require(control->size() == narrow.size() + 8,
+              "and the two differ by exactly the inserted field");
 }
 
 }  // namespace
 
-void verify_state(const pv::Values& values, const pv::Values& carried_eight) {
-  verify_widths(values, carried_eight);
+void verify_state(const pv::Values& values, const Carried& carried) {
+  verify_widths(values, carried);
   verify_encodings(values);
   verify_refusals(values);
-  verify_cross_version(values);
+  verify_cross_version(carried);
 }
 
 }  // namespace economy_v9_fixture

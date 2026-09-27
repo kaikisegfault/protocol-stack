@@ -12,6 +12,15 @@ func receiptV9(result byte) []byte {
 	return receipt
 }
 
+// The declared code an executed result carries: zero for success, and 256 past
+// the receipt's own result byte otherwise.
+func resultCodeV9(result byte) uint32 {
+	if result == 0 {
+		return 0
+	}
+	return 256 + uint32(result)
+}
+
 // Every result a version-nine block can report: the three admission failures
 // that carry no receipt, and all forty-five execution results.
 func finalizeBodyV9(root, blockID Hash) []byte {
@@ -23,7 +32,7 @@ func finalizeBodyV9(root, blockID Hash) []byte {
 		body = appendU32(body, 0)
 	}
 	for result := byte(0); result < resultCodeCountV9; result++ {
-		body = appendU32(body, resultCodeV8(result))
+		body = appendU32(body, resultCodeV9(result))
 		body = appendBlob(body, receiptV9(result))
 	}
 	return body
@@ -171,7 +180,7 @@ func TestDecodeAllVersionNineFinalizeResults(t *testing.T) {
 	}
 	for index, result := range block.TransactionResults[3:] {
 		if result.Data[receiptResultOffset] != byte(index) ||
-			result.Code != resultCodeV8(byte(index)) {
+			result.Code != resultCodeV9(byte(index)) {
 			t.Fatalf("execution result %d: %#v", index, result)
 		}
 	}
@@ -199,7 +208,7 @@ func TestVersionNineFinalizeRefusals(t *testing.T) {
 		"result out of range": corrupt(func(value []byte) []byte {
 			value[firstReceiptBody+receiptResultOffset] = resultCodeCountV9
 			binary.BigEndian.PutUint32(value[firstReceipt:firstReceipt+4],
-				resultCodeV8(resultCodeCountV9))
+				resultCodeV9(resultCodeCountV9))
 			return value
 		}),
 		"code disagrees with receipt": corrupt(func(value []byte) []byte {
@@ -227,26 +236,37 @@ func TestVersionNineFinalizeRefusals(t *testing.T) {
 // Versions eight and nine have the same finalized-block shape, so the receipt's
 // version octet is the only thing that separates a well-formed block of each.
 // The control beside the refusal is what makes it about that octet.
+//
+// **The version-eight receipt is a literal**, `PSRC` with a version octet of 8
+// at the width version nine kept, rather than a call into a sibling decoder:
+// ADR 0092 deleted version eight, and a pin that dies with the artifact it pins
+// proves nothing afterwards. The reverse direction -- version eight refusing
+// version nine -- went with that decoder, and nothing in this repository can
+// still be dialled at it.
 func TestVersionNineRefusesAVersionEightBlock(t *testing.T) {
+	receiptV8 := make([]byte, receiptBytesV9)
+	copy(receiptV8, []byte{'P', 'S', 'R', 'C', 0, 8})
 	body := func(receipt []byte) []byte {
 		value := append([]byte(nil), make([]byte, 64)...)
 		value = appendU32(value, 1)
 		value = appendU32(value, 0)
 		return appendBlob(value, receipt)
 	}
-	if _, err := decodeFinalizeV9(body(receiptV8(0)), 1); err == nil {
+	if _, err := decodeFinalizeV9(body(receiptV8), 1); err == nil {
 		t.Fatal("version nine accepted a version-eight finalized block")
 	}
 	if _, err := decodeFinalizeV9(body(receiptV9(0)), 1); err != nil {
 		t.Fatalf("version nine refused its own finalized block: %v", err)
 	}
-	if _, err := decodeFinalizeV8(body(receiptV9(0)), 1); err == nil {
-		t.Fatal("version eight accepted a version-nine finalized block")
-	}
 }
 
-// The figures that moved with the version, pinned to their literals, for the
-// reason `TestVersionEightFiguresAreTheContracts` records.
+// The figures that moved with the version, pinned to their literals.
+//
+// **Nothing above checks them**, and they fail differently. A stale receipt
+// version breaks the happy path, so the first integration block would catch it.
+// A stale result count would not: the codes it would cut off are the high ones,
+// no fixture produces them, and the range would silently narrow. Every check
+// above compares the constant to itself and would pass at either value.
 func TestVersionNineFiguresAreTheContracts(t *testing.T) {
 	if wireVersionV2 != 2 || receiptVersionV9 != 9 || resultCodeCountV9 != 45 {
 		t.Fatalf("figures are %d, %d, %d", wireVersionV2, receiptVersionV9,
@@ -261,6 +281,16 @@ func TestVersionNineFiguresAreTheContracts(t *testing.T) {
 	}
 	if DecisionTimestampBehindTolerance != 5 || DecisionNotExecutable != 7 {
 		t.Fatal("the decision numbering is not calendar-v1's")
+	}
+	// The last defined result and the first undefined one, written out rather
+	// than derived, so the boundary is a fact about the contract.
+	accepted := TransactionResult{Code: 256 + 44, Data: receiptV9(44)}
+	if !validTransactionResultV9(accepted) {
+		t.Fatal("result 44 was refused")
+	}
+	refused := TransactionResult{Code: 256 + 45, Data: receiptV9(45)}
+	if validTransactionResultV9(refused) {
+		t.Fatal("result 45 was accepted")
 	}
 }
 

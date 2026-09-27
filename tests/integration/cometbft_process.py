@@ -234,10 +234,10 @@ def application_info(
 ) -> tuple[int, bytes]:
     """The application's own durable head, read straight off its Unix socket.
 
-    Versions one and eight answer `Info` identically over the version-one frame,
-    so for them the only version-specific thing here is which protocol version
-    the application must report -- and requiring it is what catches a stack
-    wired to the wrong binary.
+    Version one answers `Info` over the version-one frame, so for it the only
+    version-specific thing here is which protocol version the application must
+    report -- and requiring it is what catches a stack wired to the wrong
+    binary.
 
     **Version nine answers over the version-two frame** and refuses a version-one
     frame at the header. Its answer also carries the durable stamp, which this
@@ -322,7 +322,7 @@ def inspect_identity_v9(
     """The three figures a version-nine binary prints, and no other key.
 
     The key set is exact per version, as the Go parser's is (ADR 0088): a
-    version-eight binary omits the stamp and is refused for it, and
+    version-one binary omits the stamp and is refused for it, and
     `inspect_identity` refuses a version-nine binary for the key it adds. The
     stamp is read as canonical decimal because that is the only spelling the
     initializer accepts, so a value this accepted and it refused would fail one
@@ -380,10 +380,10 @@ def initialize_home(
 ) -> None:
     """Initialize or exact-validate a CometBFT home.
 
-    `protocol_version` selects the genesis application state, which is what a
-    version-eight application requires at InitChain: a home written for one
-    ledger version and a bridge started for the other is refused there rather
-    than at the first block.
+    `protocol_version` selects the genesis application state, which is what an
+    application checks at InitChain: a home written for one ledger version and
+    a bridge started for another is refused there rather than at the first
+    block.
 
     `genesis_timestamp` is version nine's, and the initializer derives
     `genesis_time` from it. It is passed only when given, so the initializer

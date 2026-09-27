@@ -29,9 +29,9 @@ using v9::Bytes;
 // at the same offset.
 //
 // The version octets are derived from `kReceiptVersion` rather than written out,
-// for the reason `response_v8.cpp` records: a literal here moves with the version
-// while looking like framing, and the `static_assert` below covers the prefix
-// only if the prefix is computed from the constant it asserts.
+// because a literal here moves with the version while looking like framing, and
+// the `static_assert` below covers the prefix only if the prefix is computed from
+// the constant it asserts.
 constexpr std::array<std::uint8_t, 6> kReceiptPrefixV9{
     'P', 'S', 'R', 'C',
     static_cast<std::uint8_t>(v9::kReceiptVersion >> 8U),

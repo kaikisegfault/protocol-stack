@@ -10,14 +10,19 @@
 // every one of them and what owes it, so the slice boundary is a check rather
 // than a description.
 //
-// **Two carried files, because version nine records only what version nine
+// **Four carried files, because version nine records only what version nine
 // changes.**
-// The surface it inherits stays fixed by the file that accepted it:
-// `test-vectors/economy-transition-v8.txt` fixes the 142-octet genesis prefix
-// and the version-eight identity this one is measured against, and
-// `test-vectors/economy-transition-v6.txt` fixes kind 4's body, which kind 22
-// reuses. Re-recording either under a version-nine name would produce a file
-// that agrees with the first and says nothing.
+// The surface it inherits stays fixed by the files that accepted it:
+// `test-vectors/economy-transition-v8.txt` fixes the 142-octet genesis prefix,
+// the version-eight identity this one is measured against, and the kinds and
+// codes version eight added; `economy-transition-v8-execution.txt` fixes the
+// 146-octet header; `economy-transition-v7.txt` fixes the entry table version
+// eight carried; and `test-vectors/economy-transition-v6.txt` fixes kind 4's
+// body, which kind 22 reuses, with the envelope table, the first thirty-three
+// codes, and the mint message. Re-recording any of them under a version-nine
+// name would produce a file that agrees with the first and says nothing. They
+// are also the only record of version eight left to C++, since ADR 0092 deleted
+// its kernel.
 //
 // Two further files are read as *third* sources rather than as second opinions:
 // `test-vectors/calendar-v1.txt`, because the calendar is an accepted
@@ -30,7 +35,7 @@
 // The checks are split by subject across four translation units — version,
 // state, clock, kinds. This one is the entry point and the coverage guard.
 
-#include "economy_v9_fixture.hpp"
+#include "economy_v9_carried.hpp"
 
 #include <algorithm>
 #include <array>
@@ -57,7 +62,7 @@ struct Deferred {
   std::string_view owed_to;
 };
 
-constexpr std::array<Deferred, 6> kDeferred{{
+constexpr std::array<Deferred, 7> kDeferred{{
     // A window's month is written at its opening height and read two windows
     // later, so every attribution vector needs a chain that has executed both.
     {"attribution.", Match::prefix, "economy_v9_execution_tests"},
@@ -100,6 +105,17 @@ constexpr std::array<Deferred, 6> kDeferred{{
     // recorded over a whole state rather than over one subtree.
     {"_empty_economy_root_reproduced", Match::contains,
      "tools/economy-transition-v9-vectors/verify.py"},
+    // **Behaviour of version eight, which only an implementation of version
+    // eight can show.** A version-eight decoder refusing kind 22 and each of the
+    // five version-nine entries was executed here against the live
+    // version-eight kernel until ADR 0092 deleted it. The version-eight Python
+    // model is kept, and the verifier runs all six against it. What this target
+    // keeps is the half version nine owns: its kind and entry tables are
+    // version eight's recorded ones plus exactly what it adds, and it refuses
+    // version eight's pool value by width.
+    {"version_eight_refuses", Match::contains,
+     "tools/economy-transition-v9-vectors/verify.py, against the version-eight "
+     "Python model"},
 }};
 
 }  // namespace
@@ -151,16 +167,20 @@ void verify_coverage(const pv::Values& values) {
 int main(int argc, char** argv) {
   namespace fixture = economy_v9_fixture;
   try {
-    pv::require(argc == 7,
+    pv::require(argc == 9,
                 "usage: economy_v9_codec_tests V9_VECTORS MANIFEST V8_VECTORS "
-                "V6_VECTORS CALENDAR PRIMITIVES");
+                "V8_EXECUTION V7_VECTORS V6_VECTORS CALENDAR PRIMITIVES");
     pv::require(sodium_init() >= 0, "libsodium initialization");
     const auto values = pv::load_values(argv[1]);
     const auto manifest = pv::load_values(argv[2]);
     const auto carried_eight = pv::load_values(argv[3]);
-    const auto carried_six = pv::load_values(argv[4]);
-    const auto calendar = pv::load_values(argv[5]);
-    const auto primitives = pv::load_values(argv[6]);
+    const auto carried_eight_execution = pv::load_values(argv[4]);
+    const auto carried_seven = pv::load_values(argv[5]);
+    const auto carried_six = pv::load_values(argv[6]);
+    const auto calendar = pv::load_values(argv[7]);
+    const auto primitives = pv::load_values(argv[8]);
+    const fixture::Carried carried{carried_six, carried_seven, carried_eight,
+                                   carried_eight_execution};
 
     // The one guard that belongs to no vector group and to the port itself:
     // `src/v9/`'s tree is version eight's copied, so it is required to reproduce
@@ -169,10 +189,10 @@ int main(int argc, char** argv) {
     // roots and would fail here.
     fixture::verify_accounts_tree(primitives);
 
-    fixture::verify_version(values, carried_eight, manifest, primitives);
-    fixture::verify_state(values, carried_eight);
+    fixture::verify_version(values, carried, manifest, primitives);
+    fixture::verify_state(values, carried);
     fixture::verify_clock(values, calendar);
-    fixture::verify_kinds(values, carried_six);
+    fixture::verify_kinds(values, carried);
     fixture::verify_coverage(values);
 
     std::cout << "C++ economy transition v9 codec: passed\n";

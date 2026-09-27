@@ -24,9 +24,16 @@ const (
 	statusDecidedBlockFailedMonotonicity = 8
 
 	receiptBytesV9 = 56
-	// Named rather than written into the prefix, for the reason
-	// `receiptVersionV8` records: it is the figure that moves with the ledger
-	// version while looking like framing.
+	// The result byte's position in the receipt. Version nine keeps the
+	// receipt layout versions seven and eight used, so this offset is theirs;
+	// it moved here from `wire_v8.go` when ADR 0092 deleted that file, as it
+	// had moved there from `wire_v7.go`.
+	receiptResultOffset = 39
+	// The receipt version, which is the last octet of the magic prefix below.
+	// **It is named rather than written into the array**, because it is the
+	// figure that moves with the ledger version while looking like framing:
+	// rebinding a bare literal is what broke every finalized block the first
+	// time the C++ encoder was rebound.
 	receiptVersionV9 = 9
 	// Version nine adds no result code, so its table is version eight's 45.
 	resultCodeCountV9 = 45

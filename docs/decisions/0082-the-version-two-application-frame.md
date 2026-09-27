@@ -76,6 +76,15 @@ What is copied is the primitive reader and the payload decoder, because those ar
 what version two edits. The duplication is bounded by the deletion already owed:
 `wire_v1` goes when `src/v8/` does.
 
+**Correction of 2026-09-27: `wire_v1` did not go with `src/v8/`, and the
+sentence above was wrong when it was written.** Version one's application
+serves the version-one frame too (`serve_connection(ApplicationV1&)`), and this
+module takes its shared declarations from `wire_v1.hpp`, so `wire_v1` stays for
+the reason [ADR 0070](0070-the-version-seven-deletion.md) kept version one.
+[ADR 0092](0092-the-version-eight-deletion.md) deleted version eight and records
+it. The copied reader and payload decoder stay with it, bounded now by version
+one's own retirement, which nothing has scheduled.
+
 ### 4. The raw-input bound is derived from the kernel, not restated
 
 `kMaximumBlockInputsV2` is `v9::kMaxRawInputs`, with a static assertion that it

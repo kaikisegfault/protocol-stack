@@ -201,20 +201,22 @@ inline std::vector<v9::AccountEntry> accepted_accounts(const pv::Values& primiti
 // here.
 void verify_accounts_tree(const pv::Values& primitives);
 
+// The accepted predecessor files, defined in `economy_v9_carried.hpp`.
+struct Carried;
+
 // The four check groups, one per translation unit. `values` is always version
-// nine's own file; `carried_eight` and `carried_six` are the accepted files that
-// fix the surface version nine inherits, so an inherited width or name is
-// compared against the file that accepted it rather than re-recorded under a
-// version-nine name.
-void verify_version(const pv::Values& values, const pv::Values& carried_eight,
+// nine's own file; `carried` holds the accepted files that fix the surface
+// version nine inherits, so an inherited width or name is compared against the
+// file that accepted it rather than re-recorded under a version-nine name.
+void verify_version(const pv::Values& values, const Carried& carried,
                     const pv::Values& manifest, const pv::Values& primitives);
-void verify_state(const pv::Values& values, const pv::Values& carried_eight);
+void verify_state(const pv::Values& values, const Carried& carried);
 // `calendar` is `test-vectors/calendar-v1.txt`, read as a third source: those
 // vectors were recorded by driving the accepted calendar model rather than
 // version nine's, so reproducing them is agreement with the specification this
 // version binds rather than with its own restatement of it.
 void verify_clock(const pv::Values& values, const pv::Values& calendar);
-void verify_kinds(const pv::Values& values, const pv::Values& carried_six);
+void verify_kinds(const pv::Values& values, const Carried& carried);
 // Every recorded vector is either consulted above or named as owed to a later
 // slice. A key in neither set fails, and a deferred entry that matches nothing
 // fails too, so the slice boundary is checkable rather than described.

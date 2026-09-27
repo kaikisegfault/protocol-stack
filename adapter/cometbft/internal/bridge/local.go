@@ -12,9 +12,8 @@ import (
 // CheckTransaction and PrepareProposal are the same connection, the same
 // frames, and the same answers for every version, so every type promotes them
 // from the client it embeds. What differs is the engine's time, which only
-// version nine reads; the finalized block, which version eight and nine name and
-// version one has nothing to name with; and the vote, which only version nine
-// explains.
+// version nine reads; the finalized block, which version nine names and version
+// one has nothing to name with; and the vote, which only version nine explains.
 
 // LocalV1 is a version-one local application client.
 type LocalV1 struct {
@@ -58,52 +57,10 @@ func (l LocalV1) FinalizeBlock(
 	}, nil
 }
 
-// LocalV8 is a version-eight local application client.
-type LocalV8 struct {
-	*localapp.ClientV8
-}
-
-var _ localApplication = LocalV8{}
-
-func (l LocalV8) InitChain(
-	chainID localapp.Hash,
-	initialHeight uint64,
-	_ time.Time,
-	appState []byte,
-) (localapp.Hash, error) {
-	return l.ClientV8.InitChain(chainID, initialHeight, appState)
-}
-
-func (l LocalV8) ProcessProposal(
-	height uint64,
-	_ time.Time,
-	transactions [][]byte,
-) (Vote, error) {
-	accept, err := l.ClientV8.ProcessProposal(height, transactions)
-	return Vote{Accept: accept}, err
-}
-
-func (l LocalV8) FinalizeBlock(
-	height uint64,
-	_ time.Time,
-	transactions [][]byte,
-) (FinalizedBlock, error) {
-	block, err := l.ClientV8.FinalizeBlock(height, transactions)
-	if err != nil {
-		return FinalizedBlock{}, err
-	}
-	identifier := block.BlockID
-	return FinalizedBlock{
-		StateRoot:          block.StateRoot,
-		BlockID:            &identifier,
-		TransactionResults: block.TransactionResults,
-	}, nil
-}
-
 // LocalV9 is a version-nine local application client. **It is where the
 // engine's times become milliseconds**, because version nine is the only
 // version that reads them, and a conversion applied to every version would give
-// versions one and eight a refusal they never had.
+// version one a refusal it never had.
 type LocalV9 struct {
 	*localapp.ClientV9
 }

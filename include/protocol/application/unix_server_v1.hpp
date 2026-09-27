@@ -7,15 +7,15 @@
 // function over a wire version and a dispatcher, so each ledger version adds an
 // overload here rather than a server.
 //
-// **Which wire an overload reads is part of its signature.** Versions one and
-// eight read version-one frames, because the header, the seven message kinds,
-// and the five request payloads carried no ledger-version meaning for them.
-// Version nine reads version-two frames, because its blocks carry a timestamp —
-// and a version-one frame offered to it is refused at the header, on the first
-// frame, which is the refusal the version-two frame exists to make possible.
+// **Which wire an overload reads is part of its signature.** Version one reads
+// version-one frames, because the header, the seven message kinds, and the five
+// request payloads carried no ledger-version meaning for it. Version nine reads
+// version-two frames, because its blocks carry a timestamp — and a version-one
+// frame offered to it is refused at the header, on the first frame, which is the
+// refusal the version-two frame exists to make possible. Version eight read
+// version-one frames too, until ADR 0092 deleted it.
 
 #include "protocol/application/application_v1.hpp"
-#include "protocol/application/application_v8.hpp"
 #include "protocol/application/application_v9.hpp"
 
 #include <filesystem>
@@ -51,9 +51,6 @@ class UnixSocketServerV1 {
 
   ServeConnectionResult serve_connection(
       ApplicationV1& application,
-      int shutdown_descriptor = -1);
-  ServeConnectionResult serve_connection(
-      ApplicationV8& application,
       int shutdown_descriptor = -1);
   // Version-two frames.
   ServeConnectionResult serve_connection(

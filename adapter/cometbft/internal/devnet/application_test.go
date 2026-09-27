@@ -12,25 +12,21 @@ const (
 		"101112131415161718191A1B1C1D1E1F"
 	identityAppHash = "FFFEFDFCFBFAF9F8F7F6F5F4F3F2F1F0" +
 		"EFEEEDECEBEAE9E8E7E6E5E4E3E2E1E0"
-	identityV8 = "chain_id=" + identityChainID + "\n" +
+	identityV1 = "chain_id=" + identityChainID + "\n" +
 		"app_hash=" + identityAppHash + "\n"
-	identityV9 = identityV8 + "genesis_timestamp=1790000000123\n"
+	identityV9 = identityV1 + "genesis_timestamp=1790000000123\n"
 )
 
 func TestParseIdentityReadsEachVersionsKeys(t *testing.T) {
-	for _, protocol := range []nodeconfig.ProtocolVersion{
-		nodeconfig.ProtocolV1, nodeconfig.ProtocolV8,
-	} {
-		identity, err := parseIdentity([]byte(identityV8), protocol)
-		if err != nil {
-			t.Fatalf("version %d: %v", uint8(protocol), err)
-		}
-		if _, present := identity.GenesisTimestamp.Millis(); present {
-			t.Fatalf("version %d identity carries a stamp", uint8(protocol))
-		}
-		if identity.ChainID[1] != 0x01 || identity.AppHash[0] != 0xFF {
-			t.Fatalf("version %d identity mismatch", uint8(protocol))
-		}
+	one, err := parseIdentity([]byte(identityV1), nodeconfig.ProtocolV1)
+	if err != nil {
+		t.Fatalf("version one: %v", err)
+	}
+	if _, present := one.GenesisTimestamp.Millis(); present {
+		t.Fatal("version one identity carries a stamp")
+	}
+	if one.ChainID[1] != 0x01 || one.AppHash[0] != 0xFF {
+		t.Fatal("version one identity mismatch")
 	}
 	identity, err := parseIdentity([]byte(identityV9), nodeconfig.ProtocolV9)
 	if err != nil {
@@ -51,28 +47,24 @@ func TestParseIdentityReadsEachVersionsKeys(t *testing.T) {
 }
 
 // **The wrong binary for the version is refused before a home is written.**
-// A version-eight application run as version nine omits the stamp, and a
-// version-nine application run as version eight prints one it has no use for.
+// A version-one application run as version nine omits the stamp, and a
+// version-nine application run as version one prints one it has no use for.
 func TestParseIdentityRefusesTheOtherVersionsOutput(t *testing.T) {
 	if _, err := parseIdentity(
-		[]byte(identityV8), nodeconfig.ProtocolV9); err == nil ||
+		[]byte(identityV1), nodeconfig.ProtocolV9); err == nil ||
 		!strings.Contains(err.Error(), "omitted") {
-		t.Fatalf("a version-eight identity parsed as version nine: %v", err)
+		t.Fatalf("a version-one identity parsed as version nine: %v", err)
 	}
-	for _, protocol := range []nodeconfig.ProtocolVersion{
-		nodeconfig.ProtocolV1, nodeconfig.ProtocolV8,
-	} {
-		if _, err := parseIdentity([]byte(identityV9), protocol); err == nil ||
-			!strings.Contains(err.Error(), "invalid genesis identity") {
-			t.Fatalf("a version-nine identity parsed as version %d: %v",
-				uint8(protocol), err)
-		}
+	if _, err := parseIdentity(
+		[]byte(identityV9), nodeconfig.ProtocolV1); err == nil ||
+		!strings.Contains(err.Error(), "invalid genesis identity") {
+		t.Fatalf("a version-nine identity parsed as version one: %v", err)
 	}
 }
 
 func TestParseIdentityRefusesMalformedOutput(t *testing.T) {
 	stamp := func(value string) string {
-		return identityV8 + "genesis_timestamp=" + value + "\n"
+		return identityV1 + "genesis_timestamp=" + value + "\n"
 	}
 	for name, output := range map[string]string{
 		"empty":             "",

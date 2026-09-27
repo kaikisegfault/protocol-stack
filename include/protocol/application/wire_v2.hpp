@@ -19,8 +19,9 @@
 // copied.** The 20-octet header, the magic, the direction and request-id rules,
 // the payload cap, the seven message kinds, and the seven wire errors are
 // declared once in `wire_v1.hpp` and used from here. A second declaration of any
-// of them would be a second place for a framing rule to be wrong, which is the
-// argument `response_v8.hpp` already makes about this same frame.
+// of them would be a second place for a framing rule to be wrong. That sharing is
+// also why `wire_v1` outlived version eight (ADR 0092): version one still serves
+// it, and this module is built on its declarations.
 //
 // **What version two changes is two request payloads**, and both change for one
 // reason: version nine's blocks carry a timestamp, so the operations that name a

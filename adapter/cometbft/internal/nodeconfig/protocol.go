@@ -9,7 +9,6 @@ import (
 
 const (
 	appStateV1 = `"protocol-stack-v1"`
-	appStateV8 = `"protocol-stack-v8"`
 	appStateV9 = `"protocol-stack-v9"`
 	// maxGenesisTimestampMillis is calendar-v1's MAX_TIMESTAMP_MILLIS,
 	// 9999-12-31T23:59:59.999Z. The range starts at zero, so every stamp at or
@@ -20,19 +19,16 @@ const (
 
 // ProtocolVersion is the ledger version a home is initialised for. It reaches
 // the application as the genesis application state, and **that is what stops a
-// node started against a version-one genesis and a version-eight engine**: the
+// node started against a version-one genesis and a version-nine engine**: the
 // application refuses at InitChain rather than at the first block.
 //
-// The refusal is exact rather than a range. `ApplicationV8::init_chain` still
-// names the retired version-seven app state as a case of its own, because that
-// is the string a stale deployment would be sending long after this adapter
-// stopped offering to write one, so a home initialised at the wrong version
-// fails at the handshake with the version it was initialised for.
+// The refusal is exact rather than a range, so a home initialised at a retired
+// version -- seven, or eight since ADR 0092 -- fails at the handshake with the
+// version it was initialised for rather than being read as a neighbour's.
 type ProtocolVersion uint8
 
 const (
 	ProtocolV1 ProtocolVersion = 1
-	ProtocolV8 ProtocolVersion = 8
 	ProtocolV9 ProtocolVersion = 9
 )
 
@@ -44,8 +40,6 @@ func ParseProtocolVersion(value uint) (ProtocolVersion, error) {
 	switch value {
 	case uint(ProtocolV1):
 		return ProtocolV1, nil
-	case uint(ProtocolV8):
-		return ProtocolV8, nil
 	case uint(ProtocolV9):
 		return ProtocolV9, nil
 	}
@@ -56,8 +50,6 @@ func (p ProtocolVersion) appState() (string, error) {
 	switch p {
 	case ProtocolV1:
 		return appStateV1, nil
-	case ProtocolV8:
-		return appStateV8, nil
 	case ProtocolV9:
 		return appStateV9, nil
 	}
@@ -73,7 +65,7 @@ func (p ProtocolVersion) BindsGenesisTimestamp() bool {
 
 // GenesisTimestamp is version nine's canonical genesis stamp, in milliseconds
 // since the Unix epoch. **Its zero value is the absence of a stamp**, which is
-// what versions one and eight bind. A present stamp of zero is a different
+// what version one binds. A present stamp of zero is a different
 // value and a valid one, because calendar-v1's range starts at zero, so
 // absence cannot be spelled as a number.
 type GenesisTimestamp struct {
@@ -110,14 +102,14 @@ func (g GenesisTimestamp) Millis() (uint64, bool) {
 
 // genesisTime is consensus-application-v2's fifth derived genesis value.
 //
-// Versions one and eight bind no stamp and keep the epoch they have always
-// written, so their genesis files are byte-identical to before. Version nine's
+// Version one binds no stamp and keeps the epoch it has always written, so its
+// genesis files are byte-identical to before. Version nine's
 // is the canonical stamp at exactly millisecond precision, which is the one
 // time the bridge's exact genesis conversion maps back to that stamp.
 //
 // **The pairing is refused in both directions.** A version-nine home written
 // without a stamp would carry the epoch, which the application refuses at
-// InitChain against its own genesis; a version-eight home given one would
+// InitChain against its own genesis; a version-one home given one would
 // silently drop it. Both are an operator holding the wrong binary or the wrong
 // flag, and this is the earliest point either can be named.
 func (p ProtocolVersion) genesisTime(stamp GenesisTimestamp) (time.Time, error) {

@@ -88,5 +88,6 @@ void poke_u32(v9::Bytes& value, std::size_t offset, std::uint32_t number);
 void verify_round_trips(const pv::Values& values);
 void verify_framing_refusals();
 void verify_entry_refusals();
+void verify_inherited_refusals();
 
 }  // namespace snapshot_v9_tests

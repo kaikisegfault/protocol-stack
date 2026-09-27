@@ -42,9 +42,9 @@ func InspectIdentity(
 //
 // **The key set is exact per version**: `chain_id` and `app_hash`, and for a
 // version that binds a genesis timestamp, `genesis_timestamp` as well. So a
-// version-eight binary run as version nine is refused for the key it omits,
-// and a version-nine binary run as version eight for the key it adds, both
-// before a home is written. The alternative, reading the stamp whenever it is
+// version-one binary run as version nine is refused for the key it omits, and a
+// version-nine binary run as version one for the key it adds, both before a
+// home is written. The alternative, reading the stamp whenever it is
 // printed, would let the second case through to InitChain.
 func parseIdentity(
 	output []byte,
