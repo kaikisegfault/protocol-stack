@@ -722,6 +722,12 @@ immutable; compatible changes require a new version.
   schedule forces the activation heights, a record covers exactly its window's
   in-scope seat set, and one early window reaches the founder-directed
   empty-winner rule at population scale; it defines no model or transition.
+- `specifications/economy-scenario-suite-v4.md`: scenario 1 rebound to the
+  contract the chain executes, `economy-transition-v9`: a research population
+  of six seats run through every window of every seat's 731 cycles by version
+  nine's own prologue and signed transactions, checked at every window for the
+  four claims the M3 exit audit named, and compared with a closed-form walk; it
+  defines no model or transition.
 - `specifications/cycle-boundary-v1.md`: the 28,800-block window grid a cycle is
   cut from, the mapping from a seat's activation height to its 731-window
   issuance span, the ordered conditions of the window check, and the exact block
@@ -939,6 +945,15 @@ routing models carry no supply or channel figure.
 `../tools/scenario-suite-vectors/verify.py` runs all four scenarios and requires
 each recorded total to match both the live run and a closed-form derivation from
 Founder Constitution literals that imports nothing from `../simulation/`.
+
+Version four is one scenario, `../simulation/scenarios/economy_population_v4.py`
+over the fixture in `economy_schedule_v4.py`, with vectors in
+`../test-vectors/economy-scenario-suite-v4.txt`. It drives
+`economy-transition-v9` itself, a window at a time through `block.open_window`,
+and `../tools/scenario-suite-vectors/verify_v4.py` requires every value but
+the state roots to agree with `expected_v4.py`, a walk of the settlement that
+imports nothing from `../simulation/`. The property tests run that walk
+differentially against 32 random populations.
 
 The cycle boundary model is `../simulation/cycle_boundary/` with vectors in
 `../test-vectors/cycle-boundary-v1.txt`.

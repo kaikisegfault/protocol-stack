@@ -4,6 +4,25 @@ Last updated: 2026-09-27
 
 ## Phase
 
+**M3.21c met requirement 14's multi-year leg on 2026-09-27 against the contract
+the chain executes.** `economy-scenario-suite-v4` runs six research seats
+through every window of their 731 cycles. It uses version nine's own prologue,
+exposed as `block.open_window`, and signed transactions. The run covers:
+
+- 1,068 windows and 4,386 seat-cycles;
+- 668 signed transactions;
+- 35 calendar months, a leap February among them.
+
+It checks the exit audit's four claims at every window. All 263 recorded
+vectors except seven state roots agree with `expected_v4.py`, a walk of the
+settlement that imports nothing from `simulation/`. That walk also runs
+differentially against 32 random populations.
+[ADR 0095](../decisions/0095-the-fourth-scenario-suite-drives-the-chains-contract.md)
+records it. Its limits: the uptime record is supplied, the run drives the
+Python model and not the C++ kernel, and the audit's overflow limit stands.
+**Fifteen of the sixteen requirements are now met, and requirement 16, the
+closing act, is next.**
+
 **M3.21b repaired a consensus defect on 2026-09-27: a new referral balance now
 starts its mark at the window before its first accrual.** Version three states
 that rule, and every later version carries it unchanged. Every executed
@@ -2788,41 +2807,32 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-**Meet requirement 14's multi-year leg against the current contract.** Build a
-fourth scenario suite that assigns every window of a staggered research
-population's 731 cycles through the current contract's settlement, as
-`economy-scenario-suite-v3` drove its simulator. Uptime is a supplied
-per-window pattern, and calendar months come through `calendar-v1` from a
-stated block cadence.
+**Close M3: requirement 16.** Every other requirement is met, three of them
+(7, 13, and 14) with recorded limits, in
+[`founder-economy-devnet-audit-v1.md`](founder-economy-devnet-audit-v1.md).
+Requirement 16 asks for three things:
 
-**The chain cannot be driven this way, and the slice should not try.** Version
-nine's `advance_to` refuses to skip heights once a seat is active, because every
-height audits. **The settlement can be.** Version nine's own `_assignment`, in
-`simulation/economy_transition_v9/block.py`, handles one due window. It
-composes `derive_assignment` (version seven's step, with the recovery pool),
-`referral_accrual`, `close_month` (`unreferred-pool-payout-v1`'s payout), and
-`Ledger.apply_assignment`, and reads the window's uptime records from the
-ledger. So the suite writes those records per window and calls that
-composition. It should expose it rather than copy it. The audit states four
-things the run must show:
+- hosted verification on the accepted commit;
+- M3 closed in the roadmap;
+- a handoff that names the first M4 slice.
 
-- every Founder Node channel delivers exactly what the manifest promised for
-  the cycles that ran, with the recovery pool drained;
-- the referral identity holds at every window;
-- every month's pool reaches that month's best performers;
-- no unit is issued twice or lost.
+Take M3.21c's merge commit as the accepted commit and cite its hosted run.
+Mark M3 complete in `docs/project/roadmap.md` with the audit as its evidence.
+Then choose the first M4 slice from the roadmap, and **run the founder-decision
+gate on it before naming it**, because M4's scope reaches identity and HUB
+decisions that `first-goal.md` placed outside M3.
 
-Record the suite as `economy-scenario-suite-v4`, with vectors, a verifier that
-fails closed, and the multi-year, market, and property tests the M2 standard
-set. **Its fixture is research, not founder values**, and its gate must say
-so. **Its population must include a referrer whose referred seat activates
-after window 30 and who does not mint at once**, so that the ADR 0094 repair is
-exercised at population scale, not only in its two targeted tests. Once it passes, requirement 16 is the audit's last row: close M3 in the
-roadmap and name the first M4 slice, after running the founder-decision gate
-on it.
+**One more candidate joined the list this session**: drive the C++ kernel over
+the `economy-scenario-suite-v4` population and compare its roots with the seven
+the vector file pins. It would lift the suite's second limit. It is not
+required for M3's exit, because requirement 11 is met by the version-nine
+vectors.
 
 **The candidates behind it are unchanged and none is blocked**: ADR 0071's two
 routes to the audit on a network, and ADR 0089's outage wall.
+
+**M3.21c delivered what stood here before it**: `economy-scenario-suite-v4`,
+meeting requirement 14's multi-year leg.
 
 **M3.21b was inserted ahead of it**: the referral-mark repair that designing
 the suite surfaced.

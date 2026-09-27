@@ -101,6 +101,7 @@ __all__ = [
     "TRANSACTION_TREE_PREFIX",
     "block_header",
     "execute_block",
+    "open_window",
     "run_quiet_heights",
     "transaction_root",
 ]
@@ -362,6 +363,30 @@ def _month_of(timestamp: int) -> int:
     from .timeline import month_of
 
     return month_of(timestamp)
+
+
+def open_window(ledger: Ledger) -> BlockOutcome:
+    """The prologue alone, at a window-opening height the caller has set.
+
+    **This is how a population is driven across a seat's whole life**, which a
+    chain cannot be: every height issues and expires challenges, so a run
+    over 731 windows would execute 21 million blocks. What differs between two
+    windows' settlements is only the prologue, and this runs exactly that, in
+    the accepted orders, with nothing copied out of `_prologue`.
+
+    The caller owns everything a block would have supplied: the height and the
+    stamp, which must satisfy C1 and C2 as a block's would, and the kind-19
+    records a window's challenges and disputes would have written. It is an
+    evidence harness and not a second execution path; `execute_block` remains
+    the only thing a chain runs.
+    """
+    if ledger.height % c.CYCLE_BLOCKS != 0:
+        raise InvalidBlock("a window opens only at a window-opening height")
+    if not c.MIN_TIMESTAMP_MILLIS <= ledger.timestamp <= c.MAX_TIMESTAMP_MILLIS:
+        raise InvalidBlock("the stamp is outside calendar-v1's range")
+    outcome = BlockOutcome(ledger.height, ledger.timestamp, "")
+    _prologue(ledger, outcome, True, False)
+    return outcome
 
 
 # --- the run between two recorded blocks ------------------------------------

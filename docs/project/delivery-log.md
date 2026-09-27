@@ -32,6 +32,58 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M3.21c was delivered
+
+**The suite drives the contract itself, not a fourth simulator**, and ADR 0095
+gives the three options. Every quantity the audit's four claims are about
+changes only in a window's prologue or in an executed transaction. So the run
+does exactly two things:
+
+- it opens each window through `block.open_window`, a new public function that
+  calls the existing `_prologue`;
+- it executes each participant's signed transactions at their own heights.
+
+The kind-19 records are the only thing supplied, because they are the only
+state the skipped heights write that the settlement reads. The whole run takes
+about two seconds.
+
+**The fixture was prototyped in the scratchpad before any of it entered the
+tree.** The first prototype's 800-window loop showed the approach was cheap.
+The second showed the population reaching every path the claims need: windows
+with no winner, multi-winner windows, both caps, monthly ties, and a drain to
+zero. Working out its referral schedule is what found the ADR 0094 defect,
+which became M3.21b before this slice went on.
+
+**The closed form and the run were made to disagree before they were made to
+agree.** The first comparison failed on `over_cap_seat_windows`: 50 in the walk
+and 47 in the run. The walk counted every in-span seat past its cap. The run
+counted seats that met the cycle and still accrued nothing. The second is what
+the cap alone decides, so the walk took that definition. The property tests
+then found a live-side count that assumed every seat lived all 731 cycles,
+which a run stopped at a horizon does not. It now counts the unreferred cycles
+actually assigned.
+
+**The fixture became a parameter object so the property tests could be
+differential.** `Fixture` in the model and `Params` in the walk restate the same
+table independently. The 32 seeded draws vary people, seats, the referral
+graph, stagger, the uptime table, outages, collection periods on both sides of
+the cap, lapses, genesis dates, and block rates up to a window every 200 days.
+Every figure agrees on every draw. The test requires the draws to reach every
+path it exists for, so it cannot pass vacuously.
+
+**One spec claim was corrected before commit.** The draft said a nonzero monthly
+remainder was covered by `economy-transition-v9-execution.txt`. That file
+records only zero remainders. The property draws reach 85, and the test now
+requires one.
+
+**February 2028 splits its pool six ways, and that is arithmetic, not a
+coincidence.** It has 29 windows, and 29 is the uptime pattern's modulus, so
+every seat passes through every residue once and all six figures are equal.
+
+The verifier refuses seven mutations. They include ADR 0094's zero mark
+restored in the model, and a walk that ignores the cap, which reproduces every
+channel total and is still refused on the count of cycles the cap cost.
+
 ### How M3.21b was delivered
 
 **The fourth scenario suite found a consensus defect before any of its code was
@@ -79,6 +131,9 @@ version-nine chain passed against the repaired kernel: the snapshot, the owning
 store, the application, the transport, and both headless processes. The socket
 tests needed a short path to run, and the two failures left were the known
 container limits: the SQLite version pin and the pinned-libsodium differential.
+
+It merged by rebase on 2026-09-27 through PR #358 as `c40c150`, closing issue
+#357. Run 36352857899 on the PR head `26d1899` passed all six checks.
 
 ### How M3.21a was delivered
 
