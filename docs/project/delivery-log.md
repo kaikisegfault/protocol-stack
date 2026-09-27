@@ -32,6 +32,62 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M3.20l was delivered
+
+**The two gaps the handoff recorded are closed, and each closed with its own
+evidence.** Issue #353 delivered two independent fixes. The first is a restore
+rule, recorded in
+[ADR 0093](../decisions/0093-a-restore-refuses-an-orphan-referral-balance.md).
+The second is a metadata check. `tools/verification_scope.py` classifies the
+change `full`, because it touches C++ and Python sources. **No accepted vector
+file, specification rule, manifest, encoding, or kernel source changed**, and
+ctest counts are unchanged.
+
+**The restore rule was placed by asking what execution reads.** The orphan
+referral balance M3.20k found could have been refused in
+`conservation_failures`. That function is the kernel's invariant set, and
+execution reads it too, so a stricter clause there is a consensus-visible
+change. `snapshot_v9`'s `complete` step already refuses uptime entries,
+figures, and claims that name an unsold seat. The orphan rule sits beside
+those, so it can only refuse a payload no block wrote.
+
+**Reading the one writer settled what "unreachable" means.**
+`apply_assignment` is the only code that writes a referral balance. It accrues
+whole legs to a seat's `referrer_hub_identity`. No transition erases a seat or
+rewrites its referrer, and a purchase refuses self-referral. So there are two
+unreachable states, not one: a balance no seat's referrer owns, and a balance
+that accrued nothing. The second became a value rule, the monthly claim's zero
+rule applied to the balance that claim was modelled on.
+
+**The positive control needed a seat no recorded chain has.** The trace buys
+every seat without a referrer. The test therefore gives the settled chain's last
+seat one, naming a registered identity other than its owner, and reseals the
+payload. It requires that payload to restore before any case uses it. The pair
+that proves the rule differs in that seat's flag and nothing else: a fully
+minted balance restores beside a referring seat and is refused without one. The
+inherited minted-above-accrued case moved onto the referring payload, because
+the orphan rule would otherwise have refused its control first. **The orphan
+rule broke that control on the first run, which is the evidence that it
+reaches.** Removing either rule fails its case by name. The snapshot, store,
+recovery, application, transport, and headless process suites all restore
+recorded version-nine chains and still pass.
+
+**The anchor check followed the one subtlety the handoff recorded.** GitHub
+turns each space into a hyphen and does not collapse runs. So "Kind 10 —
+`hub_register`" anchors as `kind-10--hub_register`, and a collapsing checker
+reports that heading as broken when it is not. The check computes anchors for
+ATX headings, skips fenced code, numbers repeats `-1`, `-2`, and so on, and now
+checks same-file `#section` links too. That raises the checked-link count from
+615 to 652. All 41 fragment links in the tree resolve. That is the same number
+M3.19a swept by hand. Two probes bit: a collapsing slugger fails the repository
+sweep at exactly `economy-transition-v6.md`'s `#kind-10--hub_register`, and a
+broken real anchor is reported by name. `docs/engineering/verification.md` now
+says what the metadata path checks.
+
+**Both were prepared while M3.20k's hosted run was still going**, on local
+branches, and replayed onto the recreated delivery branch once PR #352 merged.
+So the repository never had more than one remote delivery branch.
+
 ### How M3.20k was delivered
 
 **Version eight is deleted, and the repository compiles one economy contract
@@ -44,6 +100,12 @@ codespace, protocol version, and application state. ctest falls from 178 to 168
 under the GCC presets and from 188 to 177 under `clang-sanitizers`.
 `tools/verification_scope.py` classifies it `full`. **No accepted vector file,
 specification rule, manifest, encoding, or version-nine kernel source changed.**
+The code and its record were pushed together, so one hosted run covers the
+final head. Run 36348371153 on `290b2fc` passed all six checks. ctest printed
+168 under the GCC presets and 177 under `clang-sanitizers`, and all five
+integration runs passed. It merged by rebase on 2026-09-27 through PR #352 as
+`f750ecc` and `31f1d18`: two commits, 120 files, **1,573 insertions and 20,695
+deletions**.
 
 **The handoff named two traps and there were five, and the larger two were
 evidence version nine had borrowed.** The two named ones were `economy_v8_fuzz`

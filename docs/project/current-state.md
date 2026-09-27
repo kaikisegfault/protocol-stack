@@ -4,6 +4,19 @@ Last updated: 2026-09-27
 
 ## Phase
 
+**M3.20l closed the two gaps the handoff recorded on 2026-09-27.** First, a
+restore now refuses a referral balance that no seat's referrer owns, and one
+that accrued nothing. Both are storage rules in `snapshot_v9`, so no block's
+acceptance moves.
+[ADR 0093](../decisions/0093-a-restore-refuses-an-orphan-referral-balance.md)
+records them. Second, `tools/verify_metadata.py` now checks the heading every
+`#fragment` link names, using GitHub's slug rule exactly. All 41 fragment links
+in the tree resolve.
+
+**The version-nine migration is complete, and nothing recorded is owed to it.**
+What remains is the milestone's exit audit. The paragraph below states the
+M3.20k finding as it stood before M3.20l closed it.
+
 **M3.20k deleted version eight on 2026-09-27, and the repository compiles one
 economy contract again.** Version eight's C++ kernel, owning store, snapshot,
 application, transport, and node process are gone, with their tests, targets,
@@ -2729,58 +2742,45 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-**Refuse an orphan referral balance at restore.** M3.20k found that a snapshot
-restore accepts a referral balance keyed to an identity no seat names as its
-referrer, provided the balance owes nothing
-([ADR 0092](../decisions/0092-the-version-eight-deletion.md)). No block writes
-one: a referral balance comes into existence only when an assignment accrues to
-a referrer. Gate 3's referral check sums what balances *owe*, so an orphan that
-owes nothing passes it. Every restart of a version-nine node decodes its head
-through this path, because the owning store holds the head as one snapshot
-payload.
+**Run M3's exit audit.** `first-goal.md` requirement 16 asks for two things:
+hosted verification on the exact accepted commit, and a clean handoff naming
+the first M4 implementation slice. The roadmap's M3 exit is that every
+requirement passes.
 
-**Close it in `snapshot_v9_entries.cpp`'s `complete` step**, beside the rule
-that already refuses an uptime entry naming a seat the chain never sold. There
-it is a storage rule, so no block's acceptance can move. In
-`conservation_failures` it would be a kernel invariant that execution reads
-too. The evidence is ready-made: `snapshot_v9_inherited_refusals.cpp`'s
-`with_entry` helper inserts a resealed entry. The case is a fully minted balance
-for the registered identity, which must be refused as `invalid_state`, and a
-balance for an identity a seat does refer to, which must still restore. Check
-first whether any version-nine scenario writes a referral balance at all. The
-recorded trace buys every seat without a referrer, so the positive control may
-need a seat built with one.
+This document asserts most of the sixteen one paragraph at a time, across two
+months of slices. **No single place states all sixteen against the evidence
+that meets them**, and several assertions predate the pivot and the version
+changes that followed it. The audit is that single place.
 
-**Then the remaining candidates, none blocked.**
+For each requirement, name the accepted artifact, the executed check, and the
+hosted run that meet it on today's `main`. Then settle, from `first-goal.md`'s
+words, whether three open items belong to M3 or to a later milestone:
 
-- **The anchor-fragment gap in `tools/verify_metadata.py`**, recorded below. It
-  is a Python source change.
+- ADR 0048's threat model, listed as still owed;
+- ADR 0089's outage wall;
+- ADR 0071's audit on a network, which ADR 0071 placed outside this milestone.
+
+Then either close M3 in the roadmap, naming the first M4 slice, or name the
+requirement that is unmet and the slice that meets it. **Run the
+founder-decision gate on the M4 slice before naming it.** M4 carries reserved
+questions, including legacy inactivity bounds and contested succession, which
+the constitution lists as unresolved.
+
+**Then the remaining candidates, none blocked, and all subject to what the
+audit decides:**
+
 - **ADR 0071's two routes to the uptime audit on a network**: a nonzero initial
   height, which is a `change-protocol` matter, or a snapshot-seeded devnet,
   which is a node-process matter. Either would let a four-validator network
-  reach the audit, and in time the monthly pool's kind-22 mint, that
-  `consensus-application-v2`'s devnet evidence leaves below the engine. It is
-  the next vertical result.
+  reach the audit, the referral mint, and the monthly pool's kind-22 mint, none
+  of which a devnet begun at genesis can reach.
 - **ADR 0089's outage wall.** No claim that a version-nine network survives an
   outage longer than 60 seconds can be made until one of its candidates is a
-  new contract version. It blocks no current slice.
+  new contract version.
 
-**One verification gap is recorded and open.** `tools/verify_metadata.py`
-validates that a Markdown link's file exists and **does not validate its anchor
-fragment**, so a broken `#section` link passes every gate in the repository.
-M3.19a swept all **41** anchored links in tracked Markdown with a throwaway
-script: one was genuinely dead — a link in this document pointing at a heading the
-M3.15b split had moved to `delivery-log.md` — and it is fixed. The rest resolve.
-
-**Whoever closes the gap should know the one thing that makes it subtle.** The
-first sweep reported a second failure in `economy-transition-v6.md` and **the
-document was right and the checker was wrong**: GitHub's slugger replaces *each*
-space with a hyphen, so `### Kind 10 — \`hub_register\`` becomes
-`kind-10--hub_register` with two hyphens, because removing the em-dash leaves two
-spaces. A checker that collapses whitespace runs reports false positives against
-every heading containing a dash, which is most of them here. Closing the gap is a
-Python source change that fails closed to the full matrix, so it is a candidate
-slice rather than a fold-in.
+**M3.20l delivered what stood here before it**: the orphan referral balance
+refused at restore, and the anchor-fragment gap in `tools/verify_metadata.py`
+closed.
 
 **M3.20k delivered what stood here before it**: deleting `src/v8/`, with
 `economy_v9_fuzz` added first and ADR 0082 corrected.
@@ -3766,6 +3766,19 @@ later scenario change stops reaching one.
 ## Blockers
 
 **There is no blocker.** Every candidate under "Exact next action" is unblocked.
+
+**M3.20l ran the founder-decision gate and passed it.** Four decisions were
+enumerated before any was judged:
+
+1. where the orphan rule lives;
+2. whether a zero balance is refused too;
+3. how the positive control gets a referring seat;
+4. which slug rule the anchor check follows.
+
+The first is a storage placement chosen so that no block's acceptance can move.
+The second follows from the one code path that writes a balance. The third is
+test construction. The fourth is GitHub's own rule. None sets or changes a value,
+a beneficiary, or what a participant must do, own, run, or receive.
 
 **M3.20k ran the founder-decision gate and passed it.** Six decisions were
 enumerated before any was judged:
