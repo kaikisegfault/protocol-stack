@@ -10,6 +10,16 @@ Requirement 14 is not met against the current contract. Requirement 16 is the
 closing act, and it waits on 14. So M3 does not close yet.** The slice that
 meets requirement 14 is named below.
 
+**Update, 2026-09-27, M3.21c: requirement 14 is now met with a limit.**
+[`economy-scenario-suite-v4`](../specifications/economy-scenario-suite-v4.md)
+runs a research population through every window of every seat's 731 cycles in
+the contract the chain executes, and checks the four claims below at every
+window.
+[ADR 0095](../decisions/0095-the-fourth-scenario-suite-drives-the-chains-contract.md)
+records it. So fifteen of the sixteen are met, and requirement 16 is what
+remains. The rest of this document is the audit as it stood at `3c5347b`, with
+row 14 and its limit updated.
+
 The hosted evidence is two runs over one tree:
 
 - run 36349364692, which passed all six checks on the PR head `30e13c1`;
@@ -39,7 +49,7 @@ never folded into "met".
 | 11 | Cross-language fixed vectors both implementations reproduce | Met | `economy-transition-v9.txt` and `-execution.txt` reproduced by `economy-transition-v9-cpp`, `-execution-cpp`, and the Python verifiers |
 | 12 | Storage bounds at 100,000 seats | Met | `economy-transition-v3.txt` `storage.*`; `economy-transition-v8` seat-window bound; `economy-transition-v9` §Resource bounds |
 | 13 | Adversarial four-node scenarios through restart and recovery | Met with a limit | ADR 0090, ADR 0091; the two version-nine four-validator integration runs |
-| 14 | Positive, negative, boundary, replay, overflow, atomicity, and multi-year scenarios at the M2 standard | **Not met against the current contract** | see below |
+| 14 | Positive, negative, boundary, replay, overflow, atomicity, and multi-year scenarios at the M2 standard | Met with a limit, since M3.21c | `economy-scenario-suite-v4` (ADR 0095); ctest `scenario-suite-v4-vectors`, `scenario-v4`, `scenario-v4-properties`; the other legs below |
 | 15 | ADRs stating transition shape, encoding, compatibility boundary, and remaining independent review | Met | ADRs 0077 to 0081; each specification's "does not establish" section, consolidated below |
 | 16 | Hosted verification on the accepted commit, and a handoff naming the first M4 slice | Open | waits on requirement 14 |
 
@@ -124,7 +134,10 @@ where targeted scenarios stop and a population's whole life continues.
   never produces another block under the accepted C5 (ADR 0089). Every restart in
   the evidence falls inside that window. A partition is not produced, because the
   harness cannot block a peer's port (ADR 0073).
-- **Requirement 14.** The overflow limit stated above.
+- **Requirement 14.** The overflow limit stated above. The multi-year run
+  supplies the uptime record rather than running challenges at population
+  scale, and it drives the Python model of version nine, not the C++ kernel.
+  The kernel's agreement with that model rests on the version-nine vectors.
 
 ## Three open items, and where each belongs
 

@@ -1734,6 +1734,26 @@ add_test(
     "${PROJECT_SOURCE_DIR}/tests/simulation/scenario_v3_property_test.py"
 )
 add_test(
+  NAME scenario-suite-v4-vectors
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tools/scenario-suite-vectors/verify_v4.py"
+    --vectors
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-scenario-suite-v4.txt"
+)
+add_test(
+  NAME scenario-v4
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/scenario_v4_test.py"
+)
+add_test(
+  NAME scenario-v4-properties
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/simulation/scenario_v4_property_test.py"
+)
+add_test(
   NAME scenario-multiyear
   COMMAND
     "${Python3_EXECUTABLE}"
