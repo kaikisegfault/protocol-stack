@@ -38,7 +38,11 @@ from simulation.economy_transition_v8.slots import (  # noqa: E402
 )
 from simulation.economy_transition_v9 import contract as c  # noqa: E402
 from simulation.economy_transition_v9.block import InvalidBlock  # noqa: E402
+from founder_lifecycle_v9 import lifecycle  # noqa: E402
+from simulation.economy_transition_v6.identity import signer_id  # noqa: E402
 from version_nine_chain import (  # noqa: E402
+    ALICE_ESCROW,
+    ALICE_HOLDING_ESCROW,
     BLOCKS_BEFORE_RESTART,
     SEAT_ID,
     Session,
@@ -284,6 +288,44 @@ def check_refusals_land_on_the_empty_root(sodium: Sodium) -> None:
         raise RuntimeError("a transfer that succeeds was accepted as a refusal")
 
 
+def check_the_founder_lifecycle(sodium: Sodium) -> None:
+    """M4.1's script, block by block, as the network run will ask for it.
+
+    Every success must succeed and every refusal must be refused by its own
+    name and land on the empty-block root. At the end Alice's first escrow must
+    hold exactly the recovered signer, her holding escrow its own signer and
+    the value it was never emptied of, and a signer ID is a hash of its key.
+    """
+    session = Session(sodium, STAMP)
+    at = STAMP
+    for step in lifecycle(session):
+        if step.refusal is None:
+            session.apply(step.raw, at)
+        else:
+            predicted = session.block_if_empty(at)
+            refused = session.apply_refused(step.raw, at, step.code)
+            require(refused.state_root == predicted.state_root,
+                    f"{step.label}: the refusal moved the state")
+        at += PACE
+    require(
+        session.signers_of(ALICE_ESCROW) == {signer_id(session.alice_recovered_signer)},
+        "alice's first escrow does not hold exactly the recovered signer",
+    )
+    require(
+        session.signers_of(ALICE_HOLDING_ESCROW)
+        == {signer_id(session.alice_holding_signer)},
+        "the holding escrow lost its own signer",
+    )
+    require(session.balance(ALICE_HOLDING_ESCROW) > 0,
+            "the holding escrow was emptied")
+    refusals = [step.refusal for step in lifecycle(session) if step.refusal]
+    require(
+        refusals == ["SIGNER_NOT_FOUND", "UNAUTHORIZED", "UNAUTHORIZED",
+                     "SIGNER_NOT_FOUND", "ESCROW_NOT_EMPTY"],
+        "the lifecycle's refusals are not the five it states",
+    )
+
+
 def check_the_audit_is_out_of_reach(sodium: Sodium) -> None:
     """Version eight's wall, derived again: the run's seat is never audited.
 
@@ -331,11 +373,12 @@ def main() -> int:
         check_the_conversions,
         check_the_seat_table_was_written,
         check_refusals_land_on_the_empty_root,
+        check_the_founder_lifecycle,
         check_the_audit_is_out_of_reach,
         check_signatures_are_real,
     ):
         check(sodium)
-    print("version-nine chain fixture: passed (9 checks)")
+    print("version-nine chain fixture: passed (10 checks)")
     return 0
 
 
