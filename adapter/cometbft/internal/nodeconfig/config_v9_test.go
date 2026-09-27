@@ -93,7 +93,7 @@ func TestGenesisTimeIsTheStampAtMillisecondPrecision(t *testing.T) {
 			t.Fatalf("stamp %d rendered as %v", millis, value)
 		}
 	}
-	for _, protocol := range []ProtocolVersion{ProtocolV1, ProtocolV8} {
+	for _, protocol := range []ProtocolVersion{ProtocolV1} {
 		value, err := protocol.genesisTime(GenesisTimestamp{})
 		if err != nil || !value.Equal(time.Unix(0, 0)) {
 			t.Fatalf("version %d genesis time = %v, %v",
@@ -111,13 +111,13 @@ func TestTheStampAndTheVersionArePaired(t *testing.T) {
 		!strings.Contains(err.Error(), "requires a genesis timestamp") {
 		t.Fatalf("version nine without a stamp: %v", err)
 	}
-	for _, protocol := range []ProtocolVersion{ProtocolV1, ProtocolV8} {
+	for _, protocol := range []ProtocolVersion{ProtocolV1} {
 		if _, err := protocol.genesisTime(present); err == nil ||
 			!strings.Contains(err.Error(), "binds no genesis timestamp") {
 			t.Fatalf("version %d with a stamp: %v", uint8(protocol), err)
 		}
 	}
-	for _, unbridged := range []ProtocolVersion{0, 7, 10} {
+	for _, unbridged := range []ProtocolVersion{0, 7, 8, 10} {
 		for _, stamp := range []GenesisTimestamp{{}, present} {
 			if _, err := unbridged.genesisTime(stamp); err == nil {
 				t.Fatalf("unbridged version %d produced a genesis time",
@@ -125,9 +125,7 @@ func TestTheStampAndTheVersionArePaired(t *testing.T) {
 			}
 		}
 	}
-	if !ProtocolV9.BindsGenesisTimestamp() ||
-		ProtocolV1.BindsGenesisTimestamp() ||
-		ProtocolV8.BindsGenesisTimestamp() {
+	if !ProtocolV9.BindsGenesisTimestamp() || ProtocolV1.BindsGenesisTimestamp() {
 		t.Fatal("BindsGenesisTimestamp disagrees with the versions")
 	}
 }
@@ -174,10 +172,10 @@ func TestAVersionNineHomeCarriesTheStampAndRefusesAnother(t *testing.T) {
 		},
 		"the epoch": {testIdentityV9(t, 0), ProtocolV9, "genesis differs"},
 		"no stamp":  {testIdentity(), ProtocolV9, "requires a genesis timestamp"},
-		"version eight with the stamp": {
-			identity, ProtocolV8, "binds no genesis timestamp",
+		"version one with the stamp": {
+			identity, ProtocolV1, "binds no genesis timestamp",
 		},
-		"version eight": {testIdentity(), ProtocolV8, "genesis differs"},
+		"version one": {testIdentity(), ProtocolV1, "genesis differs"},
 	}
 	for name, refusal := range refusals {
 		err := Ensure(home, refusal.identity, testEndpoints(), refusal.protocol)
@@ -211,9 +209,9 @@ func TestTheStampBoundariesRoundTrip(t *testing.T) {
 	}
 }
 
-// Versions one and eight keep the epoch, so their homes are the ones they were.
-func TestVersionsOneAndEightKeepTheEpoch(t *testing.T) {
-	for _, protocol := range []ProtocolVersion{ProtocolV1, ProtocolV8} {
+// Version one keeps the epoch, so its homes are the ones they were.
+func TestVersionOneKeepsTheEpoch(t *testing.T) {
+	for _, protocol := range []ProtocolVersion{ProtocolV1} {
 		home := filepath.Join(t.TempDir(), "node")
 		if err := Ensure(home, testIdentity(), testEndpoints(), protocol); err != nil {
 			t.Fatalf("version %d: %v", uint8(protocol), err)
@@ -247,8 +245,8 @@ func TestARefusedPairingWritesNothing(t *testing.T) {
 		t.Fatal("a version-nine devnet without a stamp was initialised")
 	}
 	if err := devnet.Ensure(
-		testIdentityV9(t, testStampMillis), ProtocolV8); err == nil {
-		t.Fatal("a version-eight devnet with a stamp was initialised")
+		testIdentityV9(t, testStampMillis), ProtocolV1); err == nil {
+		t.Fatal("a version-one devnet with a stamp was initialised")
 	}
 	requireAbsent(devnet.Root)
 }

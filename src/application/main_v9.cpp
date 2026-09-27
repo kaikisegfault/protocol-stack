@@ -1,9 +1,10 @@
 // `protocol-application-v9`: a version-nine ledger, application, clock, and
 // socket in one process.
 //
-// It is version eight's `main_v8.cpp` with the version rebound, the genesis
-// width read from `v9::kGenesisPrefixBytes` — 150 octets, because version nine's
-// genesis gains a timestamp — and **one thing version eight never had: a clock.**
+// It began as version eight's entry point, which ADR 0092 deleted, with the
+// version rebound, the genesis width read from `v9::kGenesisPrefixBytes` — 150
+// octets, because version nine's genesis gains a timestamp — and **one thing
+// version eight never had: a clock.**
 //
 // **The clock is the platform real-time clock, and it is bound here and nowhere
 // else.** `ApplicationV9` reads it once per `ProcessProposal` and on no other

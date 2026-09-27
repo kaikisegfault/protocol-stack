@@ -24,15 +24,15 @@ const (
 	applicationVersion = "1.0.0"
 	// The result codes an executed transaction can carry are the ledger
 	// version's, so the codespace that names them is too: version one has
-	// eight, and versions eight and nine forty-five each. Version nine adds no
-	// result code but is a different contract, so it names its own codespace.
+	// eight, and version nine forty-five. Version nine adds no result code to
+	// version eight's, but it is a different contract, so it names its own
+	// codespace; version eight's went with its client (ADR 0092).
 	codespaceV1 = "protocol-stack-v1"
-	codespaceV8 = "protocol-stack-v8"
 	codespaceV9 = "protocol-stack-v9"
 )
 
 // FinalizedBlock is what this bridge needs out of a finalized block, whichever
-// ledger version produced it. **Version eight names the block it executed and
+// ledger version produced it. **Version nine names the block it executed and
 // version one has nothing to name it with**, so the identifier is a pointer:
 // absent is unmistakable, where a zero hash could be read as a real one.
 type FinalizedBlock struct {
@@ -43,16 +43,16 @@ type FinalizedBlock struct {
 
 // Vote is a proposal's answer. **Version nine says why**: its application
 // answers one of eight decisions, and an operator diagnoses a skewed clock from
-// decisions 4 and 5 in this adapter's log. Versions one and eight answer only
-// yes or no, so their reason is empty.
+// decisions 4 and 5 in this adapter's log. Version one answers only yes or no,
+// so its reason is empty.
 type Vote struct {
 	Accept bool
 	Reason string
 }
 
 // The engine's times reach every local application, and only version nine
-// reads them. Versions one and eight ignore them, which is exactly what those
-// versions did before the parameter existed.
+// reads them. Version one ignores them, which is exactly what it did before the
+// parameter existed.
 type localApplication interface {
 	Info() (localapp.Info, error)
 	InitChain(
@@ -88,13 +88,6 @@ var _ abci.Application = (*Application)(nil)
 // New bridges a version-one local application.
 func New(local localApplication) *Application {
 	return newApplication(local, codespaceV1)
-}
-
-// NewV8 bridges a version-eight local application. The seven ABCI operations
-// are the same operations; what differs is the codespace its result codes
-// belong to and the block identifier its finalized block carries.
-func NewV8(local localApplication) *Application {
-	return newApplication(local, codespaceV8)
 }
 
 // NewV9 bridges a version-nine local application, which reads the engine's

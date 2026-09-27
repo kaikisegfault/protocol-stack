@@ -106,7 +106,12 @@ def run_identity(executable, directory, genesis_path, genesis_bytes, expected) -
 
     # The schema version occupies the two octets after the four-octet magic, and
     # version eight's genesis is 142 octets: the width refusal and the validity
-    # refusal are a pair, for the reason `headless_process_v8_test.py` records.
+    # refusal are a pair on purpose. The allocation bound is already checked on
+    # the happy path, since left at the old width it would refuse the canonical
+    # file. What no happy path checks is that the bound is *not* the validity
+    # rule, so one case is a file of the right width version nine would never
+    # write and one is a file of version eight's width. Deleting the bound admits
+    # the second; folding the validity rule into the bound admits the first.
     cases = {
         "range.genesis": with_stamp(genesis_bytes, MAX_TIMESTAMP_MILLIS + 1),
         "short.genesis": bytes.fromhex("5053474e0009"),

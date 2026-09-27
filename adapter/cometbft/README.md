@@ -3,10 +3,7 @@
 This Go module contains the replaceable adapter between CometBFT `v0.39.4`
 and the headless C++ application. It implements the accepted version-one
 contract in
-[`consensus-application-v1.md`](../../docs/specifications/consensus-application-v1.md),
-and, under `-protocol-version 8`, the version-eight responses recorded in
-[ADR 0068](../../docs/decisions/0068-the-version-eight-application-layer.md) and
-[ADR 0069](../../docs/decisions/0069-the-version-eight-node-process-and-adapter.md).
+[`consensus-application-v1.md`](../../docs/specifications/consensus-application-v1.md).
 
 Under `-protocol-version 9` it implements
 [`consensus-application-v2.md`](../../docs/specifications/consensus-application-v2.md):
@@ -16,11 +13,14 @@ decision, and the fifth derived genesis value, as
 [ADR 0086](../../docs/decisions/0086-the-go-local-client-speaks-the-version-two-frame.md),
 [ADR 0087](../../docs/decisions/0087-the-bridge-carries-the-engines-time.md), and
 [ADR 0088](../../docs/decisions/0088-the-launcher-derives-the-genesis-time-and-the-first-block-carries-it.md)
-record. **Version nine has not yet run on a network**; the devnet evidence the
-contract lists is still owed. Versions one and eight both use frame version 1,
-although version eight's finalized-block payload differs from version one's, so
-a mismatched pair between them is refused at the result count rather than at the
-frame header. That is a drift
+record. Version nine runs on a four-validator devnet, through restarts, a
+departure, and one replica on a wrong clock, as
+[ADR 0090](../../docs/decisions/0090-the-version-nine-devnet.md) and
+[ADR 0091](../../docs/decisions/0091-the-skewed-replica-is-skewed-below-the-process.md)
+record. Version one uses frame version 1 and version nine frame version 2, so a
+mismatched pair is refused at the frame header, on the first frame. Before
+version two, versions one and eight shared frame version 1 and a mismatched pair
+was refused only at the result count; that is the drift
 [ADR 0079](../../docs/decisions/0079-the-version-nine-application-contract.md)
 records and version two closes by moving the version field.
 
@@ -159,7 +159,7 @@ tools/devnet.sh health
 ```
 
 The underlying command takes the same three subcommands directly, which is
-what a version-eight network uses:
+what a version-nine network uses:
 
 ```sh
 protocol-cometbft-devnet stop-replica -root /absolute/path -index 3
@@ -201,43 +201,16 @@ default. Set
 block is occupied. Every repeated start refuses partial homes, changed keys,
 changed genesis, or changed configuration.
 
-## Version eight
+## Retired versions
 
-A version-eight node is the same three processes with the version-eight
-application binary and `-protocol-version 8` on both the initializer and the
-bridge. The two must agree: the genesis application state the initializer
-writes is what `ApplicationV8` requires at `InitChain`.
-
-```sh
-protocol-application-v8 --genesis-identity /absolute/path/protocol.genesis
-
-protocol-cometbft-init -protocol-version 8 ...
-
-protocol-cometbft-bridge -protocol-version 8 \
-  -application-socket /absolute/path/application.sock \
-  -abci-listen tcp://127.0.0.1:26658
-```
-
-The four-validator devnet takes the same flag, and it reaches the genesis and
-every bridge from that one place, because a home written for one ledger version
-and bridges started for the other is refused at `InitChain`:
-
-```sh
-protocol-cometbft-devnet start -protocol-version 8 \
-  -genesis /absolute/path/protocol.genesis \
-  -application /absolute/path/protocol-application-v8 \
-  -bridge /absolute/path/protocol-cometbft-bridge \
-  -node /absolute/path/protocol-cometbft-node
-```
-
-`tools/devnet.sh` remains version one: it decodes a bundled version-one genesis
-and selects version one's application binary, and a version-eight wrapper needs
-a bundled version-eight genesis of its own.
-
-**Version seven was the third selectable version and is gone.** ADR 0065 staged
+**Versions seven and eight were selectable and are gone.** ADR 0065 staged
 version eight across seven slices and its step 7 deleted version seven's kernel,
-storage, application, node binary, and client, so `-protocol-version 7` is now
-refused where it once initialized a home no binary could serve.
+storage, application, node binary, and client.
+[ADR 0092](../../docs/decisions/0092-the-version-eight-deletion.md) deleted
+version eight's the same way once version nine ran on a four-validator network,
+and with it this adapter's version-eight client, codespace, and application
+state. So `-protocol-version 7` and `-protocol-version 8` are refused where they
+once initialized a home no binary could serve.
 
 ## Version nine
 
@@ -262,10 +235,10 @@ protocol-cometbft-bridge -protocol-version 9 \
 
 The initializer writes the stamp at exactly millisecond precision, which is the
 only form the bridge accepts at `InitChain`. It refuses a version-nine home
-without a stamp, a version-one or version-eight home with one, and an existing
+without a stamp, a version-one home with one, and an existing
 genesis whose `genesis_time` differs. The devnet reads the stamp from the
 application itself. It requires exactly the identity lines the version prints,
-so a version-eight binary started as version nine is refused before any home is
+so a version-one binary started as version nine is refused before any home is
 written, and so is the reverse.
 
 **The first block is stamped with the genesis time, exactly.** CometBFT fixes
@@ -277,6 +250,24 @@ moment the validators start. CometBFT sleeps until a future genesis time, and
 serves no RPC while it does.
 [ADR 0088](../../docs/decisions/0088-the-launcher-derives-the-genesis-time-and-the-first-block-carries-it.md)
 records why.
+
+The four-validator devnet takes the same flag, and it reaches the genesis and
+every bridge from that one place, because a home written for one ledger version
+and bridges started for another is refused at `InitChain`. It reads the stamp
+from the application itself:
+
+```sh
+protocol-cometbft-devnet start -protocol-version 9 \
+  -genesis /absolute/path/protocol.genesis \
+  -application /absolute/path/protocol-application-v9 \
+  -bridge /absolute/path/protocol-cometbft-bridge \
+  -node /absolute/path/protocol-cometbft-node
+```
+
+`tools/devnet.sh` remains version one: it decodes a bundled version-one genesis
+and selects version one's application binary, and a version-nine wrapper would
+need a genesis minted at run time, because a recorded stamp is refused a minute
+after it was written.
 
 ## Single-node lifecycle
 

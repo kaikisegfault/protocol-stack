@@ -9,9 +9,7 @@
 // otherwise identical fields, because that is the only thing stopping a
 // confirmation obtained for one from being presented for another.
 
-#include "economy_v9_fixture.hpp"
-
-#include "protocol/v8/economy.hpp"
+#include "economy_v9_carried.hpp"
 
 #include <algorithm>
 #include <set>
@@ -19,8 +17,6 @@
 
 namespace economy_v9_fixture {
 namespace {
-
-namespace v8 = protocol::v8;
 
 constexpr std::uint8_t kMintPool = 22;
 // The recorded fixture's. The body's seat and the message's seat differ on
@@ -42,7 +38,7 @@ v9::Body fixture_body() {
   return body;
 }
 
-void verify_body(const pv::Values& values, const pv::Values& carried_six) {
+void verify_body(const pv::Values& values, const Carried& carried) {
   const auto width = v9::body_bytes(kMintPool);
   pv::require(width.has_value(), "kind 22 is an assigned kind");
   pv::require(expect_size(values, "kind22.body_bytes") == *width,
@@ -56,7 +52,7 @@ void verify_body(const pv::Values& values, const pv::Values& carried_six) {
   const auto mint_node = static_cast<std::uint8_t>(v9::Kind::mint_node);
   pv::require(*width == v9::body_bytes(mint_node),
               "kind 22's body is kind 4's width");
-  pv::require(*width == std::stoull(carried_six.at("envelope.kind4.body_bytes")),
+  pv::require(*width == std::stoull(carried.six.at("envelope.kind4.body_bytes")),
               "kind 4's width is the one version six recorded");
   expect_true(values, "kind22.body_equals_mint_node");
 
@@ -67,16 +63,27 @@ void verify_body(const pv::Values& values, const pv::Values& carried_six) {
   pv::require(*scheme == v9::kind_scheme(mint_node),
               "kind 22's scheme is kind 4's");
 
-  std::size_t assigned = 0;
+  // **Version nine's kinds are version eight's plus 22, exactly**, with version
+  // eight's read from the files that accepted them. The equality is what makes
+  // "version eight never assigned 22" a check rather than a restatement: a kind
+  // either side has and the other lacks fails here, by number.
+  auto expected = version_eight_transaction_kinds(carried);
+  pv::require(!expected.contains(kMintPool),
+              "version eight never assigned kind 22");
+  expected.insert(kMintPool);
+  std::set<std::uint8_t> assigned;
   for (std::uint16_t kind = 0; kind <= 255; ++kind) {
-    if (v9::is_transaction_kind(static_cast<std::uint8_t>(kind))) ++assigned;
+    if (v9::is_transaction_kind(static_cast<std::uint8_t>(kind))) {
+      assigned.insert(static_cast<std::uint8_t>(kind));
+    }
   }
-  pv::require(expect_size(values, "kind22.transaction_kind_count") == assigned,
+  pv::require(assigned == expected,
+              "version nine assigns version eight's kinds and kind 22");
+  pv::require(expect_size(values, "kind22.transaction_kind_count") ==
+                  assigned.size(),
               "seventeen transaction kinds are assigned");
   pv::require(!v9::is_retired_kind(kMintPool),
               "kind 22 reuses no retired number");
-  pv::require(!v8::is_transaction_kind(kMintPool),
-              "version eight never assigned kind 22");
 
   const auto body = fixture_body();
   const auto encoded = v9::encode_body(kMintPool, body);
@@ -143,15 +150,12 @@ void verify_envelope(const pv::Values& values) {
               "the signed transaction round-trips");
   expect_true(values, "kind22.round_trips");
 
-  // Version eight is still compiled, so the boundary is executed rather than
-  // asserted: its admission step refuses these bytes because it knows no kind 22
-  // at all, which is a refusal by shape rather than a misreading.
-  pv::require(!v8::decode_signed(v8::Bytes(raw.begin(), raw.end())),
-              "a version-eight decoder refuses a kind-22 transaction");
-  expect_true(values, "kind22.version_eight_refuses_it");
+  // `kind22.version_eight_refuses_it` is not consulted: no version-eight decoder
+  // is left in C++ to hand these bytes to, and the coverage guard names the
+  // verifier that still asks one.
 }
 
-void verify_mint_message(const pv::Values& values) {
+void verify_mint_message(const pv::Values& values, const Carried& carried) {
   const auto message = v9::mint_message(ascending(0), kIdentity, kMintPool,
                                         kMessageSeat, kDestination, kValidUntil);
   pv::require(hex(message) == expect_text(values, "kind22.mint_message"),
@@ -196,26 +200,28 @@ void verify_mint_message(const pv::Values& values) {
               "kind 4 and kind 22 differ in exactly the kind byte");
   expect_true(values, "kind22.four_mint_messages_are_distinct");
 
-  // Version eight builds version six's message too, so "no new label is added"
-  // is checked by requiring the two kernels to agree byte for byte on a kind
-  // version eight does know.
-  const auto here = v9::mint_message(ascending(0), kIdentity,
+  // **"No new label is added" is checked against the message version six
+  // recorded**, over the fields that file recorded it on: the ascending chain,
+  // the `0xA1` identity, seat 0, Alice's first escrow, and height 42. So version
+  // nine's construction must reproduce the accepted bytes, rather than agree
+  // with a sibling kernel that was itself a port of them.
+  const auto destination = from_hex(carried.six.at("escrow.identity_a_index0_hex"));
+  const auto here = v9::mint_message(ascending(0), repeated(0xA1),
                                      static_cast<std::uint8_t>(v9::Kind::mint_node),
-                                     kMessageSeat, kDestination, kValidUntil);
-  const auto there = v8::mint_message(ascending(0), kIdentity,
-                                      static_cast<std::uint8_t>(v8::Kind::mint_node),
-                                      kMessageSeat, kDestination, kValidUntil);
-  pv::require(std::equal(here.begin(), here.end(), there.begin(), there.end()),
-              "version nine's mint message is version six's construction");
+                                     0, destination, 42);
+  pv::require(hex(here) == carried.six.at("hub.mint.hex"),
+              "version nine's mint message is version six's recorded one");
+  pv::require(here.size() == std::stoull(carried.six.at("hub.mint.bytes")),
+              "and its recorded width");
   expect_true(values, "kind22.mint_message_agrees_with_version_six");
 }
 
 }  // namespace
 
-void verify_kinds(const pv::Values& values, const pv::Values& carried_six) {
-  verify_body(values, carried_six);
+void verify_kinds(const pv::Values& values, const Carried& carried) {
+  verify_body(values, carried);
   verify_envelope(values);
-  verify_mint_message(values);
+  verify_mint_message(values, carried);
 }
 
 }  // namespace economy_v9_fixture

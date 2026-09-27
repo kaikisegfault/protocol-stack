@@ -92,7 +92,7 @@ func runStart(arguments []string) error {
 	flags.StringVar(&node, "node", "", "CometBFT node binary")
 	var protocolVersion uint
 	flags.UintVar(&protocolVersion, "protocol-version", 1,
-		"protocol ledger version every node runs (1, 8, or 9)")
+		"protocol ledger version every node runs (1 or 9)")
 	var environment devnet.ApplicationEnvironment
 	flags.Var(&environment, "application-env",
 		"index:NAME=VALUE added to one replica's application process; "+

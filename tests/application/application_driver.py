@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-"""A conversation with a running version-eight application process.
+"""A running application process, spoken to over the version-one frame.
 
-`protocol-application-v8` speaks one private Unix socket and nothing else, so a
+An application process speaks one private Unix socket and nothing else, so a
 test that wants to ask it a question a consensus engine would ask has to speak
 the wire. This module is that wire, and it is shared rather than copied: the
 framing, the three block bounds, and the seven message kinds are one description
@@ -34,8 +34,9 @@ import time
 from dataclasses import dataclass
 
 MAGIC = b"PSAP"
-# The frame format's version: version one's for ledger versions one through
-# eight. `application_driver_v2` speaks version two to version nine.
+# The frame format's version: version one's, which ledger versions one through
+# eight spoke. `application_driver_v2` builds on this module to speak version two
+# to version nine, which is why this one outlived version eight (ADR 0092).
 WIRE_VERSION = 1
 HEADER = struct.Struct(">4sHBBQI")
 REQUEST = 0

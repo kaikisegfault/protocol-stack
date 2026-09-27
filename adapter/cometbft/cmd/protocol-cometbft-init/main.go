@@ -26,7 +26,7 @@ func main() {
 	flag.StringVar(&genesisTimestamp, "genesis-timestamp", "",
 		"canonical genesis timestamp in decimal milliseconds (version 9 only)")
 	flag.UintVar(&protocolVersion, "protocol-version", 1,
-		"protocol ledger version this home is initialized for (1, 8, or 9)")
+		"protocol ledger version this home is initialized for (1 or 9)")
 	flag.Parse()
 	if flag.NArg() != 0 {
 		exitWithError(fmt.Errorf("unexpected positional arguments"))
@@ -39,9 +39,9 @@ func main() {
 	if err != nil {
 		exitWithError(err)
 	}
-	// An empty flag is the absence of a stamp, which is what versions one and
-	// eight bind. Whether this version wants one is Ensure's to refuse, so the
-	// rule lives in one place for this command and the devnet alike.
+	// An empty flag is the absence of a stamp, which is what version one binds.
+	// Whether this version wants one is Ensure's to refuse, so the rule lives in
+	// one place for this command and the devnet alike.
 	if genesisTimestamp != "" {
 		identity.GenesisTimestamp, err = nodeconfig.ParseGenesisTimestamp(
 			genesisTimestamp)

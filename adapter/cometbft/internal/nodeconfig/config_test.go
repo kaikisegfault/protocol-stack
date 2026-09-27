@@ -257,7 +257,6 @@ func hexString(value []byte) string {
 func TestProtocolVersionSelectsTheGenesisApplicationState(t *testing.T) {
 	for protocol, expected := range map[ProtocolVersion]string{
 		ProtocolV1: appStateV1,
-		ProtocolV8: appStateV8,
 		ProtocolV9: appStateV9,
 	} {
 		state, err := protocol.appState()
@@ -266,9 +265,9 @@ func TestProtocolVersionSelectsTheGenesisApplicationState(t *testing.T) {
 				uint8(protocol), state, err)
 		}
 	}
-	// Six was never bridged and seven no longer is, so neither may produce a
-	// genesis a node would then fail to join.
-	for _, unbridged := range []ProtocolVersion{6, 7} {
+	// Six was never bridged and seven and eight no longer are, so none may
+	// produce a genesis a node would then fail to join.
+	for _, unbridged := range []ProtocolVersion{6, 7, 8} {
 		if _, err := unbridged.appState(); err == nil {
 			t.Fatalf("unbridged protocol version %d produced a genesis",
 				uint8(unbridged))
@@ -292,12 +291,9 @@ func TestProtocolVersionSelectsTheGenesisApplicationState(t *testing.T) {
 	}
 	// The same home re-ensured for another version is a different genesis,
 	// and an exact-validating initializer must say so rather than adopt it.
-	for _, other := range []ProtocolVersion{ProtocolV8} {
-		if err := Ensure(
-			home, identity, testEndpoints(), other); err == nil {
-			t.Fatalf("a version-%d genesis replaced a version-one home",
-				uint8(other))
-		}
+	if err := Ensure(home, testIdentityV9(t, testStampMillis), testEndpoints(),
+		ProtocolV9); err == nil || !strings.Contains(err.Error(), "genesis differs") {
+		t.Fatalf("a version-nine genesis replaced a version-one home: %v", err)
 	}
 }
 
@@ -308,7 +304,6 @@ func TestProtocolVersionSelectsTheGenesisApplicationState(t *testing.T) {
 func TestTheApplicationStatesAreDistinct(t *testing.T) {
 	expected := map[ProtocolVersion]string{
 		ProtocolV1: `"protocol-stack-v1"`,
-		ProtocolV8: `"protocol-stack-v8"`,
 		ProtocolV9: `"protocol-stack-v9"`,
 	}
 	for protocol, want := range expected {
@@ -320,34 +315,9 @@ func TestTheApplicationStatesAreDistinct(t *testing.T) {
 	}
 }
 
-// A home initialized for version eight carries version eight's application
-// state, which is the string `ApplicationV8::init_chain` accepts and the one it
-// refuses the retired version-seven string in favour of.
-func TestAVersionEightHomeCarriesVersionEightsApplicationState(t *testing.T) {
-	home := filepath.Join(t.TempDir(), "node")
-	identity := testIdentity()
-	if err := Ensure(home, identity, testEndpoints(), ProtocolV8); err != nil {
-		t.Fatalf("fresh version-eight ensure: %v", err)
-	}
-	document, err := readGenesis(filepath.Join(
-		home, cfg.DefaultConfigDir, cfg.DefaultGenesisJSONName))
-	if err != nil {
-		t.Fatalf("read generated genesis: %v", err)
-	}
-	if !bytes.Equal(document.AppState, []byte(appStateV8)) {
-		t.Fatalf("version-eight genesis application state = %q",
-			document.AppState)
-	}
-	if err := Ensure(
-		home, identity, testEndpoints(), ProtocolV1); err == nil {
-		t.Fatal("a version-one genesis replaced a version-eight home")
-	}
-}
-
 func TestParseProtocolVersion(t *testing.T) {
 	for value, expected := range map[uint]ProtocolVersion{
 		1: ProtocolV1,
-		8: ProtocolV8,
 		9: ProtocolV9,
 	} {
 		parsed, err := ParseProtocolVersion(value)
@@ -356,12 +326,13 @@ func TestParseProtocolVersion(t *testing.T) {
 		}
 	}
 	// 257 truncates to one in a byte, 264 to eight, and 265 to nine; none may
-	// be admitted as the version it truncates to. **Seven is in this list
-	// rather than the one above**: ADR 0065's step 7 deleted the version-seven
-	// stack, so an operator who still passes it must get an error here rather
-	// than a home no binary can serve.
+	// be admitted as the version it truncates to. **Seven and eight are in this
+	// list rather than the one above**: ADR 0065's step 7 deleted the
+	// version-seven stack and ADR 0092 the version-eight one, so an operator
+	// who still passes either must get an error here rather than a home no
+	// binary can serve.
 	for _, value := range []uint{
-		0, 2, 6, 7, 10, 256, 257, 263, 264, 265,
+		0, 2, 6, 7, 8, 10, 256, 257, 263, 264, 265,
 	} {
 		if _, err := ParseProtocolVersion(value); err == nil {
 			t.Fatalf("ParseProtocolVersion(%d) was accepted", value)

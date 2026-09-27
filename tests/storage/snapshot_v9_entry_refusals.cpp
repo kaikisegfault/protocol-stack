@@ -1,11 +1,13 @@
 // One case per value rule the entry decoders enforce, weighted toward what
 // version nine adds.
 //
-// **The inherited kinds get a sample rather than a sweep.** Their rules are
-// version eight's, unchanged, and `storage_snapshot_v8_tests` holds the full
-// set; what a sample establishes here is that the port did not lose them. What
-// gets the sweep is the four kinds version nine adds, its widened pool value,
-// and its new fixed entry — the surfaces this slice had to write from nothing.
+// **The inherited kinds get a sample here and a sweep beside it.** Their rules
+// are version eight's, unchanged, and `snapshot_v9_inherited_refusals.cpp`
+// holds the full set, moved from `storage_snapshot_v8_tests` when ADR 0092
+// deleted it; what the sample establishes is that the port did not lose them
+// over the one fixture this file uses. What gets the sweep here is the four
+// kinds version nine adds, its widened pool value, and its new fixed entry — the
+// surfaces version nine had to write from nothing.
 //
 // Every case mutates one entry of a payload the module has already accepted.
 //
@@ -180,7 +182,7 @@ void check_unreferred_pool(const Payload& original,
 
 void check_inherited(const Payload& original,
                      const ps::SnapshotParametersV9& parameters) {
-  // **Not the referral balance**, which version eight's suite uses for this
+  // **Not the referral balance**, which version eight's suite used for this
   // shape: the version-nine trace purchases every seat with `has_referrer`
   // clear, so no kind-4 entry exists to mutate. The identity's own index rule is
   // the equivalent inherited case over an entry this trace does produce.

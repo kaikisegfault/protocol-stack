@@ -11,22 +11,19 @@
 //
 // Two figures are pinned against the files that accepted them rather than
 // re-recorded under a version-nine name: version eight's 142-octet genesis
-// prefix and its 146-octet header. Comparing them against the live version-eight
-// kernel as well is what would catch a port that drifted in both directions at
-// once.
+// prefix and its 146-octet header. Each has two recorded sources, a figure and
+// the bytes it measures, so a port that moved a figure and its own restatement
+// together would still fail. Until ADR 0092 the second source was the live
+// version-eight kernel, and a pin that dies with the artifact it pins proves
+// nothing afterwards.
 
-#include "economy_v9_fixture.hpp"
-
-#include "protocol/v8/economy.hpp"
-#include "protocol/v8/ledger.hpp"
+#include "economy_v9_carried.hpp"
 
 #include <algorithm>
 #include <string>
 
 namespace economy_v9_fixture {
 namespace {
-
-namespace v8 = protocol::v8;
 
 // The fixture's roots, chosen to be distinguishable in a hex dump. Nothing
 // derives them: the header is a byte layout, and what the vectors fix about it
@@ -100,7 +97,7 @@ void verify_identity(const pv::Values& values) {
               "the mint confirmation label is version six's");
 }
 
-void verify_header(const pv::Values& values) {
+void verify_header(const pv::Values& values, const Carried& carried) {
   pv::require(expect_size(values, "header.bytes") == v9::kBlockHeaderBytes,
               "the header is 154 octets");
   pv::require(
@@ -109,12 +106,17 @@ void verify_header(const pv::Values& values) {
   pv::require(expect_size(values, "header.grew_by") == v9::kTimestampBytes,
               "the header grew by one u64");
 
-  // Pinned against the live version-eight kernel rather than against a figure
-  // this file restates, so a port that moved both would fail here.
-  pv::require(expect_size(values, "header.version_eight_bytes") ==
-                  v8::kBlockHeaderBytes,
+  // Pinned against version eight's execution file rather than against a figure
+  // this file restates: the width it recorded, and a header it recorded, which
+  // must be that many octets.
+  const auto eight_bytes =
+      std::stoull(carried.eight_execution.at("construction.block_header_bytes"));
+  pv::require(carried.eight_execution.at("construction.block_header").size() ==
+                  2 * eight_bytes,
+              "version eight's recorded header is its recorded width");
+  pv::require(expect_size(values, "header.version_eight_bytes") == eight_bytes,
               "version eight's header is 146 octets");
-  pv::require(v9::kBlockHeaderBytes == v8::kBlockHeaderBytes + v9::kTimestampBytes,
+  pv::require(v9::kBlockHeaderBytes == eight_bytes + v9::kTimestampBytes,
               "the growth is exactly the inserted field");
 
   const auto header = fixture_header(kGenesisMillis);
@@ -155,8 +157,9 @@ void verify_header(const pv::Values& values) {
   expect_true(values, "header.refuses_a_timestamp_outside_the_range");
 }
 
-void verify_genesis(const pv::Values& values, const pv::Values& carried_eight,
+void verify_genesis(const pv::Values& values, const Carried& carried,
                     const pv::Values& manifest) {
+  const auto& carried_eight = carried.eight;
   // The manifest digest is a founder-directed figure, so it is read from the
   // accepted manifest file rather than restated here.
   const auto digest = from_hex(manifest.at("manifest_digest"));
@@ -166,16 +169,20 @@ void verify_genesis(const pv::Values& values, const pv::Values& carried_eight,
               "the genesis prefix is 150 octets");
   pv::require(expect_size(values, "genesis.timestamp_offset") == 10,
               "the genesis timestamp follows the network identifier");
-  // Two sources for version eight's prefix: the file that accepted it and the
-  // kernel still compiling it.
+  // Two sources for version eight's prefix: the figure its file recorded, and
+  // the genesis that file recorded, which carries no account and is therefore
+  // the prefix alone. Version eight's execution file records the same figure
+  // over a different fixture.
+  const auto eight_prefix = std::stoull(carried_eight.at("genesis.prefix_bytes"));
   pv::require(expect_size(values, "genesis.version_eight_prefix_bytes") ==
-                  std::stoull(carried_eight.at("genesis.prefix_bytes")),
+                  eight_prefix,
               "version eight's prefix is the one its own file recorded");
-  pv::require(expect_size(values, "genesis.version_eight_prefix_bytes") ==
-                  v8::kGenesisPrefixBytes,
-              "version eight's prefix is the one its kernel still uses");
-  pv::require(v9::kGenesisPrefixBytes ==
-                  v8::kGenesisPrefixBytes + v9::kGenesisTimestampBytes,
+  pv::require(carried_eight.at("genesis.bytes").size() == 2 * eight_prefix,
+              "version eight's recorded genesis is its prefix alone");
+  pv::require(std::stoull(carried.eight_execution.at("genesis.prefix_bytes")) ==
+                  eight_prefix,
+              "both version-eight files record one prefix");
+  pv::require(v9::kGenesisPrefixBytes == eight_prefix + v9::kGenesisTimestampBytes,
               "the prefix grew by exactly the inserted field");
 
   pv::require(
@@ -267,11 +274,16 @@ void verify_genesis(const pv::Values& values, const pv::Values& carried_eight,
                   expect_text(values, "genesis.pool_value"),
               "the pool starts with all three quantities zero");
 
-  // The thirteen entries version nine does not touch are version eight's, byte
-  // for byte, under keys whose discriminators did not move. The comparison is
-  // against the version-eight kernel's own encoders rather than against a
-  // restatement of them.
-  std::size_t carried = 0;
+  // The thirteen entries version nine does not touch are version eight's,
+  // under keys whose discriminators did not move. **Each is checked against
+  // version seven's accepted entry table**, which version eight carried for
+  // every kind it did not add: the key and value widths it records, and the
+  // value an empty chain holds — zero throughout, since nothing is issued,
+  // recovered, or enrolled at genesis, or the verifier key itself. The recovery
+  // pool's key is also the one that table's own record spells out. The
+  // byte-for-byte comparison with version eight's genesis runs in the verifier,
+  // against the version-eight Python model.
+  std::size_t kept = 0;
   for (const auto& entry : entries) {
     const auto kind = entry.key.front();
     if (kind == static_cast<std::uint8_t>(v9::Entry::unreferred_pool) ||
@@ -279,28 +291,30 @@ void verify_genesis(const pv::Values& values, const pv::Values& carried_eight,
         kind == static_cast<std::uint8_t>(v9::Entry::settlement_cursor)) {
       continue;
     }
-    ++carried;
-    v8::Bytes expected_value;
-    v8::Bytes expected_key;
-    if (kind == static_cast<std::uint8_t>(v9::Entry::channel)) {
-      expected_key = v8::channel_key(entry.key.at(1));
-      expected_value = v8::channel_value(0, 0);
-    } else if (kind == static_cast<std::uint8_t>(v9::Entry::recovery_pool)) {
-      expected_key = v8::recovery_pool_key();
-      expected_value = v8::recovery_pool_value({});
-    } else if (kind == static_cast<std::uint8_t>(v9::Entry::verifier_key)) {
-      expected_key = v8::verifier_key_key();
-      expected_value = v8::verifier_key_value(kVerifierKey);
-    } else {
-      pv::require(kind == static_cast<std::uint8_t>(v9::Entry::verified_user_counter),
-                  "no other carried entry kind appears at genesis");
-      expected_key = v8::verified_user_counter_key();
-      expected_value = v8::verified_user_counter_value(0);
+    ++kept;
+    pv::require(entry.key.size() == version_seven_width(carried, kind, "key_bytes") &&
+                    entry.value.size() ==
+                        version_seven_width(carried, kind, "value_bytes"),
+                "a carried genesis entry has version seven's recorded widths");
+    if (kind == static_cast<std::uint8_t>(v9::Entry::verifier_key)) {
+      pv::require(std::ranges::equal(entry.value, kVerifierKey),
+                  "the verifier key entry holds the key");
+      continue;
     }
-    pv::require(entry.key == expected_key && entry.value == expected_value,
-                "a carried genesis entry is version eight's unchanged");
+    pv::require(kind == static_cast<std::uint8_t>(v9::Entry::channel) ||
+                    kind == static_cast<std::uint8_t>(v9::Entry::recovery_pool) ||
+                    kind == static_cast<std::uint8_t>(
+                                v9::Entry::verified_user_counter),
+                "no other carried entry kind appears at genesis");
+    pv::require(std::ranges::all_of(entry.value,
+                                    [](std::uint8_t octet) { return octet == 0; }),
+                "a carried genesis entry holds nothing yet");
+    if (kind == static_cast<std::uint8_t>(v9::Entry::recovery_pool)) {
+      pv::require(hex(entry.key) == carried.seven.at("state.recovery_pool.key_hex"),
+                  "the recovery pool's key is version seven's recorded one");
+    }
   }
-  pv::require(carried == 13, "thirteen genesis entries are carried");
+  pv::require(kept == 13, "thirteen genesis entries are carried");
   expect_true(values, "genesis.thirteen_entries_are_version_eights_unchanged");
 }
 
@@ -390,24 +404,24 @@ void verify_roots(const pv::Values& values, const pv::Values& carried_eight,
               "and the ordinary path refuses it too");
 }
 
-void verify_codes(const pv::Values& values, const pv::Values& carried_eight) {
+void verify_codes(const pv::Values& values, const Carried& carried) {
   pv::require(expect_number(values, "codes.count") == v9::kResultCodeCount,
               "the result code space is 45");
-  // Version eight's own file does not record the count, so the comparison is
-  // against the kernel that still compiles it: version nine adds none, and the
-  // claim is about two implementations rather than two copies of one number.
-  pv::require(v9::kResultCodeCount == v8::kResultCodeCount,
+  // Version eight's file records its count and the twelve names it added, and
+  // version six's records the thirty-three before them, so "version nine adds
+  // none and renames none" is a comparison with two accepted files over every
+  // code rather than with a kernel that was itself a port of them.
+  pv::require(v9::kResultCodeCount == version_eight_code_count(carried),
               "version nine adds no result code");
   expect_true(values, "codes.unchanged_from_version_eight");
   for (std::uint8_t code = 0; code < v9::kResultCodeCount; ++code) {
     const auto here = v9::result_code_name(code);
-    const auto there = v8::result_code_name(code);
-    pv::require(here.has_value() && there.has_value() && *here == *there,
+    pv::require(here.has_value() &&
+                    *here == version_eight_code_name(carried, code),
                 "every code keeps its exact version-eight meaning");
   }
   pv::require(!v9::result_code_name(v9::kResultCodeCount),
               "the space is contiguous and ends where it says");
-  (void)carried_eight;
 
   // Kind 22's nine refusals, each already assigned by an accepted version. The
   // vectors fix the number, and this requires the kernel's own table to give
@@ -462,13 +476,13 @@ void verify_accounts_tree(const pv::Values& primitives) {
               "the ported tree reproduces the accepted M1 empty tree root");
 }
 
-void verify_version(const pv::Values& values, const pv::Values& carried_eight,
+void verify_version(const pv::Values& values, const Carried& carried,
                     const pv::Values& manifest, const pv::Values& primitives) {
   verify_identity(values);
-  verify_header(values);
-  verify_genesis(values, carried_eight, manifest);
-  verify_roots(values, carried_eight, manifest);
-  verify_codes(values, carried_eight);
+  verify_header(values, carried);
+  verify_genesis(values, carried, manifest);
+  verify_roots(values, carried.eight, manifest);
+  verify_codes(values, carried);
   (void)primitives;
 }
 

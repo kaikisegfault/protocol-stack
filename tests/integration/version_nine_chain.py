@@ -2,9 +2,9 @@
 
 """A version-nine chain a real node will accept, stamped by the engine.
 
-Version eight's fixture, `version_eight_chain.py`, froze its chain before any
-node ran: the genesis was fixed, and every block's root followed from its height
-and its transactions. **Neither holds at version nine, and this module exists
+Version eight's fixture froze its chain before any node ran: the genesis was
+fixed, and every block's root followed from its height and its transactions.
+ADR 0092 deleted it with the rest of version eight. **Neither holds at version nine, and this module exists
 for the two reasons why.**
 
 **The genesis is minted at run time.** CometBFT `v0.39.4` stamps block 1 with
@@ -24,7 +24,8 @@ in advance, because they bind the chain identity and nothing about any block.
 stand-in that `protocol-application-v9` would refuse as `invalid_signature`,
 which is version eight's reason for signing with the pinned libsodium and it
 carries over unchanged. `Signer` is version eight's, restated rather than
-imported so that deleting `src/v8/` and its fixtures does not reach it.
+imported, which is why ADR 0092's deletion of version eight's fixture did not
+reach it.
 
 **One transaction per block remains a requirement**, for version eight's reason:
 a state root commits to the whole block, and a mempool will not put a chosen set

@@ -6,7 +6,7 @@
 // its widened pool value, and the head's timestamp all have to be writable
 // before a store, an application, or a node can hold one.
 //
-// The checks are split by subject across three translation units. This one is
+// The checks are split by subject across four translation units. This one is
 // the entry point.
 
 #include "snapshot_v9_fixture.hpp"
@@ -24,6 +24,7 @@ int main(int argc, char** argv) {
     tests::verify_round_trips(values);
     tests::verify_framing_refusals();
     tests::verify_entry_refusals();
+    tests::verify_inherited_refusals();
 
     std::cout << "C++ version-nine state snapshot: passed\n";
     return 0;
