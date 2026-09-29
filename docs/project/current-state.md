@@ -38,7 +38,8 @@ set. The launcher now writes each fresh seeded home's genesis state, the one
   stop.
 
 It passed locally before any hosted run. A launcher whose genesis time was 1 ms
-late failed it by name.
+late failed it by name. On the hosted runners it passed in candidate run
+36602233169 and again in push run 36604219737 on `17e51c9`, M4.2b's merge.
 
 **M4.2a made a store seedable from a snapshot on 2026-09-27**, which is the
 first of three slices toward a mint on a network.
