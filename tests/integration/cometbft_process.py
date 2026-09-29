@@ -18,6 +18,8 @@ MAXIMUM_FRAME = 33_554_432
 MAXIMUM_PORT = 65_535
 MINIMUM_UNPRIVILEGED_PORT = 1_024
 PORT_BLOCK_ATTEMPTS = 256
+# The devnet supervisor's teardown: three phases of fifteen seconds, plus slack.
+TEARDOWN_SECONDS = 50
 LINUX_EPHEMERAL_RANGE = pathlib.Path(
     "/proc/sys/net/ipv4/ip_local_port_range"
 )
@@ -51,9 +53,21 @@ class ManagedProcess:
         self.log_file.close()
 
     def kill(self) -> None:
+        """Make sure the process is gone, whatever state a failure left it in.
+
+        **It is asked to stop before it is killed.** A devnet supervisor that is
+        killed outright cannot tear down the applications and bridges it
+        started, and they outlive the run on any machine that outlives the
+        test. So it gets SIGTERM and its own teardown bound first: three phases
+        of at most fifteen seconds each.
+        """
         if self.process.poll() is None:
-            self.process.kill()
-            self.process.wait(timeout=5)
+            self.process.terminate()
+            try:
+                self.process.wait(timeout=TEARDOWN_SECONDS)
+            except subprocess.TimeoutExpired:
+                self.process.kill()
+                self.process.wait(timeout=5)
         if not self.log_file.closed:
             self.log_file.close()
 
