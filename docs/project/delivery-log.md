@@ -102,6 +102,14 @@ after `stop()` rather than to simulate a crash, so only failure paths change. A
 rerun of the failing mutant left no process behind. Hosted runners are
 ephemeral, which is why this had never shown there.
 
+It merged by rebase on 2026-09-29 through PR #368 as `a134435` and `17e51c9`,
+closing issue #367. Candidate run 36602233169 on the PR head `0c030cb` passed
+all six checks. The run on the first head, `8272c0f`, was cancelled by the
+workflow's concurrency rule when the harness fix was pushed. The gcc-debug job
+ran 173 ctest entries, all passing, and then every network run, including
+"CometBFT seeded-launch version-nine integration: passed". Push run 36604219737
+on `17e51c9` passed all six jobs.
+
 ### How M4.2a was delivered
 
 **The route was chosen by reading the engine, not the ADR that named it.**
