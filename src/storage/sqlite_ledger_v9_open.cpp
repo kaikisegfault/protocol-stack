@@ -109,6 +109,37 @@ SQLiteLedgerV9Result open_sqlite_ledger_v9(
   }
 }
 
+namespace {
+
+struct CheckedSeedV9 {
+  DecodedSnapshotV9 decoded;
+  DurableHeadV9 durable;
+};
+
+// Every rule a seed must meet, none of which touches a file: the three gates
+// under the genesis's parameters, a height above zero, and a payload that
+// re-encodes to exactly its own octets. Seeding and inspecting both run this,
+// so a launcher cannot be told a head the seed would then refuse.
+CheckedSeedV9 check_seed(const TrustedGenesisV9& trusted,
+                         std::span<const std::uint8_t> snapshot) {
+  auto decoded = decode_snapshot_v9(snapshot, trusted.parameters);
+  if (!std::holds_alternative<DecodedSnapshotV9>(decoded)) {
+    throw FailureV9{SQLiteLedgerV9Error::invalid_snapshot};
+  }
+  auto seeded = std::get<DecodedSnapshotV9>(std::move(decoded));
+  if (seeded.ledger.height == 0) {
+    throw FailureV9{SQLiteLedgerV9Error::invalid_snapshot};
+  }
+  auto durable = durable_head_of(seeded.ledger);
+  if (!std::ranges::equal(durable.snapshot, snapshot) ||
+      durable.state_root != seeded.state_root) {
+    throw FailureV9{SQLiteLedgerV9Error::invalid_snapshot};
+  }
+  return CheckedSeedV9{std::move(seeded), std::move(durable)};
+}
+
+}  // namespace
+
 SQLiteLedgerV9Result seed_sqlite_ledger_v9(
     const std::filesystem::path& path, const v9::Genesis& genesis,
     std::span<const std::uint8_t> snapshot, v9::SignatureVerifier verify) {
@@ -116,19 +147,7 @@ SQLiteLedgerV9Result seed_sqlite_ledger_v9(
     auto trusted = load_trusted_genesis(genesis);
     // **Every check on the payload runs before the path is reserved**, so a
     // refused seed leaves no file behind to be mistaken for a store.
-    auto decoded = decode_snapshot_v9(snapshot, trusted.parameters);
-    if (!std::holds_alternative<DecodedSnapshotV9>(decoded)) {
-      throw FailureV9{SQLiteLedgerV9Error::invalid_snapshot};
-    }
-    auto seeded = std::get<DecodedSnapshotV9>(std::move(decoded));
-    if (seeded.ledger.height == 0) {
-      throw FailureV9{SQLiteLedgerV9Error::invalid_snapshot};
-    }
-    auto durable = durable_head_of(seeded.ledger);
-    if (!std::ranges::equal(durable.snapshot, snapshot) ||
-        durable.state_root != seeded.state_root) {
-      throw FailureV9{SQLiteLedgerV9Error::invalid_snapshot};
-    }
+    auto [seeded, durable] = check_seed(trusted, snapshot);
 
     const auto normalized = internal::normalize_database_path(path);
     auto resources = std::make_unique<internal::SQLiteResources>(
@@ -166,6 +185,19 @@ SQLiteLedgerV9Result seed_sqlite_ledger_v9(
     return error_result(translate(failure.error));
   } catch (...) {
     return error_result(SQLiteLedgerV9Error::storage_failure);
+  }
+}
+
+SQLiteV9HeadResult inspect_seed_v9(const v9::Genesis& genesis,
+                                   std::span<const std::uint8_t> snapshot) {
+  try {
+    auto trusted = load_trusted_genesis(genesis);
+    auto [seeded, durable] = check_seed(trusted, snapshot);
+    return LedgerHeadV9{std::move(seeded.ledger), seeded.state_root};
+  } catch (const FailureV9& failure) {
+    return failure.error;
+  } catch (...) {
+    return SQLiteLedgerV9Error::storage_failure;
   }
 }
 

@@ -219,11 +219,20 @@ std::optional<v9::Bytes> read_snapshot(const std::filesystem::path& path) {
   return bytes;
 }
 
-// Create a store whose head is a restored snapshot, and print what a launcher
-// must start the engine from: the chain identity, the seeded height, its stamp,
-// and its root, which becomes the engine's genesis `app_hash` (ADR 0096). The
-// store's own refusals are the only validation, so a seed this prints is one
-// that passed every restore gate and was written.
+// What a launcher must start the engine from: the chain identity, the seeded
+// height, its stamp, and its root, which becomes the engine's genesis
+// `app_hash`. `--seed` and `--inspect-seed` print it identically, so a launcher
+// can require the two to agree.
+void print_seeded_head(const ps::LedgerHeadV9& head) {
+  std::cout << "chain_id=" << uppercase_hex(head.ledger.chain_id) << '\n'
+            << "height=" << head.ledger.height << '\n'
+            << "timestamp=" << head.ledger.timestamp << '\n'
+            << "app_hash=" << uppercase_hex(head.state_root) << '\n';
+}
+
+// Create a store whose head is a restored snapshot, and print that head (ADR
+// 0096). The store's own refusals are the only validation, so a seed this
+// prints is one that passed every restore gate and was written.
 int seed_store(const std::filesystem::path& database_path,
                const std::filesystem::path& genesis_path,
                const std::filesystem::path& snapshot_path) {
@@ -252,11 +261,32 @@ int seed_store(const std::filesystem::path& database_path,
   if (!std::holds_alternative<ps::LedgerHeadV9>(head)) {
     return fail("the seeded store cannot report its head");
   }
-  const auto& value = std::get<ps::LedgerHeadV9>(head);
-  std::cout << "chain_id=" << uppercase_hex(value.ledger.chain_id) << '\n'
-            << "height=" << value.ledger.height << '\n'
-            << "timestamp=" << value.ledger.timestamp << '\n'
-            << "app_hash=" << uppercase_hex(value.state_root) << '\n';
+  print_seeded_head(std::get<ps::LedgerHeadV9>(head));
+  return 0;
+}
+
+// Print the head a snapshot would seed, checked by the seed's own rules, and
+// write nothing (ADR 0097). A launcher runs this on every start of a seeded
+// network, because the engine's genesis is derived from the seeded head and
+// the stores have usually moved past it.
+int inspect_seed(const std::filesystem::path& genesis_path,
+                 const std::filesystem::path& snapshot_path) {
+  auto genesis = read_genesis(genesis_path);
+  if (!std::holds_alternative<v9::Genesis>(genesis)) {
+    return fail(std::get<std::string_view>(genesis));
+  }
+  const auto payload = read_snapshot(snapshot_path);
+  if (!payload) return fail("the snapshot is not an absolute, readable file");
+  const auto head =
+      ps::inspect_seed_v9(std::get<v9::Genesis>(genesis), *payload);
+  if (!std::holds_alternative<ps::LedgerHeadV9>(head)) {
+    if (std::get<ps::SQLiteLedgerV9Error>(head) ==
+        ps::SQLiteLedgerV9Error::invalid_snapshot) {
+      return fail("the snapshot is not a state this chain can be seeded with");
+    }
+    return fail("failed to inspect the snapshot");
+  }
+  print_seeded_head(std::get<ps::LedgerHeadV9>(head));
   return 0;
 }
 
@@ -288,13 +318,19 @@ int run_application(int argc, char** argv) {
                       std::filesystem::path(argv[3]),
                       std::filesystem::path(argv[4]));
   }
+  if (argc == 4 && std::string_view(argv[1]) == "--inspect-seed") {
+    return inspect_seed(std::filesystem::path(argv[2]),
+                        std::filesystem::path(argv[3]));
+  }
   if (argc != 4) {
     return fail(
         "usage: protocol-application-v9 <absolute-database> "
         "<absolute-genesis> <absolute-socket> | "
         "protocol-application-v9 --genesis-identity <absolute-genesis> | "
         "protocol-application-v9 --seed <absolute-database> "
-        "<absolute-genesis> <absolute-snapshot>");
+        "<absolute-genesis> <absolute-snapshot> | "
+        "protocol-application-v9 --inspect-seed <absolute-genesis> "
+        "<absolute-snapshot>");
   }
   const std::filesystem::path database_path(argv[1]);
   const std::filesystem::path genesis_path(argv[2]);

@@ -40,10 +40,15 @@ import sys
 from dataclasses import dataclass
 
 REPOSITORY = pathlib.Path(__file__).resolve().parents[2]
-for _entry in (REPOSITORY, REPOSITORY / "tests" / "differential"):
+for _entry in (
+    REPOSITORY,
+    REPOSITORY / "tests" / "differential",
+    pathlib.Path(__file__).resolve().parent,
+):
     if str(_entry) not in sys.path:
         sys.path.insert(0, str(_entry))
 
+import version_nine_snapshot  # noqa: E402
 from pinned_sodium import Sodium  # noqa: E402
 from simulation.economy_transition_v6 import messages  # noqa: E402
 from simulation.economy_transition_v6.identity import (  # noqa: E402
@@ -236,6 +241,10 @@ class Session:
 
     def state_root(self) -> bytes:
         return bytes.fromhex(self._ledger.state_root())
+
+    def snapshot(self) -> bytes:
+        """The head as the payload a store is seeded from (ADR 0096)."""
+        return version_nine_snapshot.encode(self._ledger)
 
     # --- the transactions -------------------------------------------------
 

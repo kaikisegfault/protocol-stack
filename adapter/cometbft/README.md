@@ -264,6 +264,30 @@ protocol-cometbft-devnet start -protocol-version 9 \
   -node /absolute/path/protocol-cometbft-node
 ```
 
+### A network seeded above height zero
+
+`start` also takes `-seed <snapshot>`, a version-nine snapshot of a head at
+height `H` (ADR 0096). The first start seeds all four stores from it. The
+engine's genesis then takes `initial_height = H + 1`, the head's root as
+`app_hash`, and the head's stamp as `genesis_time`. The application reports the
+head without writing anything:
+
+```sh
+protocol-application-v9 --inspect-seed /absolute/path/protocol.genesis \
+  /absolute/path/seed.snapshot
+# chain_id=...
+# height=...
+# timestamp=...
+# app_hash=...
+```
+
+**Name the same snapshot on every start.** The genesis is derived from it each
+time and compared with every home. A seeded home refuses a start without it, or
+with any other head. The first block carries the seeded stamp, so a seeded
+network has the same one-minute launch window, counted from that stamp.
+[ADR 0097](../../docs/decisions/0097-a-seeded-launch-takes-its-genesis-from-one-head.md)
+records the rules.
+
 `tools/devnet.sh` remains version one: it decodes a bundled version-one genesis
 and selects version one's application binary, and a version-nine wrapper would
 need a genesis minted at run time, because a recorded stamp is refused a minute

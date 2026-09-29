@@ -56,6 +56,10 @@ class Network:
     # alone and keeps them across `stop-replica` and `start-replica`, because a
     # machine keeps its clock across a restart (ADR 0091).
     application_environment: tuple[tuple[int, str, str], ...] = ()
+    # The snapshot a seeded network's stores begin from (ADR 0097). It is named
+    # on every start, because the supervisor derives the engine's genesis from
+    # the head it holds and compares every home against that.
+    seed: pathlib.Path | None = None
 
     def common_arguments(self) -> list[str]:
         return [
@@ -85,34 +89,37 @@ def reserve_port_block() -> int:
     return reserve_non_ephemeral_port_block(PORT_OFFSETS)
 
 
+def start_arguments(network: Network) -> list:
+    """The supervisor's `start` command line for this network."""
+    return [
+        network.devnet,
+        "start",
+        *network.common_arguments(),
+        "-genesis",
+        network.genesis,
+        *(["-seed", network.seed] if network.seed is not None else []),
+        "-application",
+        network.application,
+        "-bridge",
+        network.bridge,
+        "-node",
+        network.node,
+        "-protocol-version",
+        str(network.protocol_version),
+        *(
+            argument
+            for index, name, value in network.application_environment
+            for argument in ("-application-env", f"{index}:{name}={value}")
+        ),
+    ]
+
+
 def start_network(
     network: Network,
     workspace: pathlib.Path,
 ) -> tuple[ManagedProcess, dict[str, str]]:
     process = start_process(
-        "four-validator-devnet",
-        [
-            network.devnet,
-            "start",
-            *network.common_arguments(),
-            "-genesis",
-            network.genesis,
-            "-application",
-            network.application,
-            "-bridge",
-            network.bridge,
-            "-node",
-            network.node,
-            "-protocol-version",
-            str(network.protocol_version),
-            *(
-                argument
-                for index, name, value in network.application_environment
-                for argument in ("-application-env", f"{index}:{name}={value}")
-            ),
-        ],
-        workspace,
-    )
+        "four-validator-devnet", start_arguments(network), workspace)
     try:
         return process, run_health(network)
     except Exception as error:

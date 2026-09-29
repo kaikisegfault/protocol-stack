@@ -24,9 +24,12 @@ encoder would.
 Between them they carry every entry kind version nine writes. Kind 5, the
 direct decision, is the exception, and no block can write it while kind 6
 refuses every sender. The test requires that coverage instead of asserting it.
-Each seed must print the model's chain identity, height, stamp, and root.
+Each seed must print the model's chain identity, height, stamp, and root, and
+`--inspect-seed` must print exactly the same four lines before the store exists
+and after it does (ADR 0097).
 
-**Four seeds are refused, and a refusal must leave no file:**
+**Four seeds are refused, and a refusal must leave no file.** Inspection must
+refuse the three that are about the payload rather than the path:
 
 - a payload with one octet changed;
 - a seed onto an existing store;
@@ -73,6 +76,14 @@ def seed(application: pathlib.Path, database: pathlib.Path,
     )
 
 
+def inspect(application: pathlib.Path, genesis: pathlib.Path,
+            snapshot: pathlib.Path):
+    return subprocess.run(
+        [str(application), "--inspect-seed", str(genesis), str(snapshot)],
+        capture_output=True, text=True, timeout=120, check=False,
+    )
+
+
 def identity_of(output: str) -> dict[str, str]:
     values = dict(line.split("=", 1) for line in output.strip().splitlines())
     require(set(values) == {"chain_id", "height", "timestamp", "app_hash"},
@@ -88,9 +99,15 @@ def check_seed(application: pathlib.Path, directory: pathlib.Path,
     snapshot = directory / f"{name}.snapshot"
     snapshot.write_bytes(payload)
     database = directory / f"{name}.sqlite"
+    before = inspect(application, genesis, snapshot)
+    require(before.returncode == 0,
+            f"{name}: the inspection was refused: {before.stderr.strip()}")
     result = seed(application, database, genesis, snapshot)
     require(result.returncode == 0,
             f"{name}: the seed was refused: {result.stderr.strip()}")
+    after = inspect(application, genesis, snapshot)
+    require(before.stdout == result.stdout == after.stdout,
+            f"{name}: inspection and the seed report different heads")
     printed = identity_of(result.stdout)
     expected = {
         "chain_id": ledger.chain_id.hex().upper(),
@@ -130,6 +147,11 @@ def check_refused(application: pathlib.Path, database: pathlib.Path,
             f"{subject}: refused for another reason: {result.stderr.strip()}")
     require(database.exists() == existed,
             f"{subject}: a refused seed changed what is at the path")
+    if existed:
+        return
+    inspected = inspect(application, genesis, snapshot)
+    require(inspected.returncode != 0 and message in inspected.stderr,
+            f"{subject}: inspection did not refuse it the same way")
 
 
 def verify(application: pathlib.Path, directory: pathlib.Path) -> int:
@@ -195,8 +217,10 @@ def verify(application: pathlib.Path, directory: pathlib.Path) -> int:
         f"{challenged.height}, and the v4 population at height "
         f"{populated.height} -- each seeded a C++ store from a Python-encoded "
         "payload and reported the model's identity, height, stamp, and root, "
+        "as inspection did before and after, "
         f"carrying all {len(carried)} writable entry kinds; 4 bad seeds refused "
-        "with no file left behind)"
+        "with no file left behind, and the 3 bad payloads refused by "
+        "inspection too)"
     )
     return 0
 

@@ -1,16 +1,51 @@
 # Current state
 
-Last updated: 2026-09-27
+Last updated: 2026-09-29
 
 ## Phase
+
+**M4.2b launched a four-validator network above height zero on 2026-09-29**,
+the second of three slices toward a mint on a network.
+[ADR 0097](../decisions/0097-a-seeded-launch-takes-its-genesis-from-one-head.md)
+records the rules. `protocol-cometbft-devnet start -seed <snapshot>` does the
+following:
+
+- seeds all four stores from one snapshot on the first start, and none on a
+  restart;
+- derives the engine's genesis from the snapshot's head, which the new
+  `protocol-application-v9 --inspect-seed` prints without writing anything:
+  `initial_height = H + 1`, the head's root as `app_hash`, and the head's stamp
+  as `genesis_time`, exactly.
+
+No option sets one of the three alone. A seeded home refuses any start that
+names no snapshot, another head, or a snapshot the restore gates refuse.
+
+**The slice found and corrected a gap in ADR 0096's reading of the engine.**
+CometBFT v0.39.4 does skip `InitChain` over a nonzero application height. But
+`NewNodeWithContext` reloads its state store after the handshake, and only
+`InitChain` saves one. So the first seeded network panicked on a nil validator
+set. The launcher now writes each fresh seeded home's genesis state, the one
+`InitChain` would have saved, and never overwrites a state the engine has moved.
+
+**`cometbft_seeded_launch_v9_test.py`, in `tools/verify.sh`, is the evidence:**
+
+- four replicas are seeded at height 4 from a model-encoded snapshot;
+- block 5 is stamped with the seeded stamp to the nanosecond;
+- two transfers from the seeded balance land on the model's roots;
+- three wrong launches are refused, with every home and store byte-identical
+  afterwards;
+- a restart from the seed works, and all four stores are audited after each
+  stop.
+
+It passed locally before any hosted run. A launcher whose genesis time was 1 ms
+late failed it by name.
 
 **M4.2a made a store seedable from a snapshot on 2026-09-27**, which is the
 first of three slices toward a mint on a network.
 [ADR 0096](../decisions/0096-a-devnet-may-begin-from-a-restored-snapshot.md)
-chose ADR 0071's snapshot route. CometBFT v0.39.4 skips `InitChain` when its
-store is empty and the application reports a nonzero height, so a network can
-launch at `H + 1` over seeded stores with no contract change. The chain's
-genesis stays at height zero. The slice added:
+chose ADR 0071's snapshot route, so a network launches at `H + 1` over seeded
+stores with no contract change. The chain's genesis stays at height zero. The
+slice added:
 
 - `seed_sqlite_ledger_v9`, which accepts a payload only through the
   snapshot's three gates, refuses height zero and non-canonical octets, and
@@ -2870,44 +2905,41 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-**M4.2b: let the CometBFT adapter launch a seeded network.** It is the second of
-ADR 0096's three slices, toward requirement 2 of [`first-goal.md`](first-goal.md).
-Today `nodeconfig.readGenesis` refuses any `InitialHeight` but 1, and
-`devnet.go` and `config.go` write 1 with the genesis root as `app_hash` and the
-genesis stamp as the time. A seeded launch takes three values from one seeded
-head, as `--seed` prints it:
+**M4.2c: a mint on a network.** It is the last of ADR 0096's three slices and
+meets requirement 2 of [`first-goal.md`](first-goal.md). Seed a four-validator
+run past the assignment lag. Its seat collects a kind-4 mint and its identity
+collects a kind-18 mint, both submitted to the network, and every replica
+agrees with the model on roots and receipts.
 
-- `initial_height` is the height plus 1;
-- `app_hash` is the seeded root;
-- `genesis_time` is no earlier than the seeded stamp.
+**The seed history is the model's, and the launch window decides how it is
+stamped.** A seeded network's first block carries the seeded head's stamp, and
+C5 refuses it once civil time is more than 60 seconds away. So the history cannot
+be stamped at the trace's fixed times. The plan that fits:
 
-**The rule to keep is that the three come together.** The adapter accepts a
-nonzero launch height only with the app hash of the head it launches from, never
-as independent options. So a genesis document whose height and hash disagree is
-refused before any engine starts. Today's blanket refusal of every other height
-protects exactly that, and the change must keep the protection while narrowing
-the refusal.
+- execute the history to `H - 1` with stamps anchored before the run, for
+  example three days back at the trace's spacing, since C5 is never re-applied
+  to a restored state;
+- then close one last empty block at the current clock;
+- encode the snapshot and launch at once.
 
-The time needs care, because the first block carries the engine's genesis time:
+The seat's challenge responses come from the model's responder, as in
+`trace._seated_chain`. The mint transactions must be signed with keys the test
+holds, so a session over that history is needed, not the trace's fixed one.
 
-- C2 needs it to be no earlier than the seeded stamp;
-- C5 needs it within 60 seconds of every node's clock.
+Measure the model's time to execute about 86,400 heights before choosing the
+anchor. The hosted job's budget is a real constraint.
 
-A seed built from a history stamped just before launch satisfies both. Record
-the rule in the ADR's M4.2b section or a successor.
-
-**Then M4.2c**: a four-validator run seeded past the assignment lag, whose seat
-collects a kind-4 mint and whose identity collects a kind-18 mint, with every
-replica agreeing.
-
-**Founder-decision gate for M4.2b: it held.** A launch height is engine
-configuration; no contract, amount, or participant rule moves.
+**Founder-decision gate for M4.2c: it held.** A mint on a devnet executes the
+accepted kernel; no amount, allocation, or participant rule moves.
 
 **The candidates behind those are unchanged and none is blocked**:
 
 - drive the C++ kernel over the `economy-scenario-suite-v4` population against
   its seven pinned roots;
 - ADR 0089's outage wall.
+
+**M4.2b delivered what stood here before it**: a four-validator network
+launched from a seeded head, ADR 0097.
 
 **M4.2a delivered what stood here before it**: choosing a route and seeding
 a store from a snapshot, ADR 0096.
