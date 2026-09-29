@@ -92,6 +92,16 @@ faked a moved state by raising `LastBlockHeight` alone. The engine refuses to
 load a state above height zero without a last validator set, so the fixture
 now sets one, which is what a real state after one block holds.
 
+**The mutation run exposed a harness defect, shared by every network test.**
+Four applications and four bridges from the failed run were still alive
+afterwards. The test's `finally: process.kill()` had SIGKILLed the supervisor,
+which then could not tear down its children. `ManagedProcess.kill` now sends
+SIGTERM first and allows the supervisor's own teardown bound, 50 seconds for
+its three phases of 15, before it kills. Every caller uses `kill()` as cleanup
+after `stop()` rather than to simulate a crash, so only failure paths change. A
+rerun of the failing mutant left no process behind. Hosted runners are
+ephemeral, which is why this had never shown there.
+
 ### How M4.2a was delivered
 
 **The route was chosen by reading the engine, not the ADR that named it.**
