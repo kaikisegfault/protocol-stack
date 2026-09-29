@@ -87,6 +87,10 @@ func runStart(arguments []string) error {
 	var bridge string
 	var node string
 	flags.StringVar(&genesis, "genesis", "", "absolute canonical genesis file")
+	var snapshot string
+	flags.StringVar(&snapshot, "seed", "",
+		"absolute version-nine snapshot the stores are seeded from; "+
+			"required on every start of a seeded network")
 	flags.StringVar(&application, "application", "", "application binary")
 	flags.StringVar(&bridge, "bridge", "", "ABCI bridge binary")
 	flags.StringVar(&node, "node", "", "CometBFT node binary")
@@ -114,7 +118,7 @@ func runStart(arguments []string) error {
 	ctx, stop := signal.NotifyContext(
 		context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	return devnet.Run(ctx, topology, genesis, devnet.Binaries{
+	return devnet.Run(ctx, topology, genesis, snapshot, devnet.Binaries{
 		Application: application,
 		Bridge:      bridge,
 		Node:        node,

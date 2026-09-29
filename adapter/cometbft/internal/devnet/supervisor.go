@@ -45,21 +45,31 @@ type supervisor struct {
 
 // Run initializes and foreground-supervises the complete local network.
 //
+// `snapshot` is empty for a network launched at the chain's genesis, and
+// otherwise names the snapshot its stores are seeded from (ADR 0097), on this
+// start and on every later one.
+//
 // `environment` is added to each replica's application process and to nothing
 // else; the zero value adds nothing to any of them.
 func Run(
 	ctx context.Context,
 	devnet nodeconfig.Devnet,
 	genesis string,
+	snapshot string,
 	binaries Binaries,
 	protocol nodeconfig.ProtocolVersion,
 	environment ApplicationEnvironment,
 ) (runError error) {
-	if err := validateInputs(genesis, binaries); err != nil {
+	if err := validateInputs(genesis, snapshot, binaries); err != nil {
 		return err
 	}
 	identity, err := InspectIdentity(
 		ctx, binaries.Application, genesis, protocol)
+	if err != nil {
+		return err
+	}
+	launch, err := inspectLaunch(
+		ctx, binaries.Application, genesis, snapshot)
 	if err != nil {
 		return err
 	}
@@ -68,8 +78,17 @@ func Run(
 	// written for one ledger version and bridges started for the other is
 	// refused there rather than at the first block. That is why the version
 	// reaches both from here rather than being configured twice.
-	if err := devnet.Ensure(identity, protocol); err != nil {
+	if err := devnet.EnsureLaunch(identity, protocol, launch); err != nil {
 		return fmt.Errorf("initialize devnet: %w", err)
+	}
+	// After the homes, so a seed is never written for a launch the homes
+	// refused, and before any application starts, so none creates a store at
+	// height zero where a seeded one belongs.
+	if head, seeded := launch.Seed(); seeded {
+		if err := seedStores(ctx, devnet, binaries.Application,
+			genesis, snapshot, head); err != nil {
+			return fmt.Errorf("seed devnet: %w", err)
+		}
 	}
 	if err := ensureSocketRoot(devnet.SocketRoot); err != nil {
 		return fmt.Errorf("prepare socket root: %w", err)
@@ -375,12 +394,20 @@ func ensureSocketRoot(path string) error {
 	return nil
 }
 
-func validateInputs(genesis string, binaries Binaries) error {
+func validateInputs(genesis string, snapshot string, binaries Binaries) error {
 	if !filepath.IsAbs(genesis) {
 		return errors.New("canonical genesis path must be absolute")
 	}
 	if err := requireRegularFile(genesis, false); err != nil {
 		return fmt.Errorf("canonical genesis: %w", err)
+	}
+	if snapshot != "" {
+		if !filepath.IsAbs(snapshot) {
+			return errors.New("seed snapshot path must be absolute")
+		}
+		if err := requireRegularFile(snapshot, false); err != nil {
+			return fmt.Errorf("seed snapshot: %w", err)
+		}
 	}
 	for _, binary := range []struct {
 		name string

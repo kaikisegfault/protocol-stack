@@ -84,7 +84,7 @@ func Ensure(
 	}
 	// Before anything is written, so a refused version and stamp pairing
 	// leaves no half-made home behind it.
-	if _, _, err := genesisValues(identity, protocol); err != nil {
+	if _, err := genesisValues(identity, protocol, Launch{}); err != nil {
 		return err
 	}
 	config, err := nodeConfig(home, endpoints, nodeOptions{
@@ -247,7 +247,7 @@ func singleValidatorGenesis(
 	validator *privval.FilePV,
 	protocol ProtocolVersion,
 ) (*types.GenesisDoc, error) {
-	state, genesisTime, err := genesisValues(identity, protocol)
+	fields, err := genesisValues(identity, protocol, Launch{})
 	if err != nil {
 		return nil, err
 	}
@@ -256,17 +256,17 @@ func singleValidatorGenesis(
 		return nil, fmt.Errorf("validator public key: %w", err)
 	}
 	document := &types.GenesisDoc{
-		GenesisTime:     genesisTime,
+		GenesisTime:     fields.genesisTime,
 		ChainID:         identity.CometChainID(),
-		InitialHeight:   1,
+		InitialHeight:   fields.initialHeight,
 		ConsensusParams: types.DefaultConsensusParams(),
 		Validators: []types.GenesisValidator{{
 			Address: publicKey.Address(),
 			PubKey:  publicKey,
 			Power:   10,
 		}},
-		AppHash:  identity.AppHash[:],
-		AppState: []byte(state),
+		AppHash:  fields.appHash,
+		AppState: []byte(fields.appState),
 	}
 	if err := document.ValidateAndComplete(); err != nil {
 		return nil, fmt.Errorf("genesis: %w", err)
@@ -283,7 +283,11 @@ func readGenesis(path string) (*types.GenesisDoc, error) {
 	if err := cmtjson.Unmarshal(encoded, &document); err != nil {
 		return nil, fmt.Errorf("decode genesis: %w", err)
 	}
-	if document.InitialHeight != 1 ||
+	// An initial height above one is a seeded launch's (ADR 0097), and only
+	// the exact comparison against the expected document decides whether it
+	// is this launch's. An absent height is still refused here, because the
+	// engine would read it as one.
+	if document.InitialHeight < 1 ||
 		document.GenesisTime.IsZero() ||
 		document.ConsensusParams == nil {
 		return nil, errors.New("genesis omits required protocol values")

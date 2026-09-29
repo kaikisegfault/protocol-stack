@@ -201,4 +201,11 @@ SQLiteLedgerV9Result seed_sqlite_ledger_v9(
     std::span<const std::uint8_t> snapshot,
     protocol::v9::SignatureVerifier verify = protocol::v9::ed25519_verifier());
 
+// The head `seed_sqlite_ledger_v9` would create from `snapshot`, checked by
+// exactly the same rules and with nothing written. A launcher needs the seeded
+// height, stamp, and root on every start, including starts after the stores
+// have moved past them, and this is where it reads them without a store.
+SQLiteV9HeadResult inspect_seed_v9(const protocol::v9::Genesis& genesis,
+                                   std::span<const std::uint8_t> snapshot);
+
 }  // namespace protocol::storage

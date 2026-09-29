@@ -32,6 +32,66 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M4.2b was delivered
+
+**The restart question decided the design.** The first draft seeded node 0 and
+read the head from what `--seed` printed. Then came the restart: after one block
+the stores are past the seeded head and cannot say what it was, yet the
+launcher re-derives the engine's genesis on every start and compares it with
+every home. Three ways to recover the head were weighed:
+
+- persist it beside the homes, which compares the homes against the launcher's
+  own file;
+- seed into a temporary path on each start, which copies the whole state to read
+  four numbers;
+- give the application a mode that runs the seed's checks and writes nothing.
+
+The third won, as `--inspect-seed`. Its checks and the seed's are one function,
+`check_seed`, factored out of `seed_sqlite_ledger_v9`, so they cannot drift.
+
+**The genesis time was taken as the seeded stamp exactly**, not "no earlier
+than" it, as the handoff had put it. A time chosen at launch would be a fourth
+value outside the head, which a restart would need persisted or passed in. The
+cost is that a seeded network has the same one-minute window as any other,
+counted from the seeded stamp, and M4.2c's plan now says so.
+
+**The first network run found what reading the engine had missed.** Unit tests
+covered:
+
+- the derived genesis document;
+- the refused launches;
+- the exact key set of the printed head;
+- all-or-none seeding.
+
+All passed. Then the first local four-validator run failed readiness, and node
+3's log showed a panic in `logNodeStartupInfo` on a nil validator set. The
+engine source in the module cache showed why. `NewNodeWithContext` reloads its
+state store after the handshake, and only the `InitChain` path saves one. ADR
+0096 had read the handshake branch correctly and stopped one call short.
+
+The fix writes the state the `InitChain` path would have saved: the genesis
+document's state with the empty results hash. It writes into a fresh seeded home
+only and never over a state the engine has moved. ADR 0096 gained a correction
+note pointing to ADR 0097.
+
+**The run was taken locally before any hosted cycle**, with the Go binaries and
+the gcc-debug application built in the scratchpad, and a scratch copy of the
+tests with the libsodium pin relaxed. The second run passed:
+
+- block 5 was stamped with the seeded stamp;
+- two transfers landed on the model's roots;
+- three wrong launches were refused, with homes and stores byte-identical;
+- the restart worked.
+
+A devnet binary whose seeded genesis time was 1 ms late failed the run by name
+at block 5. The source was restored and compared byte for byte with a saved
+copy.
+
+**One test fixture was wrong and was fixed.** The engine-state test first
+faked a moved state by raising `LastBlockHeight` alone. The engine refuses to
+load a state above height zero without a last validator set, so the fixture
+now sets one, which is what a real state after one block holds.
+
 ### How M4.2a was delivered
 
 **The route was chosen by reading the engine, not the ADR that named it.**
@@ -84,6 +144,15 @@ refuses every sender.
 - a stale `.pyc` from that second mutation, found while restoring it. The
   mutated and restored files had the same size and the same second, so Python
   reused the bytecode. The cache was cleared and the test re-run.
+
+It merged by rebase on 2026-09-27 through PR #366 as `44f0978`, closing issue
+#365. Run 36357752278 on the PR head `dddbd89` passed all six checks. The
+gcc-debug job ran 173 ctest entries, M4.1's 172 plus `version-nine-seed`, all
+passing, and then every network run.
+
+**ADR 0096's account of the engine was incomplete, and M4.2b found it.** The
+handshake branch it read is real, but a seeded node also needs the state that
+only `InitChain` saves (ADR 0097).
 
 ### How M4.1 was delivered
 

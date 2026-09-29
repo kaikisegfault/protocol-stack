@@ -115,15 +115,27 @@ func loopbackEndpoint(port int) string {
 	return fmt.Sprintf("tcp://127.0.0.1:%d", port)
 }
 
-// Ensure initializes or exact-validates every home in the topology.
+// Ensure initializes or exact-validates every home in the topology, for a
+// network launched at the chain's own genesis.
 func (devnet Devnet) Ensure(
 	identity Identity,
 	protocol ProtocolVersion,
 ) error {
+	return devnet.EnsureLaunch(identity, protocol, Launch{})
+}
+
+// EnsureLaunch initializes or exact-validates every home for a network
+// launched where `launch` says. A home written for one launch is refused by
+// every other, because the genesis document it holds differs.
+func (devnet Devnet) EnsureLaunch(
+	identity Identity,
+	protocol ProtocolVersion,
+	launch Launch,
+) error {
 	// Before preflight writes the root, and long before any key exists: a
 	// refused pairing that left keys without a genesis would be an incomplete
 	// home, which preflight then refuses on every later start.
-	if _, _, err := genesisValues(identity, protocol); err != nil {
+	if _, err := genesisValues(identity, protocol, launch); err != nil {
 		return err
 	}
 	_, err := devnet.preflight()
@@ -160,13 +172,19 @@ func (devnet Devnet) Ensure(
 		return err
 	}
 
-	genesis, err := devnetGenesis(identity, validators, protocol)
+	genesis, err := devnetGenesis(identity, validators, protocol, launch)
 	if err != nil {
 		return err
 	}
+	_, seeded := launch.Seed()
 	for index, config := range configs {
 		if err := ensureGenesis(config.GenesisFile(), genesis); err != nil {
 			return fmt.Errorf("node %d: %w", index, err)
+		}
+		if seeded {
+			if err := ensureLaunchState(config, genesis); err != nil {
+				return fmt.Errorf("node %d: %w", index, err)
+			}
 		}
 		config.P2P.PersistentPeers = persistentPeers(
 			index, devnet.Nodes, nodeKeys)
@@ -278,8 +296,9 @@ func devnetGenesis(
 	identity Identity,
 	validators []*privval.FilePV,
 	protocol ProtocolVersion,
+	launch Launch,
 ) (*types.GenesisDoc, error) {
-	state, genesisTime, err := genesisValues(identity, protocol)
+	fields, err := genesisValues(identity, protocol, launch)
 	if err != nil {
 		return nil, err
 	}
@@ -299,13 +318,13 @@ func devnetGenesis(
 		}
 	}
 	document := &types.GenesisDoc{
-		GenesisTime:     genesisTime,
+		GenesisTime:     fields.genesisTime,
 		ChainID:         identity.CometChainID(),
-		InitialHeight:   1,
+		InitialHeight:   fields.initialHeight,
 		ConsensusParams: types.DefaultConsensusParams(),
 		Validators:      genesisValidators,
-		AppHash:         identity.AppHash[:],
-		AppState:        []byte(state),
+		AppHash:         fields.appHash,
+		AppState:        []byte(fields.appState),
 	}
 	if err := document.ValidateAndComplete(); err != nil {
 		return nil, fmt.Errorf("devnet genesis: %w", err)

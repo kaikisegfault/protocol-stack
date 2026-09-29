@@ -192,6 +192,17 @@ The CometBFT genesis values become **five**:
 
 The node launcher derives all five from the same validated canonical genesis and
 refuses an existing CometBFT genesis file that differs in any of them.
+**Extended on 2026-09-29:** a network launched from a seeded head at height `H`
+takes three of the five from that head instead:
+
+- `initial_height` is `H + 1`;
+- `app_hash` is the head's root;
+- `genesis_time` is the head's stamp, at the same millisecond precision.
+
+`chain_id` and `app_state` stay the chain's. Such a network never sends
+`InitChain`.
+[ADR 0097](../decisions/0097-a-seeded-launch-takes-its-genesis-from-one-head.md)
+records it.
 
 **`genesis_time` is enforced, not decorative.** C2's first-block rule is
 `t(1) >= g`. If the engine and the application disagree about `g`, they disagree

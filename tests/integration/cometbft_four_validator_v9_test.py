@@ -164,6 +164,15 @@ class Chain:
             at = self.stamp(self.session.height + 1, 0)
             self._record(self.session.apply_empty(at), self.session.height)
 
+    def execute_before_launch(self, raw: bytes, timestamp: int) -> Block:
+        """A block the model executes with no network, for a seed (ADR 0096).
+
+        A seeded network never sees these blocks; it begins from the state they
+        leave, so the model records them exactly as it records the network's.
+        """
+        height = self.session.height + 1
+        return self._record(self.session.apply(raw, timestamp), height)
+
     def execute(self, raw: bytes, height: int) -> Block:
         self.advance_to(height - 1)
         block = self.session.apply(raw, self.stamp(height, 1))

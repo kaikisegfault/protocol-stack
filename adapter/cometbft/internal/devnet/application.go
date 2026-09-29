@@ -21,21 +21,33 @@ func InspectIdentity(
 	genesis string,
 	protocol nodeconfig.ProtocolVersion,
 ) (nodeconfig.Identity, error) {
-	command := exec.CommandContext(
-		ctx, application, "--genesis-identity", genesis)
-	output, err := command.Output()
+	output, err := runApplication(ctx, "inspect genesis identity",
+		application, "--genesis-identity", genesis)
+	if err != nil {
+		return nodeconfig.Identity{}, err
+	}
+	return parseIdentity(output, protocol)
+}
+
+// runApplication runs one of the application's print-and-exit modes and
+// returns what it printed. A refusal is reported with the application's own
+// words, which name the rule that refused.
+func runApplication(
+	ctx context.Context,
+	what string,
+	application string,
+	arguments ...string,
+) ([]byte, error) {
+	output, err := exec.CommandContext(ctx, application, arguments...).Output()
 	if err != nil {
 		var exitError *exec.ExitError
 		if errors.As(err, &exitError) {
-			return nodeconfig.Identity{}, fmt.Errorf(
-				"inspect genesis identity: %s",
-				strings.TrimSpace(string(exitError.Stderr)),
-			)
+			return nil, fmt.Errorf("%s: %s",
+				what, strings.TrimSpace(string(exitError.Stderr)))
 		}
-		return nodeconfig.Identity{}, fmt.Errorf(
-			"inspect genesis identity: %w", err)
+		return nil, fmt.Errorf("%s: %w", what, err)
 	}
-	return parseIdentity(output, protocol)
+	return output, nil
 }
 
 // parseIdentity reads identity mode's output for one protocol version.
@@ -50,31 +62,13 @@ func parseIdentity(
 	output []byte,
 	protocol nodeconfig.ProtocolVersion,
 ) (nodeconfig.Identity, error) {
-	expected := map[string]bool{"chain_id": true, "app_hash": true}
+	keys := []string{"chain_id", "app_hash"}
 	if protocol.BindsGenesisTimestamp() {
-		expected[genesisTimestampField] = true
+		keys = append(keys, genesisTimestampField)
 	}
-	values := make(map[string]string, len(expected))
-	scanner := bufio.NewScanner(bytes.NewReader(output))
-	for scanner.Scan() {
-		key, value, found := strings.Cut(scanner.Text(), "=")
-		if !found || !expected[key] || value == "" {
-			return nodeconfig.Identity{}, errors.New(
-				"application returned invalid genesis identity")
-		}
-		if _, duplicate := values[key]; duplicate {
-			return nodeconfig.Identity{}, errors.New(
-				"application returned duplicate genesis identity field")
-		}
-		values[key] = value
-	}
-	if err := scanner.Err(); err != nil {
-		return nodeconfig.Identity{}, fmt.Errorf(
-			"read genesis identity: %w", err)
-	}
-	if len(values) != len(expected) {
-		return nodeconfig.Identity{}, errors.New(
-			"application omitted genesis identity field")
+	values, err := readFields(output, "genesis identity", keys...)
+	if err != nil {
+		return nodeconfig.Identity{}, err
 	}
 	identity, err := nodeconfig.ParseIdentity(
 		values["chain_id"], values["app_hash"])
@@ -92,4 +86,37 @@ func parseIdentity(
 		identity.GenesisTimestamp = stamp
 	}
 	return identity, nil
+}
+
+// readFields reads `key=value` lines whose key set is exactly `keys`, each
+// once and each nonempty, in any order. `what` names the output in errors.
+func readFields(
+	output []byte,
+	what string,
+	keys ...string,
+) (map[string]string, error) {
+	expected := make(map[string]bool, len(keys))
+	for _, key := range keys {
+		expected[key] = true
+	}
+	values := make(map[string]string, len(expected))
+	scanner := bufio.NewScanner(bytes.NewReader(output))
+	for scanner.Scan() {
+		key, value, found := strings.Cut(scanner.Text(), "=")
+		if !found || !expected[key] || value == "" {
+			return nil, fmt.Errorf("application returned invalid %s", what)
+		}
+		if _, duplicate := values[key]; duplicate {
+			return nil, fmt.Errorf(
+				"application returned duplicate %s field", what)
+		}
+		values[key] = value
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("read %s: %w", what, err)
+	}
+	if len(values) != len(expected) {
+		return nil, fmt.Errorf("application omitted %s field", what)
+	}
+	return values, nil
 }

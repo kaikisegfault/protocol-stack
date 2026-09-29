@@ -44,6 +44,13 @@ So a network whose genesis document says `initial_height = H + 1` and
 `app_hash = root(H)`, over applications that report height H with that root,
 proposes block H + 1 and never asks anyone to initialise a chain.
 
+**Correction of 2026-09-29: the engine accepts the handshake, but it does not
+start without help.** After the handshake, `NewNodeWithContext` reloads its
+state from the state store, and only the `InitChain` path saves one. So a seeded
+node found an empty state and panicked. The launcher now writes the state the
+`InitChain` path would have saved.
+[ADR 0097](0097-a-seeded-launch-takes-its-genesis-from-one-head.md) records it.
+
 **The version-nine application already behaves that way over a seeded store.**
 `ApplicationV9` is ready when its opened store's height is nonzero
 (`application_v9.cpp`, `ready = initial.ledger.height != 0`). Opening a store

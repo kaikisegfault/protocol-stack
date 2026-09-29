@@ -130,21 +130,28 @@ func (p ProtocolVersion) genesisTime(stamp GenesisTimestamp) (time.Time, error) 
 	return time.UnixMilli(int64(millis)).UTC(), nil
 }
 
-// genesisValues are the derived values a protocol version fixes in every
-// genesis this package writes, the single-validator one and the devnet's alike.
-// The chain ID and application hash are the identity's own, and the initial
-// height is always one.
+// genesisValues are the derived values a protocol version and a launch fix in
+// every genesis this package writes, the single-validator one and the devnet's
+// alike. At the chain's own genesis the application hash is the identity's and
+// the initial height is one; a seeded launch replaces both, and the time, from
+// one head (ADR 0097).
 func genesisValues(
 	identity Identity,
 	protocol ProtocolVersion,
-) (appState string, genesisTime time.Time, err error) {
-	appState, err = protocol.appState()
+	launch Launch,
+) (genesisFields, error) {
+	appState, err := protocol.appState()
 	if err != nil {
-		return "", time.Time{}, err
+		return genesisFields{}, err
 	}
-	genesisTime, err = protocol.genesisTime(identity.GenesisTimestamp)
+	genesisTime, err := protocol.genesisTime(identity.GenesisTimestamp)
 	if err != nil {
-		return "", time.Time{}, err
+		return genesisFields{}, err
 	}
-	return appState, genesisTime, nil
+	return launchFields(genesisFields{
+		appState:      appState,
+		genesisTime:   genesisTime,
+		initialHeight: 1,
+		appHash:       append([]byte(nil), identity.AppHash[:]...),
+	}, identity, protocol, launch)
 }
