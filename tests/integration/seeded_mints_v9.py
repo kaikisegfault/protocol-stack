@@ -38,7 +38,8 @@ Both mints count heights, not stamps, so neither amount depends on a stamp.
 - From height 86,401, Alice's enrollment has completed windows 1 and 2, so a
   kind-18 mint collects two daily permissions.
 - Window 1's assignment is written, so a kind-4 mint collects what seat 0
-  earned in it.
+  earned in it: one whole base permission, 574.3 units. Seat 0 met the cycle
+  and is the only seat, so nothing is reallocated to it or from it.
 
 **The mints are built after the history**, because every answered audit moves
 the nonce Alice's next transaction must carry. Each is signed in milliseconds,

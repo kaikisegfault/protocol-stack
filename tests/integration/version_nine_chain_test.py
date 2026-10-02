@@ -333,9 +333,13 @@ def check_the_seeded_mints(sodium: Sodium) -> None:
 
     The history must reach the seed's height with every audit the machine was
     issued answered, except one issued at the last quiet height if there was
-    one. Then both mints must succeed, and the
-    kind-18 one must issue exactly two daily permissions. Each repeat and the
-    stranger's mint must be refused by name on the empty-block root.
+    one. Then both mints must succeed with exact amounts:
+    - the kind-18 mint issues two daily permissions, for windows 1 and 2;
+    - the kind-4 mint issues one whole base permission, for window 1. Seat 0
+      met the cycle and is the only seat, so there is no failed seat's
+      permission to reallocate and no recovery pool to share.
+    Each repeat and the stranger's mint must be refused by name on the
+    empty-block root.
     """
     session = Session(sodium, seeded_mints_v9.genesis_stamp(STAMP))
     chain = _ModelChain(session)
@@ -361,7 +365,8 @@ def check_the_seeded_mints(sodium: Sodium) -> None:
         * c.VERIFIED_USER_DAILY_ATOMIC,
         f"the kind-18 mint issued {issued[0]}",
     )
-    require(issued[1] > 0, "the kind-4 mint issued nothing")
+    require(issued[1] == c.BASE_PERMISSION_TOTAL,
+            f"the kind-4 mint issued {issued[1]}, not one base permission")
     seeded_mints_v9.check_what_was_minted(session)
     refusals = [step.refusal for step in seeded_mints_v9.mints(session)
                 if step.refusal]
