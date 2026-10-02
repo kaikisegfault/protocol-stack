@@ -349,6 +349,9 @@ void verify_contract_sections(const pv::Values& contract);
 // A referrer's first accrual starts its mark at the window before it, which no
 // recorded vector reaches (ADR 0094).
 void verify_referral_mark();
+// A kind-18 collection before window 31 takes what was earned, which no
+// recorded vector reaches (ADR 0098).
+void verify_verified_user_collection();
 void verify_coverage(const pv::Values& values);
 
 }  // namespace economy_v9_execution

@@ -307,6 +307,7 @@ add_executable(
   tests/kernel/economy_v9_trace.cpp
   tests/kernel/economy_v9_execution_checks.cpp
   tests/kernel/economy_v9_referral_mark.cpp
+  tests/kernel/economy_v9_verified_user_collection.cpp
 )
 target_link_libraries(economy_v9_execution_tests PRIVATE protocol_kernel)
 add_executable(
