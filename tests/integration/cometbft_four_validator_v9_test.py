@@ -129,6 +129,8 @@ class Chain:
     `roots[h]` is the state after height `h`, and `roots[0]` is the genesis
     root, so the app hash a header carries at height `h` is `roots[h - 1]`.
     `stamps[h]` is the head stamp after height `h`, the genesis stamp at zero.
+    Below a seeded head, a height the model passed on its fast path holds `None`
+    in both.
     """
 
     def __init__(self, sodium: Sodium, genesis_timestamp: int) -> None:
@@ -164,14 +166,34 @@ class Chain:
             at = self.stamp(self.session.height + 1, 0)
             self._record(self.session.apply_empty(at), self.session.height)
 
-    def execute_before_launch(self, raw: bytes, timestamp: int) -> Block:
+    def execute_before_launch(self, raw: bytes | None, timestamp: int) -> Block:
         """A block the model executes with no network, for a seed (ADR 0096).
 
         A seeded network never sees these blocks; it begins from the state they
         leave, so the model records them exactly as it records the network's.
+        `raw` is `None` for a block with no transaction.
         """
         height = self.session.height + 1
-        return self._record(self.session.apply(raw, timestamp), height)
+        block = (
+            self.session.apply_empty(timestamp) if raw is None
+            else self.session.apply(raw, timestamp)
+        )
+        return self._record(block, height)
+
+    def run_before_launch(
+        self, target_height: int, timestamp_of_height, respond,
+    ) -> None:
+        """Quiet heights the model runs with no network, for a seed.
+
+        The fast path computes no root for a height it passes, and a seeded
+        network never reports one below its head, so each is recorded as
+        unknown. The target's own root and stamp are recorded.
+        """
+        passed = self.session.run_quiet(target_height, timestamp_of_height, respond)
+        if self.session.height != target_height or passed == 0:
+            raise RuntimeError("the model did not run to the seed's height")
+        self.roots += [None] * (passed - 1) + [self.session.state_root()]
+        self.stamps += [None] * (passed - 1) + [self.session.timestamp]
 
     def execute(self, raw: bytes, height: int) -> Block:
         self.advance_to(height - 1)
