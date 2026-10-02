@@ -1,8 +1,52 @@
 # Current state
 
-Last updated: 2026-09-29
+Last updated: 2026-10-03
 
 ## Phase
+
+**M4.2c minted on a network on 2026-10-03.** It is the last of ADR 0096's three
+slices and meets requirement 2 of [`first-goal.md`](first-goal.md): a kind-4
+mint and a kind-18 mint execute on four replicas. No network in this repository
+had minted before.
+
+**Its first hosted run found a consensus defect in the C++ kernel, and it is
+repaired.** `verified_user_collection` computed `collectable_end - 30` in
+unsigned arithmetic. Before window 31 it wrapped, so every kind-18 mint in a
+chain's first thirty windows issued thirty daily permissions, 51.3 units,
+whatever it had earned. All four replicas issued that for Alice's two windows,
+where the model issued 3.42 units. The specification and the model were right.
+[ADR 0098](../decisions/0098-a-kind-18-mint-before-window-31-collects-what-was-earned.md)
+repairs it inside version nine, as ADR 0094 did the referral mark. A new
+kernel check pins eleven collections at the model's figures and fails on the
+unrepaired line. No recorded vector reaches the case, so this is the first
+defect a network found rather than a model.
+
+**The model runs the history alone, and the network begins at its head.**
+`tests/integration/seeded_mints_v9.py` is the script:
+
+- Alice and Bob enroll, and Alice buys and activates seat 0 in window 0.
+- Seat 0's machine answers every audit it is issued through windows 1 and 2.
+- Block 86,400 opens window 3 and assigns window 1. It is the seed's head,
+  stamped with the clock. Every height below it is one millisecond apart and
+  ends before the run starts. So the whole history falls in the launch's
+  month, and no settlement depends on the date of the run.
+
+The model runs those 86,400 heights in about two seconds.
+
+**`cometbft_seeded_mints_v9_test.py`, in `tools/verify.sh`, is the evidence:**
+
+- four replicas are seeded at 86,400, and block 86,401 carries the head's stamp;
+- Alice's kind-18 mint issues two daily permissions, 3.42 units;
+- her kind-4 mint issues one whole base permission, 574.3 units, because seat 0
+  met the cycle and is the only seat;
+- every receipt and root on all four replicas is the model's;
+- a second mint of each kind is refused as `NOTHING_TO_MINT`, and Bob minting
+  her seat is refused as `UNAUTHORIZED`, each on the empty-block root;
+- all four stores are audited after the stop.
+
+`version_nine_chain_test.py` runs the same script offline as its eleventh check
+and requires both amounts exactly. No contract, root, encoding, or vector
+changed.
 
 **M4.2b launched a four-validator network above height zero on 2026-09-29**,
 the second of three slices toward a mint on a network.
@@ -2906,38 +2950,54 @@ replay domain, and encoding that would carry one on a real chain are undefined.
 
 ## Exact next action
 
-**M4.2c: a mint on a network.** It is the last of ADR 0096's three slices and
-meets requirement 2 of [`first-goal.md`](first-goal.md). Seed a four-validator
-run past the assignment lag. Its seat collects a kind-4 mint and its identity
-collects a kind-18 mint, both submitted to the network, and every replica
-agrees with the model on roots and receipts.
+**Trim this document.** It is over 5,500 lines, the owner flagged its regrowth
+on 2026-10-03, and every session must read it first. The plan that fits:
 
-**The seed history is the model's, and the launch window decides how it is
-stamped.** A seeded network's first block carries the seeded head's stamp, and
-C5 refuses it once civil time is more than 60 seconds away. So the history cannot
-be stamped at the trace's fixed times. The plan that fits:
+- Move everything from `## Phase` to the end into a new final section of
+  [`delivery-log.md`](delivery-log.md), verbatim, with each heading demoted one
+  level. No anchored link points into this document, and its relative links
+  resolve from the log's directory.
+- Rewrite this document to the present, in about 300 lines: M4's requirements
+  as a status table, what works now, the founder direction as the constitution
+  now states it, the repository and verification facts, the remaining gap, the
+  next action, and the current founder-reserved list. Several passages here are
+  stale and must not be carried over: "What works now" gives
+  `economy-transition-v9-execution.txt` 125 vectors where it holds 162, and
+  "Adopted founder direction" still describes seat addresses and sixteen
+  managers, which ADR 0041 superseded.
+- Make the bound mechanical. `tools/verify_metadata.py` should refuse this
+  file above a line limit, such as 600, and `CLAUDE.md` should say that a slice
+  rewrites the sentences it makes false and records its narrative and gate
+  result in its delivery record. The audit's 125-vector figure needs the same
+  dated correction.
 
-- execute the history to `H - 1` with stamps anchored before the run, for
-  example three days back at the trace's spacing, since C5 is never re-applied
-  to a restored state;
-- then close one last empty block at the current clock;
-- encode the snapshot and launch at once.
+It is a Python source change, so it takes the full matrix.
 
-The seat's challenge responses come from the model's responder, as in
-`trace._seated_chain`. The mint transactions must be signed with keys the test
-holds, so a session over that history is needed, not the trace's fixed one.
+**Then M4's next slice, and two questions for the owner.** ADR 0048 makes a
+registration valid only under the key of an active, attested Founder Machine,
+and the constitution says capture runs "on the founder's own Founder Machine".
+Neither says whose machine verifies a person who owns no Founder Machine — an
+ordinary user, a creator, or a developer, all of whom must be verified — nor how
+the first registrations happen before any seat is active. Both decide what a
+participant must do or own to join, so ask them, batched, when requirement 3's
+registry becomes the nearest slice. Requirement 7's threat model and
+requirement 4's test verifier are unblocked meanwhile.
 
-Measure the model's time to execute about 86,400 heights before choosing the
-anchor. The hosted job's budget is a real constraint.
-
-**Founder-decision gate for M4.2c: it held.** A mint on a devnet executes the
-accepted kernel; no amount, allocation, or participant rule moves.
+**One finding from M4.2c bears on a later slice.** A seed's stamps below its
+head are free as long as C2 holds, because a restore never applies C5. That
+also removes the clock wall from the kind-22 monthly pool mint, the M3 evidence
+ADR 0090 left below the engine. A seed history whose early windows open in an
+earlier month than its head can close that month, by about height 144,000, and
+leave a claim for a network to mint.
 
 **The candidates behind those are unchanged and none is blocked**:
 
 - drive the C++ kernel over the `economy-scenario-suite-v4` population against
   its seven pinned roots;
 - ADR 0089's outage wall.
+
+**M4.2c delivered what stood here before it**: a kind-4 and a kind-18 mint
+on a seeded four-validator network.
 
 **M4.2b delivered what stood here before it**: a four-validator network
 launched from a seeded head, ADR 0097.
