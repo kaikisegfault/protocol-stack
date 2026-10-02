@@ -55,7 +55,15 @@ VerifiedUserCollection verified_user_collection(std::uint64_t minted_through_win
   // The cap forfeits here, and this is the line that makes it permanent: the
   // mark advances to `collectable_end` rather than to the walk's end, so the
   // windows before `window_start` are never issued.
-  const auto capped_start = collectable_end - kMintAccumulationCap;
+  //
+  // The specification's `collectable_end - 30` is an integer and may be
+  // negative, and then the mark wins the maximum. Before window 31 it is, so
+  // the subtraction is guarded rather than left to wrap: a wrapped start made
+  // every kind-18 mint before window 31 collect exactly thirty windows
+  // whatever it had earned (ADR 0098).
+  const auto capped_start = collectable_end > kMintAccumulationCap
+                                ? collectable_end - kMintAccumulationCap
+                                : std::uint64_t{0};
   collection.window_start = minted_through_window > capped_start
                                 ? minted_through_window
                                 : capped_start;

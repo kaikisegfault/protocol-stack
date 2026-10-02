@@ -53,6 +53,7 @@ int main(int argc, char** argv) {
 
     fixture::verify_contract_sections(contract);
     fixture::verify_referral_mark();
+    fixture::verify_verified_user_collection();
 
     std::cout << "C++ economy transition v9 execution: passed\n";
     return 0;
