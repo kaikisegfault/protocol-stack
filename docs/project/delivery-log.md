@@ -32,6 +32,106 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M4.2c was delivered
+
+**The handoff's plan was taken, except for how the history is stamped.** It
+suggested stamping the history three days back at the commit target's pace. That
+would look like a real network, but whether the history crossed a month boundary
+would then depend on the run's date. Today's date, 2026-10-03, would have
+crossed one. The model would still agree with the C++ either way, but a failure
+on the 2nd of a month might not reproduce on the 15th. At one millisecond a
+block, the 86,400 heights fit inside two minutes of the launch, so every window
+opens in the launch's month and the run's path is the same on every date.
+Neither mint reads a stamp, so their amounts are unaffected. The contract sets
+no minimum time per block, and C2 allows equal stamps.
+
+**Measuring the model first made the hosted budget a non-question.** The trace's
+fast path, `run_quiet_heights`, ran 57,615 heights of the two-seat trace in 2.4
+seconds. The seed history, 86,400 heights with one seat, takes about two.
+
+**The head is the block that assigns window 1.** A seat activated in window 0
+is first audited in window 1, and window 1 is assigned at height 86,400, the
+first height of window 3. The history ends there, so both mints have something
+to collect from the network's first block.
+
+**The model's fast path forced two small choices:**
+
+- `run_quiet_heights` refuses to end while holding an input. So the machine
+  does not answer an audit issued at the last quiet height, whose answer could
+  only land in the head. In the local runs no audit fell there.
+- The fast path computes no root for a height it passes. `Chain` records those
+  heights as unknown. A seeded network never reports a root below its head,
+  because readiness waits for the engine's first block.
+
+**Kind 20 needed the fixture's builder fixed.** `_build` gave a fee limit of
+zero only to registrations, and admission requires zero for every exempt kind,
+which includes the challenge response.
+
+**The exact amounts turned "more than zero" into an equality.** The first
+offline run issued 57,430,000,000 atomic for the kind-4 mint, which is
+`BASE_PERMISSION_TOTAL`: the constitution's 574.3-unit permission per cycle. Seat
+0 met the cycle and is the only seat, so it neither gains nor loses a
+reallocation, and the check now requires that figure exactly. The kind-18 mint
+issues `2 × VERIFIED_USER_DAILY_ATOMIC` for windows 1 and 2, and is required
+exactly too.
+
+**The refusals were chosen for what a network can say about rights:**
+
+- a repeat of each mint is refused as `NOTHING_TO_MINT`, which is "one button,
+  everything" observed by four replicas;
+- Bob minting Alice's seat into his own escrow is refused as `UNAUTHORIZED`,
+  because a seat's rights belong to its identity.
+
+A refusal consumes no nonce, so both repeats carry the same nonce and differ
+by kind.
+
+**The first candidate ran the model and the offline check locally, and nothing
+else.** This machine had no pinned libsodium 1.0.22, so both used a stand-in
+signer, which checks the script's logic but not its signatures. The network run
+needs the C++ application, four Go binaries, and CometBFT, so it went to the
+hosted matrix.
+
+**Hosted run 37077096306 on `8c0fb15` failed all four jobs, on the new run
+alone.** All 173 ctest entries and the seven other network runs passed. The
+seeded launch was accepted, block 86,401 carried the head's stamp, and the
+empty blocks agreed with the model. Then Alice's kind-18 mint committed, and
+node 0 reported a root the model did not produce.
+
+**The defect was isolated without a network.** Only the application target was
+built locally: the pinned cmake and ninja in the toolchain venv, then
+`protocol_application_server_v9` in 80 seconds. A scratch script seeded a store
+from the same model history and drove the application block by block over its
+socket. `FinalizeBlock` applies no clock tolerance, so there was no launch
+window to race. The launch block and twenty-five empty blocks agreed. The mint
+issued 5,130,000,000 atomic in C++ and 342,000,000 in the model.
+
+5,130,000,000 is thirty daily permissions, which pointed at the cap.
+`verified_user_collection` computed `collectable_end - kMintAccumulationCap` in
+unsigned arithmetic. At `collectable_end = 2` that wraps, the wrapped value wins
+the maximum against the mark, and `count` comes out as thirty modulo `2^64`. The
+specification states the maximum over integers, and the Python model computes
+it that way. So every kind-18 mint before window 31 had over-issued in C++.
+
+**ADR 0098 repairs it inside version nine**, as ADR 0094 repaired the referral
+mark. The capped start is the difference when positive and zero otherwise. Every
+other subtraction in the kernel's window arithmetic was checked, and each is
+already guarded. `economy_v9_verified_user_collection.cpp` pins eleven
+collections at figures the Python model produced, written as literals. It fails
+on "one window completed" against the unrepaired line, which was checked by
+restoring it, and passes against the repair.
+
+With the repaired application, every block of the scratch run agreed with the
+model, both mints and all three refusals included. The pinned libsodium came
+with the build, so the offline fixture check and `version-nine-seed` were then
+run with real signatures, and both passed. The build tree was removed with
+`tools/clean-local.sh`.
+
+**No recorded vector could have found it.** Version six's trace mints kind 18
+in window 0, which the kernel returns early from, and again after the cap. No
+recorded kind-18 mint at any version falls in windows 1 to 30, and before M4.2c
+no network reached a window past 0. It is the first defect in this repository
+that a network found rather than a model.
+
 ### How M4.2b was delivered
 
 **The restart question decided the design.** The first draft seeded node 0 and
