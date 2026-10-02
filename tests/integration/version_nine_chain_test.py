@@ -4,8 +4,9 @@
 
 The integration run would catch a broken fixture, but only after a build, four
 Go binaries, a CometBFT node, and two process lifecycles, and only on the stamps
-one run happened to get. This checks the same claims in well under a second, on
-stamps chosen to make each claim sharp.
+one run happened to get. This checks the same claims in a few seconds, on stamps
+chosen to make each claim sharp. All but one take well under a second; the
+seeded mints' history runs 86,400 heights in the model, which takes about two.
 
 **The claims are the ones version nine adds.** The genesis stamp names the chain,
 so a fixture minted at one instant signs transactions no other instant's chain
@@ -39,6 +40,7 @@ from simulation.economy_transition_v8.slots import (  # noqa: E402
 from simulation.economy_transition_v9 import contract as c  # noqa: E402
 from simulation.economy_transition_v9.block import InvalidBlock  # noqa: E402
 from founder_lifecycle_v9 import lifecycle  # noqa: E402
+import seeded_mints_v9  # noqa: E402
 from simulation.economy_transition_v6.identity import signer_id  # noqa: E402
 from version_nine_chain import (  # noqa: E402
     ALICE_ESCROW,
@@ -326,6 +328,63 @@ def check_the_founder_lifecycle(sodium: Sodium) -> None:
     )
 
 
+def check_the_seeded_mints(sodium: Sodium) -> None:
+    """M4.2c's script, on a fixed clock, as the seeded network will ask for it.
+
+    The history must reach the seed's height with every audit the machine was
+    issued answered, except one issued at the last quiet height if there was
+    one. Then both mints must succeed, and the
+    kind-18 one must issue exactly two daily permissions. Each repeat and the
+    stranger's mint must be refused by name on the empty-block root.
+    """
+    session = Session(sodium, seeded_mints_v9.genesis_stamp(STAMP))
+    chain = _ModelChain(session)
+    machine = seeded_mints_v9.seed(chain, lambda: STAMP + PACE)
+    seeded_mints_v9.check_the_history(machine)
+    require(session.height == seeded_mints_v9.SEED_HEIGHT,
+            "the history did not end at the seed's height")
+    require(session.timestamp == STAMP + PACE, "the head is not stamped at the clock")
+    at = session.timestamp
+    issued = []
+    for step in seeded_mints_v9.mints(session):
+        at += PACE
+        if step.refusal is None:
+            block = session.apply(step.raw, at)
+            issued.append(int.from_bytes(block.receipts[0][48:56], "big"))
+        else:
+            predicted = session.block_if_empty(at)
+            refused = session.apply_refused(step.raw, at, step.code)
+            require(refused.state_root == predicted.state_root,
+                    f"{step.label}: the refusal moved the state")
+    require(
+        issued[0] == seeded_mints_v9.VERIFIED_USER_WINDOWS
+        * c.VERIFIED_USER_DAILY_ATOMIC,
+        f"the kind-18 mint issued {issued[0]}",
+    )
+    require(issued[1] > 0, "the kind-4 mint issued nothing")
+    seeded_mints_v9.check_what_was_minted(session)
+    refusals = [step.refusal for step in seeded_mints_v9.mints(session)
+                if step.refusal]
+    require(refusals == ["NOTHING_TO_MINT", "UNAUTHORIZED", "NOTHING_TO_MINT"],
+            "the seeded mints' refusals are not the three it states")
+
+
+class _ModelChain:
+    """The two recording methods `seeded_mints_v9.seed` calls, with no network."""
+
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
+    def execute_before_launch(self, raw, timestamp: int) -> None:
+        if raw is None:
+            self.session.apply_empty(timestamp)
+        else:
+            self.session.apply(raw, timestamp)
+
+    def run_before_launch(self, target_height: int, stamp_of, respond) -> None:
+        self.session.run_quiet(target_height, stamp_of, respond)
+
+
 def check_the_audit_is_out_of_reach(sodium: Sodium) -> None:
     """Version eight's wall, derived again: the run's seat is never audited.
 
@@ -374,11 +433,12 @@ def main() -> int:
         check_the_seat_table_was_written,
         check_refusals_land_on_the_empty_root,
         check_the_founder_lifecycle,
+        check_the_seeded_mints,
         check_the_audit_is_out_of_reach,
         check_signatures_are_real,
     ):
         check(sodium)
-    print("version-nine chain fixture: passed (10 checks)")
+    print("version-nine chain fixture: passed (11 checks)")
     return 0
 
 

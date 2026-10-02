@@ -57,9 +57,13 @@ from simulation.economy_transition_v6.identity import (  # noqa: E402
 )
 from simulation.economy_transition_v9 import contract as c  # noqa: E402
 from simulation.economy_transition_v9 import genesis as g  # noqa: E402
-from simulation.economy_transition_v9.block import execute_block  # noqa: E402
+from simulation.economy_transition_v9.block import (  # noqa: E402
+    execute_block,
+    run_quiet_heights,
+)
 from simulation.economy_transition_v9.envelope import (  # noqa: E402
     Transaction,
+    mint_message,
     signed_bytes,
     signing_message,
     unsigned_bytes,
@@ -184,7 +188,10 @@ def _build(
     nonce: int,
     body: dict,
 ) -> bytes:
-    """One signed transaction. Registration is fee-exempt; everything else pays."""
+    """One signed transaction. Registration and a challenge response are
+    fee-exempt, and admission requires an exempt kind's fee limit to be zero;
+    everything else pays."""
+    exempt = kind in (c.HUB_REGISTER, c.ADDED_FEE_EXEMPT_KIND)
     transaction = Transaction(
         kind=kind,
         scheme=c.KIND_SCHEME[kind],
@@ -192,7 +199,7 @@ def _build(
         authority_public_key=authority,
         nonce=nonce,
         body=body,
-        fee_limit=0 if kind == c.HUB_REGISTER else FIXED_FEE,
+        fee_limit=0 if exempt else FIXED_FEE,
         valid_until_height=VALID_UNTIL,
     )
     unsigned = unsigned_bytes(transaction)
@@ -391,7 +398,98 @@ class Session:
             },
         )
 
+    # --- what a seat and an identity earn --------------------------------
+
+    def alice_answers(self, challenge_height: int, nonce: int) -> bytes:
+        """Kind 20: seat 0's machine answers one audit, at no fee.
+
+        The answer is the trace's, 32 zero octets. A response advances the
+        escrow's nonce, so a machine that answers is also moving the nonce its
+        owner's next transaction must carry.
+        """
+        return _build(
+            self._signer, self.chain_id, c.CHALLENGE_RESPONSE, self.alice_signer,
+            nonce,
+            {
+                "seat_id": SEAT_ID,
+                "challenge_height": challenge_height,
+                "answer": bytes(c.ANSWER_BYTES),
+            },
+        )
+
+    def mints_seat(
+        self, identity: bytes, hub_key: bytes, signer_key: bytes,
+        destination: bytes, nonce: int,
+    ) -> bytes:
+        """Kind 4: everything seat 0 has earned, into `destination`.
+
+        The HUB confirmation is always carried, because a default posture
+        requires one for every amount in every slot. The person minting is
+        named in full so that someone other than the seat's owner can be
+        refused.
+        """
+        message = mint_message(
+            self.chain_id, identity, c.MINT_NODE, SEAT_ID, destination,
+            VALID_UNTIL,
+        )
+        return _build(
+            self._signer, self.chain_id, c.MINT_NODE, signer_key, nonce,
+            {
+                "seat_id": SEAT_ID,
+                "destination_escrow_id": destination,
+                "hub_signature": self._signer.sign(hub_key, message),
+            },
+        )
+
+    def alice_mints_seat(self, nonce: int) -> bytes:
+        return self.mints_seat(
+            ALICE_IDENTITY, self.alice_hub, self.alice_signer, ALICE_ESCROW, nonce)
+
+    def bob_mints_alices_seat(self, nonce: int) -> bytes:
+        """Bob, with his own keys and his own escrow, minting seat 0."""
+        return self.mints_seat(
+            BOB_IDENTITY, self.bob_hub, self.bob_signer, BOB_ESCROW, nonce)
+
+    def alice_mints_verified_user(self, nonce: int) -> bytes:
+        """Kind 18: every daily permission her enrollment has earned."""
+        message = mint_message(
+            self.chain_id, ALICE_IDENTITY, c.MINT_VERIFIED_USER, 0, ALICE_ESCROW,
+            VALID_UNTIL,
+        )
+        return _build(
+            self._signer, self.chain_id, c.MINT_VERIFIED_USER, self.alice_signer,
+            nonce,
+            {
+                "destination_escrow_id": ALICE_ESCROW,
+                "hub_signature": self._signer.sign(self.alice_hub, message),
+            },
+        )
+
     # --- the ledger -------------------------------------------------------
+
+    def nonce(self, escrow: bytes) -> int:
+        return self._ledger.nonce(escrow)
+
+    def seat_minted_through(self) -> int:
+        """The last window seat 0 has collected, or its activation window."""
+        return self._ledger.seats[SEAT_ID].minted_through_window
+
+    def enrollment_minted_through(self, identity: bytes) -> int:
+        return self._ledger.registry.enrollments[identity].minted_through_window
+
+    def run_quiet(self, target_height: int, timestamp_of_height, respond) -> int:
+        """Run the model alone to `target_height`, for a seed (ADR 0096).
+
+        This is `run_quiet_heights`, the trace's fast path: a height with no
+        input and no window opening is advanced without computing its root.
+        So it is only for a history no network will be asked to reproduce, and
+        it returns how many heights it ran.
+        """
+        count, _recorded = run_quiet_heights(
+            self._ledger, target_height, timestamp_of_height, self._signer,
+            respond,
+        )
+        return count
 
     def seats(self) -> dict[int, bool]:
         """Every seat sold, and whether it has been activated."""
