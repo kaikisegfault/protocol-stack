@@ -58,14 +58,19 @@ handoff records the finished state; it does not excuse unfinished safe work.
    rebase merge and delete the delivery branch.
 4. Fetch and prune, switch to `main`, fast-forward it, and identify the exact
    merged commit.
-5. Monitor required post-merge checks on that exact `main` commit to terminal
-   success. Treat a post-merge failure as unfinished work: repair, republish,
+5. Compare trees: `git rev-parse <candidate>^{tree}` against
+   `git rev-parse main^{tree}`. **When they are identical, the candidate run is
+   the evidence for `main`.** A rebase onto an unchanged `main` gives exactly
+   that, and the push run re-verifies the same bytes. Record the identity and
+   do not wait for the push run. When they differ, because `main` moved, the
+   merged tree is untested: monitor the push run on that exact commit to
+   terminal success. Treat a failure as unfinished work: repair, republish,
    merge, and verify again.
 6. Ensure linked issues are closed and no obsolete PR remains open.
 
 When merge or post-merge facts cannot be written before the delivery PR
 merges, publish a bounded handoff-doc PR after the delivery merge. Verify and
-merge that PR and require its post-merge check to pass. Do not create an
+merge that PR, and apply step 5 to its merge. Do not create an
 infinite documentation chain solely to record the closeout PR's own merge or
 post-merge run; report those final facts in the session response.
 
@@ -80,8 +85,10 @@ After all merges, fetch and prune again and prove all of the following:
   branch is unavoidable;
 - there is one expected worktree and no stale or abandoned worktree;
 - active issue and PR state agrees with `current-state.md`;
-- required candidate and post-merge runs succeeded, with no obsolete queued
-  or in-progress run left behind;
+- every required candidate run succeeded, and so did each push run that
+  step 5 required. A push run made redundant by tree identity may still be in
+  progress, and that is not a failure of this boundary; any other queued or
+  in-progress run is obsolete and is cancelled;
 - no repository build, test, watcher, server, or helper process remains;
 - known reproducible artifacts are removed with `tools/clean-local.sh`, and
   anything outside its narrow scope has been inspected rather than deleted;
@@ -108,7 +115,8 @@ as clean or concluded.
 ## 6. Report the conclusion
 
 Lead with the outcome. Include the final `main` commit, merged and closed
-issue/PR identifiers, exact candidate and post-merge run results, cleanup and
+issue/PR identifiers, exact candidate run results, the tree identity or the
+post-merge run result that step 5 required, cleanup and
 reconciliation proof, what works now, and the next action already recorded for
 the fresh session. Mention warnings only when they require future action.
 
