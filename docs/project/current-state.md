@@ -45,8 +45,9 @@ The model runs those 86,400 heights in about two seconds.
 - all four stores are audited after the stop.
 
 `version_nine_chain_test.py` runs the same script offline as its eleventh check
-and requires both amounts exactly. No contract, root, encoding, or vector
-changed.
+and requires both amounts exactly. No contract, encoding, or vector changed.
+On the hosted runners it passed in all four jobs of candidate run 37078876254,
+whose tree `main` holds byte for byte at `f97b190`, M4.2c's merge.
 
 **M4.2b launched a four-validator network above height zero on 2026-09-29**,
 the second of three slices toward a mint on a network.

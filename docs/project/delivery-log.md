@@ -132,6 +132,16 @@ recorded kind-18 mint at any version falls in windows 1 to 30, and before M4.2c
 no network reached a window past 0. It is the first defect in this repository
 that a network found rather than a model.
 
+It merged by rebase on 2026-10-03 through PR #371 as `c599440`, `6cf877a`,
+`d6798f7`, and `f97b190`, closing issue #370. Candidate run 37078876254 on the
+PR head `775b29a` passed all six checks. The debug and GCC sanitizer jobs ran
+173 ctest entries and `clang-sanitizers` 182, all passing. Every job then ran
+every network run, including "CometBFT seeded-mints version-nine integration:
+passed". The merged tree, `54b55b4`, is byte-identical to the candidate's, so
+that run is the evidence for `main`. Push run 37079796947 re-verifies the same
+tree and was not waited on, under `conclude-project`'s step 5 as revised on
+2026-10-03.
+
 ### How M4.2b was delivered
 
 **The restart question decided the design.** The first draft seeded node 0 and
