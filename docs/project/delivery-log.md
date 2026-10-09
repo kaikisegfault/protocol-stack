@@ -38,6 +38,75 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M4.4 was delivered
+
+**Requirement 4 was taken before requirement 3, because 3 waits on the owner.**
+Issue #376. The registry needs answers to two founder-reserved questions, and
+the test verifier needs none. Requirements 3 and 5 will rebind what it signs,
+so the interface takes a capture and a transaction rather than any one
+message.
+
+**The interface is C++, and the verifier builds what it signs.**
+[ADR 0099](../decisions/0099-the-hub-verifier-is-one-interface-with-a-deterministic-test-implementation.md)
+records the choice. A Python class would have been cheaper, but a production
+verifier could not implement it, and it would have been a third construction of
+the HUB messages. A verifier that signed an opaque digest, as a WebAuthn
+assertion does, would give a compromised wallet a HUB signature for anything.
+So `approve` decodes the transaction and calls the kernel's own builders.
+
+**Reading the fixtures changed the interface.** A registration is kind 10
+under scheme 2, so the person's HUB key signs its envelope as well as the
+verifier key signing its body. The first draft returned a signature. It now
+returns the whole signed transaction for the five kinds the HUB key authorizes,
+and a body signature for the eight it confirms.
+
+**The test found a defect in the verifier before any run.** The constructor
+derived the verifier keypair in its initializer list, into `secret_key_`.
+`secret_key_` is declared after `public_key_`, so its own `{}` initializer ran
+next and zeroed the key. The chain refused the first registration as
+`UNAUTHORIZED`, and a one-file probe printed the code. The derivation is now in
+the constructor body, with a comment saying why.
+
+**Requirement 5's finding is now executed, not read.** The handoff trim had
+recorded, from the specification and the kernel, that a HUB approval appears
+reusable. `check_version_nine_accepts_a_replayed_approval` runs it. Alice
+relaxes with an approval and tightens with her signer. The published relax is
+then accepted again under a new nonce, and one transfer confirmation moves value
+twice. The check asserts that version nine accepts both, so requirement 5's
+contract will flip it.
+
+**Three mutation probes each fail a check.** Dropping the posture's minimum
+amount from the relax message passes the C++ test and fails the cross-check.
+That is why the cross-check uses a nonzero minimum and mask. Deleting the
+`not_the_person` comparison fails both. Renaming the identity label fails the
+cross-check, which restates the derivation from the ADR rather than reading it
+from the command.
+
+**It was built locally without CMake.** The host has no `cmake` or `ninja`, and
+`tools/verify.sh` would install them into a venv cache. Instead, the 28 kernel
+sources and the three new translation units were compiled with `g++` and `-Werror` against a
+scratch `sodium.h` that declares the six symbols in use. They were linked to the
+system's libsodium 1.0.18 runtime. The cross-check ran through a scratch runner
+that relaxes only `pinned_sodium`'s 1.0.22 version check, and Clang 14 checked
+the new files' syntax. Nothing scratch was committed. The hosted matrix is the
+gate, on the pinned 1.0.22.
+
+**The founder-decision gate passed.** Six decisions were enumerated:
+
+1. what the verifier produces;
+2. how a test identity maps to its commitment and key;
+3. the interface;
+4. the language;
+5. the stand-in "is this the person" check;
+6. the order in which a person acts.
+
+The first is requirement 4 and the version-nine authorization table. The
+second and fifth are labelled test stand-ins, and the production derivation and
+match threshold stay reserved under ADR 0048. The third and fourth are
+mechanism within `CLAUDE.md`'s language rules. The sixth is ADRs 0039, 0043,
+and 0048, unchanged. None sets a value or changes what a participant must do,
+own, run, or receive.
+
 ### How the handoff trim was delivered
 
 **The handoff named the plan, and it was taken whole.** Issue #373. Everything
