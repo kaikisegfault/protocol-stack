@@ -132,3 +132,8 @@ requirement for a separate threat model, independent review, unlinkability,
 retention, coercion limits, and false-acceptance targets stands. Only the actor
 changes: the company-hosted Ecosystem AI becomes the local model on the founder's
 own machine.
+
+**Update, 2026-10-09.** The separate threat model this record requires is
+[`hub-verification-threat-model.md`](../architecture/hub-verification-threat-model.md),
+written by M4.7 for `first-goal.md` requirement 7. Its independent review is
+still owed.
