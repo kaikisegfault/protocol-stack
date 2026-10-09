@@ -19,7 +19,7 @@ its eleven requirements, and four are met.
 | ---: | --- | --- |
 | 1 | A test Founder's lifecycle on the four-validator devnet | Met 2026-09-27, M4.1 |
 | 2 | A kind-4 and a kind-18 mint on a network | Met 2026-10-03, M4.2a to M4.2c |
-| 3 | The per-machine attestation-key registry | Open; two owner questions first |
+| 3 | The per-machine attestation-key registry | Open, unblocked; answered by ADR 0100 |
 | 4 | A deterministic test verifier as a replaceable component | Met 2026-10-09, M4.4, for version nine's proofs |
 | 5 | Sensitive-action authorization with expiry and replay protection | Open, unblocked |
 | 6 | Legacy succession mechanics | Open; the values are founder-reserved |
@@ -187,12 +187,14 @@ stands, the rules that shape M4's work are these.
 None of these may be invented. Each is asked when it becomes the nearest
 dependency.
 
-- **Requirement 3's two questions, which are the nearest.** ADR 0048 makes a
-  registration valid only under an active, attested machine's key, and the
-  constitution runs capture on the founder's own machine. Neither says whose
-  machine verifies a person who owns none: an ordinary user, a creator, or a
-  developer. Neither says how the first registrations happen before any seat
-  is active, given that buying a seat requires HUB verification first.
+- **The launch key's cutoff, which is the nearest.** ADR 0100 records the
+  owner's answers to requirement 3's two questions. The nearest active machine
+  verifies a person who owns none, with their key secret split across several
+  machines. Registration starts under a company-held launch key that the chain
+  refuses for good once a set number of machines are active. That number is
+  the owner's to set and is still open. Ask it when the contract version that
+  carries requirement 3 is specified, together with any per-machine
+  registration bound's value.
 - **Legacy limits**: inactivity bounds, dispute evidence, conflicting-statement
   precedence, and reclaim transitions. Requirement 6 builds the mechanics
   without them.
@@ -263,8 +265,8 @@ models.
 - **A HUB key derived from a face alone is only as secret as the face.**
   Anyone holding a good enough image could compute it offline, with no
   liveness check, so the derivation must also depend on a secret only an
-  attested sandbox holds (threat model T3). Where that secret lives for a
-  person with no Founder Machine is requirement 3's first question again.
+  attested sandbox holds (threat model T3). ADR 0100 places it: split across
+  several machines, so no single machine holds it.
 - **Only the registration message verifies against the verifier key.** The
   other five verify against the person's own HUB key. So requirement 3's
   registry governs admission, and requirement 5's envelope governs everything
@@ -300,16 +302,25 @@ first fee. No transition can enforce that order, so the bridge milestones must.
 
 ## Exact next action
 
-**Ask the owner requirement 3's two questions**, in one batched call at the
-end of the session. Requirement 3 is not started before they are answered.
+**Specify the contract version that carries requirements 3 and 5**, as
+`economy-transition-v10` with its ADR, before any model or code. It must
+contain:
 
-**Then the contract version that carries requirements 3 and 5**, under the
-threat model's four obligations:
+- the attestation-key registry: active, attested machines' keys, any one of
+  which may sign a registration (ADR 0100);
+- the launch key and its retirement rule, with the cutoff as a named,
+  owner-set quantity and no invented value;
+- registry-key revocation when a machine stops being active or attested;
+- single-use HUB approvals, by the recommended construction below;
+- a per-machine registration bound, evaluated, with its value asked.
 
-- single-use approvals with a protocol-bounded validity window;
-- the attestation-key registry;
-- registry-key revocation;
-- an evaluated per-machine registration bound, whose value is asked.
+Requirement 6's legacy records can join it: statements, nomination,
+supersession, and the reclaim right need no reserved value. The inactivity
+trigger stays reserved.
+
+**When the specification first needs the cutoff and the bound**, ask the owner
+both in one batched call. Until then the specification names them, and nothing
+recorded stands in for them.
 
 **The recommended single-use construction** binds a HUB approval to the whole
 unsigned transaction, hashed with its HUB-signature field zeroed. It does not
@@ -320,22 +331,17 @@ envelope. A protocol bound of one slot, 1,200 heights, on `valid_until_height`
 above the executing height would cap a held approval's life. Record both in
 that version's ADR.
 
-Requirement 6's legacy records can join it: statements, nomination,
-supersession, and the reclaim right need no reserved value. The inactivity
-trigger stays reserved.
-
-**Unblocked while the answers are pending**, nearest first:
+**Unblocked candidates behind it:**
 
 - the kind-22 mint on a seeded network, as above;
 - driving the C++ kernel over the `economy-scenario-suite-v4` population
   against its seven pinned roots;
 - ADR 0089's outage wall.
 
-Moving the network fixtures onto `protocol-hub-test-verifier-v9` waits for the
-contract version that carries requirements 3 and 5, because that version
-changes what they build anyway.
+Moving the network fixtures onto `protocol-hub-test-verifier-v9` waits for that
+contract version, because it changes what they build anyway.
 
 ## Blockers
 
-**No blocker.** Requirement 3 waits on two founder answers, and everything
-else listed above is unblocked.
+**No blocker.** The launch key's cutoff is a founder value the specification
+names and asks for, and nothing waits on it before then.

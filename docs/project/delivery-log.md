@@ -38,6 +38,37 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How ADR 0100 was recorded
+
+**The owner answered requirement 3's two questions on 2026-10-09**, in the
+batched call at the end of the session that delivered M4.4 and M4.7. Issue
+#381. Both answers were the recommended options.
+
+1. The nearest active machine verifies a person who owns none, with their key
+   secret split across several machines.
+2. Registration starts under a company-held launch key that the chain refuses
+   for good once a set number of machines are active.
+
+**The second answer left its number open on purpose.** The option said "you
+choose that number", and the owner picked the option without naming one. So
+ADR 0100 records the rule and leaves the number as a founder value. The
+constitution lists it as unresolved, `first-goal.md` adds it to the gate, and
+the handoff asks for it when the specification first needs it. The cutoff
+becomes a named quantity in the specification, and no fixture value stands in
+for it in an accepted artifact.
+
+**Translating the answers into chain terms was mechanism, and the record keeps
+it apart from the answers:**
+
+- "nearest" is an off-chain assignment that the chain neither observes nor
+  checks;
+- the split secret is invisible to consensus;
+- the launch key's retirement is recorded in state, so a later fall below the
+  number never revives it.
+
+The last is the reading of "refuses it for good" that the owner's own words
+fix.
+
 ### How M4.7 was delivered
 
 **Requirement 7 came next because the contract version waits on the owner, and

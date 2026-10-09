@@ -795,6 +795,17 @@ supervised by a non-deterministic monitor is the right division: "is this the
 enrolled person" is a measurement, and "did this process run honestly" is a
 judgment.
 
+**A person who owns no Founder Machine is verified by the nearest active
+machine, decided on 2026-10-09.** It is assigned the way an AI judgment is, and
+the person's vaulted key secret is split across several machines, so they can
+recover on any machine and no single machine holds it. **Registration starts
+under an expiring launch key.** The chain launches with one company-held
+verifier key that signs the first registrations. Once a set number of machines
+are active and attested, the chain refuses it for good. The owner sets that
+number.
+[ADR 0100](../decisions/0100-founder-answers-on-who-verifies-and-how-registration-starts.md)
+records both answers.
+
 Every identity's uniqueness commitment is replicated to every Founder Machine,
 so uniqueness is compared locally against the whole population with no lookup
 service anywhere. [ADR 0048](../decisions/0048-hub-verification-runs-locally-with-an-ai-integrity-monitor.md)
@@ -1037,7 +1048,8 @@ milestone supplies enough evidence and context:
 - stablecoin allowlist governance and any later bridge-asset change;
 - complete AI funding, moderation, biometric, and succession frameworks;
 - whether the assistant's one-profile-per-identity and seats-as-parallel-sessions
-  entitlement is enforced by the protocol or is application policy; and
+  entitlement is enforced by the protocol or is application policy;
+- the number of active machines that retires the launch key (ADR 0100); and
 - any new treasury category, participant benefit, or application-content rule.
 
 Resolved on 2026-08-07, and no longer open: the activity definition and its
@@ -1123,6 +1135,13 @@ default for every financial transaction and every mint, with each person free to
 set a minimum amount, set time windows, or turn it off entirely. The direction
 supersedes the earlier framing in which the company switched verification on
 where it judged it reasonable.
+
+Resolved on 2026-10-09, and recorded in
+[ADR 0100](../decisions/0100-founder-answers-on-who-verifies-and-how-registration-starts.md):
+a person who owns no Founder Machine is verified by the nearest active machine,
+with their key secret split across several machines; and registration starts
+under a company-held launch key that the chain refuses for good once a set number
+of machines are active. The number itself is still open, and is listed above.
 
 Claude should ask focused questions at those boundaries. All other mechanism,
 encoding, storage, consensus scheduling, networking, testing, packaging, and
