@@ -81,13 +81,19 @@ rules the chain now executes.
 
 **The other legs are met against the current contract**, with one limit:
 
-- positive and negative: 239 contract vectors and 125 execution vectors;
+- positive and negative: 239 contract vectors and 125 execution vectors,
+  corrected below to 162;
 - boundary: the calendar's C1 to C5 edges;
 - replay: `REPLAY` and `NONCE_MISMATCH` on a four-validator network;
 - atomicity: a refused block writes nothing, in the driven replica;
 - overflow: covered only by inherited evidence. No version-nine vector
   exercises overflow in version nine's own additions. Version six's execution
   vectors and version three's contract carry the inherited cases.
+
+**Correction, 2026-10-09: the execution file held 162 vectors at `3c5347b`, not
+125.** M3.19c added 37 on 2026-09-18, in `159eb27`, for a contiguous restart run.
+The handoff still gave 125, and so did this audit. The C++ kernel reproduces all
+162, so the leg's status does not change.
 
 **The slice that meets it** is a fourth scenario suite that drives the current
 contract's window-level settlement, as the M2 suite drove its simulator. The
