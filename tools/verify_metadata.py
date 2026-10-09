@@ -27,6 +27,8 @@ REQUIRED_PATHS = (
     ".claude/skills/proceed-project/SKILL.md",
     ".claude/skills/verify-project/SKILL.md",
 )
+HANDOFF = "docs/project/current-state.md"
+HANDOFF_LINE_LIMIT = 600
 
 
 def front_matter(path: Path, errors: list[str]) -> dict[str, str]:
@@ -159,6 +161,28 @@ def validate_markdown_links(root: Path, errors: list[str]) -> int:
     return checked
 
 
+def validate_handoff_length(root: Path, errors: list[str]) -> int:
+    """Refuse a handoff longer than its limit, and return its line count.
+
+    **Every session reads the handoff first, so its length is a cost every
+    session pays.** It reached 8,140 lines, nearly half of them delivery
+    records. Once those moved out it grew again, to 5,623, because slices added
+    paragraphs rather than rewriting the ones they made false. A slice's history
+    belongs in `delivery-log.md`. A missing handoff is reported as a required
+    path.
+    """
+    path = root / HANDOFF
+    if not path.is_file():
+        return 0
+    count = len(path.read_text(encoding="utf-8").splitlines())
+    if count > HANDOFF_LINE_LIMIT:
+        errors.append(
+            f"{path}: {count} lines exceeds the handoff limit of {HANDOFF_LINE_LIMIT}; "
+            "rewrite what is stale and move history to docs/project/delivery-log.md"
+        )
+    return count
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
@@ -181,11 +205,15 @@ def main() -> int:
     for skill_dir in skill_dirs:
         validate_skill(skill_dir, errors)
     link_count = validate_markdown_links(root, errors)
+    handoff_lines = validate_handoff_length(root, errors)
     if errors:
         for error in errors:
             print(error)
         return 1
-    print(f"Validated {len(skill_dirs)} repository skills and {link_count} internal Markdown links.")
+    print(
+        f"Validated {len(skill_dirs)} repository skills, {link_count} internal Markdown links, "
+        f"and a {handoff_lines}-line handoff."
+    )
     return 0
 
 

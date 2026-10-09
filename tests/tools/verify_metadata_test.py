@@ -9,7 +9,14 @@ import unittest
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPOSITORY_ROOT / "tools"))
 
-from verify_metadata import heading_slug, validate_markdown_links, validate_skill  # noqa: E402
+from verify_metadata import (  # noqa: E402
+    HANDOFF,
+    HANDOFF_LINE_LIMIT,
+    heading_slug,
+    validate_handoff_length,
+    validate_markdown_links,
+    validate_skill,
+)
 
 
 VALID_SKILL = """---
@@ -89,6 +96,24 @@ class VerifyMetadataTest(unittest.TestCase):
                 errors = []
                 validate_markdown_links(root, errors)
                 self.assertEqual(len(errors), 1, broken)
+
+    def test_handoff_is_refused_above_its_line_limit(self) -> None:
+        # The limit is written out so that moving the constant fails here.
+        self.assertEqual(HANDOFF_LINE_LIMIT, 600)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            errors: list[str] = []
+            self.assertEqual(validate_handoff_length(root, errors), 0)
+            self.assertEqual(errors, [])
+            handoff = root / HANDOFF
+            handoff.parent.mkdir(parents=True)
+            handoff.write_text("line\n" * 600, encoding="utf-8")
+            self.assertEqual(validate_handoff_length(root, errors), 600)
+            self.assertEqual(errors, [])
+            handoff.write_text("line\n" * 601, encoding="utf-8")
+            self.assertEqual(validate_handoff_length(root, errors), 601)
+            self.assertEqual(len(errors), 1)
+            self.assertIn("601 lines", errors[0])
 
 
 if __name__ == "__main__":
