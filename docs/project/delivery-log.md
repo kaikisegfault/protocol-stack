@@ -70,6 +70,12 @@ build authority key is a genesis field only, like the dispute authority key.
 answer, an engineering figure ADR 0102 records, or a carried constant. Nothing
 was chosen that the specification had not already fixed.
 
+**Merged and verified.** PR #388 merged by rebase as `7a86719`, closing #387.
+Run 37957071697 on the PR head `8013f58` passed all six checks: 177 CTest
+entries on three presets and 186 on `clang-sanitizers`, with both new entries
+passing in every job, and all eight network runs. `main`'s tree at `7a86719` is
+byte-identical to the candidate's.
+
 ### How M4.3a was delivered
 
 **Every participant-facing value was answered before the specification began.**

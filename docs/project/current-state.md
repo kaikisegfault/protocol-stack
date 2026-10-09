@@ -237,9 +237,8 @@ dependency.
 
 - `kaikisegfault/protocol-stack`. Every issue is closed, and `main` is the
   only branch.
-- **The last full hosted verification** is candidate run 37950293612, on
-  M4.4's tree at `aad3fd5`. Every later commit changes Markdown only and took
-  the metadata path.
+- **The last full hosted verification** is candidate run 37957071697, on
+  M4.3b's tree, which `main` holds byte for byte at `7a86719`.
 - `verify.yml` classifies the changed paths with `tools/verification_scope.py`.
   Markdown and skill metadata take the lightweight path:
   `tools/verify_metadata.py` and the `tests/tools` suites. Everything else takes
