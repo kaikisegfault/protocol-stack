@@ -13,14 +13,14 @@ the alternatives it rejected go in its delivery record.
 
 **M4, Founder identity, seats, and authority, is the active milestone.** It
 began when M3 closed on 2026-09-27. [`first-goal.md`](first-goal.md) states
-its eleven requirements, and two are met.
+its eleven requirements, and three are met.
 
 | # | Requirement | Status |
 | ---: | --- | --- |
 | 1 | A test Founder's lifecycle on the four-validator devnet | Met 2026-09-27, M4.1 |
 | 2 | A kind-4 and a kind-18 mint on a network | Met 2026-10-03, M4.2a to M4.2c |
 | 3 | The per-machine attestation-key registry | Open; two owner questions first |
-| 4 | A deterministic test verifier as a replaceable component | Open, unblocked |
+| 4 | A deterministic test verifier as a replaceable component | Met 2026-10-09, M4.4, for version nine's proofs |
 | 5 | Sensitive-action authorization with expiry and replay protection | Open, unblocked |
 | 6 | Legacy succession mechanics | Open; the values are founder-reserved |
 | 7 | The threat model for local HUB verification | Open, unblocked |
@@ -44,6 +44,16 @@ hosted run found a kernel defect: an unsigned wrap paid 51.3 units for any
 kind-18 mint before window 31.
 [ADR 0098](../decisions/0098-a-kind-18-mint-before-window-31-collects-what-was-earned.md)
 repairs it inside version nine.
+
+**Requirement 4's evidence** is `hub-test-verifier-v9` and its cross-check.
+[ADR 0099](../decisions/0099-the-hub-verifier-is-one-interface-with-a-deterministic-test-implementation.md)
+defines `protocol::hub::VerifierV9`. It takes a capture and the transaction a
+person approves, and builds every message it signs itself. `TestVerifierV9`
+derives the identity and the HUB key from one 32-octet secret, as a labelled
+stand-in for a face. The version-nine kernel accepts its registration and
+every approvable kind through admission and execution, with real Ed25519. The
+Python model verifies every decision the command prints. Requirements 3 and 5
+will rebind what it signs, and the network fixtures still sign by hand.
 
 ## What works now
 
@@ -114,6 +124,11 @@ vector files of versions two to eight stay and pass, and version nine's
 predecessor constructions are pinned to them. The research models stay too:
 the seat sale, revenue routing, escrow payout, the economy simulators, and the
 first three scenario suites. They are Python and execute no consensus.
+
+**A test HUB verifier stands where the production one will.**
+`protocol-hub-test-verifier-v9` prints the verifier key a genesis carries, a
+whole signed registration, and the proof any HUB-approved transaction needs. It
+reads no clock, file, or network, and no node links it.
 
 **The `proceed`, `conclude`, and `status` workflows** reconstruct, deliver, and
 report repository state. `proceed` runs a founder-decision gate before every
@@ -194,8 +209,9 @@ dependency.
 
 ## Repository and verification
 
-- `kaikisegfault/protocol-stack`. Every issue is closed, and `main` is the
-  only branch.
+- `kaikisegfault/protocol-stack`. Issue #376 is M4.4, on
+  `feat/376-hub-test-verifier`. Every other issue is closed, and `main` is the
+  only other branch.
 - **The last full hosted verification** is candidate run 37946120672, on the
   handoff trim's tree, which `main` holds byte for byte at `91f8067`.
 - `verify.yml` classifies the changed paths with `tools/verification_scope.py`.
@@ -204,7 +220,7 @@ dependency.
   the full path, `tools/verify.sh`, on four presets: `gcc-debug`,
   `gcc-sanitizers`, `clang-debug`, and `clang-sanitizers`.
 - The full path verifies and tests the Go module and builds with CMake. It runs
-  173 CTest entries, or 182 on `clang-sanitizers`, which adds nine fuzz smokes,
+  175 CTest entries, or 184 on `clang-sanitizers`, which adds nine fuzz smokes,
   and then the eight network runs. "Verification required" gates the merge.
 - The owner's machine is resource-constrained. Run focused local checks, leave
   the matrix to the hosted runners, and remove local build trees with
@@ -222,16 +238,14 @@ models.
 
 **M4's requirements 3 to 11.** Three findings bear on them.
 
-- **Version nine's HUB approvals can be replayed until they expire, and
-  nothing bounds when that is.** Each of the five HUB messages binds the
-  transaction's `valid_until_height`, which the kernel checks only from below.
-  None binds a nonce. The sharpest case is a posture relax. An owner relaxes
-  with a HUB approval, then tightens again, which needs only a signer. A thief
-  holding that escrow's signer key appears able to resubmit the published
-  relax, which is the weakening ADR 0043's asymmetry exists to prevent. A
-  kind-19 transfer confirmation is reusable the same way, for the same
-  recipient and amount. This is a reading of the specification and the kernel,
-  and a vector must confirm it. Requirement 5 exists to close it.
+- **Version nine accepts a HUB approval twice, and `hub-test-verifier-v9`
+  executes it.** Each of the five HUB messages binds the transaction's
+  `valid_until_height`, which the kernel checks only from below, and none binds
+  a nonce. So when an owner relaxes with a HUB approval and then tightens with
+  a signer, the published relax is accepted again under a new nonce. A signer
+  key alone undoes the tightening, which is the weakening ADR 0043's asymmetry
+  exists to prevent. One kind-19 confirmation also moves value twice.
+  Requirement 5's contract must refuse both, and that check will flip.
 - **Requirements 3 and 5 both change the HUB signature family or genesis**, so
   one new contract version should carry both, rather than one version each.
 - **Only the registration message verifies against the verifier key.** The
@@ -274,25 +288,29 @@ end of the session, because the contract version that carries requirements 3
 and 5 needs both answers. Requirement 3 is not started before they are
 answered.
 
-**Then requirement 4, the deterministic test verifier.** It is unblocked and
-runnable. It produces the decisions the chain checks today: the registration
-under the verifier key, and the five HUB messages under a person's key derived
-from a deterministic test identity. It sits behind an interface that
-requirement 3's registry and requirement 5's envelope will rebind rather than
-replace. The integration fixtures sign these decisions by hand now, and the
-verifier replaces that. Record the interface and the component's language in
-an ADR.
+**Then requirement 7, the threat model for local HUB verification.** It is
+unblocked, and it should come before that contract version, because it states
+what the version must defend against. It must cover:
+
+- self-verification on the founder's own machine, and attestation;
+- the executed approval replay;
+- verifier key rotation;
+- uniqueness at population scale, where false accepts grow with N;
+- coercion, liveness, and what leaves the sandbox.
+
+It names what goes to independent review. It belongs in `docs/architecture/`,
+where `local-ai-authority.md` lists the biometric threat model as owed.
 
 **Unblocked candidates behind it:**
 
-- requirement 5's replay finding, confirmed by a vector against version nine
-  before the new contract version is specified;
-- requirement 7's threat model, which also names what goes to independent
-  review;
 - the kind-22 mint on a seeded network, as above;
 - driving the C++ kernel over the `economy-scenario-suite-v4` population
   against its seven pinned roots;
 - ADR 0089's outage wall.
+
+Moving the network fixtures onto `protocol-hub-test-verifier-v9` waits for the
+contract version that carries requirements 3 and 5, because that version
+changes what they build anyway.
 
 ## Blockers
 
