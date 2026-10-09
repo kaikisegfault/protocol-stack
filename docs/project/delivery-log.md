@@ -38,6 +38,46 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M4.3a was delivered
+
+**Every participant-facing value was answered before the specification began.**
+Issue #385. ADRs 0100 and 0101 recorded five founder answers in one session. So
+`economy-transition-v10` had nothing to ask and nothing to invent: each ADR 0101
+figure is a named constant read from the ADR.
+
+**Version nine's own shape decided most of the mechanism.**
+
+- Its uptime records are deleted at assignment, so activity had to be recorded
+  before that, per machine. A per-window bitmap and a per-seat field were each
+  rejected for their cost.
+- Its header carries a root whose label already separates versions, so the
+  header did not need re-versioning. That keeps every header parser unchanged,
+  as versions two through eight kept version one's.
+- Its five HUB messages bound field lists, which is how the replay got in. One
+  message over the whole transaction removes the per-kind lists.
+
+**Two small decisions close bypasses that are easy to miss.** A key replacement
+keeps the window's registration count, or rotating keys would reset ADR
+0101's limit. An inverse entry stops one key serving two seats, or one machine
+would sign under two limits.
+
+**The approval lifetime is engineering's figure, and it says why.** The
+constitution requires a "fresh" approval and fixes no number. One slot, 1,200
+heights, covers inclusion under load and kills a withheld approval within the
+hour. ADR 0102 lists it for review.
+
+**Requirement 6 was left out on purpose.** The constitution reserves legacy
+precedence and the reclaim transitions. A legacy transition without them could
+record statements and nothing that acts on them.
+
+**The founder-decision gate passed, and the specification records it.** Every
+decision falls into one of three classes:
+
+- delegated, with an ADR or constitutional source;
+- mechanism, recorded in ADR 0102;
+- reserved and left undecided: legacy precedence and reclaim, key rotation and
+  revocation, and coercion controls.
+
 ### How ADR 0101 was recorded
 
 **The founder-decision gate for `economy-transition-v10` found three reserved
