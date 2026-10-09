@@ -107,6 +107,12 @@ mechanism within `CLAUDE.md`'s language rules. The sixth is ADRs 0039, 0043,
 and 0048, unchanged. None sets a value or changes what a participant must do,
 own, run, or receive.
 
+**Merged and verified.** PR #377 merged by rebase as `443d9e4` and `aad3fd5`,
+closing #376. Run 37950293612 on the PR head `8b00a55` passed all six checks:
+175 CTest entries on three presets and 184 on `clang-sanitizers`, with both new
+entries passing in every job on the pinned libsodium 1.0.22, and all eight
+network runs. `main`'s tree at `aad3fd5` is byte-identical to the candidate's.
+
 ### How the handoff trim was delivered
 
 **The handoff named the plan, and it was taken whole.** Issue #373. Everything

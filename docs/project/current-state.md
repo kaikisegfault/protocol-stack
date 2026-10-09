@@ -209,11 +209,11 @@ dependency.
 
 ## Repository and verification
 
-- `kaikisegfault/protocol-stack`. Issue #376 is M4.4, on
-  `feat/376-hub-test-verifier`. Every other issue is closed, and `main` is the
+- `kaikisegfault/protocol-stack`. Issue #378 is M4.7, on
+  `docs/378-hub-threat-model`. Every other issue is closed, and `main` is the
   only other branch.
-- **The last full hosted verification** is candidate run 37946120672, on the
-  handoff trim's tree, which `main` holds byte for byte at `91f8067`.
+- **The last full hosted verification** is candidate run 37950293612, on
+  M4.4's tree, which `main` holds byte for byte at `aad3fd5`.
 - `verify.yml` classifies the changed paths with `tools/verification_scope.py`.
   Markdown and skill metadata take the lightweight path:
   `tools/verify_metadata.py` and the `tests/tools` suites. Everything else takes
