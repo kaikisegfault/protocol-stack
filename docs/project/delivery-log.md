@@ -38,6 +38,30 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How ADR 0101 was recorded
+
+**The founder-decision gate for `economy-transition-v10` found three reserved
+decisions and asked them at once.** Issue #383. They were the launch key's
+cutoff, which ADR 0100 had left open, what counts as an active machine, and the
+value of a per-machine registration limit. The owner answered within the
+session, choosing the recommended option each time: 100 machines, met its most
+recently assigned cycle, and 1,000 registrations a day.
+
+**Reading "active" against version nine found a gap in the state.** The owner's
+option said "read from the chain's own uptime record". A cycle-assignment record
+does not hold that fact. Its `accrued` bit means met, in span, and under the
+cap. Its `winner` bit means won. Each window's uptime records are deleted once
+it is assigned. So version ten must store each registered machine's last met
+window and keep a count of active machines. ADR 0101 records that as mechanism,
+together with three readings the answers fix:
+
+- met is the uptime test whatever the cap says;
+- the cutoff is reached at an assignment and recorded for good;
+- a day is one cycle window, and the launch key is not limited.
+
+**Every founder value v10 needs is now answered**, so the specification is the
+next slice with nothing to ask before it starts.
+
 ### How ADR 0100 was recorded
 
 **The owner answered requirement 3's two questions on 2026-10-09**, in the
