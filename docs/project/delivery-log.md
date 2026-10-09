@@ -99,6 +99,13 @@ exact next action". The fifth is process, and the owner flagged the regrowth on
 answering them. None sets a value or changes what a participant must do, own,
 run, or receive.
 
+**Merged and verified.** PR #374 merged by rebase as `02711af` and `91f8067`,
+closing #373. Run 37946120672 on the PR head `c88fda8` passed all six checks:
+173 CTest entries on three presets and 182 on `clang-sanitizers`, with
+`repository-metadata` and `verify-metadata` passing in every job, and all eight
+network runs. `main`'s tree at `91f8067` is byte-identical to the candidate's,
+so that run is `main`'s evidence.
+
 ### How M4.2c was delivered
 
 **The handoff's plan was taken, except for how the history is stamped.** It
