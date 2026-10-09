@@ -19,9 +19,9 @@ its eleven requirements, and four are met.
 | ---: | --- | --- |
 | 1 | A test Founder's lifecycle on the four-validator devnet | Met 2026-09-27, M4.1 |
 | 2 | A kind-4 and a kind-18 mint on a network | Met 2026-10-03, M4.2a to M4.2c |
-| 3 | The per-machine attestation-key registry | Open, unblocked; founder answers in ADRs 0100 and 0101 |
+| 3 | The per-machine attestation-key registry | Specified 2026-10-09 in `economy-transition-v10`, M4.3a; nothing implements it |
 | 4 | A deterministic test verifier as a replaceable component | Met 2026-10-09, M4.4, for version nine's proofs |
-| 5 | Sensitive-action authorization with expiry and replay protection | Open, unblocked |
+| 5 | Sensitive-action authorization with expiry and replay protection | Specified 2026-10-09 in `economy-transition-v10`, M4.3a; nothing implements it |
 | 6 | Legacy succession mechanics | Open; the values are founder-reserved |
 | 7 | The threat model for local HUB verification | Met 2026-10-09, M4.7; its review is owed |
 | 8 | Storage bounds for every new entry | Open; due with each new entry |
@@ -54,6 +54,21 @@ stand-in for a face. The version-nine kernel accepts its registration and
 every approvable kind through admission and execution, with real Ed25519. The
 Python model verifies every decision the command prints. Requirements 3 and 5
 will rebind what it signs, and the network fixtures still sign by hand.
+
+**Requirements 3 and 5 are specified, not met.**
+[`economy-transition-v10`](../specifications/economy-transition-v10.md) and
+[ADR 0102](../decisions/0102-economy-transition-v10-the-registry-and-single-use-approvals.md)
+define them:
+
+- a machine-key registry keyed by seat, filled by kind 23 under the build
+  authority's attestation and the owner's HUB approval;
+- registrations signed by an active machine, at most 1,000 per window, or by
+  the launch key until 100 machines are active;
+- a registry step that records each machine's last met window;
+- one approval message that signs the whole transaction, with a one-slot life.
+
+The owner's answers in ADRs 0100 and 0101 fix every participant-facing value.
+No model, vector, or code implements version ten yet.
 
 **Requirement 7's evidence** is
 [`hub-verification-threat-model.md`](../architecture/hub-verification-threat-model.md).
@@ -241,7 +256,7 @@ resource network, bridges and liquidity (M9), the wallet (M10), a public
 testnet, and a mainnet. Revenue routing and escrow payouts exist only as Python
 models.
 
-**M4's requirements 3, 5, 6, and 8 to 11.** Four findings bear on them.
+**M4's requirements 3, 5, 6, and 8 to 11.** Three findings bear on them.
 
 - **Version nine accepts a HUB approval twice, and `hub-test-verifier-v9`
   executes it.** Each of the five HUB messages binds the transaction's
@@ -250,9 +265,8 @@ models.
   a signer, the published relax is accepted again under a new nonce. A signer
   key alone undoes the tightening, which is the weakening ADR 0043's asymmetry
   exists to prevent. One kind-19 confirmation also moves value twice.
-  Requirement 5's contract must refuse both, and that check will flip.
-- **Requirements 3 and 5 both change the HUB signature family or genesis**, so
-  one new contract version should carry both, rather than one version each.
+  `economy-transition-v10` refuses both, and that check will flip when
+  version ten runs.
 - **A HUB key derived from a face alone is only as secret as the face.**
   Anyone holding a good enough image could compute it offline, with no
   liveness check, so the derivation must also depend on a secret only an
@@ -293,32 +307,22 @@ first fee. No transition can enforce that order, so the bridge milestones must.
 
 ## Exact next action
 
-**Specify the contract version that carries requirements 3 and 5**, as
-`economy-transition-v10` with its ADR, before any model or code. It must
-contain:
+**Make version ten's contract execute in Python: M4.3b.** This is the slice
+M3.17b was to version nine.
 
-- the attestation-key registry: any active machine's key may sign a
-  registration (ADR 0100). A machine is active when its seat met its most
-  recently assigned cycle on uptime, whatever the cap says (ADR 0101);
-- what version nine does not store and v10 must: each registered machine's
-  last met window, and the count of active machines;
-- the launch key, retired in state for good when the active count first
-  reaches 100;
-- at most 1,000 registrations per machine key per cycle window;
-- single-use HUB approvals, by the recommended construction below.
+- `simulation/economy_transition_v10/`, importing version nine's model rather
+  than copying it, with:
+  - the 182-octet genesis and the version-ten identity;
+  - the new kind-10 body and kind 23;
+  - the attestation, registration, and approval messages;
+  - entry kinds 24 to 26, and the approval lifetime rule;
+- `test-vectors/economy-transition-v10.txt`, recording every contract vector
+  the specification's last section requires that needs no chain;
+- a verifier and its CTest entries.
 
-Requirement 6's legacy records can join it: statements, nomination,
-supersession, and the reclaim right need no reserved value. The inactivity
-trigger stays reserved.
-
-**The recommended single-use construction** binds a HUB approval to the whole
-unsigned transaction, hashed with its HUB-signature field zeroed. It does not
-bind a list of fields. The escrow's nonce then makes every approval single-use,
-and every field is bound at once, which is what ADR 0099's verifier already
-sees. Kinds 13 to 16 already have this, because the HUB key signs their
-envelope. A protocol bound of one slot, 1,200 heights, on `valid_until_height`
-above the executing height would cap a held approval's life. Record both in
-that version's ADR.
+The execution model and its vectors follow, then the kernel, then the stack.
+Version nine's migration is the template: ADR 0065 staged a kernel beside its
+predecessor and named the deletion that ends it.
 
 **Unblocked candidates behind it:**
 
@@ -327,8 +331,8 @@ that version's ADR.
   against its seven pinned roots;
 - ADR 0089's outage wall.
 
-Moving the network fixtures onto `protocol-hub-test-verifier-v9` waits for that
-contract version, because it changes what they build anyway.
+Moving the network fixtures onto `protocol-hub-test-verifier-v9` waits for
+version ten to run, because version ten changes what they build anyway.
 
 ## Blockers
 
