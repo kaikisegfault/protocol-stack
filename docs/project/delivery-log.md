@@ -82,6 +82,9 @@ replay and ADR 0048's registry. The fifth is the gate itself: each item is
 surfaced, not answered. None sets a value or changes what a participant must
 do, own, run, or receive.
 
+**Merged.** PR #379 merged by rebase as `f309d30` and `41f3b94`, closing #378.
+It is Markdown only, and run 37952672078 passed it on the metadata path.
+
 ### How M4.4 was delivered
 
 **Requirement 4 was taken before requirement 3, because 3 waits on the owner.**

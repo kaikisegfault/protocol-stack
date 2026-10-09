@@ -221,11 +221,11 @@ dependency.
 
 ## Repository and verification
 
-- `kaikisegfault/protocol-stack`. Issue #378 is M4.7, on
-  `docs/378-hub-threat-model`. Every other issue is closed, and `main` is the
-  only other branch.
+- `kaikisegfault/protocol-stack`. Every issue is closed, and `main` is the
+  only branch.
 - **The last full hosted verification** is candidate run 37950293612, on
-  M4.4's tree, which `main` holds byte for byte at `aad3fd5`.
+  M4.4's tree at `aad3fd5`. Every later commit changes Markdown only and took
+  the metadata path.
 - `verify.yml` classifies the changed paths with `tools/verification_scope.py`.
   Markdown and skill metadata take the lightweight path:
   `tools/verify_metadata.py` and the `tests/tools` suites. Everything else takes
@@ -310,6 +310,15 @@ threat model's four obligations:
 - the attestation-key registry;
 - registry-key revocation;
 - an evaluated per-machine registration bound, whose value is asked.
+
+**The recommended single-use construction** binds a HUB approval to the whole
+unsigned transaction, hashed with its HUB-signature field zeroed. It does not
+bind a list of fields. The escrow's nonce then makes every approval single-use,
+and every field is bound at once, which is what ADR 0099's verifier already
+sees. Kinds 13 to 16 already have this, because the HUB key signs their
+envelope. A protocol bound of one slot, 1,200 heights, on `valid_until_height`
+above the executing height would cap a held approval's life. Record both in
+that version's ADR.
 
 Requirement 6's legacy records can join it: statements, nomination,
 supersession, and the reclaim right need no reserved value. The inactivity
