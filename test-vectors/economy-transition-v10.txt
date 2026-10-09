@@ -1,0 +1,156 @@
+# Economy transition v10 normative contract vectors.
+# Byte strings are lowercase hex. Heights and windows are unsigned decimal.
+#
+# Every value here is derived twice: once by
+# tools/economy-transition-v10-vectors/expected.py, which imports nothing from
+# simulation/ and builds every byte string field by field from the
+# specification's tables, and once by a live run of
+# simulation/economy_transition_v10. A boolean vector may only be true, because
+# its name is the claim.
+#
+# Version ten is version nine with a registry of attested machine keys in place
+# of the single verifier key, and HUB approvals that can be used once. This file
+# is the contract half: identity, widths, constants, genesis, the three new
+# entries, the two changed bodies, the three signed constructions, and the
+# lifetime rule. The execution half, kinds 10 and 23 against a ledger and the
+# registry step, is recorded separately.
+
+
+# Three constructions are re-versioned: the chain ID, the state root, and the economy tree. The block header's bytes do not change, so its schema version and the block identifier keep version nine's.
+identity.chain_id_label=protocol-stack:v10:chain-id
+identity.state_root_label=protocol-stack:v10:state-root
+identity.economy_tree_prefix=protocol-stack:v10:economy
+identity.genesis_schema_version=10
+identity.state_root_schema_version=10
+identity.receipt_version=10
+identity.block_id_label=protocol-stack:v9:block-id
+identity.block_header_schema_version=9
+
+# Two HUB labels replace version nine's six. The registration is the only message an attester signs, and the approval is the only one a HUB key signs in a body.
+identity.registration_label=protocol-stack:v10:hub-registration
+identity.approval_label=protocol-stack:v10:hub-approval
+identity.attestation_label=protocol-stack:v10:machine-attestation
+identity.hub_message_labels=protocol-stack:v10:hub-registration,protocol-stack:v10:hub-approval
+
+# Kind 10 gains four octets for the attesting seat. Kind 23 is new. Every length is header plus body plus trailer plus signature.
+widths.kind_10_body=132
+widths.kind_10_signed=292
+widths.kind_23_body=196
+widths.kind_23_signed=356
+widths.genesis_prefix=182
+widths.max_genesis_accounts=21841
+widths.entry_24_name=machine_key
+widths.entry_24_key=5
+widths.entry_24_value=92
+widths.entry_25_name=launch_retirement
+widths.entry_25_key=1
+widths.entry_25_value=8
+widths.entry_26_name=machine_key_owner
+widths.entry_26_key=33
+widths.entry_26_value=4
+
+# ADR 0101's three answers, and engineering's two figures. Each is a consensus parameter of this version, not a deployment option.
+constants.launch_retirement_active_machines=100
+constants.machine_registrations_per_window=1000
+constants.activity_threshold_seconds=64800
+constants.approval_lifetime_blocks=1200
+constants.launch_attester=4294967295
+constants.launch_attester_is_above_every_seat=true
+
+# Five result codes are added, and codes 0 through 44 keep version nine's meanings.
+codes.45=LAUNCH_KEY_RETIRED
+codes.46=MACHINE_KEY_NOT_FOUND
+codes.47=MACHINE_NOT_ACTIVE
+codes.48=REGISTRATION_LIMIT
+codes.49=APPROVAL_LIFETIME_EXCEEDED
+codes.count=50
+codes.zero_through_forty_four_unchanged=true
+
+# The kinds that carry a body approval, and the kinds that always carry a HUB proof.
+kinds.approval=2,3,4,5,17,18,19,22,23
+kinds.always_proven=10,13,14,15,16,23
+
+# A fixture genesis: version nine's trace figures with three distinct keys. The launch key keeps the verifier key's offset and its state entry, and the build authority key follows the dispute authority key.
+genesis.bytes=5053474e000a0000000a0000019bbef3b0004f1851909daf1400000000000000000000000000000003e80000000000000000af153c99adf7c49e5a92563946cf0e60dfd7a58785462530988f661aa68faaa75555555555555555555555555555555555555555555555555555555555555555d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b400000000
+genesis.chain_id=c0d7a91240ec1c498c539e76f6ad5eb1cde96c7399f79be0be5896635381d8e6
+genesis.economy_entry_count=16
+genesis.launch_key_entry=5555555555555555555555555555555555555555555555555555555555555555
+genesis.writes_no_registry_entry=true
+
+# The version-ten chain ID differs from the same fields under every earlier schema and label, each required separately.
+non_collision.chain_id_v2_differs=true
+non_collision.chain_id_v3_differs=true
+non_collision.chain_id_v4_differs=true
+non_collision.chain_id_v5_differs=true
+non_collision.chain_id_v6_differs=true
+non_collision.chain_id_v7_differs=true
+non_collision.chain_id_v8_differs=true
+non_collision.chain_id_v9_differs=true
+
+# The genesis state under version ten's root differs from the same state under every earlier root.
+non_collision.state_root_v1_differs=true
+non_collision.state_root_v2_differs=true
+non_collision.state_root_v3_differs=true
+non_collision.state_root_v4_differs=true
+non_collision.state_root_v5_differs=true
+non_collision.state_root_v6_differs=true
+non_collision.state_root_v7_differs=true
+non_collision.state_root_v8_differs=true
+non_collision.state_root_v9_differs=true
+
+# The three new entries, encoded from the specification's tables, and the values no transition writes, refused by the decoders.
+state.machine_key_key=1800000007
+state.machine_key_value=22222222222222222222222222222222222222222222222222222222222222223333333333333333333333333333333333333333333333333333333333333333000000000000000300000000000000050000000000000006000003e7
+state.launch_retirement_key=19
+state.launch_retirement_value=0000000000015181
+state.machine_key_owner_key=1a2222222222222222222222222222222222222222222222222222222222222222
+state.machine_key_owner_value=00000007
+state.machine_key_round_trips=true
+state.machine_key_admits_the_limit=true
+state.machine_key_refuses_a_count_above_the_limit=true
+state.machine_key_refuses_a_zero_height=true
+state.launch_retirement_refuses_zero=true
+state.entry_shape_refuses_a_short_owner_value=true
+
+# The two changed bodies, built from the header and body tables, and decoded back. A registration names the launch key by the attester u32 maximum.
+bodies.kind_10_launch_unsigned=5053545800010a0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0201010101010101010101010101010101010101010101010101010101010101010000000000000000a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a11111111111111111111111111111111111111111111111111111111111111111ffffffff5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a000000000000000000000000000004b0
+bodies.kind_10_launch_round_trips=true
+bodies.kind_10_machine_unsigned=5053545800010a0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0201010101010101010101010101010101010101010101010101010101010101010000000000000000a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a11111111111111111111111111111111111111111111111111111111111111111000000075a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a000000000000000000000000000004b0
+bodies.kind_10_machine_round_trips=true
+bodies.kind_23_unsigned=505354580001170c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c011212121212121212121212121212121212121212121212121212121212121212000000000000000400000007222222222222222222222222222222222222222222222222222222222222222233333333333333333333333333333333333333333333333333333333333333335a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a00000000000003e800000000000004b0
+bodies.kind_23_round_trips=true
+
+# Every other kind keeps version nine's shape, and kind 1 keeps the bytes version one accepted.
+bodies.kind_1_bytes_are_version_nines=true
+bodies.version_nine_registration_is_malformed=true
+
+# The registration binds its attesting seat, so one machine's signature cannot be presented as another's.
+messages.registration_launch=2370726f746f636f6c2d737461636b3a7631303a6875622d726567697374726174696f6e0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0cffffffffa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a10101010101010101010101010101010101010101010101010101010101010101111111111111111111111111111111111111111111111111111111111111111100000000000004b0
+messages.registration_machine=2370726f746f636f6c2d737461636b3a7631303a6875622d726567697374726174696f6e0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c00000007a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a10101010101010101010101010101010101010101010101010101010101010101111111111111111111111111111111111111111111111111111111111111111100000000000004b0
+messages.attestation=2670726f746f636f6c2d737461636b3a7631303a6d616368696e652d6174746573746174696f6e0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c000000072222222222222222222222222222222222222222222222222222222222222222333333333333333333333333333333333333333333333333333333333333333300000000000004b0
+
+# The approval signs the whole unsigned transaction with its HUB field zero. So it is the same whatever the field holds, and different for every other change, the nonce included.
+messages.approval_kind_19=1f70726f746f636f6c2d737461636b3a7631303a6875622d617070726f76616c505354580001130c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0112121212121212121212121212121212121212121212121212121212121212120000000000000004b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b100000000000000090000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003e800000000000004b0
+messages.approval_kind_23=1f70726f746f636f6c2d737461636b3a7631303a6875622d617070726f76616c505354580001170c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c011212121212121212121212121212121212121212121212121212121212121212000000000000000400000007222222222222222222222222222222222222222222222222222222222222222233333333333333333333333333333333333333333333333333333333333333335a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003e800000000000004b0
+messages.approval_ignores_the_hub_field=true
+messages.approval_binds_the_nonce=true
+messages.approval_binds_the_amount=true
+messages.approval_is_not_the_envelope_message=true
+
+# An approval lives at most one slot above the executing height. A transaction with no HUB proof is not governed.
+lifetime.kind_19_at_the_bound_is_accepted=true
+lifetime.kind_19_past_the_bound_is_refused=true
+lifetime.kind_23_at_the_bound_is_accepted=true
+lifetime.kind_23_past_the_bound_is_refused=true
+lifetime.kind_10_at_the_bound_is_accepted=true
+lifetime.kind_10_past_the_bound_is_refused=true
+lifetime.an_absent_field_is_not_governed=true
+
+# Version nine's public surface is partitioned exactly into carried, revised, withdrawn, and replaced, and every carried constant is version nine's own object.
+carryover.partition_is_exact=true
+carryover.carried=129
+carryover.revised=20
+carryover.withdrawn=ACTIVATION_LABEL,MINT_CONFIRM_LABEL,POSTURE_RELAX_LABEL,PURCHASE_LABEL,TRANSFER_CONFIRM_LABEL
+carryover.carried_are_version_nines_objects=true
+carryover.withdrawn_are_undefined=true
+carryover.unchanged_bodies_are_version_nines=true

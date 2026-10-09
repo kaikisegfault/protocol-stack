@@ -19,9 +19,9 @@ its eleven requirements, and four are met.
 | ---: | --- | --- |
 | 1 | A test Founder's lifecycle on the four-validator devnet | Met 2026-09-27, M4.1 |
 | 2 | A kind-4 and a kind-18 mint on a network | Met 2026-10-03, M4.2a to M4.2c |
-| 3 | The per-machine attestation-key registry | Specified 2026-10-09 in `economy-transition-v10`, M4.3a; nothing implements it |
+| 3 | The per-machine attestation-key registry | Specified in `economy-transition-v10`, M4.3a; contract half in Python, M4.3b |
 | 4 | A deterministic test verifier as a replaceable component | Met 2026-10-09, M4.4, for version nine's proofs |
-| 5 | Sensitive-action authorization with expiry and replay protection | Specified 2026-10-09 in `economy-transition-v10`, M4.3a; nothing implements it |
+| 5 | Sensitive-action authorization with expiry and replay protection | Specified in `economy-transition-v10`, M4.3a; contract half in Python, M4.3b |
 | 6 | Legacy succession mechanics | Open; the values are founder-reserved |
 | 7 | The threat model for local HUB verification | Met 2026-10-09, M4.7; its review is owed |
 | 8 | Storage bounds for every new entry | Open; due with each new entry |
@@ -68,7 +68,13 @@ define them:
 - one approval message that signs the whole transaction, with a one-slot life.
 
 The owner's answers in ADRs 0100 and 0101 fix every participant-facing value.
-No model, vector, or code implements version ten yet.
+**Its contract half runs in Python** (M4.3b). `simulation/economy_transition_v10/`
+imports version nine and declares exactly what it carries, revises, withdraws,
+and adds. It holds the genesis, the three new entries, the two changed bodies,
+the three signed constructions, and the lifetime rule.
+`test-vectors/economy-transition-v10.txt` records 107 vectors, each agreed with
+an independent derivation that imports nothing from `simulation/`. Nothing yet
+executes a version-ten transaction or the registry step.
 
 **Requirement 7's evidence** is
 [`hub-verification-threat-model.md`](../architecture/hub-verification-threat-model.md).
@@ -240,7 +246,7 @@ dependency.
   the full path, `tools/verify.sh`, on four presets: `gcc-debug`,
   `gcc-sanitizers`, `clang-debug`, and `clang-sanitizers`.
 - The full path verifies and tests the Go module and builds with CMake. It runs
-  175 CTest entries, or 184 on `clang-sanitizers`, which adds nine fuzz smokes,
+  177 CTest entries, or 186 on `clang-sanitizers`, which adds nine fuzz smokes,
   and then the eight network runs. "Verification required" gates the merge.
 - The owner's machine is resource-constrained. Run focused local checks, leave
   the matrix to the hosted runners, and remove local build trees with
@@ -307,22 +313,24 @@ first fee. No transition can enforce that order, so the bridge milestones must.
 
 ## Exact next action
 
-**Make version ten's contract execute in Python: M4.3b.** This is the slice
-M3.17b was to version nine.
+**Make version ten execute in Python: M4.3c.** This is the slice M3.17c was to
+version nine.
 
-- `simulation/economy_transition_v10/`, importing version nine's model rather
-  than copying it, with:
-  - the 182-octet genesis and the version-ten identity;
-  - the new kind-10 body and kind 23;
-  - the attestation, registration, and approval messages;
-  - entry kinds 24 to 26, and the approval lifetime rule;
-- `test-vectors/economy-transition-v10.txt`, recording every contract vector
-  the specification's last section requires that needs no chain;
-- a verifier and its CTest entries.
+- A version-ten ledger and dispatch, importing version nine's and adding:
+  - kind 10 under the launch key and under an active machine;
+  - kind 23, and the approval check for every body-carried kind;
+  - the lifetime rule after `EXPIRED`;
+  - the registry step before the due window's evidence is deleted.
+- `test-vectors/economy-transition-v10-execution.txt`, recording the execution
+  cases the specification's last section requires:
+  - kind 23's rejections in order, and a replacement keeping its count;
+  - the 1,000th and 1,001st registration in one window;
+  - the cutoff at 99 and then 100 active machines, and no revival;
+  - both executed replays refused, each in both forms;
+  - the seven invariants, each broken by a probe.
 
-The execution model and its vectors follow, then the kernel, then the stack.
-Version nine's migration is the template: ADR 0065 staged a kernel beside its
-predecessor and named the deletion that ends it.
+The kernel and the stack follow, with version nine's migration as the template
+(ADR 0065).
 
 **Unblocked candidates behind it:**
 

@@ -38,6 +38,38 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M4.3b was delivered
+
+**The owner said "conclude" while it was being written, so it was finished
+rather than paused.** Issue #387. The model package, the independent
+derivation, and the checker existed. The verifier, the vector file, the
+contract test, and the CTest entries were written under the frozen scope, and
+nothing of M4.3c was started.
+
+**Version nine's own declarations decided the shape.** Its `contract.py`
+partitions version eight's surface into carried, revised, added, and replaced.
+Version ten does the same, with one new class: `WITHDRAWN_IN_V10` names the five
+per-action HUB labels that one approval message replaces. A partition test
+then still accounts for every name version nine exported: 129 carried, 20
+revised, 5 withdrawn, and 5 replaced declarations.
+
+**The independent derivation builds bytes from the tables, not from encoders.**
+`expected.py` writes the genesis, the bodies, the entries, and the messages
+field by field at the specification's offsets, and imports nothing from
+`simulation/`. All 107 vectors agree. Three probes fail by name: a tampered
+recorded value, a missing key, and a model whose registration message swaps
+two fields.
+
+**Building genesis found a gap in the specification, now closed.** Version
+six's entry kind 8 stores the verifier key in state. The specification did not
+say what it holds under version ten, or whether the build authority key is
+written to state. It now says that kind 8 holds the launch key, and that the
+build authority key is a genesis field only, like the dispute authority key.
+
+**The founder-decision gate passed.** Every value encoded is an ADR 0101
+answer, an engineering figure ADR 0102 records, or a carried constant. Nothing
+was chosen that the specification had not already fixed.
+
 ### How M4.3a was delivered
 
 **Every participant-facing value was answered before the specification began.**
