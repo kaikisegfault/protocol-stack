@@ -64,7 +64,8 @@ Completion requires all of the following:
 3. **The per-machine attestation-key registry** that
    [ADR 0048](../decisions/0048-hub-verification-runs-locally-with-an-ai-integrity-monitor.md)
    decided, replacing genesis's single verifier key in a new contract version.
-   A registration is valid only under a key of an active, attested machine.
+   A registration is valid only under a key of an active, attested machine,
+   or under the company-held launch key until the chain retires it (ADR 0100).
 4. **A deterministic test verifier** as a replaceable component. It produces the
    signed decision envelopes the chain checks, behind the interface a
    production verifier will later implement.
@@ -97,6 +98,8 @@ These are founder-reserved and must not be invented:
   Requirement 6 builds the record and its mechanics. It asks for these values
   at the point each becomes the nearest dependency.
 - **Inactivity**, and what an inactive seat or identity loses or keeps.
+- **The launch key's cutoff.** How many active machines retire it
+  (ADR 0100).
 - **Verifier key rotation**, and who holds the build-signing authority before
   ADR 0047's end of initialization.
 - **Seat payment.** A seat purchase's external payment proof: which chains,
