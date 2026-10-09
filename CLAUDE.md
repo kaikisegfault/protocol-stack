@@ -48,6 +48,11 @@ test evidence, then repair the state document.
   first, and keep `current-state.md` to what is true now. The two were one
   document until 2026-09-14, when history was 47% of a file every session is
   told to read first; putting a record back into the handoff would regrow it.
+- Rewrite the handoff sentences a slice makes false; do not add a dated
+  paragraph beside them or mark the old one as history. The slice's narrative,
+  founder-decision gate result, and rejected alternatives go in its delivery
+  record. `tools/verify_metadata.py` refuses `current-state.md` above 600
+  lines, because by 2026-10-03 added paragraphs alone had regrown it to 5,623.
 - Continue with another bounded slice while time and context remain.
 - Do not end after a plan when an authorized, unblocked implementation step is
   available.

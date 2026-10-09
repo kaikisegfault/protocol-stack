@@ -40,7 +40,8 @@ evidence, then repair the handoff within the frozen scope.
    and remove secrets, debug residue, and accidental generated files.
 4. Update `docs/project/current-state.md` with verified behavior and evidence,
    the nearest actual project outcome, the remaining gap, and one exact next
-   action for a fresh session.
+   action for a fresh session. Rewrite what the slice made false rather than
+   adding beside it, and put the slice's narrative in `delivery-log.md`.
 5. Commit and push every finished atomic change under the configured owner
    identity. Never leave a required local-only commit.
 
