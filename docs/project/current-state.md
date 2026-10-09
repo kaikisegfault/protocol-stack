@@ -194,11 +194,10 @@ dependency.
 
 ## Repository and verification
 
-- `kaikisegfault/protocol-stack`. Issue #373 is this slice, on
-  `docs/373-trim-handoff`. Every earlier issue is closed, and `main` is the
-  only other branch.
-- **The last full hosted verification** is candidate run 37078876254, on
-  M4.2c's tree, which `main` holds byte for byte at `f97b190`.
+- `kaikisegfault/protocol-stack`. Every issue is closed, and `main` is the
+  only branch.
+- **The last full hosted verification** is candidate run 37946120672, on the
+  handoff trim's tree, which `main` holds byte for byte at `91f8067`.
 - `verify.yml` classifies the changed paths with `tools/verification_scope.py`.
   Markdown and skill metadata take the lightweight path:
   `tools/verify_metadata.py` and the `tests/tools` suites. Everything else takes
@@ -270,10 +269,10 @@ first fee. No transition can enforce that order, so the bridge milestones must.
 
 ## Exact next action
 
-**Merge this slice.** Then **ask the owner requirement 3's two questions**, in
-one batched call at the end of the session, because the contract version that
-carries requirements 3 and 5 needs both answers. Requirement 3 is not started
-before they are answered.
+**Ask the owner requirement 3's two questions**, in one batched call at the
+end of the session, because the contract version that carries requirements 3
+and 5 needs both answers. Requirement 3 is not started before they are
+answered.
 
 **Then requirement 4, the deterministic test verifier.** It is unblocked and
 runnable. It produces the decisions the chain checks today: the registration
