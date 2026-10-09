@@ -19,7 +19,7 @@ its eleven requirements, and four are met.
 | ---: | --- | --- |
 | 1 | A test Founder's lifecycle on the four-validator devnet | Met 2026-09-27, M4.1 |
 | 2 | A kind-4 and a kind-18 mint on a network | Met 2026-10-03, M4.2a to M4.2c |
-| 3 | The per-machine attestation-key registry | Open, unblocked; answered by ADR 0100 |
+| 3 | The per-machine attestation-key registry | Open, unblocked; founder answers in ADRs 0100 and 0101 |
 | 4 | A deterministic test verifier as a replaceable component | Met 2026-10-09, M4.4, for version nine's proofs |
 | 5 | Sensitive-action authorization with expiry and replay protection | Open, unblocked |
 | 6 | Legacy succession mechanics | Open; the values are founder-reserved |
@@ -187,14 +187,6 @@ stands, the rules that shape M4's work are these.
 None of these may be invented. Each is asked when it becomes the nearest
 dependency.
 
-- **The launch key's cutoff, which is the nearest.** ADR 0100 records the
-  owner's answers to requirement 3's two questions. The nearest active machine
-  verifies a person who owns none, with their key secret split across several
-  machines. Registration starts under a company-held launch key that the chain
-  refuses for good once a set number of machines are active. That number is
-  the owner's to set and is still open. Ask it when the contract version that
-  carries requirement 3 is specified, together with any per-machine
-  registration bound's value.
 - **Legacy limits**: inactivity bounds, dispute evidence, conflicting-statement
   precedence, and reclaim transitions. Requirement 6 builds the mechanics
   without them.
@@ -203,9 +195,8 @@ dependency.
   ADR 0047's end of initialization. The threat model adds who may revoke a
   registry key, and who may re-bind a person whose HUB key can no longer be
   produced (T8 and T9).
-- **The threat model's other surfaced items**: coercion controls (T7), what
-  follows repeated rejection by the monitor (T10), and the value of any
-  per-machine registration bound (T8).
+- **The threat model's other surfaced items**: coercion controls (T7), and
+  what follows repeated rejection by the monitor (T10).
 - **Seat payment**: which chains, assets, and prices prove a purchase. This is
   bridge scope, M9.
 - **Production biometrics**: the camera verifier, capture threshold, and
@@ -306,21 +297,19 @@ first fee. No transition can enforce that order, so the bridge milestones must.
 `economy-transition-v10` with its ADR, before any model or code. It must
 contain:
 
-- the attestation-key registry: active, attested machines' keys, any one of
-  which may sign a registration (ADR 0100);
-- the launch key and its retirement rule, with the cutoff as a named,
-  owner-set quantity and no invented value;
-- registry-key revocation when a machine stops being active or attested;
-- single-use HUB approvals, by the recommended construction below;
-- a per-machine registration bound, evaluated, with its value asked.
+- the attestation-key registry: any active machine's key may sign a
+  registration (ADR 0100). A machine is active when its seat met its most
+  recently assigned cycle on uptime, whatever the cap says (ADR 0101);
+- what version nine does not store and v10 must: each registered machine's
+  last met window, and the count of active machines;
+- the launch key, retired in state for good when the active count first
+  reaches 100;
+- at most 1,000 registrations per machine key per cycle window;
+- single-use HUB approvals, by the recommended construction below.
 
 Requirement 6's legacy records can join it: statements, nomination,
 supersession, and the reclaim right need no reserved value. The inactivity
 trigger stays reserved.
-
-**When the specification first needs the cutoff and the bound**, ask the owner
-both in one batched call. Until then the specification names them, and nothing
-recorded stands in for them.
 
 **The recommended single-use construction** binds a HUB approval to the whole
 unsigned transaction, hashed with its HUB-signature field zeroed. It does not
@@ -343,5 +332,5 @@ contract version, because it changes what they build anyway.
 
 ## Blockers
 
-**No blocker.** The launch key's cutoff is a founder value the specification
-names and asks for, and nothing waits on it before then.
+**No blocker.** Every founder value the next contract version needs is
+answered (ADRs 0100 and 0101).

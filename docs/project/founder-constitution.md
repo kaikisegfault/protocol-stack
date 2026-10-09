@@ -800,11 +800,13 @@ machine, decided on 2026-10-09.** It is assigned the way an AI judgment is, and
 the person's vaulted key secret is split across several machines, so they can
 recover on any machine and no single machine holds it. **Registration starts
 under an expiring launch key.** The chain launches with one company-held
-verifier key that signs the first registrations. Once a set number of machines
-are active and attested, the chain refuses it for good. The owner sets that
-number.
+verifier key that signs the first registrations. Once 100 machines are active,
+the chain refuses it for good. An active machine is one whose seat met its most
+recently assigned cycle, and each machine may register at most 1,000 people a
+day, both decided the same day.
 [ADR 0100](../decisions/0100-founder-answers-on-who-verifies-and-how-registration-starts.md)
-records both answers.
+and [ADR 0101](../decisions/0101-founder-answers-on-the-launch-cutoff-an-active-machine-and-the-registration-limit.md)
+record the answers.
 
 Every identity's uniqueness commitment is replicated to every Founder Machine,
 so uniqueness is compared locally against the whole population with no lookup
@@ -1048,8 +1050,7 @@ milestone supplies enough evidence and context:
 - stablecoin allowlist governance and any later bridge-asset change;
 - complete AI funding, moderation, biometric, and succession frameworks;
 - whether the assistant's one-profile-per-identity and seats-as-parallel-sessions
-  entitlement is enforced by the protocol or is application policy;
-- the number of active machines that retires the launch key (ADR 0100); and
+  entitlement is enforced by the protocol or is application policy; and
 - any new treasury category, participant benefit, or application-content rule.
 
 Resolved on 2026-08-07, and no longer open: the activity definition and its
@@ -1141,7 +1142,10 @@ Resolved on 2026-10-09, and recorded in
 a person who owns no Founder Machine is verified by the nearest active machine,
 with their key secret split across several machines; and registration starts
 under a company-held launch key that the chain refuses for good once a set number
-of machines are active. The number itself is still open, and is listed above.
+of machines are active. [ADR 0101](../decisions/0101-founder-answers-on-the-launch-cutoff-an-active-machine-and-the-registration-limit.md)
+records the rest, the same day: the number is 100 active machines; an active
+machine is one whose seat met its most recently assigned cycle; and each
+machine may register at most 1,000 people a day.
 
 Claude should ask focused questions at those boundaries. All other mechanism,
 encoding, storage, consensus scheduling, networking, testing, packaging, and
