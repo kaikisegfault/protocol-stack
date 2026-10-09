@@ -38,6 +38,50 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M4.7 was delivered
+
+**Requirement 7 came next because the contract version waits on the owner, and
+should wait on this too.** Issue #378. The version that carries requirements 3
+and 5 needs two founder answers. It also needs a statement of what it must
+defend against, and M4.4 had just turned one threat from a reading into an
+executed check.
+
+**It was assembled from what the ADRs already concede.** ADRs 0036, 0039, 0044,
+and 0048 each name risks and review items one contract at a time. The threat
+model puts them in one place, against one boundary: the chain checks
+signatures, never the capture. Each of its eleven threats states what stops it
+in version nine, what the next version must add, and what review is owed.
+
+**Writing it surfaced one thing no ADR said.** A HUB key derived from a face
+alone is only as secret as the face, and faces are public. Anyone with a good
+enough image and the public derivation could compute the key offline. A
+liveness check never runs on that path, because no sandbox is visited. So the
+derivation must also depend on a secret that only an attested sandbox holds.
+ADR 0048's "multisignature vaults" point that way without saying so. Where
+that secret lives for a person without a machine is requirement 3's first
+question in another form, which makes the owner's answer load-bearing for
+security as well as for participation.
+
+**It decides nothing reserved.** Candidate controls a person would feel, such
+as a coercion delay or a per-machine registration bound, are named as
+candidates whose values are asked. The next contract version gets four
+obligations. Three follow from version nine's own findings, and the fourth is
+an evaluation, not a value.
+
+**The founder-decision gate passed.** Five decisions were enumerated:
+
+1. the document's scope;
+2. its content;
+3. what goes to independent review;
+4. the obligations it places on the next contract version;
+5. how it treats the reserved items it meets.
+
+The first is requirement 7 and ADR 0048. The second and third are drawn from
+accepted ADRs and executed evidence. The fourth follows from the executed
+replay and ADR 0048's registry. The fifth is the gate itself: each item is
+surfaced, not answered. None sets a value or changes what a participant must
+do, own, run, or receive.
+
 ### How M4.4 was delivered
 
 **Requirement 4 was taken before requirement 3, because 3 waits on the owner.**

@@ -13,7 +13,7 @@ the alternatives it rejected go in its delivery record.
 
 **M4, Founder identity, seats, and authority, is the active milestone.** It
 began when M3 closed on 2026-09-27. [`first-goal.md`](first-goal.md) states
-its eleven requirements, and three are met.
+its eleven requirements, and four are met.
 
 | # | Requirement | Status |
 | ---: | --- | --- |
@@ -23,7 +23,7 @@ its eleven requirements, and three are met.
 | 4 | A deterministic test verifier as a replaceable component | Met 2026-10-09, M4.4, for version nine's proofs |
 | 5 | Sensitive-action authorization with expiry and replay protection | Open, unblocked |
 | 6 | Legacy succession mechanics | Open; the values are founder-reserved |
-| 7 | The threat model for local HUB verification | Open, unblocked |
+| 7 | The threat model for local HUB verification | Met 2026-10-09, M4.7; its review is owed |
 | 8 | Storage bounds for every new entry | Open; due with each new entry |
 | 9 | Cross-language vectors for every new transition | Open; due with each transition |
 | 10 | Accepted ADRs for every new transition | Open; due with each transition |
@@ -54,6 +54,13 @@ stand-in for a face. The version-nine kernel accepts its registration and
 every approvable kind through admission and execution, with real Ed25519. The
 Python model verifies every decision the command prints. Requirements 3 and 5
 will rebind what it signs, and the network fixtures still sign by hand.
+
+**Requirement 7's evidence** is
+[`hub-verification-threat-model.md`](../architecture/hub-verification-threat-model.md).
+It sets out what is protected, who attacks, and where the trust boundaries
+are. It covers eleven threats, each with what stops it in version nine, what
+the next contract version must add, and what review is owed. It also lists what
+version nine already handles and the obligations of the next contract version.
 
 ## What works now
 
@@ -191,7 +198,12 @@ dependency.
   without them.
 - **Inactivity**, and what an inactive seat or identity loses or keeps.
 - **Verifier key rotation**, and who holds the build-signing authority before
-  ADR 0047's end of initialization.
+  ADR 0047's end of initialization. The threat model adds who may revoke a
+  registry key, and who may re-bind a person whose HUB key can no longer be
+  produced (T8 and T9).
+- **The threat model's other surfaced items**: coercion controls (T7), what
+  follows repeated rejection by the monitor (T10), and the value of any
+  per-machine registration bound (T8).
 - **Seat payment**: which chains, assets, and prices prove a purchase. This is
   bridge scope, M9.
 - **Production biometrics**: the camera verifier, capture threshold, and
@@ -236,7 +248,7 @@ resource network, bridges and liquidity (M9), the wallet (M10), a public
 testnet, and a mainnet. Revenue routing and escrow payouts exist only as Python
 models.
 
-**M4's requirements 3 to 11.** Three findings bear on them.
+**M4's requirements 3, 5, 6, and 8 to 11.** Four findings bear on them.
 
 - **Version nine accepts a HUB approval twice, and `hub-test-verifier-v9`
   executes it.** Each of the five HUB messages binds the transaction's
@@ -248,6 +260,11 @@ models.
   Requirement 5's contract must refuse both, and that check will flip.
 - **Requirements 3 and 5 both change the HUB signature family or genesis**, so
   one new contract version should carry both, rather than one version each.
+- **A HUB key derived from a face alone is only as secret as the face.**
+  Anyone holding a good enough image could compute it offline, with no
+  liveness check, so the derivation must also depend on a secret only an
+  attested sandbox holds (threat model T3). Where that secret lives for a
+  person with no Founder Machine is requirement 3's first question again.
 - **Only the registration message verifies against the verifier key.** The
   other five verify against the person's own HUB key. So requirement 3's
   registry governs admission, and requirement 5's envelope governs everything
@@ -284,24 +301,21 @@ first fee. No transition can enforce that order, so the bridge milestones must.
 ## Exact next action
 
 **Ask the owner requirement 3's two questions**, in one batched call at the
-end of the session, because the contract version that carries requirements 3
-and 5 needs both answers. Requirement 3 is not started before they are
-answered.
+end of the session. Requirement 3 is not started before they are answered.
 
-**Then requirement 7, the threat model for local HUB verification.** It is
-unblocked, and it should come before that contract version, because it states
-what the version must defend against. It must cover:
+**Then the contract version that carries requirements 3 and 5**, under the
+threat model's four obligations:
 
-- self-verification on the founder's own machine, and attestation;
-- the executed approval replay;
-- verifier key rotation;
-- uniqueness at population scale, where false accepts grow with N;
-- coercion, liveness, and what leaves the sandbox.
+- single-use approvals with a protocol-bounded validity window;
+- the attestation-key registry;
+- registry-key revocation;
+- an evaluated per-machine registration bound, whose value is asked.
 
-It names what goes to independent review. It belongs in `docs/architecture/`,
-where `local-ai-authority.md` lists the biometric threat model as owed.
+Requirement 6's legacy records can join it: statements, nomination,
+supersession, and the reclaim right need no reserved value. The inactivity
+trigger stays reserved.
 
-**Unblocked candidates behind it:**
+**Unblocked while the answers are pending**, nearest first:
 
 - the kind-22 mint on a seeded network, as above;
 - driving the C++ kernel over the `economy-scenario-suite-v4` population
