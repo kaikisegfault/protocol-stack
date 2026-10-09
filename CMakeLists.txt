@@ -261,6 +261,46 @@ target_link_libraries(
   PRIVATE
     protocol_application
 )
+# The HUB verifier interface and its deterministic test implementation (ADR
+# 0099). No node links it: a node checks HUB proofs and never holds a HUB key.
+add_library(
+  protocol_hub
+  STATIC
+    src/hub/test_verifier_v9.cpp
+)
+target_include_directories(
+  protocol_hub
+  PUBLIC
+    "${PROJECT_SOURCE_DIR}/include"
+)
+target_link_libraries(
+  protocol_hub
+  PUBLIC
+    protocol_kernel
+)
+add_executable(
+  protocol_hub_test_verifier_v9
+  src/hub/main_test_verifier_v9.cpp
+)
+set_target_properties(
+  protocol_hub_test_verifier_v9
+  PROPERTIES
+    OUTPUT_NAME protocol-hub-test-verifier-v9
+)
+target_link_libraries(
+  protocol_hub_test_verifier_v9
+  PRIVATE
+    protocol_hub
+)
+add_executable(
+  hub_test_verifier_v9_tests
+  tests/hub/test_verifier_v9_test.cpp
+)
+target_link_libraries(
+  hub_test_verifier_v9_tests
+  PRIVATE
+    protocol_hub
+)
 # A test-only `LD_PRELOAD` library that moves one process's real-time clock
 # (ADR 0091). Nothing links it. It takes the project's flags like every other
 # target, so under a sanitizer preset it is instrumented too and is loaded into
@@ -561,6 +601,9 @@ set(
   protocol_application_server
   protocol_application_server_v9
   protocol_clock_offset_shim
+  protocol_hub
+  protocol_hub_test_verifier_v9
+  hub_test_verifier_v9_tests
   kernel_primitive_tests
   economy_v9_codec_tests
   economy_v9_execution_tests
@@ -1041,6 +1084,22 @@ add_test(
     "${PROJECT_SOURCE_DIR}/tests/integration/version_nine_seed_test.py"
     "$<TARGET_FILE:protocol_application_server_v9>"
     "${CMAKE_CURRENT_BINARY_DIR}/seed-v9"
+)
+# The test HUB verifier's decisions, judged by the version-nine kernel through
+# admission and execution, and then checked against the independent model's
+# own message constructions on transactions the model encodes (ADR 0099).
+add_test(
+  NAME hub-test-verifier-v9
+  COMMAND hub_test_verifier_v9_tests
+)
+add_test(
+  NAME hub-test-verifier-v9-cross
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/hub/test_verifier_v9_cross_test.py"
+    "$<TARGET_FILE:protocol_hub_test_verifier_v9>"
+    --libsodium
+    "${PROTOCOL_STACK_SODIUM_SHARED_LIBRARY}"
 )
 add_test(
   NAME cometbft-port-allocation
