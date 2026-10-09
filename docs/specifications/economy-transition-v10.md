@@ -1,7 +1,8 @@
 # Economy transition v10
 
-Status: Accepted M4 consensus transition contract. No model, vectors, kernel,
-snapshot, store, application, or node implements it yet.
+Status: Accepted M4 consensus transition contract. The independent model's
+contract half and its 107 contract vectors are recorded. The execution model,
+kernel, snapshot, store, application, and node are not.
 
 This document defines the version-ten Founder Economy consensus transition. It
 is [`economy-transition-v9`](economy-transition-v9.md) with **a registry of
@@ -545,7 +546,10 @@ chain_id = H(D("protocol-stack:v10:chain-id") || canonical_genesis_v10_bytes)
 ```
 
 **Genesis writes version nine's sixteen economy entries and no others.** It
-writes no machine key, no owner entry, and no retirement entry.
+writes no machine key, no owner entry, and no retirement entry. Entry kind 8,
+which version six named the verifier key, holds the launch key. The build
+authority key is not written to state: like the dispute authority key, it is a
+genesis field bound into the chain identity.
 
 ## Version identity
 
