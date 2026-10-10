@@ -1,8 +1,10 @@
 # Economy transition v10
 
 Status: Accepted M4 consensus transition contract. The independent model's
-contract half and its 107 contract vectors are recorded. The execution model,
-kernel, snapshot, store, application, and node are not.
+contract half and execution half are recorded, with 107 contract vectors in
+`test-vectors/economy-transition-v10.txt` and 141 execution vectors in
+`test-vectors/economy-transition-v10-execution.txt`. The kernel, snapshot,
+store, application, and node are not.
 
 This document defines the version-ten Founder Economy consensus transition. It
 is [`economy-transition-v9`](economy-transition-v9.md) with **a registry of
@@ -391,6 +393,17 @@ The rule is applied immediately after `EXPIRED`, in the shared envelope checks.
 A transaction with no HUB proof is not governed by it: kinds 1, 6, 20, and 21,
 and a body-carried kind presented with the field absent.
 
+So the shared checks, after the acting escrow is resolved, run in this order:
+
+1. `FEE_LIMIT_TOO_LOW`;
+2. `EXPIRED`;
+3. `APPROVAL_LIFETIME_EXCEEDED`;
+4. `NONCE_EXHAUSTED`, then `NONCE_MISMATCH`;
+5. `DEBIT_OVERFLOW`, then `INSUFFICIENT_BALANCE`.
+
+Kind 10 has no escrow and runs only steps 2 and 3 before its own conditions.
+Kind 20 keeps version eight's fee-exempt checks, and carries no HUB proof.
+
 **The nonce makes an approval single-use. The lifetime makes a withheld one
 die.** Without the lifetime, an approval for nonce `n` that was never submitted
 stays valid until the escrow's nonce moves. A hostile wallet could hold one for
@@ -424,10 +437,20 @@ the due window's kind-19 entries are deleted**:
    window, set `last_met_window` to the due window. A seat meets the window when
    it is in scope for it, and `uptime_seconds(seat, due)` is at least
    `ACTIVITY_THRESHOLD_SECONDS`.
-2. Count the machine-key entries whose `last_met_window` equals the due window.
+2. Count the machine-key entries whose `last_met_window` is nonzero and equals
+   the due window.
 3. If no retirement entry is present, and the count is at least
    `LAUNCH_RETIREMENT_ACTIVE_MACHINES`, write the retirement entry with
    `retired_at_height = h`.
+
+**A mark of 0 is never counted**, which
+[ADR 0103](../decisions/0103-the-registry-count-excludes-an-unmarked-machine.md)
+records. Zero means none, and the due window is 0 at the window-0 assignment,
+at height 57,600. No seat is in scope for window 0, so step 1 marks nothing, and
+without the exclusion step 2 would count every unmarked key as having met it. A
+hundred keys registered in windows 0 and 1 would then retire the launch key
+before any machine had met a cycle. The version-ten execution model found this
+when its first population did exactly that.
 
 **The count is computed, never stored.** It is needed only at an assignment, and
 every machine it counts has just been marked, so storing it would add a
@@ -672,6 +695,7 @@ least:
 - **the registry step**:
   - a seat that met, one that failed, one at the cap, and one past its span;
   - the count reaching 99 and then 100;
+  - the window-0 assignment counting zero, with at least 100 keys registered;
   - retirement written exactly once, and not revived when the count falls;
 - **invariants**: each of the seven, by a probe that breaks it;
 - **non-collision** of every re-versioned construction with all nine
