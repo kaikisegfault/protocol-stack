@@ -56,6 +56,8 @@ __all__ = [
     "predecessor_state_root",
     "require_entry_shape",
     "state_root",
+    "state_root_frame",
+    "state_root_from_frame",
 ]
 
 
@@ -230,6 +232,44 @@ def economy_root(entries: dict[bytes, bytes]) -> bytes:
 # --- the root ----------------------------------------------------------------
 
 
+def state_root_frame(
+    chain_id: bytes,
+    supply_limit: int,
+    total_supply: int,
+    fee_pool_balance: int,
+    accounts: list[tuple[bytes, int, int]],
+    economy: dict[bytes, bytes],
+) -> tuple[bytes, bytes]:
+    """The root preimage split around the two fields a quiet height changes.
+
+    Version nine's split, under version ten's version field and tree. `state_root`
+    is defined through it, so a run of quiet heights and a block commit to one
+    preimage rather than two that could drift.
+    """
+    head = u16(c.STATE_ROOT_SCHEMA_VERSION) + _octets(chain_id, 32, "chain ID")
+    tail = (
+        u64(supply_limit)
+        + u64(total_supply)
+        + u64(fee_pool_balance)
+        + u64(len(accounts))
+        + accounts_root(accounts)
+        + u64(len(economy))
+        + economy_root(economy)
+    )
+    return head, tail
+
+
+def state_root_from_frame(
+    frame: tuple[bytes, bytes], height: int, timestamp: int
+) -> str:
+    if not c.MIN_TIMESTAMP_MILLIS <= timestamp <= c.MAX_TIMESTAMP_MILLIS:
+        raise InvalidStateEntry(
+            f"timestamp {timestamp} is outside calendar-v1's accepted range"
+        )
+    head, tail = frame
+    return digest(c.STATE_ROOT_LABEL, head + u64(height) + u64(timestamp) + tail).hex()
+
+
 def state_root(
     chain_id: bytes,
     height: int,
@@ -241,24 +281,10 @@ def state_root(
     economy: dict[bytes, bytes],
 ) -> str:
     """Version nine's preimage under `protocol-stack:v10:state-root`, version 10."""
-    if not c.MIN_TIMESTAMP_MILLIS <= timestamp <= c.MAX_TIMESTAMP_MILLIS:
-        raise InvalidStateEntry(
-            f"timestamp {timestamp} is outside calendar-v1's accepted range"
-        )
-    preimage = (
-        u16(c.STATE_ROOT_SCHEMA_VERSION)
-        + _octets(chain_id, 32, "chain ID")
-        + u64(height)
-        + u64(timestamp)
-        + u64(supply_limit)
-        + u64(total_supply)
-        + u64(fee_pool_balance)
-        + u64(len(accounts))
-        + accounts_root(accounts)
-        + u64(len(economy))
-        + economy_root(economy)
+    frame = state_root_frame(
+        chain_id, supply_limit, total_supply, fee_pool_balance, accounts, economy
     )
-    return digest(c.STATE_ROOT_LABEL, preimage).hex()
+    return state_root_from_frame(frame, height, timestamp)
 
 
 def predecessor_state_root(

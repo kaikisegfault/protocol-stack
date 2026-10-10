@@ -1,0 +1,185 @@
+# Economy transition v10 execution vectors.
+# Amounts are unsigned decimal atomic units at the eight-decimal denomination,
+# heights and windows unsigned decimal, and byte strings lowercase hex.
+#
+# These record what a version-ten chain *does*: who may sign a registration,
+# what an approval signs, and what the registry step counts. The contract surface
+# is test-vectors/economy-transition-v10.txt; this file restates none of it.
+#
+# Two fixtures produce them. simulation/economy_transition_v10/trace.py is a
+# chain of blocks at ninety seconds a block, as version nine's is.
+# simulation/economy_transition_v10/population.py drives 101 machines, and one
+# machine past its span, through version nine's evidence harness, because no
+# recorded chain of blocks reaches the launch key's retirement or the limit.
+
+
+# The genesis both fixtures run, derived twice. It is the contract vectors' fixture, so the chain identity is the one they record.
+genesis.bytes=5053474e000a0000000a0000019bbef3b0004f1851909daf1400000000000000000000000000000003e80000000000000000af153c99adf7c49e5a92563946cf0e60dfd7a58785462530988f661aa68faaa75555555555555555555555555555555555555555555555555555555555555555d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b400000000
+genesis.chain_id=c0d7a91240ec1c498c539e76f6ad5eb1cde96c7399f79be0be5896635381d8e6
+
+# Kind 10 through blocks: the launch key while it is unretired, active and inactive machines, a seat with no key, a seat above the range, and another machine's signature under a seat. Each outcome is read off the specification's order and agreed with the executed one.
+chain.launch.alice_registers=SUCCESS
+chain.lifetime.kind_10_past_the_bound=APPROVAL_LIFETIME_EXCEEDED
+chain.launch.a_registration_the_launch_key_did_not_sign=UNAUTHORIZED
+chain.kind_10.a_seat_with_no_machine_key=MACHINE_KEY_NOT_FOUND
+chain.kind_10.a_seat_above_the_range=CYCLE_RANGE
+chain.launch.bob_registers=SUCCESS
+chain.kind_10.an_identity_registered_twice=REPLAY
+chain.kind_10.a_first_signer_already_assigned=REPLAY
+chain.kind_10.an_active_machine_registers=SUCCESS
+chain.kind_10.an_inactive_machine=MACHINE_NOT_ACTIVE
+chain.kind_10.a_seat_with_no_machine_key_later=MACHINE_KEY_NOT_FOUND
+chain.kind_10.another_machines_signature_under_this_seat=UNAUTHORIZED
+chain.launch.still_signs_below_the_cutoff=SUCCESS
+chain.kind_10.the_count_restarts_in_the_next_window=SUCCESS
+chain.kind_10.the_replaced_key_signs_nothing=UNAUTHORIZED
+chain.kind_10.the_new_key_signs=SUCCESS
+
+# Kind 23 refused at each of its seven conditions in order, including a key another seat holds and a key this seat holds, then two keys registered and one replaced.
+chain.kind_23.a_seat_above_the_range=CYCLE_RANGE
+chain.kind_23.an_unpurchased_seat=SEAT_NOT_PURCHASED
+chain.kind_23.an_unactivated_seat=SEAT_NOT_ACTIVATED
+chain.kind_23.another_identitys_seat=UNAUTHORIZED
+chain.kind_23.a_key_another_seat_holds=REPLAY
+chain.kind_23.a_key_this_seat_holds=REPLAY
+chain.kind_23.an_attestation_the_build_authority_did_not_sign=UNAUTHORIZED
+chain.kind_23.no_approval=BIOMETRIC_REQUIRED
+chain.kind_23.another_persons_approval=UNAUTHORIZED
+chain.kind_23.bob_registers_his_machine=SUCCESS
+chain.kind_23.the_replacement=SUCCESS
+
+# The lifetime: a body-carried kind and a scheme-2 kind one height past the bound are refused, the scheme-2 kind at exactly the bound is admitted, and a transaction with no HUB proof is not governed however far its validity reaches.
+chain.lifetime.kind_2_past_the_bound=APPROVAL_LIFETIME_EXCEEDED
+chain.lifetime.kind_15_past_the_bound=APPROVAL_LIFETIME_EXCEEDED
+chain.lifetime.kind_15_at_the_bound=SUCCESS
+chain.lifetime.a_transfer_with_no_proof_is_not_governed=SUCCESS
+chain.lifetime.a_transfer_with_no_proof_is_not_governed.validity_reaches_past_the_bound=true
+chain.lifetime.a_tightening_with_no_proof_is_not_governed=SUCCESS
+chain.lifetime.a_tightening_with_no_proof_is_not_governed.validity_reaches_past_the_bound=true
+
+# Version nine's two executed replays, refused in both forms. The republished bytes carry a spent nonce. Re-signed under the next nonce, they carry an approval that signed a different transaction.
+chain.replay.the_republished_relax=NONCE_MISMATCH
+chain.replay.the_relax_resigned_under_a_new_nonce=UNAUTHORIZED
+chain.replay.the_reused_confirmation=NONCE_MISMATCH
+chain.replay.the_confirmation_resigned_under_a_new_nonce=UNAUTHORIZED
+
+# Every body-carried kind approved over the whole transaction. The approval message is built from the bytes with the HUB field zeroed and agreed with the model's, and the HUB field holds the person's signature over exactly that message.
+chain.approval.kind_2.message_sha256=78e4aae8dd124188b88425c8c799aa344c43d64071ddf983341e412c3372019f
+chain.approval.kind_2.signed_over_the_whole_transaction=true
+chain.approval.kind_2=SUCCESS
+chain.approval.kind_3.message_sha256=8fe92b0851420d7fe079e4ed64d511cd99808908f54b46217c3e73c732079af1
+chain.approval.kind_3.signed_over_the_whole_transaction=true
+chain.approval.kind_3=SUCCESS
+chain.approval.kind_4.message_sha256=c8431dff420e28ee48a2eac064b68825fde9407898ba9f52563bf754c6e57266
+chain.approval.kind_4.signed_over_the_whole_transaction=true
+chain.approval.kind_4=SUCCESS
+chain.approval.kind_5.message_sha256=8ae472da06d5e2a2c69d55ce76e01fbc1f8e882abc2e1a3880c03beedf95bfa6
+chain.approval.kind_5.signed_over_the_whole_transaction=true
+chain.approval.kind_5=SUCCESS
+chain.approval.kind_17.message_sha256=bcefac87c960fe57654f5073e263285e9753c6010263a07f39fd35f61cea2274
+chain.approval.kind_17.signed_over_the_whole_transaction=true
+chain.approval.kind_17=SUCCESS
+chain.approval.kind_18.message_sha256=6507f342d30951df8bc3a79b6ef9267a53e2c34699aa314582394c7de0dedd0f
+chain.approval.kind_18.signed_over_the_whole_transaction=true
+chain.approval.kind_18=SUCCESS
+chain.approval.kind_19.message_sha256=10a442e4907b74be85fb789823408a199edf6ffefd77784fc2dcbe71f7105d95
+chain.approval.kind_19.signed_over_the_whole_transaction=true
+chain.approval.kind_19=SUCCESS
+chain.approval.kind_22.message_sha256=d29d2fad6fbc8b12deed449ab1f93cc7dfbf963a8eb6587ba7ec7f4792a9719f
+chain.approval.kind_22.signed_over_the_whole_transaction=true
+chain.approval.kind_22=SUCCESS
+chain.approval.kind_23.message_sha256=3fe2a9850e328e2d57bda54086e9338ce83f310b798b9bc647d19497ece5689b
+chain.approval.kind_23.signed_over_the_whole_transaction=true
+chain.approval.kind_23=SUCCESS
+chain.approval.a_version_nine_approval_is_refused.signs_another_message=true
+chain.approval.a_version_nine_approval_is_refused=UNAUTHORIZED
+
+# The registry step at the assignment of window 1. Alice's machine answered every audit and is marked; Bob's answered none, lost a slot for every slot it was challenged in, and is not.
+chain.audit.alice_challenged=80
+chain.audit.alice_answered_every_challenge=true
+chain.audit.bob_window_1_credited_slots=9
+chain.registry.alice_mark_after_window_1=1
+chain.registry.bob_mark_after_window_1=0
+chain.registry.first_assignment.height=86400
+chain.registry.first_assignment.active_machines=1
+chain.registry.first_assignment.root=6d129da388af386739d6e711048af888473534e3ff43da31e9cae75cc8c0ccd3
+chain.registry.second_assignment.height=115200
+chain.registry.second_assignment.active_machines=1
+chain.registry.second_assignment.root=0f5512490a05c53f78a6aa1209f0c77461b710fdd3b7dae10ecf4718be887e32
+chain.registry.launch_key_unretired=true
+
+# The machine-key entries the chain ends with, built from the table. Alice's replacement kept her mark from window 2 and her count of two in window 4, and moved the key and the height.
+chain.entry.seat_0=c1000000000000000000000000000000000000000000000000000000000000003333333333333333333333333333333333333333333333333333333333333333000000000001c2010000000000000002000000000000000400000002
+chain.entry.seat_1=c000000001000000000000000000000000000000000000000000000000000000333333333333333333333333333333333333333333333333333333333333333300000000000070770000000000000000000000000000000000000000
+chain.entry.the_replaced_key_has_no_owner=true
+chain.entry.the_new_key_names_its_seat=true
+
+# Receipts at version 10, built field by field. A machine registration issues the entry airdrop and charges nothing; kind 23 charges the fee and issues nothing; a refusal does neither.
+chain.receipt.approval.kind_23=50535243000a6bb9e0b1f79953b58a95a9d945f18627c32065680b41d074a2f61156c01a7177170000000000000003e80000000000000000
+chain.receipt.kind_10.an_active_machine_registers=50535243000a469461d8572b3e88e6e8e0f81f1549b379d2de255539af34f7e7083c2f1a69040a000000000000000000000000000a3140c0
+chain.receipt.kind_10.an_inactive_machine=50535243000a4e2bd0fdc7eb9689cd96c0e66c6631985d5eae5e3e646d91af26c747f223c40b0a2f00000000000000000000000000000000
+chain.receipt.kind_10.a_seat_with_no_machine_key=50535243000ab5f53cdf9dca0b33bba8fa2f9c4b3438306fb7f5cd07a961c005ef173a316ac10a2e00000000000000000000000000000000
+chain.receipt.lifetime.kind_15_past_the_bound=50535243000a85c70d9dc1c2837dd496feab3367a34b0b84532c9c0bfd919bc2354301980c780f3100000000000000000000000000000000
+chain.receipt.version_nine_refuses_a_version_ten_receipt=true
+
+# Two blocks' headers and identifiers, built field by field: the first assignment and the last block. The header keeps version nine's schema version and bytes. The roots are the model's, pinned for the kernel.
+chain.block.first_assignment.header=5053424c0009c0d7a91240ec1c498c539e76f6ad5eb1cde96c7399f79be0be5896635381d8e600000000000151800000019d8e700800ab375235cd54813e52ac4f75751b883cf1c3cc3f7706b2ae86c30290ac25ded86da8ef0952a76852f884316ee85aee6a97d3cdbae244aa90a6103a2f1b734ea16d129da388af386739d6e711048af888473534e3ff43da31e9cae75cc8c0ccd300000000
+chain.block.first_assignment.block_id=7ed8ac9a24b5d5c2bca59474f5462807d0b85e97c9fa01f12f2dcb8aaa74507b
+chain.block.last.header=5053424c0009c0d7a91240ec1c498c539e76f6ad5eb1cde96c7399f79be0be5896635381d8e6000000000001c2010000019e28f02f900f5512490a05c53f78a6aa1209f0c77461b710fdd3b7dae10ecf4718be887e3255f685d3ee7ede9d946df179fa02a7249852c7a8dfd709989b8cb71c85496f0b633fa669d270e842a1008d1b42620c2069e448c56374d7147b9071e89daf3ffc00000008
+chain.block.last.block_id=db2648fd3f96a7fcbdee2af5709ac4924279b0a919b8a423337a9f27a5e27cc4
+chain.refusals_among_kinds_10_and_23=19
+chain.every_refusal_left_the_root_unchanged=true
+chain.final_root=633fa669d270e842a1008d1b42620c2069e448c56374d7147b9071e89daf3ffc
+chain.final_height=115201
+
+# 101 machines through the registry step. The count is derived from the uptime plan alone: a machine counts when its seat is in scope and credited with at least 18 of 24 slots. At the window-0 assignment no seat is in scope and every one of the 101 keys is unmarked, so the count is zero (ADR 0103). It is 99 at window 1's, 100 at window 2's, which retires the launch key, and 50 at window 3's, which does not revive it.
+cutoff.registry.window_0_count=0
+cutoff.registry.window_1_count=99
+cutoff.registry.window_2_count=100
+cutoff.registry.window_3_count=50
+cutoff.registry.window_4_count=101
+cutoff.registry.window_31_count=101
+cutoff.registry.unmarked_keys_at_the_window_0_assignment=101
+cutoff.registry.unmarked_keys_alone_would_reach_the_cutoff=true
+cutoff.registry.retired_at_height=115200
+cutoff.registry.retired_exactly_once=true
+
+# Kind 10 across the population: the launch key at 99 and after the cutoff, two machines' signatures crossed, the 1,000th and 1,001st registration of one machine in one window, a forgery naming the full machine, and the count restarting in the next window.
+cutoff.founder_registers=SUCCESS
+cutoff.crossed.a_key_signing_for_another_seat=UNAUTHORIZED
+cutoff.crossed.a_genuine_signature_under_another_seat=UNAUTHORIZED
+cutoff.limit.the_first=SUCCESS
+cutoff.limit.the_thousandth=SUCCESS
+cutoff.limit.a_forgery_naming_a_full_machine=UNAUTHORIZED
+cutoff.limit.the_thousand_and_first=REGISTRATION_LIMIT
+cutoff.limit.another_machine_still_signs=SUCCESS
+cutoff.limit.the_count_restarts_in_the_next_window=SUCCESS
+cutoff.launch.still_signs_at_ninety_nine=SUCCESS
+cutoff.launch.refused_once_retired=LAUNCH_KEY_RETIRED
+cutoff.launch.not_revived_when_the_count_falls=LAUNCH_KEY_RETIRED
+cutoff.limit.count_after_the_thousandth=1000
+cutoff.receipt.limit.the_thousand_and_first=50535243000aad7ce5d30df80d32e1a14c9f55fca108ad8e1aa433cbfc9af3f1e1eaf743d37c0a3000000000000000000000000000000000
+cutoff.receipt.launch.refused_once_retired=50535243000af9d792ce3a9d70db9f9f236d15d470cfd53cc3d43a4e4ee9ec3cb32b742f89ff0a2d00000000000000000000000000000000
+
+# A seat that never collects is capped from window 31, so its cycle there accrues nothing, and its machine is marked all the same: met is the uptime test, whatever the cap says.
+cap.first_capped_window=31
+cap.the_capped_cycle_accrued_nothing=true
+cap.the_capped_machine_is_marked=31
+cap.final_root=7736e3b7d99439e410b4113182be3a1450647cd38dbf96d47219f1778d8419e2
+
+# One machine past its seat's 731 cycles. The cycle after the span accrues nothing, and the machine is still marked, because a seat past its span stays in scope and measured.
+span.last_span_window=731
+span.the_cycle_past_the_span_accrued_nothing=true
+span.the_machine_is_marked_past_its_span=732
+span.final_root=51fe3e2710b946b9c3d536e1fff6445ff2d3d6cc5a43af2e948d23257d968a32
+
+# Each of the seven invariants, broken by a probe on a copy of the population's ledger. The first six are the ledger's own checks and the seventh is the block's, because it is about two heights.
+invariants.the_population_satisfies_all=true
+invariants.1_a_key_on_an_unactivated_seat=true
+invariants.2_an_owner_entry_missing=true
+invariants.3_two_seats_holding_one_key=true
+invariants.4_a_mark_for_an_unassigned_window=true
+invariants.5_a_count_for_a_future_window=true
+invariants.6_a_count_above_the_limit=true
+invariants.7_a_retirement_removed=true
+invariants.7_a_retirement_moved=true
