@@ -114,6 +114,12 @@ so the commits waited on `origin/claude/proceed-xznrp2`. The owner said
 "conclude" during the outage. When access returned, issue #390 and the PR were
 opened and the slice was published under the frozen scope.
 
+**Merged and verified.** PR #391 merged by rebase as `179dcb4`, closing #390.
+Run 38059175126 on the PR head `35c8239` passed all six checks: 179 CTest
+entries on three presets and 188 on `clang-sanitizers`, with both new entries
+passing in every job, and all eight network runs. `main`'s tree at `179dcb4` is
+byte-identical to the candidate's.
+
 ### How M4.3b was delivered
 
 **The owner said "conclude" while it was being written, so it was finished
