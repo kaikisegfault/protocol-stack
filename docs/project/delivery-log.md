@@ -105,7 +105,14 @@ with an independent derivation. Fourteen unit tests cover the carried-dispatch
 identity, the adapter's boundaries, the lifetime's place, receipts, a chain with
 no machine key, and determinism. The contract vectors, the contract test, the
 `tests/tools` suites, and the metadata verifier pass locally. The vector check
-takes about eight seconds.
+takes about eight seconds. A configured CMake tree registers 179 CTest entries,
+and the two new ones pass under `ctest`.
+
+**The owner said "conclude", and publication stopped at the push.** Every
+GitHub API call from the session returned "invalid session", including the
+issue and the PR, while `git push` worked. The commits are on
+`origin/claude/proceed-xznrp2`, unmerged and without a hosted run, and the
+handoff makes publishing them its first action.
 
 ### How M4.3b was delivered
 
