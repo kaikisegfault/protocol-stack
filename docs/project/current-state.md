@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-10-09
+Last updated: 2026-10-10
 
 This is the handoff. It says what is true now, and nothing else. How each slice
 was delivered is in [`delivery-log.md`](delivery-log.md), newest first, and
@@ -19,9 +19,9 @@ its eleven requirements, and four are met.
 | ---: | --- | --- |
 | 1 | A test Founder's lifecycle on the four-validator devnet | Met 2026-09-27, M4.1 |
 | 2 | A kind-4 and a kind-18 mint on a network | Met 2026-10-03, M4.2a to M4.2c |
-| 3 | The per-machine attestation-key registry | Specified in `economy-transition-v10`, M4.3a; contract half in Python, M4.3b |
+| 3 | The per-machine attestation-key registry | Specified in `economy-transition-v10`, M4.3a; executes in Python, M4.3b and M4.3c |
 | 4 | A deterministic test verifier as a replaceable component | Met 2026-10-09, M4.4, for version nine's proofs |
-| 5 | Sensitive-action authorization with expiry and replay protection | Specified in `economy-transition-v10`, M4.3a; contract half in Python, M4.3b |
+| 5 | Sensitive-action authorization with expiry and replay protection | Specified in `economy-transition-v10`, M4.3a; executes in Python, M4.3b and M4.3c |
 | 6 | Legacy succession mechanics | Open; the values are founder-reserved |
 | 7 | The threat model for local HUB verification | Met 2026-10-09, M4.7; its review is owed |
 | 8 | Storage bounds for every new entry | Open; due with each new entry |
@@ -68,13 +68,31 @@ define them:
 - one approval message that signs the whole transaction, with a one-slot life.
 
 The owner's answers in ADRs 0100 and 0101 fix every participant-facing value.
-**Its contract half runs in Python** (M4.3b). `simulation/economy_transition_v10/`
-imports version nine and declares exactly what it carries, revises, withdraws,
-and adds. It holds the genesis, the three new entries, the two changed bodies,
-the three signed constructions, and the lifetime rule.
-`test-vectors/economy-transition-v10.txt` records 107 vectors, each agreed with
-an independent derivation that imports nothing from `simulation/`. Nothing yet
-executes a version-ten transaction or the registry step.
+**The independent Python model executes all of it** (M4.3b and M4.3c).
+`simulation/economy_transition_v10/` imports version nine and declares exactly
+what it carries, revises, withdraws, and adds. Kinds 10 and 23 are its own;
+every other kind runs on version nine's handlers, with a body approval verified
+over the whole transaction. The prologue runs the registry step.
+
+- `test-vectors/economy-transition-v10.txt` records 107 contract vectors.
+- `test-vectors/economy-transition-v10-execution.txt` records 141 execution
+  vectors, from a chain of blocks and from 101 machines driven through version
+  nine's evidence harness. They show every refusal in order, the launch key
+  retiring at 100 active machines and staying retired, the 1,001st
+  registration of one machine in one window refused, and both of version
+  nine's executed replays refused in both forms.
+- Every value two sources can reach is agreed with an independent derivation
+  that imports nothing from `simulation/`.
+
+**No kernel executes version ten.** The C++ kernel, the store, the application,
+and the network all still run version nine.
+
+**The model found a specification defect, repaired before anything implemented
+it.** The registry step counted a mark of 0, which means never met, as meeting
+window 0. So 100 keys registered in the first two windows retired the launch key
+at height 57,600, before any machine had met a cycle.
+[ADR 0103](../decisions/0103-the-registry-count-excludes-an-unmarked-machine.md)
+excludes an unmarked machine from the count.
 
 **Requirement 7's evidence** is
 [`hub-verification-threat-model.md`](../architecture/hub-verification-threat-model.md).
@@ -245,7 +263,7 @@ dependency.
   the full path, `tools/verify.sh`, on four presets: `gcc-debug`,
   `gcc-sanitizers`, `clang-debug`, and `clang-sanitizers`.
 - The full path verifies and tests the Go module and builds with CMake. It runs
-  177 CTest entries, or 186 on `clang-sanitizers`, which adds nine fuzz smokes,
+  179 CTest entries, or 188 on `clang-sanitizers`, which adds nine fuzz smokes,
   and then the eight network runs. "Verification required" gates the merge.
 - The owner's machine is resource-constrained. Run focused local checks, leave
   the matrix to the hosted runners, and remove local build trees with
@@ -270,8 +288,8 @@ models.
   a signer, the published relax is accepted again under a new nonce. A signer
   key alone undoes the tightening, which is the weakening ADR 0043's asymmetry
   exists to prevent. One kind-19 confirmation also moves value twice.
-  `economy-transition-v10` refuses both, and that check will flip when
-  version ten runs.
+  The version-ten model refuses both, in both forms. The verifier's check
+  flips when the kernel runs version ten.
 - **A HUB key derived from a face alone is only as secret as the face.**
   Anyone holding a good enough image could compute it offline, with no
   liveness check, so the derivation must also depend on a secret only an
@@ -312,34 +330,34 @@ first fee. No transition can enforce that order, so the bridge milestones must.
 
 ## Exact next action
 
-**Make version ten execute in Python: M4.3c.** This is the slice M3.17c was to
-version nine.
+**Make the C++ kernel execute version ten: M4.3d.** This is the slice M3.17d was
+to version nine, with version nine's migration as the template (ADR 0065).
 
-- A version-ten ledger and dispatch, importing version nine's and adding:
-  - kind 10 under the launch key and under an active machine;
-  - kind 23, and the approval check for every body-carried kind;
-  - the lifetime rule after `EXPIRED`;
-  - the registry step before the due window's evidence is deleted.
-- `test-vectors/economy-transition-v10-execution.txt`, recording the execution
-  cases the specification's last section requires:
-  - kind 23's rejections in order, and a replacement keeping its count;
-  - the 1,000th and 1,001st registration in one window;
-  - the cutoff at 99 and then 100 active machines, and no revival;
-  - both executed replays refused, each in both forms;
-  - the seven invariants, each broken by a probe.
+- `include/protocol/v10/` and `src/v10/`, importing version nine's kernel and
+  adding:
+  - entry kinds 24, 25, and 26, and the 182-octet genesis;
+  - kind 10's new body and its attester branch, and kind 23;
+  - the whole-transaction approval for every body-carried kind;
+  - the lifetime rule straight after `EXPIRED`, in the order the specification
+    now lists;
+  - the registry step, counting only a nonzero mark (ADR 0103).
+- Reproduce both vector files. The chain's blocks replay as version nine's do.
+  The population section needs the kernel to run the prologue alone at a window
+  opening, as `block.open_window` does. No kernel exposes that yet, and the
+  slice must decide how, because the same gap blocks driving the kernel over
+  `economy-scenario-suite-v4`.
 
-The kernel and the stack follow, with version nine's migration as the template
-(ADR 0065).
+The snapshot, the store, the application, and the network follow it.
 
 **Unblocked candidates behind it:**
 
-- the kind-22 mint on a seeded network, as above;
+- the kind-22 mint on a seeded network;
 - driving the C++ kernel over the `economy-scenario-suite-v4` population
-  against its seven pinned roots;
+  against its seven pinned roots, which shares the prologue question above;
 - ADR 0089's outage wall.
 
 Moving the network fixtures onto `protocol-hub-test-verifier-v9` waits for
-version ten to run, because version ten changes what they build anyway.
+version ten to run on a network, because version ten changes what they build.
 
 ## Blockers
 
