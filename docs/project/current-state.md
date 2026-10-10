@@ -253,15 +253,11 @@ dependency.
 
 ## Repository and verification
 
-- `kaikisegfault/protocol-stack`. Every issue is closed. `main` is at
-  `38b7fa2`, M4.3b anchored. **`claude/proceed-xznrp2` holds M4.3c, pushed and
-  unmerged**: the execution half at `2740c2c` and this handoff after it. No PR
-  exists for it, for the reason under [Blockers](#blockers).
+- `kaikisegfault/protocol-stack`. Every issue is closed, and `main` is the
+  only branch.
 - **The last full hosted verification** is candidate run 37957071697, on
-  M4.3b's tree, which `main` holds byte for byte at `7a86719`. M4.3c has had
-  none. Locally, its vector check, its unit tests, the contract vectors and
-  test, the `tests/tools` suites, the metadata verifier, and a CTest run of the
-  new entries in a configured tree, which registers 179, all pass.
+  M4.3b's tree, which `main` holds byte for byte at `7a86719`. M4.3c's
+  candidate run is recorded when its merge is anchored.
 - `verify.yml` classifies the changed paths with `tools/verification_scope.py`.
   Markdown and skill metadata take the lightweight path:
   `tools/verify_metadata.py` and the `tests/tools` suites. Everything else takes
@@ -335,12 +331,7 @@ first fee. No transition can enforce that order, so the bridge milestones must.
 
 ## Exact next action
 
-**First, publish M4.3c.** Open a PR from `claude/proceed-xznrp2` to `main`,
-create its issue if wanted, let "Verification required" run the full matrix on
-the head, repair anything it finds, merge by rebase when green, and anchor the
-merge in the delivery record. Start nothing else first.
-
-**Then make the C++ kernel execute version ten: M4.3d.** This is the slice M3.17d was
+**Make the C++ kernel execute version ten: M4.3d.** This is the slice M3.17d was
 to version nine, with version nine's migration as the template (ADR 0065).
 
 - `include/protocol/v10/` and `src/v10/`, importing version nine's kernel and
@@ -371,14 +362,5 @@ version ten to run on a network, because version ten changes what they build.
 
 ## Blockers
 
-**M4.3c is unpublished to `main`, because GitHub's API refused the session.**
-On 2026-10-10 every GitHub API call from the session that built it, to read an
-issue, list pull requests, create an issue, or open a PR, returned "invalid
-session". `git push` through the same proxy worked, so every commit is on
-`origin/claude/proceed-xznrp2`, and none is local-only. Without a PR the hosted
-matrix cannot run, so the slice is neither verified on GitHub nor merged.
-Reconnecting GitHub for Claude at claude.ai, or opening the PR by hand, removes
-it.
-
-No founder decision blocks anything. Every value the next contract version
-needs is answered (ADRs 0100 and 0101).
+**No blocker.** Every founder value the next contract version needs is
+answered (ADRs 0100 and 0101).

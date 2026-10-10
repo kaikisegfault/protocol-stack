@@ -108,11 +108,11 @@ no machine key, and determinism. The contract vectors, the contract test, the
 takes about eight seconds. A configured CMake tree registers 179 CTest entries,
 and the two new ones pass under `ctest`.
 
-**The owner said "conclude", and publication stopped at the push.** Every
-GitHub API call from the session returned "invalid session", including the
-issue and the PR, while `git push` worked. The commits are on
-`origin/claude/proceed-xznrp2`, unmerged and without a hosted run, and the
-handoff makes publishing them its first action.
+**GitHub's API refused the session for a while.** Every API call, for the
+issue and the PR included, returned "invalid session" while `git push` worked,
+so the commits waited on `origin/claude/proceed-xznrp2`. The owner said
+"conclude" during the outage. When access returned, issue #390 and the PR were
+opened and the slice was published under the frozen scope.
 
 ### How M4.3b was delivered
 
