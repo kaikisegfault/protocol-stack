@@ -38,6 +38,75 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M4.3c was delivered
+
+**The founder-decision gate passed with nothing reserved.** The slice had to
+settle: kind 10's and kind 23's rejection orders, which kinds carry an approval
+and what it signs, where the lifetime rule sits, where the registry step runs,
+what the count counts, where invariant 7 is checked, the receipt rule for kind
+23, and the fixtures. Every one is decided by ADRs 0100 to 0102 and the
+specification, or is mechanism. The count's repair restores ADR 0101's answer
+rather than choosing a new one: a machine that has never met a cycle is not
+active. No value a participant pays, receives, or must do moved.
+
+**Carried kinds run on version nine's own handlers.** Version ten changes which
+message a body approval verifies over and nothing else about kinds 2, 3, 4, 5,
+17, 18, 19, and 22. So `ApprovalOracle` is handed to version nine's dispatch:
+asked whether a HUB key signed one of the five withdrawn messages, it answers
+whether that key signed the version-ten approval of the transaction being
+executed. Every handler already verifies against the acting escrow's owner,
+which is the key the specification names, so nothing about whose approval
+counts moved with the message.
+
+- Rejected: **restating the eight handlers.** About 300 lines of version six's
+  and version nine's conditions copied to change one argument, with nothing
+  keeping the copies equal to the accepted ones.
+- Rejected: **parameterising version six's handlers by message builder.** It
+  edits an accepted model to serve a later one, which every version since
+  seven has avoided.
+
+**Kind 10 is restated, and kind 23 is new.** Kind 10's conditions change in
+three places, and its version-nine handler verifies the version-nine message
+before the point where the machine branch begins. Its four writes are version
+nine's, in the same order.
+
+**The population runs through version nine's evidence harness.** The launch
+key's retirement needs 100 machines meeting one window. In a chain of blocks
+that is millions of challenge selections and thousands of response blocks in
+Python, so the cutoff, the limit, the cap, and the span use `open_window` and
+supplied kind-19 records, as `economy-scenario-suite-v4` does. Everything
+claimed about the registry is still derived by the contract. The chain of
+blocks covers what blocks can reach: every refusal, both replays, the lifetime,
+two assignments, a replacement, and every approval.
+
+**The model found a specification defect.** Its first population registered
+101 keys in window 0, and the window-0 assignment at height 57,600 retired the
+launch key. Step 2 counted entries whose mark equals the due window, the due
+window was 0, and 0 is how an entry says it never met anything.
+[ADR 0103](../decisions/0103-the-registry-count-excludes-an-unmarked-machine.md)
+excludes an unmarked machine. Skipping the window-0 step, re-encoding "never",
+and counting the step's own marks were rejected there. The vectors record the
+101 unmarked keys and a count of zero.
+
+**A probe found a gap in the evidence, now closed.** Moving kind 23's held-key
+check after its attestation check passed every vector, because each refusal
+case violated one condition. Every refusal before the last now also violates
+each later condition it can. Re-run, that reordering fails by name, and so do
+moving kind 10's replay checks after the attester branch, reverting ADR 0103,
+and a tampered recorded value.
+
+**Writing the shared envelope checks out settled one order.** The lifetime rule
+sits after `FEE_LIMIT_TOO_LOW` and `EXPIRED` and before the nonce and debit
+checks. The specification now lists the order, so the kernel has no reading to
+choose.
+
+**Evidence.** 141 execution vectors, every ordered outcome and encoding agreed
+with an independent derivation. Fourteen unit tests cover the carried-dispatch
+identity, the adapter's boundaries, the lifetime's place, receipts, a chain with
+no machine key, and determinism. The contract vectors, the contract test, the
+`tests/tools` suites, and the metadata verifier pass locally. The vector check
+takes about eight seconds.
+
 ### How M4.3b was delivered
 
 **The owner said "conclude" while it was being written, so it was finished
