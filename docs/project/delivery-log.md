@@ -38,6 +38,100 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M4.3d was delivered
+
+**The founder-decision gate passed with nothing reserved.** Issue #393. The
+slice had to settle the genesis layout and the launch key's offset, the three
+entries' layouts and refusals, kind 10's and kind 23's bodies, and the three
+signed constructions. It also had to settle the lifetime predicate and the two
+kind sets it reads, the result codes, the version identity, the receipt's kind
+set, how the kernel stages beside version nine's, and the file layout.
+`economy-transition-v10` and its accepted vectors fix every value. The staging
+and the layout are mechanism, recorded in ADR 0104. No value a participant
+pays, receives, or must do moved.
+
+**The handoff's M4.3d was two slices, as version nine's kernel was.** It named
+the codec and the execution together, and called the slice "M3.17d". Version
+nine's kernel arrived as M3.18a and M3.18b, and version ten's contract vectors
+split the same way: a codec reaches 99 of the 107. The execution half is M4.3e.
+
+**ADR 0065's question was re-opened, not inherited.** Its expiry said the next
+kernel replacement must re-open it, and the version-nine migration followed it
+without doing so in writing.
+[ADR 0104](../decisions/0104-the-version-ten-kernel-is-staged-beside-version-nine.md)
+counts what names version nine above the kernel, 26 C++ files and 15 Go files.
+It enumerates the migration through the version-nine deletion.
+
+- Rejected: **building version ten on version nine's translation units**, as
+  the Python model builds on version nine's modules. In C++ it would make
+  version nine's kernel a permanent dependency, so the deletion could never run.
+
+**Six carried translation units have an empty normalising diff** against
+version nine's, after rebinding `protocol::v9` and `protocol/v9/`. They are the
+calendar, the envelope, the identity, the settlement, the state, and the
+uptime, with the internal header. Six more change only where the contract does:
+
+- the kind and entry tables, and the code names;
+- kind 10's and kind 23's bodies;
+- the registration message, with the five withdrawn ones removed;
+- the genesis field and the version-nine predecessor identity;
+- the receipt's non-issuing kinds;
+- the tree's content checks and its ninth predecessor root.
+
+Everything version ten adds is `economy_registry.cpp`.
+
+**No version-ten test links version nine.** ADR 0092 re-pinned nineteen checks
+that died with the version-eight kernel, so this suite pins to files from the
+start:
+
+- the kind and entry tables, rebuilt from version six's to version nine's files;
+- the first forty-five codes, from version six's and version eight's;
+- version one's transfer bytes, from version six's;
+- version nine's chain identity, its nine roots, and its header, from version
+  nine's own file.
+
+**Each label is checked through what the kernel derived with it.** The chain
+identity must be the recorded label's digest of the genesis bytes, and the root
+the recorded label's digest of its frame. Each message must open with its
+recorded label. The two kind sets the lifetime rule reads are derived from what
+`approved_bytes` and `carries_hub_proof` do over every assigned kind.
+
+**Four choices are worth naming.**
+
+- `approved_bytes` decodes the body, zeroes its HUB field, and re-encodes, which
+  is the specification's definition. A fixed-offset zeroing would also hold,
+  because every approval kind's field is its body's last 64 octets, and a check
+  records that. But it would be a second statement of nine layouts.
+- The lifetime bound never forms `height + 1,200`, so it holds at the top of the
+  `u64` range, and a check exercises it there.
+- `carries_hub_proof` treats a body that will not decode as carrying a proof.
+  It is unreachable after admission, so the stricter rule is the safe default.
+- `kActivityThresholdSeconds` moves into the codec header, because version ten's
+  contract records it among its constants.
+
+**Thirteen mutation probes failed, each by name:**
+
+- the registration's attesting seat moved after the identity;
+- an approval that keeps its HUB field;
+- the lifetime bound off by one;
+- the build authority key written where the dispute key goes;
+- the version-nine root and the version-nine identity each without the
+  timestamp;
+- the count limit loosened by one, and a retirement of zero admitted;
+- the tree's machine-key content check removed;
+- kind 23 under scheme 2, and kind 10's seat after its signature;
+- the always-proven kinds ignored, and the receipt version left at 9.
+
+**Two vectors are deferred, and the guard requires both to still match.** The
+`carryover.` section is the Python package's own surface, owed to its verifier.
+`genesis.writes_no_registry_entry` belongs to `open_ledger`, which is M4.3e's.
+
+**Evidence.** GCC 12 and Clang 14, with the repository's warning flags,
+compiled the codec and the suite through the scratch-shim route. The suite
+passes against the recorded files in a few milliseconds. `CMakeLists.txt` gains
+one test, `economy-transition-v10-cpp`, so the debug presets run 180 CTest
+entries and `clang-sanitizers` 189.
+
 ### How M4.3c was delivered
 
 **The founder-decision gate passed with nothing reserved.** The slice had to
