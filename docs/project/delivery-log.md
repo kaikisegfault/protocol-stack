@@ -140,6 +140,15 @@ the warning, so no local check could have found it. It is M3.18b's finding in
 the same shape, and version nine's tests already avoid it by copying the
 recorded text. The repair copies it here too.
 
+**The owner said "conclude" while the repaired candidate was being verified**,
+so the scope froze at M4.3d and nothing of M4.3e was started.
+
+**Merged and verified.** PR #394 merged by rebase as `a93b9ab`, closing #393.
+Run 39137380230 on the PR head `fbeeafb` passed all six checks. It ran 180 CTest
+entries on three presets and 189 on `clang-sanitizers`, with
+`economy-transition-v10-cpp` passing in every job, and all eight network runs.
+`main`'s tree at `a93b9ab` is byte-identical to the candidate's.
+
 ### How M4.3c was delivered
 
 **The founder-decision gate passed with nothing reserved.** The slice had to
