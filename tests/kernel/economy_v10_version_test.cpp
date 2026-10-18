@@ -61,7 +61,7 @@ void verify_derivation_labels(const pv::Values& values, const pv::Values& manife
   pv::require(encoded.has_value() && identity.has_value(),
               "the fixture genesis encodes and has an identity");
 
-  const auto& chain_label = expect_text(values, "identity.chain_id_label");
+  const std::string chain_label = expect_text(values, "identity.chain_id_label");
   pv::require(chain_label == v10::kChainIdLabel &&
                   protocol::v1::hash(chain_label, *encoded) == *identity,
               "the chain identity is the recorded label's digest of genesis");
@@ -69,7 +69,8 @@ void verify_derivation_labels(const pv::Values& values, const pv::Values& manife
                   read_u16(*encoded, 4),
               "the encoded genesis carries schema version 10");
 
-  const auto& tree_prefix = expect_text(values, "identity.economy_tree_prefix");
+  const std::string tree_prefix =
+      expect_text(values, "identity.economy_tree_prefix");
   const auto empty = v10::economy_root({});
   pv::require(tree_prefix == v10::kEconomyTreePrefix && empty.has_value() &&
                   *empty == protocol::v1::hash(tree_prefix + "-empty"),
@@ -86,7 +87,7 @@ void verify_derivation_labels(const pv::Values& values, const pv::Values& manife
   pv::append_u64(preimage, summary.height);
   pv::append_u64(preimage, summary.timestamp);
   preimage.insert(preimage.end(), frame->tail.begin(), frame->tail.end());
-  const auto& root_label = expect_text(values, "identity.state_root_label");
+  const std::string root_label = expect_text(values, "identity.state_root_label");
   pv::require(root_label == v10::kStateRootLabel &&
                   protocol::v1::hash(root_label, preimage) == *root,
               "the state root is the recorded label's digest of its frame");
@@ -112,7 +113,7 @@ void verify_derivation_labels(const pv::Values& values, const pv::Values& manife
   pv::require(expect_number(values, "identity.block_header_schema_version") ==
                   read_u16(*header, 4),
               "the header keeps schema version 9");
-  const auto& block_label = expect_text(values, "identity.block_id_label");
+  const std::string block_label = expect_text(values, "identity.block_id_label");
   const auto identifier = v10::block_id(*header);
   pv::require(block_label == v10::kBlockIdLabel && identifier.has_value() &&
                   protocol::v1::hash(block_label, *header) == *identifier,
