@@ -132,6 +132,14 @@ passes against the recorded files in a few milliseconds. `CMakeLists.txt` gains
 one test, `economy-transition-v10-cpp`, so the debug presets run 180 CTest
 entries and `clang-sanitizers` 189.
 
+**The first candidate failed both GCC presets, and both Clang presets passed
+the whole matrix.** Run 39136276697 found `-Werror=dangling-reference`, a GCC
+13 warning, at four sites in `economy_v10_version_test.cpp`. Each bound a
+reference to `expect_text` called with a temporary key. GCC 12 cannot produce
+the warning, so no local check could have found it. It is M3.18b's finding in
+the same shape, and version nine's tests already avoid it by copying the
+recorded text. The repair copies it here too.
+
 ### How M4.3c was delivered
 
 **The founder-decision gate passed with nothing reserved.** The slice had to
