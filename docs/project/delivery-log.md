@@ -38,6 +38,95 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M4.3e was delivered
+
+**The founder-decision gate passed with nothing reserved.** Issue #396. The
+slice had to settle kind 10's restated order and its count, kind 23's seven
+conditions and three writes, which message each body approval verifies over and
+against which key, where the lifetime rule sits, where the registry step runs
+and what it counts, where invariant 7 is checked, how the prologue runs alone,
+and the file layout. `economy-transition-v10`, ADRs 0100 to 0103, and the
+accepted execution vectors fix every rule. The prologue entry point and the
+layout are mechanism, recorded in
+[ADR 0105](../decisions/0105-the-kernel-runs-the-prologue-alone-for-the-evidence-harness.md)
+and ADR 0104. No value a participant pays, receives, or must do moved.
+
+**Version nine's ten execution units were copied with the namespace rebound,
+and three have an empty normalising diff**: the assignment, the monthly
+settlement, and the uptime transitions. Five change only where the contract
+does:
+
+- the transitions: kind 10 restated with the lifetime rule, the attester, and
+  the count, kind 17's relax verified over the approval, and kind 23 routed;
+- the value transitions: seven approvals verified over the whole transaction;
+- the execution: the lifetime rule straight after `EXPIRED`;
+- the block: the registry step between the accumulation and the deletion,
+  invariant 7 beside the conservation gate, the quiet path's registry check,
+  and `open_window`;
+- the ledger and the invariants: the launch key, the build authority key, the
+  three entries projected, and invariants 1 to 6 in the gate.
+
+Everything version ten adds to execution is `economy_registry_transitions.cpp`,
+as everything it adds to the codec is `economy_registry.cpp`.
+
+**`require_seat` moved from file-private to the internal header**, because kind
+23 states its first four conditions as exactly the order kinds 3 and 4 apply.
+
+- Rejected: **restating the four conditions in kind 23.** Eight lines, and a
+  second statement of one rejection order with nothing keeping the two equal.
+
+**The prologue runs alone through `open_window`, which ADR 0105 records.** The
+population's 101 machines reach the launch key's retirement only through
+version nine's evidence harness, as the model does it.
+
+- Rejected: **a test including `src/v10/`'s internal header**, because the
+  scenario suite's driver would need the same thing, and a second caller is an
+  interface either way.
+- Rejected: **a `BlockOrder` flag that skips everything but the prologue.** The
+  three flags each run a rejected reading of the block, and skipping the issue
+  and expiry steps is a different operation, not a reading.
+
+**The test rebuilds both fixtures down to the signature bytes.** A transaction
+identifier is a digest over the signed bytes, so every builder issues its
+signatures in the model's order, and the two transactions the model builds
+before a block's list are built before it here. No version-ten test includes
+`protocol/v9/`: the version-nine purchase approval is built from version six's
+accepted label, and the receipt boundary is read from version nine's file. **The
+first complete run reproduced all 141 vectors**: every refusal, every receipt,
+both headers, and all five roots, the chain's and the population's.
+
+**Twenty-four mutation probes ran. Nineteen failed by name at once, and three
+named real gaps:**
+
+- the lifetime rule moved after the nonce pair;
+- the lifetime rule moved ahead of the fee limit;
+- an activity test that does not exclude a mark of 0.
+
+No recorded lifetime refusal carries a wrong nonce or a low fee limit, and no
+recorded run registers through a machine in window 2, the only window whose
+latest assigned window is 0. `economy_v10_orders.cpp` adds one check for each,
+with a control, and all three probes then failed. One probe was **equivalent,
+not a gap**: the lifetime rule moved ahead of `EXPIRED`. A refusal there needs
+`valid_until < h` and the lifetime needs `valid_until > h + 1,200`, so no
+transaction fails both. The twenty-fourth removed `open_window`'s height and
+stamp refusals, and fails against the refusal check written beside the three. A
+further probe was malformed and was replaced.
+
+**Three checks are defensive and no probe reaches them**: invariant 7 inside
+`execute_block` and `open_window`, the quiet path's registry check, and
+`open_window`'s conservation gate. A conforming kernel never moves a retirement
+or breaks a registry invariant between blocks, so only a mutated kernel could
+trip them. The model checks the same places. The invariant probes exercise the
+functions those gates call.
+
+**Evidence.** GCC 12 and Clang 14, with the repository's warning flags, compiled
+the kernel and the test through the scratch-shim route, and the target passes in
+about 5.5 seconds. `CMakeLists.txt` gains one test,
+`economy-transition-v10-execution-cpp`, so the debug presets run 181 CTest
+entries and `clang-sanitizers` 190. The new test files were searched for GCC
+13's `-Wdangling-reference` shape, and their accessor returns by value so the
+shape cannot arise.
+
 ### How M4.3d was delivered
 
 **The founder-decision gate passed with nothing reserved.** Issue #393. The
