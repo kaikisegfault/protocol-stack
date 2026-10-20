@@ -6,7 +6,10 @@ contract half and execution half are recorded, with 107 contract vectors in
 `test-vectors/economy-transition-v10-execution.txt`. The C++ kernel under
 `src/v10/` reproduces every contract vector a codec can reach (M4.3d, ADR 0104)
 and every execution vector (M4.3e, ADR 0105). The snapshot, the store, the
-application, and the node are not built.
+application, and the node are not built. **[ADR 0106](../decisions/0106-founder-answer-the-registration-limit-counts-per-founder.md)
+amends the registration limit to count per founder as well as per machine**,
+and this document does not carry that yet; M4.3f revises it, the model, and the
+kernel.
 
 This document defines the version-ten Founder Economy consensus transition. It
 is [`economy-transition-v9`](economy-transition-v9.md) with **a registry of

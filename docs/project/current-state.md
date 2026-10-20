@@ -68,7 +68,10 @@ define them:
 - a registry step that records each machine's last met window;
 - one approval message that signs the whole transaction, with a one-slot life.
 
-The owner's answers in ADRs 0100 and 0101 fix every participant-facing value.
+The owner's answers in ADRs 0100 and 0101 fix every participant-facing value
+but one. **ADR 0106 adds that the 1,000 a day also counts per founder**, across
+all of one founder's machines, and nothing carries it yet: the specification,
+the model, and the kernel count per machine only until M4.3f revises them.
 **The independent Python model executes all of it** (M4.3b and M4.3c).
 `simulation/economy_transition_v10/` imports version nine and declares exactly
 what it carries, revises, withdraws, and adds. Kinds 10 and 23 are its own;
@@ -246,17 +249,6 @@ stands, the rules that shape M4's work are these.
 None of these may be invented. Each is asked when it becomes the nearest
 dependency.
 
-- **Whether the 1,000-a-day registration limit also counts per founder.** It
-  was asked on 2026-10-20 and is unanswered. Version ten counts it per machine
-  (ADR 0101), so one founder's 1,000 seats could attest 1,000,000
-  registrations a day, the whole first-million list. Each false identity there
-  can collect up to 1,250.01 units over 731 days, not only the 1.71-unit airdrop
-  ADR 0101 priced. The chain checks a machine's signature and never the
-  capture, so this limit is the only rate a compromised fleet meets. A founder
-  count would not stop someone who registers extra founder identities through
-  machines they control and buys seats under each; only T4 and T5 address
-  that.
-
 - **Legacy limits**: inactivity bounds, dispute evidence, conflicting-statement
   precedence, and reclaim transitions. Requirement 6 builds the mechanics
   without them.
@@ -361,16 +353,26 @@ first fee. No transition can enforce that order, so the bridge milestones must.
 
 ## Exact next action
 
-**First, obtain the founder answer on a per-founder registration limit**
-(Founder-reserved and open). If the answer adds a founder count, version ten's
-contract is revised before anything stores its state: an ADR recording the
-answer, the specification, the Python model and its re-recorded vectors, and
-the C++ kernel, in that order. M4.3f then encodes the revised registry. If the
-answer keeps the per-machine count alone, the threat model records the
-aggregate as accepted, and M4.3f proceeds as written below.
+**Revise version ten so the registration limit counts per founder: M4.3f.**
+The owner answered on 2026-10-20
+([ADR 0106](../decisions/0106-founder-answer-the-registration-limit-counts-per-founder.md)):
+one founder's machines together register at most 1,000 people a day, however
+many seats that founder holds. Nothing stores a version-ten state yet, so the
+contract is revised in place, in this order:
 
-**Encode a version-ten ledger as a snapshot: `snapshot_v10`, M4.3f**, step 3 of
-ADR 0104's enumeration. Without it a version-ten ledger cannot be written down,
+- the specification: a founder-count entry keyed by the attesting seat's
+  identity, its storage bound at 100,000 founders, kind 10's condition beside
+  the machine count and still after the signature, and the invariants;
+- the Python model and its re-recorded contract and execution vectors, with
+  one founder's 1,000th and 1,001st registrations spread across two of their
+  machines;
+- the C++ kernel, reproducing them.
+
+Whether the machine-key entry keeps its own count is the revision's to decide,
+because a founder cap of 1,000 already holds every machine to 1,000.
+
+**Then encode a version-ten ledger as a snapshot: `snapshot_v10`, M4.3g**, step
+3 of ADR 0104's enumeration. Without it a version-ten ledger cannot be written down,
 so no store, application, or node can carry one.
 
 - `include/protocol/storage/snapshot_v10.hpp` and its translation units, version
@@ -405,8 +407,6 @@ version ten to run on a network, because version ten changes what they build.
 
 ## Blockers
 
-**One founder answer blocks the next action**: whether the 1,000-a-day
-registration limit also counts per founder. It decides whether version ten's
-registry gains an entry the snapshot must encode, so M4.3f waits for it.
-Nothing else is blocked, and no credential, infrastructure, or review blocks
-publication.
+**No blocker.** The per-founder registration limit is answered (ADR 0106), and
+every other founder value version ten needs is answered (ADRs 0100 and
+0101).
