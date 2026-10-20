@@ -3,9 +3,9 @@
 Status: Accepted M4 consensus transition contract. The independent model's
 contract half and execution half are recorded, with 107 contract vectors in
 `test-vectors/economy-transition-v10.txt` and 141 execution vectors in
-`test-vectors/economy-transition-v10-execution.txt`. The C++ kernel's codec,
-under `src/v10/`, reproduces every contract vector a codec can reach (M4.3d,
-ADR 0104). The kernel's execution half, the snapshot, the store, the
+`test-vectors/economy-transition-v10-execution.txt`. The C++ kernel under
+`src/v10/` reproduces every contract vector a codec can reach (M4.3d, ADR 0104)
+and every execution vector (M4.3e, ADR 0105). The snapshot, the store, the
 application, and the node are not built.
 
 This document defines the version-ten Founder Economy consensus transition. It
