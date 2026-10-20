@@ -148,6 +148,14 @@ founder is the owner's, because it changes how fast newcomers can join, so it
 was asked rather than chosen. The owner then said "conclude", so the scope froze at
 M4.3e and nothing of M4.3f was started.
 
+**The owner answered during the conclusion: 1,000 a day per founder**, the
+recommended option, over 10,000 per founder and keeping the per-machine count
+alone.
+[ADR 0106](../decisions/0106-founder-answer-the-registration-limit-counts-per-founder.md)
+records it, and the constitution, the threat model's T8, and the handoff were
+updated. Revising version ten to carry it is the next slice, so none of it was
+started here.
+
 ### How M4.3d was delivered
 
 **The founder-decision gate passed with nothing reserved.** Issue #393. The

@@ -176,6 +176,13 @@ with a registration rate per machine. That is a candidate for the contract
 version to evaluate. It changes how fast a newcomer can join, so its value is
 asked, not chosen.
 
+**Both answers are in.** Each machine registers at most 1,000 people a day
+(ADR 0101), and so does each founder across all their machines (ADR 0106),
+because one founder's 1,000 seats would otherwise attest the whole
+first-million list in a day. Neither bounds someone who registers extra founder
+identities through machines they control and buys seats under each; that rests
+on T4 and T5.
+
 ### T9. A HUB key that can no longer be produced
 
 **No transition rotates a HUB public key** (ADRs 0036, 0039, and 0044). If the

@@ -806,7 +806,12 @@ recently assigned cycle, and each machine may register at most 1,000 people a
 day, both decided the same day.
 [ADR 0100](../decisions/0100-founder-answers-on-who-verifies-and-how-registration-starts.md)
 and [ADR 0101](../decisions/0101-founder-answers-on-the-launch-cutoff-an-active-machine-and-the-registration-limit.md)
-record the answers.
+record the answers. **The 1,000 a day also counts per founder, decided on
+2026-10-20**: one founder's machines together register at most 1,000 people a
+day, however many seats that founder holds, so a founder's whole fleet cannot
+fill the first-million list in a day.
+[ADR 0106](../decisions/0106-founder-answer-the-registration-limit-counts-per-founder.md)
+records it.
 
 Every identity's uniqueness commitment is replicated to every Founder Machine,
 so uniqueness is compared locally against the whole population with no lookup
@@ -1146,6 +1151,12 @@ of machines are active. [ADR 0101](../decisions/0101-founder-answers-on-the-laun
 records the rest, the same day: the number is 100 active machines; an active
 machine is one whose seat met its most recently assigned cycle; and each
 machine may register at most 1,000 people a day.
+
+Resolved on 2026-10-20, and recorded in
+[ADR 0106](../decisions/0106-founder-answer-the-registration-limit-counts-per-founder.md):
+the 1,000-a-day registration limit counts per founder as well as per machine,
+so one founder's machines together register at most 1,000 people a day,
+however many seats that founder holds.
 
 Claude should ask focused questions at those boundaries. All other mechanism,
 encoding, storage, consensus scheduling, networking, testing, packaging, and
