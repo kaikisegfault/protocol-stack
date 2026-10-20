@@ -142,8 +142,8 @@ forwarded a side agent's note: the 1,000-a-day limit counts per machine, so one
 founder's 1,000 seats could attest 1,000,000 registrations a day, the whole
 first-million list. The code confirms it, and ADR 0101 and the threat model's
 T8 only ever bounded one machine. ADR 0101 also priced a false registration at
-the 1.71-unit airdrop, where each false identity in the first million is owed
-up to 1,250.01 units over 731 days. Whether the limit also counts per founder
+the 1.71-unit airdrop, where each false identity in the first million can
+collect up to 1,250.01 units over 731 days. Whether the limit also counts per founder
 is the owner's, because it changes how fast newcomers can join, so it was asked
 rather than chosen. The owner then said "conclude", so the scope froze at
 M4.3e and nothing of M4.3f was started.
