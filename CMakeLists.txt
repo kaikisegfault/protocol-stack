@@ -180,24 +180,34 @@ set(
   src/v9/economy_uptime.cpp
   src/v9/economy_uptime_transitions.cpp
   src/v9/economy_value_transitions.cpp
-  # The version-ten codec, staged beside version nine's while the layers above
-  # the kernel migrate (ADR 0104): version nine's twelve codec translation units
-  # with the namespace rebound and the edits the contract forces, plus
-  # `economy_registry.cpp`, which holds the whole of what version ten adds to
-  # the codec. Its execution half is the next slice.
+  # The version-ten kernel, staged beside version nine's while the layers above
+  # the kernel migrate (ADR 0104): version nine's codec and execution
+  # translation units with the namespace rebound and the edits the contract
+  # forces, plus `economy_registry.cpp` and `economy_registry_transitions.cpp`,
+  # which hold the whole of what version ten adds to the codec and to execution.
+  src/v10/economy_assignment.cpp
+  src/v10/economy_block.cpp
   src/v10/economy_body.cpp
   src/v10/economy_calendar.cpp
   src/v10/economy_contract.cpp
   src/v10/economy_envelope.cpp
+  src/v10/economy_execution.cpp
   src/v10/economy_genesis.cpp
   src/v10/economy_identity.cpp
+  src/v10/economy_invariants.cpp
+  src/v10/economy_ledger.cpp
   src/v10/economy_messages.cpp
+  src/v10/economy_monthly.cpp
   src/v10/economy_receipt.cpp
   src/v10/economy_registry.cpp
+  src/v10/economy_registry_transitions.cpp
   src/v10/economy_settlement.cpp
   src/v10/economy_state.cpp
+  src/v10/economy_transitions.cpp
   src/v10/economy_tree.cpp
   src/v10/economy_uptime.cpp
+  src/v10/economy_uptime_transitions.cpp
+  src/v10/economy_value_transitions.cpp
 )
 add_library(protocol_kernel STATIC ${PROTOCOL_STACK_KERNEL_SOURCES})
 target_include_directories(
@@ -377,6 +387,15 @@ add_executable(
   tests/kernel/economy_v10_version_test.cpp
 )
 target_link_libraries(economy_v10_codec_tests PRIVATE protocol_kernel)
+add_executable(
+  economy_v10_execution_tests
+  tests/kernel/economy_v10_execution_test.cpp
+  tests/kernel/economy_v10_trace.cpp
+  tests/kernel/economy_v10_population.cpp
+  tests/kernel/economy_v10_execution_checks.cpp
+  tests/kernel/economy_v10_orders.cpp
+)
+target_link_libraries(economy_v10_execution_tests PRIVATE protocol_kernel)
 add_executable(
   kernel_admission_tests
   tests/kernel/admission_test.cpp
@@ -635,6 +654,7 @@ set(
   economy_v9_codec_tests
   economy_v9_execution_tests
   economy_v10_codec_tests
+  economy_v10_execution_tests
   kernel_admission_tests
   kernel_execution_tests
   kernel_genesis_tests
@@ -900,6 +920,19 @@ add_test(
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v7.txt"
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v6.txt"
     "${PROJECT_SOURCE_DIR}/test-vectors/protocol-primitives-v1.txt"
+)
+# The version-ten kernel executing its chain and its population. Version nine's
+# contract file fixes the receipt version a version-nine decoder requires, and
+# version six's the label a version-nine purchase approval was signed under, so
+# no predecessor kernel is linked (ADR 0104).
+add_test(
+  NAME economy-transition-v10-execution-cpp
+  COMMAND
+    economy_v10_execution_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v10-execution.txt"
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v10.txt"
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v9.txt"
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v6.txt"
 )
 add_test(
   NAME version-nine-snapshot
