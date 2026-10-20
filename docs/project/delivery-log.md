@@ -127,6 +127,27 @@ entries and `clang-sanitizers` 190. The new test files were searched for GCC
 13's `-Wdangling-reference` shape, and their accessor returns by value so the
 shape cannot arise.
 
+**Merged and verified.** PR #397 merged by rebase as `09d937f`, closing #396.
+Run 39487145302 on the PR head `4c4ae7a` passed all six checks. It ran 181
+CTest entries on three presets and 190 on `clang-sanitizers`, with
+`economy-transition-v10-execution-cpp` passing in every job, in 6.8 to 48.3
+seconds, and all eight network runs. `main`'s tree at `09d937f` is
+byte-identical to the candidate's. **The longest job took 15:51 against the
+twenty-minute timeout**, up from 14:42 on run 38059175126, which is the trend
+ADR 0104 says to answer by finishing the migration rather than by trimming a
+gate.
+
+**A founder question surfaced while the candidate was verified.** The owner
+forwarded a side agent's note: the 1,000-a-day limit counts per machine, so one
+founder's 1,000 seats could attest 1,000,000 registrations a day, the whole
+first-million list. The code confirms it, and ADR 0101 and the threat model's
+T8 only ever bounded one machine. ADR 0101 also priced a false registration at
+the 1.71-unit airdrop, where each false identity in the first million is owed
+up to 1,250.01 units over 731 days. Whether the limit also counts per founder
+is the owner's, because it changes how fast newcomers can join, so it was asked
+rather than chosen. The owner then said "conclude", so the scope froze at
+M4.3e and nothing of M4.3f was started.
+
 ### How M4.3d was delivered
 
 **The founder-decision gate passed with nothing reserved.** Issue #393. The

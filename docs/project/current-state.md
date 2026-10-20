@@ -246,6 +246,17 @@ stands, the rules that shape M4's work are these.
 None of these may be invented. Each is asked when it becomes the nearest
 dependency.
 
+- **Whether the 1,000-a-day registration limit also counts per founder.** It
+  was asked on 2026-10-20 and is unanswered. Version ten counts it per machine
+  (ADR 0101), so one founder's 1,000 seats could attest 1,000,000
+  registrations a day, the whole first-million list. Each false identity there
+  can collect up to 1,250.01 units over 731 days, not only the 1.71-unit airdrop
+  ADR 0101 priced. The chain checks a machine's signature and never the
+  capture, so this limit is the only rate a compromised fleet meets. A founder
+  count would not stop someone who registers extra founder identities through
+  machines they control and buys seats under each; only T4 and T5 address
+  that.
+
 - **Legacy limits**: inactivity bounds, dispute evidence, conflicting-statement
   precedence, and reclaim transitions. Requirement 6 builds the mechanics
   without them.
@@ -275,8 +286,8 @@ dependency.
 
 - `kaikisegfault/protocol-stack`. Every issue is closed, and `main` is the
   only branch.
-- **The last full hosted verification** is candidate run 39137380230, on
-  M4.3d's tree, which `main` holds byte for byte at `a93b9ab`.
+- **The last full hosted verification** is candidate run 39487145302, on
+  M4.3e's tree, which `main` holds byte for byte at `09d937f`.
 - `verify.yml` classifies the changed paths with `tools/verification_scope.py`.
   Markdown and skill metadata take the lightweight path:
   `tools/verify_metadata.py` and the `tests/tools` suites. Everything else takes
@@ -350,6 +361,14 @@ first fee. No transition can enforce that order, so the bridge milestones must.
 
 ## Exact next action
 
+**First, obtain the founder answer on a per-founder registration limit**
+(Founder-reserved and open). If the answer adds a founder count, version ten's
+contract is revised before anything stores its state: an ADR recording the
+answer, the specification, the Python model and its re-recorded vectors, and
+the C++ kernel, in that order. M4.3f then encodes the revised registry. If the
+answer keeps the per-machine count alone, the threat model records the
+aggregate as accepted, and M4.3f proceeds as written below.
+
 **Encode a version-ten ledger as a snapshot: `snapshot_v10`, M4.3f**, step 3 of
 ADR 0104's enumeration. Without it a version-ten ledger cannot be written down,
 so no store, application, or node can carry one.
@@ -386,5 +405,8 @@ version ten to run on a network, because version ten changes what they build.
 
 ## Blockers
 
-**No blocker.** Every founder value the next contract version needs is
-answered (ADRs 0100 and 0101).
+**One founder answer blocks the next action**: whether the 1,000-a-day
+registration limit also counts per founder. It decides whether version ten's
+registry gains an entry the snapshot must encode, so M4.3f waits for it.
+Nothing else is blocked, and no credential, infrastructure, or review blocks
+publication.
