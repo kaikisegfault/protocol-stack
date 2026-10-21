@@ -1423,9 +1423,10 @@ add_test(
     "${Python3_EXECUTABLE}"
     "${PROJECT_SOURCE_DIR}/tests/simulation/economy_transition_v10_contract_test.py"
 )
-# Version ten's execution half (economy-transition-v10, ADRs 0102 and 0103): a
-# chain of blocks and a 101-machine population, every ordered outcome agreed
-# with an independent derivation that imports nothing from simulation/.
+# Version ten's execution half (economy-transition-v10, ADRs 0102, 0103, and
+# 0107): a chain of blocks and a 101-machine population of two founders, every
+# ordered outcome agreed with an independent derivation that imports nothing
+# from simulation/.
 add_test(
   NAME economy-transition-v10-execution-vectors
   COMMAND

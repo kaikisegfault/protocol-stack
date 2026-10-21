@@ -5,7 +5,7 @@ the single verifier key, and HUB approvals that can be used once. Five things
 move:
 
 - genesis renames `verifier_key` to `launch_key` and gains `build_authority_key`;
-- the state gains entry kinds 24, 25, and 26;
+- the state gains entry kinds 24 through 27;
 - kind 10's body names its attesting seat, and kind 23 is added;
 - one approval message replaces five;
 - the prologue gains the registry step.
@@ -22,7 +22,8 @@ vector reaching it then fails a test, instead of surviving as a copy nobody
 compared.
 
 **The founder figures are named once and bound to their ADRs.** ADR 0101 fixes
-the cutoff, the meaning of an active machine, and the limit. A second copy
+the cutoff, the meaning of an active machine, and the limit, and ADR 0106 makes
+the limit hold for all of one founder's machines together. A second copy
 anywhere would be a second opinion, and two machines holding different values
 would fork.
 """
@@ -238,12 +239,13 @@ ADDED_IN_V10: tuple[str, ...] = (
     "ATTESTATION_LABEL",
     "BUILD_AUTHORITY_KEY_BYTES",
     "BUILD_DIGEST_BYTES",
+    "FOUNDER_REGISTRATIONS_ENTRY",
+    "FOUNDER_REGISTRATIONS_PER_WINDOW",
     "LAUNCH_ATTESTER",
     "LAUNCH_RETIREMENT_ACTIVE_MACHINES",
     "LAUNCH_RETIREMENT_ENTRY",
     "MACHINE_KEY_ENTRY",
     "MACHINE_KEY_OWNER_ENTRY",
-    "MACHINE_REGISTRATIONS_PER_WINDOW",
     "REGISTER_MACHINE_KEY",
 )
 
@@ -256,10 +258,13 @@ DECLARATIONS: tuple[str, ...] = (
     "WITHDRAWN_IN_V10",
 )
 
-# --- the founder answers (ADR 0101) ------------------------------------------
+# --- the founder answers (ADRs 0101 and 0106) --------------------------------
 
 LAUNCH_RETIREMENT_ACTIVE_MACHINES = 100
-MACHINE_REGISTRATIONS_PER_WINDOW = 1_000
+# One founder's machines together, however many seats the founder holds. It
+# holds each machine to the same figure, because no machine signs more than its
+# founder's machines do.
+FOUNDER_REGISTRATIONS_PER_WINDOW = 1_000
 
 # "Met" is the uptime test, bound to `cycle-boundary-v1` rather than restated.
 ACTIVITY_THRESHOLD_SECONDS = cycle_boundary.ACTIVITY_THRESHOLD_SECONDS
@@ -342,16 +347,18 @@ ALWAYS_PROVEN_KINDS = frozenset(
     }
 )
 
-# --- the three new state entries ----------------------------------------------
+# --- the four new state entries -----------------------------------------------
 
 MACHINE_KEY_ENTRY = 24
 LAUNCH_RETIREMENT_ENTRY = 25
 MACHINE_KEY_OWNER_ENTRY = 26
+FOUNDER_REGISTRATIONS_ENTRY = 27
 
 ADDED_IN_V10_ENTRY_KINDS: dict[int, str] = {
     MACHINE_KEY_ENTRY: "machine_key",
     LAUNCH_RETIREMENT_ENTRY: "launch_retirement",
     MACHINE_KEY_OWNER_ENTRY: "machine_key_owner",
+    FOUNDER_REGISTRATIONS_ENTRY: "founder_registrations",
 }
 
 ENTRY_KINDS: dict[int, str] = dict(v9.ENTRY_KINDS) | ADDED_IN_V10_ENTRY_KINDS
@@ -360,14 +367,17 @@ ENTRY_KEY_BYTES: dict[int, int] = dict(v9.ENTRY_KEY_BYTES) | {
     MACHINE_KEY_ENTRY: 1 + 4,
     LAUNCH_RETIREMENT_ENTRY: 1,
     MACHINE_KEY_OWNER_ENTRY: 1 + 32,
+    FOUNDER_REGISTRATIONS_ENTRY: 1 + 32,
 }
 
-# The machine-key value: key, build digest, registered height, last met window,
-# registration window, and the count in that window.
+# The machine-key value: key, build digest, registered height, and last met
+# window. It keeps no count (ADR 0107): the founder-registrations value is the
+# registration window and the count its founder's machines attested in it.
 ENTRY_VALUE_BYTES: dict[int, int | None] = dict(v9.ENTRY_VALUE_BYTES) | {
-    MACHINE_KEY_ENTRY: 32 + BUILD_DIGEST_BYTES + 8 + 8 + 8 + 4,
+    MACHINE_KEY_ENTRY: 32 + BUILD_DIGEST_BYTES + 8 + 8,
     LAUNCH_RETIREMENT_ENTRY: 8,
     MACHINE_KEY_OWNER_ENTRY: 4,
+    FOUNDER_REGISTRATIONS_ENTRY: 8 + 4,
 }
 
 # --- the result code space ---------------------------------------------------

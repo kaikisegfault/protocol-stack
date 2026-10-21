@@ -169,10 +169,10 @@ constexpr std::array<std::uint8_t, 5> kRetiredKinds{7, 8, 9, 11, 12};
 // retirement; 9 and 11 held the seat manager set and the HUB address set and
 // were version six's. A retired number is never reused, which is why version
 // eight's two entries take 18 and 19 rather than filling a gap, version nine's
-// four take 20 through 23, and version ten's three take 24 through 26.
+// four take 20 through 23, and version ten's four take 24 through 27.
 constexpr std::array<std::uint8_t, 3> kRetiredEntryKinds{7, 9, 11};
 
-constexpr std::array<std::size_t, 27> kEntryKeyBytes{
+constexpr std::array<std::size_t, 28> kEntryKeyBytes{
     kUnassigned,  // 0, never an entry kind
     5,            // 1  seat                        u32 seat id
     2,            // 2  channel                     u8 channel id
@@ -200,13 +200,14 @@ constexpr std::array<std::size_t, 27> kEntryKeyBytes{
     5,            // 24 machine_key                 u32 seat id
     1,            // 25 launch_retirement
     33,           // 26 machine_key_owner           machine public key
+    33,           // 27 founder_registrations       identity hash
 };
 
 // A second sentinel, for the one variable-width value: the cycle assignment,
 // whose width follows from a recorded bit count rather than from a table.
 constexpr std::size_t kVariableValue = static_cast<std::size_t>(-2);
 
-constexpr std::array<std::size_t, 27> kEntryValueBytes{
+constexpr std::array<std::size_t, 28> kEntryValueBytes{
     kUnassigned,     // 0
     82,              // 1  seat
     16,              // 2  channel
@@ -231,9 +232,10 @@ constexpr std::array<std::size_t, 27> kEntryValueBytes{
     8,               // 21 monthly_uptime_figure     u64 seconds, nonzero
     16,              // 22 monthly_pool_claim        accrued, minted
     4,               // 23 settlement_cursor         u32 month index
-    92,              // 24 machine_key               key, digest, three u64, u32
+    80,              // 24 machine_key               key, digest, two u64
     8,               // 25 launch_retirement         u64 height, nonzero
     4,               // 26 machine_key_owner         u32 seat id
+    12,              // 27 founder_registrations     u64 window, u32 count
 };
 
 template <std::size_t Size>

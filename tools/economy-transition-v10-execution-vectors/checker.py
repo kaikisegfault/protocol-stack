@@ -38,9 +38,10 @@ HEADER = """\
 #
 # Two fixtures produce them. simulation/economy_transition_v10/trace.py is a
 # chain of blocks at ninety seconds a block, as version nine's is.
-# simulation/economy_transition_v10/population.py drives 101 machines, and one
-# machine past its span, through version nine's evidence harness, because no
-# recorded chain of blocks reaches the launch key's retirement or the limit.
+# simulation/economy_transition_v10/population.py drives 101 machines of two
+# founders, and one machine past its span, through version nine's evidence
+# harness, because no recorded chain of blocks reaches the launch key's
+# retirement or a founder's limit.
 """
 
 

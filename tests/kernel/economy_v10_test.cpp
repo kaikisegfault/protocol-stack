@@ -4,7 +4,7 @@
 // implementation and the independent Python model must reproduce one fixed
 // file.
 //
-// **`test-vectors/economy-transition-v10.txt` holds 107 vectors and this target
+// **`test-vectors/economy-transition-v10.txt` holds 114 vectors and this target
 // reproduces the ones a codec can reach.** The rest describe the Python
 // package's own surface, or what a genesis writes to a ledger, which is the
 // execution slice's. The coverage guard below names every one of them and what

@@ -23,11 +23,12 @@
 // what the settlement assigned.
 //
 // **Version ten adds the machine-key registry and single-use approvals.** The
-// state gains the machine keys by seat, their inverse, and the launch key's
-// retirement. Kind 10 is signed by an active machine or by the launch key, kind
-// 23 registers a machine key, every body approval signs the whole transaction,
-// and a transaction carrying a HUB proof lives at most one slot. The prologue
-// gains the registry step, and the block checks that a retirement never moves.
+// state gains the machine keys by seat, their inverse, the launch key's
+// retirement, and each founder's registration count. Kind 10 is signed by an
+// active machine or by the launch key, kind 23 registers a machine key, every
+// body approval signs the whole transaction, and a transaction carrying a HUB
+// proof lives at most one slot. The prologue gains the registry step, and the
+// block checks that a retirement never moves.
 //
 // Value movement, the registry, the fee, the settlement's first seven steps, the
 // recovery pool, the mint walk, the uptime carrier, and every version-seven
@@ -355,19 +356,26 @@ struct Ledger {
   // state.
   //
   // One entry per seat that has registered a key, keyed by the seat because
-  // every ADR 0101 rule is about a machine and a machine is a seat.
+  // activity is about a machine and a machine is a seat.
   std::map<std::uint32_t, MachineKey> machine_keys;
   // **The inverse is held as its own map rather than derived from the first**, so
   // invariant 2 compares two things the state holds and a probe can break it. A
   // derived inverse could never disagree with what it was derived from, and the
-  // check would be vacuous. It is what makes one key serve one seat: without it,
-  // a key registered on two seats would sign under two limits.
+  // check would be vacuous. It is what makes one key serve one seat, and so one
+  // founder: without it, a key registered on seats of two founders would sign
+  // under both founders' limits.
   std::map<Octets32, std::uint32_t> machine_key_owners;
   // The height of the block whose registry step retired the launch key, or
   // absent while it may still sign. **Present or absent, and never removed**:
   // a later fall below the cutoff never revives the launch key, which is ADR
   // 0100's "for good", and `retirement_kept` checks it across every block.
   std::optional<std::uint64_t> launch_retired_at;
+  // One count per founder whose machines have attested a registration, keyed by
+  // the founder's identity, because ADR 0106's limit belongs to the founder
+  // across all of their machines. Written by kind 10 and never removed;
+  // invariant 8 holds it to identities that own a seat with a machine key, so
+  // there are never more than seats.
+  std::map<Octets32, FounderRegistrations> founder_registrations;
 };
 
 // --- the machine-key registry ------------------------------------------------
@@ -486,8 +494,8 @@ std::optional<Hash> ledger_state_root(const Ledger& ledger);
 // Every conservation and structural equality, each checked as an equality
 // because a bound would admit a defect that lost a term. An empty result is a
 // state some sequence of conforming transitions could have produced. Version
-// ten's invariants 1 through 6 are among them; the seventh is about two heights
-// and is `retirement_kept`'s.
+// ten's invariants 1 to 6 and 8 are among them; the seventh is about two
+// heights and is `retirement_kept`'s.
 std::vector<std::string_view> conservation_failures(const Ledger& ledger);
 
 using SignatureVerifier =

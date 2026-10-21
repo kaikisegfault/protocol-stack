@@ -36,10 +36,10 @@ Posture proposed_posture(const Body& body) {
 // attester can sign a registration.
 //
 // **Version ten restates it rather than wrapping it**, because its conditions
-// change in three places — the lifetime rule, the attester, and the count — and
-// version nine checked the verifier key before the point where the machine
-// branch begins. Its four writes are version nine's, in the same order, and the
-// count is the one write added.
+// change in three places — the lifetime rule, the attester, and the founder's
+// count — and version nine checked the verifier key before the point where the
+// machine branch begins. Its four writes are version nine's, in the same order,
+// and the founder's count is the one write added.
 std::optional<Outcome> hub_register(Ledger& ledger, const Envelope& envelope,
                                     const Body& body,
                                     const SignatureVerifier& verify) {
@@ -86,7 +86,8 @@ std::optional<Outcome> hub_register(Ledger& ledger, const Envelope& envelope,
     if (!credit(ledger, first_escrow, airdrop)) return std::nullopt;
   }
   if (attestation.counted) {
-    ledger.machine_keys[body.attesting_seat_id] = *attestation.counted;
+    ledger.founder_registrations[attestation.counted->founder] =
+        attestation.counted->count;
   }
   return Outcome{Result::success, airdrop, 0};
 }

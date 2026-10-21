@@ -152,9 +152,9 @@ void verify_constants(const pv::Values& values) {
   pv::require(expect_number(values, "constants.launch_retirement_active_machines") ==
                   v10::kLaunchRetirementActiveMachines,
               "the launch key retires at 100 active machines");
-  pv::require(expect_number(values, "constants.machine_registrations_per_window") ==
-                  v10::kMachineRegistrationsPerWindow,
-              "a machine signs at most 1,000 registrations a window");
+  pv::require(expect_number(values, "constants.founder_registrations_per_window") ==
+                  v10::kFounderRegistrationsPerWindow,
+              "one founder's machines sign at most 1,000 registrations a window");
   pv::require(expect_number(values, "constants.activity_threshold_seconds") ==
                   v10::kActivityThresholdSeconds,
               "a cycle is met at 18 hours");

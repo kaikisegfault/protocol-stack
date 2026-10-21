@@ -535,9 +535,9 @@ std::optional<QuietRun> run_quiet_heights(Ledger& ledger,
       // no other gate. The full conservation walk runs at every *recorded*
       // block, which is where a transaction could have moved value.
       if (!i::uptime_failures(ledger).empty()) return std::nullopt;
-      // Version ten's six as well, as the model's quiet run checks them. The two
-      // steps write no registry entry, but invariants 4 and 5 are stated over
-      // the height, which a quiet height moves.
+      // Version ten's seven as well, as the model's quiet run checks them. The
+      // two steps write no registry entry, but invariants 4 and 5 are stated
+      // over the height, which a quiet height moves.
       if (!i::registry_failures(ledger).empty()) return std::nullopt;
       issued = quiet.issued;
       if (!quiet.issued.empty() || !quiet.expired.empty()) {

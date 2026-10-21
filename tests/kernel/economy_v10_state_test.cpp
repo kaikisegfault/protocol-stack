@@ -1,16 +1,16 @@
-// The three entry kinds version ten adds, checked against the recorded vectors.
+// The four entry kinds version ten adds, checked against the recorded vectors.
 //
 // **The refusals are the substance here rather than the encodings.** A key and
 // a value of the right width is what any implementation gets right; what
 // distinguishes a conforming one is that a machine key written at height zero,
-// a count above the founder limit, and a retirement at height zero are all
-// refused, because each is a state no transition writes, and a retirement of
-// zero would be a second encoding of absence.
+// a founder count of zero or above the founder limit, and a retirement at height
+// zero are all refused, because each is a state no transition writes, and a
+// zero count or retirement would be a second encoding of absence.
 //
 // **The entry table is pinned to the files that accepted version nine's.** It
-// must equal that table plus exactly entry kinds 24, 25, and 26, with every
-// carried width the one its accepting file recorded, so a width the port moved
-// by accident fails here by kind number.
+// must equal that table plus exactly entry kinds 24 to 27, with every carried
+// width the one its accepting file recorded, so a width the port moved by
+// accident fails here by kind number.
 
 #include "economy_v10_carried.hpp"
 
@@ -20,25 +20,36 @@
 namespace economy_v10_fixture {
 namespace {
 
-v10::MachineKey fixture_machine_key(std::uint32_t count) {
+v10::MachineKey fixture_machine_key(std::uint64_t height) {
   v10::MachineKey entry;
   entry.machine_public_key = kMachineKey;
   entry.build_digest = kBuildDigest;
-  entry.registered_at_height = 3;
+  entry.registered_at_height = height;
   entry.last_met_window = 5;
+  return entry;
+}
+
+// The octets of a machine key at `height`, built by hand: the encoder refuses a
+// zero height, so the only way to hand the decoder one is to build it directly.
+v10::Bytes machine_key_octets(std::uint64_t height) {
+  v10::Bytes value(kMachineKey.begin(), kMachineKey.end());
+  value.insert(value.end(), kBuildDigest.begin(), kBuildDigest.end());
+  pv::append_u64(value, height);
+  pv::append_u64(value, 5);
+  return value;
+}
+
+v10::FounderRegistrations fixture_founder(std::uint32_t count) {
+  v10::FounderRegistrations entry;
   entry.registration_window = 6;
   entry.registrations_in_window = count;
   return entry;
 }
 
-// The value the encoder would write for `count`, with the count field set by
-// hand afterwards: the encoder refuses a count above the limit, so the only way
-// to hand the decoder one is to build its octets directly.
-v10::Bytes machine_key_octets(std::uint64_t height, std::uint32_t count) {
-  v10::Bytes value(kMachineKey.begin(), kMachineKey.end());
-  value.insert(value.end(), kBuildDigest.begin(), kBuildDigest.end());
-  pv::append_u64(value, height);
-  pv::append_u64(value, 5);
+// The octets of a founder count in window 6, built by hand for the same reason:
+// the encoder refuses a count of zero or above the limit.
+v10::Bytes founder_octets(std::uint32_t count) {
+  v10::Bytes value;
   pv::append_u64(value, 6);
   for (int shift = 24; shift >= 0; shift -= 8) {
     value.push_back(static_cast<std::uint8_t>(count >> shift));
@@ -55,6 +66,7 @@ void verify_widths(const pv::Values& values, const Carried& carried) {
       {v10::Entry::machine_key, "machine_key"},
       {v10::Entry::launch_retirement, "launch_retirement"},
       {v10::Entry::machine_key_owner, "machine_key_owner"},
+      {v10::Entry::founder_registrations, "founder_registrations"},
   };
   auto expected = version_nine_entries(carried);
   for (const auto& item : declared) {
@@ -73,7 +85,7 @@ void verify_widths(const pv::Values& values, const Carried& carried) {
     pv::require(expected.emplace(kind, RecordedEntry{*key_bytes, *value_bytes}).second,
                 "version nine never assigned this entry kind");
   }
-  // **Version ten's table is version nine's plus the three, exactly**, every
+  // **Version ten's table is version nine's plus the four, exactly**, every
   // carried width included.
   std::size_t assigned = 0;
   for (std::uint16_t number = 0; number <= 255; ++number) {
@@ -91,20 +103,20 @@ void verify_widths(const pv::Values& values, const Carried& carried) {
                 "entry kind " + std::to_string(number) +
                     " keeps the widths its accepting file recorded");
   }
-  pv::require(assigned == expected.size() && assigned == 23,
-              "twenty-three entry kinds are assigned");
+  pv::require(assigned == expected.size() && assigned == 24,
+              "twenty-four entry kinds are assigned");
 }
 
 void verify_encodings(const pv::Values& values) {
   pv::require(hex(v10::machine_key_key(kSeat)) ==
                   expect_text(values, "state.machine_key_key"),
               "the machine-key key is the recorded one");
-  const auto fixture = fixture_machine_key(999);
+  const auto fixture = fixture_machine_key(3);
   const auto value = v10::machine_key_value(fixture);
   pv::require(value.has_value() &&
                   hex(*value) == expect_text(values, "state.machine_key_value"),
               "the machine-key value is the recorded one");
-  pv::require(*value == machine_key_octets(3, 999),
+  pv::require(*value == machine_key_octets(3),
               "the value is laid out in the specification's field order");
   pv::require(hex(v10::launch_retirement_key()) ==
                   expect_text(values, "state.launch_retirement_key"),
@@ -122,29 +134,41 @@ void verify_encodings(const pv::Values& values) {
   const auto owner = v10::decode_machine_key_owner_value(
       v10::machine_key_owner_value(kSeat));
   pv::require(owner == kSeat, "the owner value round-trips");
+  pv::require(hex(v10::founder_registrations_key(kIdentity)) ==
+                  expect_text(values, "state.founder_registrations_key"),
+              "the founder key is the recorded one");
+  const auto founder = v10::founder_registrations_value(fixture_founder(999));
+  pv::require(founder.has_value() &&
+                  hex(*founder) ==
+                      expect_text(values, "state.founder_registrations_value"),
+              "the founder value is the recorded one");
+  pv::require(*founder == founder_octets(999),
+              "the founder value is laid out in the specification's field order");
 }
 
 void verify_refusals(const pv::Values& values) {
-  const auto fixture = fixture_machine_key(999);
+  const auto fixture = fixture_machine_key(3);
   expect_claim(values, "state.machine_key_round_trips",
                v10::decode_machine_key_value(*v10::machine_key_value(fixture)) ==
                    fixture);
+  const auto founder = fixture_founder(999);
+  expect_claim(values, "state.founder_registrations_round_trips",
+               v10::decode_founder_registrations_value(
+                   *v10::founder_registrations_value(founder)) == founder);
 
-  const auto at_limit = v10::decode_machine_key_value(
-      machine_key_octets(3, v10::kMachineRegistrationsPerWindow));
-  expect_claim(values, "state.machine_key_admits_the_limit",
-               at_limit.has_value() && at_limit->registrations_in_window ==
-                                           v10::kMachineRegistrationsPerWindow);
-  expect_claim(values, "state.machine_key_refuses_a_count_above_the_limit",
-               !v10::decode_machine_key_value(machine_key_octets(
-                   3, v10::kMachineRegistrationsPerWindow + 1)) &&
-                   !v10::machine_key_value(fixture_machine_key(
-                       v10::kMachineRegistrationsPerWindow + 1)));
-  auto unwritten = fixture_machine_key(0);
-  unwritten.registered_at_height = 0;
+  const auto limit = v10::kFounderRegistrationsPerWindow;
+  const auto at_limit = v10::decode_founder_registrations_value(founder_octets(limit));
+  expect_claim(values, "state.founder_registrations_admits_the_limit",
+               at_limit.has_value() && at_limit->registrations_in_window == limit);
+  expect_claim(values, "state.founder_registrations_refuses_a_count_above_the_limit",
+               !v10::decode_founder_registrations_value(founder_octets(limit + 1)) &&
+                   !v10::founder_registrations_value(fixture_founder(limit + 1)));
+  expect_claim(values, "state.founder_registrations_refuses_a_zero_count",
+               !v10::decode_founder_registrations_value(founder_octets(0)) &&
+                   !v10::founder_registrations_value(fixture_founder(0)));
   expect_claim(values, "state.machine_key_refuses_a_zero_height",
-               !v10::decode_machine_key_value(machine_key_octets(0, 0)) &&
-                   !v10::machine_key_value(unwritten));
+               !v10::decode_machine_key_value(machine_key_octets(0)) &&
+                   !v10::machine_key_value(fixture_machine_key(0)));
   expect_claim(values, "state.launch_retirement_refuses_zero",
                !v10::decode_launch_retirement_value(v10::Bytes(8, 0)) &&
                    !v10::launch_retirement_value(0));
@@ -162,12 +186,18 @@ void verify_refusals(const pv::Values& values) {
                   .has_value(),
               "a written machine key has a root");
   pv::require(!v10::economy_root(
-                  {{v10::machine_key_key(kSeat), machine_key_octets(0, 0)}}),
+                  {{v10::machine_key_key(kSeat), machine_key_octets(0)}}),
               "a machine key at height zero has no root");
-  pv::require(!v10::economy_root(
-                  {{v10::machine_key_key(kSeat),
-                    machine_key_octets(3, v10::kMachineRegistrationsPerWindow + 1)}}),
-              "a machine key over its limit has no root");
+  pv::require(v10::economy_root({{v10::founder_registrations_key(kIdentity),
+                                  *v10::founder_registrations_value(founder)}})
+                  .has_value(),
+              "a written founder count has a root");
+  pv::require(!v10::economy_root({{v10::founder_registrations_key(kIdentity),
+                                   founder_octets(limit + 1)}}),
+              "a founder count over the limit has no root");
+  pv::require(!v10::economy_root({{v10::founder_registrations_key(kIdentity),
+                                   founder_octets(0)}}),
+              "a founder count of zero has no root");
   pv::require(!v10::economy_root({{v10::launch_retirement_key(), v10::Bytes(8, 0)}}),
               "a retirement at height zero has no root");
   pv::require(v10::economy_root({{v10::launch_retirement_key(),

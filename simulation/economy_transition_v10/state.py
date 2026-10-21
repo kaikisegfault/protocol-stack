@@ -1,6 +1,6 @@
 """The version-ten economy key space, its tree, and the version-ten root.
 
-Version nine's key space with three entry kinds added and nothing else moved.
+Version nine's key space with four entry kinds added and nothing else moved.
 Every key builder and value encoder version nine accepted is re-exported
 unchanged, so a width that moved would have to move in an accepted module and
 fail that version's own vectors first.
@@ -11,7 +11,8 @@ fail that version's own vectors first.
   no height that runs a registry step is 0;
 - a machine-key entry's `registered_at_height` is the height of the kind-23
   transaction that wrote it, which is at least 1;
-- a machine's count never exceeds the founder limit.
+- a founder's count is at least 1, because only a registration writes it, and
+  never exceeds the founder limit, because the limit is checked first.
 
 A decoder refuses each, so a restored state cannot hold a value no transition
 writes.
@@ -38,12 +39,17 @@ from simulation.economy_transition_v9.state import (
 from . import contract as c
 
 __all__ = [
+    "FounderRegistrations",
     "InvalidStateEntry",
     "MachineKey",
+    "decode_founder_registrations_value",
     "decode_launch_retirement_value",
     "decode_machine_key_owner_value",
     "decode_machine_key_value",
     "economy_root",
+    "founder_registrations_key",
+    "founder_registrations_parts",
+    "founder_registrations_value",
     "launch_retirement_key",
     "launch_retirement_value",
     "machine_key_key",
@@ -88,8 +94,6 @@ class MachineKey:
     build_digest: bytes
     registered_at_height: int
     last_met_window: int = 0
-    registration_window: int = 0
-    registrations_in_window: int = 0
 
 
 def machine_key_key(seat_id: int) -> bytes:
@@ -110,10 +114,6 @@ def _require_machine_key(entry: MachineKey) -> None:
     if _require_u64(entry.registered_at_height, "registered height") == 0:
         raise InvalidStateEntry("a machine key is written at a height of at least one")
     _require_u64(entry.last_met_window, "last met window")
-    _require_u64(entry.registration_window, "registration window")
-    count = _require_u32(entry.registrations_in_window, "registrations in window")
-    if count > c.MACHINE_REGISTRATIONS_PER_WINDOW:
-        raise InvalidStateEntry("a machine signed more registrations than its limit")
 
 
 def machine_key_value(entry: MachineKey) -> bytes:
@@ -123,21 +123,17 @@ def machine_key_value(entry: MachineKey) -> bytes:
         + entry.build_digest
         + u64(entry.registered_at_height)
         + u64(entry.last_met_window)
-        + u64(entry.registration_window)
-        + u32(entry.registrations_in_window)
     )
 
 
 def decode_machine_key_value(raw: bytes) -> MachineKey:
     if len(raw) != c.ENTRY_VALUE_BYTES[c.MACHINE_KEY_ENTRY]:
-        raise InvalidStateEntry("machine-key value is not 92 octets")
+        raise InvalidStateEntry("machine-key value is not 80 octets")
     entry = MachineKey(
         machine_public_key=raw[0:32],
         build_digest=raw[32:64],
         registered_at_height=int.from_bytes(raw[64:72], "big"),
         last_met_window=int.from_bytes(raw[72:80], "big"),
-        registration_window=int.from_bytes(raw[80:88], "big"),
-        registrations_in_window=int.from_bytes(raw[88:92], "big"),
     )
     _require_machine_key(entry)
     return entry
@@ -192,17 +188,73 @@ def decode_machine_key_owner_value(raw: bytes) -> int:
     return int.from_bytes(raw, "big")
 
 
+# --- kind 27, the founder's registrations ------------------------------------
+
+
+@dataclass(frozen=True)
+class FounderRegistrations:
+    """The registrations one founder's machines attested in one window.
+
+    Keyed by the founder's identity, because ADR 0106's limit belongs to the
+    founder across all of their machines. Only the latest window's count is
+    kept: a count from an earlier window reads as zero.
+    """
+
+    registration_window: int
+    registrations_in_window: int
+
+
+def founder_registrations_key(hub_identity_hash: bytes) -> bytes:
+    return u8(c.FOUNDER_REGISTRATIONS_ENTRY) + _octets(
+        hub_identity_hash, 32, "founder identity"
+    )
+
+
+def founder_registrations_parts(key: bytes) -> bytes:
+    if len(key) != c.ENTRY_KEY_BYTES[c.FOUNDER_REGISTRATIONS_ENTRY] or key[0] != (
+        c.FOUNDER_REGISTRATIONS_ENTRY
+    ):
+        raise InvalidStateEntry("not a founder-registrations key")
+    return key[1:33]
+
+
+def _require_founder_registrations(entry: FounderRegistrations) -> None:
+    _require_u64(entry.registration_window, "registration window")
+    count = _require_u32(entry.registrations_in_window, "registrations in window")
+    if count == 0:
+        raise InvalidStateEntry("a founder count of zero is absence, not a value")
+    if count > c.FOUNDER_REGISTRATIONS_PER_WINDOW:
+        raise InvalidStateEntry("a founder's machines signed more than the limit")
+
+
+def founder_registrations_value(entry: FounderRegistrations) -> bytes:
+    _require_founder_registrations(entry)
+    return u64(entry.registration_window) + u32(entry.registrations_in_window)
+
+
+def decode_founder_registrations_value(raw: bytes) -> FounderRegistrations:
+    if len(raw) != c.ENTRY_VALUE_BYTES[c.FOUNDER_REGISTRATIONS_ENTRY]:
+        raise InvalidStateEntry("founder-registrations value is not 12 octets")
+    entry = FounderRegistrations(
+        registration_window=int.from_bytes(raw[0:8], "big"),
+        registrations_in_window=int.from_bytes(raw[8:12], "big"),
+    )
+    _require_founder_registrations(entry)
+    return entry
+
+
 # --- the tree ----------------------------------------------------------------
 
 _ADDED_DECODERS = {
     c.MACHINE_KEY_ENTRY: decode_machine_key_value,
     c.LAUNCH_RETIREMENT_ENTRY: decode_launch_retirement_value,
     c.MACHINE_KEY_OWNER_ENTRY: decode_machine_key_owner_value,
+    c.FOUNDER_REGISTRATIONS_ENTRY: decode_founder_registrations_value,
 }
 
 
 def require_entry_shape(key: bytes, value: bytes) -> None:
-    """Version nine's rule for its kinds, and the added three's here."""
+    """Version nine's rule for its kinds, and the added four's here."""
     if not key:
         raise InvalidStateEntry("empty economy key")
     kind = key[0]

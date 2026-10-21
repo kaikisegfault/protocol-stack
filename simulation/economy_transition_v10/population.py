@@ -1,10 +1,10 @@
 """The registry across a population: the cutoff, the limit, the cap, and the span.
 
-The launch key retires when 100 machines meet one assigned cycle, and a machine
-may sign 1,000 registrations a window. No recorded chain of blocks reaches
-either: every in-scope seat is audited at every height, so a hundred machines
-answering their challenges for one window is millions of selections and
-thousands of blocks. So these runs use version nine's evidence harness, as
+The launch key retires when 100 machines meet one assigned cycle, and one
+founder's machines may sign 1,000 registrations a window between them. No
+recorded chain of blocks reaches either: every in-scope seat is audited at every
+height, so a hundred machines answering their challenges for one window is
+millions of selections and thousands of blocks. So these runs use version nine's evidence harness, as
 `economy-scenario-suite-v4` does:
 
 - transactions are admitted and executed by the version-ten model one at a
@@ -16,7 +16,7 @@ thousands of blocks. So these runs use version nine's evidence harness, as
   reads it.
 
 **Everything the vectors claim about the registry is derived by the contract**:
-who met, the count, the retirement, every refusal, and every count a
+who met, the count, the retirement, every refusal, and every founder count a
 registration leaves. The harness supplies uptime and nothing else.
 
 **A refused transaction is checked for atomicity, and a bulk success is not.**
@@ -55,22 +55,29 @@ __all__ = [
     "FOUNDER",
     "Harness",
     "MACHINES",
+    "OTHER_FOUNDER",
+    "OTHER_FOUNDER_SEAT",
     "SPAN_RUN_WINDOW",
     "cutoff_run",
     "span_run",
 ]
 
-# One founder holds every seat. Seats buy capacity, not identities, so one
-# person running many machines is the ordinary case the limit exists for.
+# One founder holds every seat but the last. Seats buy capacity, not
+# identities, so one person running a hundred machines is the ordinary case the
+# limit exists for. The last seat is another founder's, whose machine still
+# signs while the first founder's are full.
 FOUNDER = person(0)
+OTHER_FOUNDER = person(3)
 MACHINES = 101
+OTHER_FOUNDER_SEAT = MACHINES - 1
 ACTIVATION_HEIGHT = c.CYCLE_BLOCKS - 10
 
 # Credited slots per seat in a window, where it is not all 24. Eighteen slots is
-# exactly the threshold, and seventeen is one slot below it.
+# exactly the threshold, and seventeen is one slot below it. The other founder's
+# seat meets windows 1 and 2, so its machine is active in windows 3 and 4.
 CUTOFF_PLAN: dict[int, dict[int, int]] = {
-    1: {98: 18, 99: 17, 100: 12},
-    2: {100: 6},
+    1: {97: 18, 98: 17, 99: 12},
+    2: {99: 6},
     3: {seat: 17 for seat in range(50, MACHINES)},
 }
 
@@ -144,25 +151,32 @@ class Harness:
 
     # --- the seated population -------------------------------------------
 
-    def seat_population(self, machines: int) -> None:
-        """Register the founder, sell and activate every seat, register every key."""
+    def seat_population(self, owners: list[Person]) -> None:
+        """Register each founder, sell and activate every seat, register every key.
+
+        `owners[seat_id]` is the seat's founder. The founders register under the
+        launch key in the order they first own a seat, and the first one's
+        registration is recorded.
+        """
         build = self.build
-        self.submit(
-            "founder_registers",
-            build.registration(FOUNDER, c.LAUNCH_ATTESTER, LAUNCH_KEY, self.at(1) + 1_200),
-        )
+        height = self.at(1)
+        for index, founder in enumerate(dict.fromkeys(owners)):
+            self.submit(
+                "founder_registers" if index == 0 else None,
+                build.registration(founder, c.LAUNCH_ATTESTER, LAUNCH_KEY, height + 1_200),
+            )
         height = self.at(2)
-        for seat_id in range(machines):
+        for seat_id, owner in enumerate(owners):
             self.submit(None, build.purchase(
-                FOUNDER, seat_id, self.nonce(FOUNDER), height + 1_200))
+                owner, seat_id, self.nonce(owner), height + 1_200))
         height = self.at(ACTIVATION_HEIGHT)
-        for seat_id in range(machines):
+        for seat_id, owner in enumerate(owners):
             self.submit(None, build.activation(
-                FOUNDER, seat_id, self.nonce(FOUNDER), height + 1_200))
+                owner, seat_id, self.nonce(owner), height + 1_200))
         height = self.at(ACTIVATION_HEIGHT + 1)
-        for seat_id in range(machines):
+        for seat_id, owner in enumerate(owners):
             self.submit(None, build.machine_registration(
-                FOUNDER, seat_id, machine_key(seat_id), self.nonce(FOUNDER),
+                owner, seat_id, machine_key(seat_id), self.nonce(owner),
                 height + 1_200))
 
 
@@ -176,9 +190,9 @@ def _register_many(harness: Harness, seat_id: int, first: int, count: int) -> No
 
 
 def cutoff_run(through_window: int = CAP_RUN_WINDOW) -> Harness:
-    """101 machines, the count at 99 and then 100, the limit, and the cap."""
+    """101 machines, the count at 99 and then 100, the founder limit, and the cap."""
     harness = Harness()
-    harness.seat_population(MACHINES)
+    harness.seat_population([FOUNDER] * OTHER_FOUNDER_SEAT + [OTHER_FOUNDER])
     build = harness.build
     for window in range(1, through_window + 1):
         harness.open(window, CUTOFF_PLAN)
@@ -201,29 +215,45 @@ def cutoff_run(through_window: int = CAP_RUN_WINDOW) -> Harness:
 
 
 def _window_three(harness: Harness, build: Builder, base: int) -> None:
-    """The cutoff at 99, two machines' signatures crossed, and the limit."""
+    """The cutoff at 99, signatures crossed, and the founder's limit.
+
+    The founder's 1,000 are spread across two of their machines, 500 each, so
+    neither machine is near the figure alone. The 1,001st is refused on one of
+    the two and on a third machine that has attested nobody, while the other
+    founder's machine still signs.
+    """
     height = harness.at(base + 1)
+    valid = height + 1_200
     harness.submit("launch.still_signs_at_ninety_nine", build.registration(
-        person(1), c.LAUNCH_ATTESTER, LAUNCH_KEY, height + 1_200))
+        person(1), c.LAUNCH_ATTESTER, LAUNCH_KEY, valid))
     harness.submit("crossed.a_key_signing_for_another_seat", build.registration(
-        person(2), 2, machine_key(1), height + 1_200))
+        person(2), 2, machine_key(1), valid))
     harness.submit("crossed.a_genuine_signature_under_another_seat", build.registration(
-        person(2), 2, machine_key(1), height + 1_200, signed_seat=1))
+        person(2), 2, machine_key(1), valid, signed_seat=1))
+    half = c.FOUNDER_REGISTRATIONS_PER_WINDOW // 2
     harness.submit("limit.the_first", build.registration(
-        person(10), 0, machine_key(0), height + 1_200))
-    _register_many(harness, 0, 11, c.MACHINE_REGISTRATIONS_PER_WINDOW - 2)
-    last = 11 + c.MACHINE_REGISTRATIONS_PER_WINDOW - 2
+        person(10), 0, machine_key(0), valid))
+    _register_many(harness, 0, 11, half - 1)
+    _register_many(harness, 1, 10 + half, half - 1)
+    last = 10 + c.FOUNDER_REGISTRATIONS_PER_WINDOW - 1
     harness.submit("limit.the_thousandth", build.registration(
-        person(last), 0, machine_key(0), height + 1_200))
-    harness.notes["count_after_the_thousandth"] = (
-        harness.ledger.machine_keys[0].registrations_in_window
+        person(last), 1, machine_key(1), valid))
+    harness.notes["count_after_the_thousandth"] = harness.ledger.founder_count(
+        FOUNDER.identity, 3
     )
-    harness.submit("limit.a_forgery_naming_a_full_machine", build.registration(
-        person(last + 1), 0, machine_key(1), height + 1_200))
+    harness.submit("limit.a_forgery_naming_a_full_founders_machine", build.registration(
+        person(last + 1), 2, machine_key(0), valid))
     harness.submit("limit.the_thousand_and_first", build.registration(
-        person(last + 1), 0, machine_key(0), height + 1_200))
-    harness.submit("limit.another_machine_still_signs", build.registration(
-        person(last + 1), 1, machine_key(1), height + 1_200))
+        person(last + 1), 0, machine_key(0), valid))
+    harness.submit("limit.a_machine_that_attested_nobody", build.registration(
+        person(last + 1), 2, machine_key(2), valid))
+    harness.submit(
+        "crossed.a_full_founders_signature_under_another_founders_seat",
+        build.registration(person(last + 1), OTHER_FOUNDER_SEAT, machine_key(0), valid,
+                           signed_seat=0),
+    )
+    harness.submit("limit.another_founders_machine_still_signs", build.registration(
+        person(last + 1), OTHER_FOUNDER_SEAT, machine_key(OTHER_FOUNDER_SEAT), valid))
 
 
 # A span run collects this often, so the accumulation cap never decides a cycle
@@ -234,7 +264,7 @@ SPAN_COLLECTION_WINDOWS = 20
 def span_run(through_window: int = SPAN_RUN_WINDOW) -> Harness:
     """One machine, every slot credited, past the end of its seat's 731 cycles."""
     harness = Harness()
-    harness.seat_population(1)
+    harness.seat_population([FOUNDER])
     build = harness.build
     for window in range(1, through_window + 1):
         harness.open(window, {})

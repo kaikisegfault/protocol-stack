@@ -1,12 +1,12 @@
-// Everything version ten adds to execution: kind 23, kind 10's attester, the
-// registry step, and the seven invariants.
+// Everything version ten adds to execution: kind 23, kind 10's attester and
+// the founder's count, the registry step, and the eight invariants.
 //
 // **This is the one execution translation unit version nine does not have**, so
 // the difference between the two kernels' execution is this file plus the edits
 // the contract forces in five others: kind 10's restated conditions, the
 // approval message every body-carried kind verifies over, the lifetime rule
 // straight after `EXPIRED`, the registry step's place in the prologue, and the
-// projection and the gate that see the three new entries.
+// projection and the gate that see the four new entries.
 //
 // Each transition is stated as its ordered rejection conditions and its writes,
 // over exactly the state it reads, and validates completely before it writes.
@@ -48,11 +48,12 @@ Outcome refused(Result result) { return Outcome{result, 0, 0}; }
 // together for a sensitive Founder action. So a stolen signer key cannot install
 // a rogue verifier on a founder's seat.
 //
-// **A replacement keeps the count and the mark.** Activity belongs to the
+// **A replacement keeps the mark and touches no count.** Activity belongs to the
 // seat's cycle rather than to the key, so a machine that replaces its key
-// mid-window stays active, and a count that reset would let key rotation bypass
-// ADR 0101's limit. Replacing a key is how a founder retires a compromised one;
-// nothing else in this version revokes a key.
+// mid-window stays active. The registration count is the founder's (ADR 0107),
+// on an entry this transition never writes, so key rotation cannot reset it.
+// Replacing a key is how a founder retires a compromised one; nothing else in
+// this version revokes a key.
 std::optional<Outcome> register_machine_key(Ledger& ledger,
                                             const Envelope& envelope,
                                             const Body& body,
@@ -109,13 +110,16 @@ std::optional<Outcome> register_machine_key(Ledger& ledger,
 
 // Kind 10's conditions 3 and 4. The registration message binds the attesting
 // seat, so one machine's signature cannot be presented as another's, and each
-// registration counts against the limit of the machine that actually signed.
+// registration counts against the founder whose machine actually signed.
 //
-// **The limit is checked after the signature**, so a refusal for the limit is
-// only ever given for a registration that was otherwise valid. A forgery naming
-// a full machine is `UNAUTHORIZED`, which is the true reason. **The launch key
-// has no limit**: ADR 0101 makes it the only signer until it retires, and a
-// limit would only slow the launch.
+// **The limit is the founder's** (ADR 0106): one founder's machines together
+// attest at most `kFounderRegistrationsPerWindow` a window, so a machine of a
+// full founder is refused even if it has attested nobody. **It is checked after
+// the signature**, so a refusal for the limit is only ever given for a
+// registration that was otherwise valid; a forgery naming a machine of a full
+// founder is `UNAUTHORIZED`, which is the true reason. **The launch key has no
+// limit**: ADR 0101 makes it the only signer until it retires, and ADR 0106's
+// limit is about founders' machines.
 Attestation check_attester(const Ledger& ledger, const Envelope& envelope,
                            const Body& body, const SignatureVerifier& verify) {
   const auto seat_id = body.attesting_seat_id;
@@ -143,18 +147,23 @@ Attestation check_attester(const Ledger& ledger, const Envelope& envelope,
               body.attestation_signature)) {
     return Attestation{Result::unauthorized, {}};
   }
-  // The count belongs to the window it was taken in, so a stored count from an
-  // earlier window is a count of zero in this one.
+  // The founder is the identity that owns the attesting seat, read at this
+  // height; invariant 1 makes the seat exist. The count belongs to the window it
+  // was taken in, so a stored count from an earlier window is a count of zero
+  // in this one.
+  FounderCount counted;
+  counted.founder = ledger.seats.at(seat_id).hub_identity_hash;
   const auto window = window_of_height(ledger.height);
-  const auto count = entry->second.registration_window == window
-                         ? entry->second.registrations_in_window
+  const auto stored = ledger.founder_registrations.find(counted.founder);
+  const auto count = stored != ledger.founder_registrations.end() &&
+                             stored->second.registration_window == window
+                         ? stored->second.registrations_in_window
                          : std::uint32_t{0};
-  if (count >= kMachineRegistrationsPerWindow) {
+  if (count >= kFounderRegistrationsPerWindow) {
     return Attestation{Result::registration_limit, {}};
   }
-  auto counted = entry->second;
-  counted.registration_window = window;
-  counted.registrations_in_window = count + 1;
+  counted.count.registration_window = window;
+  counted.count.registrations_in_window = count + 1;
   return Attestation{std::nullopt, counted};
 }
 
@@ -208,7 +217,7 @@ RegistryStep registry_step(Ledger& ledger, std::uint64_t due,
   return step;
 }
 
-// Invariants 1 through 6, stated over the typed registry the projection
+// Invariants 1 to 6 and 8, stated over the typed registry the projection
 // encodes. The inverse is a map of its own, so invariant 2 compares two things
 // the state holds rather than one thing with itself.
 std::vector<std::string_view> registry_failures(const Ledger& ledger) {
@@ -216,12 +225,16 @@ std::vector<std::string_view> registry_failures(const Ledger& ledger) {
   const auto assigned = last_assigned_window(ledger.height);
   const auto window = window_of_height(ledger.height);
   std::set<Octets32> held;
+  // The identities that own a seat holding a machine key, which invariant 8
+  // reads.
+  std::set<Octets32> founders;
   for (const auto& [seat_id, entry] : ledger.machine_keys) {
     // 1. Every machine-key entry's seat is purchased and activated.
     const auto seat = ledger.seats.find(seat_id);
     if (seat == ledger.seats.end() || !seat->second.is_activated) {
       failures.push_back("a machine key names a seat that is not activated");
     }
+    if (seat != ledger.seats.end()) founders.insert(seat->second.hub_identity_hash);
     // 2, first half: every machine-key entry's key has an owner entry naming
     //    its seat.
     const auto owner = ledger.machine_key_owners.find(entry.machine_public_key);
@@ -237,14 +250,6 @@ std::vector<std::string_view> registry_failures(const Ledger& ledger) {
         (!assigned || entry.last_met_window > *assigned)) {
       failures.push_back("a machine was marked for a window not yet assigned");
     }
-    // 5. Every count belongs to this window or an earlier one.
-    if (entry.registration_window > window) {
-      failures.push_back("a machine counted registrations for a future window");
-    }
-    // 6. No count exceeds the limit.
-    if (entry.registrations_in_window > kMachineRegistrationsPerWindow) {
-      failures.push_back("a machine signed more registrations than its limit");
-    }
   }
   // 2, second half: every owner entry names a seat whose entry holds its key.
   for (const auto& [key, seat_id] : ledger.machine_key_owners) {
@@ -252,6 +257,23 @@ std::vector<std::string_view> registry_failures(const Ledger& ledger) {
     if (entry == ledger.machine_keys.end() ||
         entry->second.machine_public_key != key) {
       failures.push_back("an owner entry names a seat that does not hold its key");
+    }
+  }
+  for (const auto& [founder, entry] : ledger.founder_registrations) {
+    // 5. Every count belongs to this window or an earlier one.
+    if (entry.registration_window > window) {
+      failures.push_back("a founder counted registrations for a future window");
+    }
+    // 6. Every count is between one and the limit: zero is absence, and the
+    //    limit is checked before a count is written.
+    if (entry.registrations_in_window == 0 ||
+        entry.registrations_in_window > kFounderRegistrationsPerWindow) {
+      failures.push_back("a founder count is outside one to the limit");
+    }
+    // 8. Every count names someone who owns a seat holding a machine key, which
+    //    is what bounds these entries by the seats.
+    if (!founders.contains(founder)) {
+      failures.push_back("a founder count names an identity with no machine key");
     }
   }
   return failures;

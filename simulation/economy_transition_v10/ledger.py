@@ -1,16 +1,16 @@
 """The version-ten ledger state an execution runs against.
 
-A version-ten state is a version-nine state with three entry kinds added, so this
+A version-ten state is a version-nine state with four entry kinds added, so this
 **extends version nine's `Ledger` rather than restating it**, exactly as version
 nine extends version eight's. Value movement, the identity registry, the fee,
 the settlement, the monthly pool, the uptime carrier, and every conservation
 identity are inherited and are covered by their own accepted vectors.
 
-**Four things are added, and they are exactly what version ten adds to a
-state:** the build authority key, the machine keys by seat, their inverse, and
-the launch key's retirement. The launch key itself is version nine's
-`verifier_key` field under its narrower name, because genesis writes it to the
-same entry at the same offset.
+**Five things are added, and they are exactly what version ten adds to a
+state:** the build authority key, the machine keys by seat, their inverse, the
+launch key's retirement, and each founder's registration count. The launch key
+itself is version nine's `verifier_key` field under its narrower name, because
+genesis writes it to the same entry at the same offset.
 
 **The inverse is held as its own map rather than derived from the first**, so
 that invariant 2 is a comparison between two things the state holds and a probe
@@ -38,7 +38,10 @@ from simulation.economy_transition_v9.ledger import (
 from . import contract as c
 from .genesis import Genesis, chain_id as genesis_chain_id
 from .state import (
+    FounderRegistrations,
     MachineKey,
+    founder_registrations_key,
+    founder_registrations_value,
     launch_retirement_key,
     launch_retirement_value,
     machine_key_key,
@@ -50,6 +53,7 @@ from .state import (
 
 __all__ = [
     "ConservationFailure",
+    "FounderRegistrations",
     "Ledger",
     "MachineKey",
     "ReferralBalance",
@@ -78,12 +82,17 @@ class Ledger(LedgerV9):
     `machine_keys` holds one entry per seat that has registered a key, and
     `machine_key_owners` one per key. `launch_retired_at` is the height that
     retired the launch key, or none while it may still sign.
+    `founder_registrations` holds one count per founder whose machines have
+    attested a registration, keyed by the founder's identity.
     """
 
     build_authority_key: bytes = bytes(c.BUILD_AUTHORITY_KEY_BYTES)
     machine_keys: dict[int, MachineKey] = field(default_factory=dict)
     machine_key_owners: dict[bytes, int] = field(default_factory=dict)
     launch_retired_at: int | None = None
+    founder_registrations: dict[bytes, FounderRegistrations] = field(
+        default_factory=dict
+    )
 
     # --- construction ---------------------------------------------------
 
@@ -131,10 +140,22 @@ class Ledger(LedgerV9):
     def active_machine_count(self) -> int:
         return sum(1 for seat_id in self.machine_keys if self.machine_active(seat_id))
 
+    def founder_of(self, seat_id: int) -> bytes:
+        """ADR 0106's founder: the identity that owns the seat, at this height."""
+        return self.seats[seat_id].hub_identity_hash
+
+    def founder_count(self, founder: bytes, window: int) -> int:
+        """The founder's machines' registrations in `window`, zero when the
+        stored count belongs to an earlier one."""
+        entry = self.founder_registrations.get(founder)
+        if entry is None or entry.registration_window != window:
+            return 0
+        return entry.registrations_in_window
+
     # --- projection -------------------------------------------------------
 
     def economy_entries(self) -> dict[bytes, bytes]:
-        """Version nine's map with entry kinds 24, 25, and 26 added."""
+        """Version nine's map with entry kinds 24 through 27 added."""
         entries = super().economy_entries()
         for seat_id, entry in self.machine_keys.items():
             entries[machine_key_key(seat_id)] = machine_key_value(entry)
@@ -143,6 +164,10 @@ class Ledger(LedgerV9):
         if self.launch_retired_at is not None:
             entries[launch_retirement_key()] = launch_retirement_value(
                 self.launch_retired_at
+            )
+        for founder, count in self.founder_registrations.items():
+            entries[founder_registrations_key(founder)] = founder_registrations_value(
+                count
             )
         return entries
 
@@ -161,7 +186,10 @@ class Ledger(LedgerV9):
     # --- invariants -------------------------------------------------------
 
     def registry_failures(self) -> list[str]:
-        """Invariants 1 through 6, each checked and never assumed."""
+        """Invariants 1 to 6 and 8, each checked and never assumed.
+
+        Invariant 7 is about two heights, so the block checks it.
+        """
         failures: list[str] = []
         assigned = assigned_window(self.height)
         window = window_of_height(self.height)
@@ -175,10 +203,6 @@ class Ledger(LedgerV9):
                 assigned is None or entry.last_met_window > assigned
             ):
                 failures.append("a machine was marked for a window not yet assigned")
-            if entry.registration_window > window:
-                failures.append("a machine counted registrations for a future window")
-            if entry.registrations_in_window > c.MACHINE_REGISTRATIONS_PER_WINDOW:
-                failures.append("a machine signed more registrations than its limit")
         for key, seat_id in self.machine_key_owners.items():
             entry = self.machine_keys.get(seat_id)
             if entry is None or entry.machine_public_key != key:
@@ -186,8 +210,28 @@ class Ledger(LedgerV9):
         held = [entry.machine_public_key for entry in self.machine_keys.values()]
         if len(held) != len(set(held)):
             failures.append("two machine-key entries hold the same key")
+        return failures + self._founder_failures(window)
+
+    def _founder_failures(self, window: int) -> list[str]:
+        """Invariants 5, 6, and 8, over the founder-registrations entries."""
+        failures: list[str] = []
+        founders = {
+            self.seats[seat_id].hub_identity_hash
+            for seat_id in self.machine_keys
+            if seat_id in self.seats
+        }
+        for founder, entry in self.founder_registrations.items():
+            if entry.registration_window > window:
+                failures.append("a founder counted registrations for a future window")
+            if not 1 <= entry.registrations_in_window <= (
+                c.FOUNDER_REGISTRATIONS_PER_WINDOW
+            ):
+                failures.append("a founder count is outside one to the limit")
+            if founder not in founders:
+                failures.append("a founder count names an identity with no machine key")
         return failures
 
     def conservation_failures(self) -> list[str]:
-        """Version nine's identities, and the six registry invariants."""
+        """Version nine's identities, and the seven registry invariants a
+        single height can check."""
         return super().conservation_failures() + self.registry_failures()

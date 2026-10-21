@@ -1,10 +1,11 @@
 // The registry across a population: `simulation/economy_transition_v10/
 // population.py`, rebuilt.
 //
-// The launch key retires when 100 machines meet one assigned cycle, and a machine
-// may sign 1,000 registrations a window. No recorded chain of blocks reaches
-// either, because every in-scope seat is audited at every height. So these runs
-// use version nine's evidence harness, as `economy-scenario-suite-v4` does:
+// The launch key retires when 100 machines meet one assigned cycle, and one
+// founder's machines may sign 1,000 registrations a window between them. No
+// recorded chain of blocks reaches either, because every in-scope seat is
+// audited at every height. So these runs use version nine's evidence harness, as
+// `economy-scenario-suite-v4` does:
 //
 // - transactions are admitted and executed by the kernel one at a time, at
 //   heights the run sets;
@@ -15,7 +16,7 @@
 //   contract reads it.
 //
 // **Everything the vectors claim about the registry is derived by the kernel**:
-// who met, the count, the retirement, every refusal, and every count a
+// who met, the count, the retirement, every refusal, and every founder count a
 // registration leaves. The harness supplies uptime and nothing else.
 //
 // **A refused transaction is checked for atomicity, and a bulk success is not**,
@@ -25,27 +26,30 @@
 
 #include "economy_v10_execution_fixture.hpp"
 
+#include <algorithm>
+
 namespace economy_v10_execution {
 namespace {
 
 using Kind = v10::Kind;
 
-// One founder holds every seat. Seats buy capacity, not identities, so one
-// person running many machines is the ordinary case the limit exists for.
-const Person kFounder = person(0);
+// Seats buy capacity, not identities, so one person running a hundred machines
+// is the ordinary case the limit exists for.
+const Person& kFounder = kPopulationFounder;
 constexpr std::uint64_t kActivationHeight = v10::kCycleBlocks - 10;
 // A span run collects this often, so the accumulation cap never decides a
 // cycle and the end of the span is the only thing that does.
 constexpr std::uint64_t kSpanCollectionWindows = 20;
 
 // Credited slots per seat in a window, where it is not all 24. Eighteen slots is
-// exactly the threshold, and seventeen is one slot below it.
+// exactly the threshold, and seventeen is one slot below it. The other founder's
+// seat meets windows 1 and 2, so its machine is active in windows 3 and 4.
 using Plan = std::map<std::uint64_t, std::map<std::uint32_t, std::uint32_t>>;
 
 Plan cutoff_plan() {
   Plan plan;
-  plan[1] = {{98, 18}, {99, 17}, {100, 12}};
-  plan[2] = {{100, 6}};
+  plan[1] = {{97, 18}, {98, 17}, {99, 12}};
+  plan[2] = {{99, 6}};
   for (std::uint32_t seat = 50; seat < kMachines; ++seat) plan[3][seat] = 17;
   return plan;
 }
@@ -116,24 +120,38 @@ class Driver {
     }
   }
 
-  // Register the founder, sell and activate every seat, register every key.
-  void seat_population(std::uint32_t machines) {
-    submit("founder_registers",
-           build_.registration(kFounder, v10::kLaunchAttester, kLaunchKey,
-                               at(1) + kLifetime));
-    auto height = at(2);
-    for (std::uint32_t seat_id = 0; seat_id < machines; ++seat_id) {
-      submit("", build_.purchase(kFounder, seat_id, nonce(kFounder), height + kLifetime));
+  // Register each founder, sell and activate every seat, register every key.
+  // `owners[seat_id]` is the seat's founder. The founders register under the
+  // launch key in the order they first own a seat, and the first one's
+  // registration is recorded.
+  void seat_population(const std::vector<Person>& owners) {
+    auto height = at(1);
+    std::vector<Octets32> registered;
+    for (const auto& owner : owners) {
+      if (std::find(registered.begin(), registered.end(), owner.identity) !=
+          registered.end()) {
+        continue;
+      }
+      submit(registered.empty() ? "founder_registers" : "",
+             build_.registration(owner, v10::kLaunchAttester, kLaunchKey,
+                                 height + kLifetime));
+      registered.push_back(owner.identity);
+    }
+    height = at(2);
+    for (std::uint32_t seat_id = 0; seat_id < owners.size(); ++seat_id) {
+      const auto& owner = owners[seat_id];
+      submit("", build_.purchase(owner, seat_id, nonce(owner), height + kLifetime));
     }
     height = at(kActivationHeight);
-    for (std::uint32_t seat_id = 0; seat_id < machines; ++seat_id) {
-      submit("", build_.activation(kFounder, seat_id, nonce(kFounder),
-                                   height + kLifetime));
+    for (std::uint32_t seat_id = 0; seat_id < owners.size(); ++seat_id) {
+      const auto& owner = owners[seat_id];
+      submit("", build_.activation(owner, seat_id, nonce(owner), height + kLifetime));
     }
     height = at(kActivationHeight + 1);
-    for (std::uint32_t seat_id = 0; seat_id < machines; ++seat_id) {
-      submit("", build_.machine_registration(kFounder, seat_id, machine_key(seat_id),
-                                             nonce(kFounder), height + kLifetime));
+    for (std::uint32_t seat_id = 0; seat_id < owners.size(); ++seat_id) {
+      const auto& owner = owners[seat_id];
+      submit("", build_.machine_registration(owner, seat_id, machine_key(seat_id),
+                                             nonce(owner), height + kLifetime));
     }
   }
 
@@ -146,7 +164,11 @@ class Driver {
     }
   }
 
-  // The cutoff at 99, two machines' signatures crossed, and the limit.
+  // The cutoff at 99, signatures crossed, and the founder's limit. The founder's
+  // 1,000 are spread across two of their machines, 500 each, so neither machine
+  // is near the figure alone. The 1,001st is refused on one of the two and on a
+  // third machine that has attested nobody, while the other founder's machine
+  // still signs.
   void window_three(std::uint64_t base) {
     const auto height = at(base + 1);
     const auto v = height + kLifetime;
@@ -156,19 +178,28 @@ class Driver {
            build_.registration(person(2), 2, machine_key(1), v));
     submit("crossed.a_genuine_signature_under_another_seat",
            build_.registration(person(2), 2, machine_key(1), v, 1));
+    const auto half = v10::kFounderRegistrationsPerWindow / 2;
     submit("limit.the_first", build_.registration(person(10), 0, machine_key(0), v));
-    register_many(0, 11, v10::kMachineRegistrationsPerWindow - 2);
-    const auto last = 11 + v10::kMachineRegistrationsPerWindow - 2;
+    register_many(0, 11, half - 1);
+    register_many(1, 10 + half, half - 1);
+    const auto last = 10 + v10::kFounderRegistrationsPerWindow - 1;
     submit("limit.the_thousandth",
-           build_.registration(person(last), 0, machine_key(0), v));
-    harness_->count_after_the_thousandth =
-        harness_->ledger.machine_keys.at(0).registrations_in_window;
-    submit("limit.a_forgery_naming_a_full_machine",
-           build_.registration(person(last + 1), 0, machine_key(1), v));
+           build_.registration(person(last), 1, machine_key(1), v));
+    const auto count = harness_->ledger.founder_registrations.at(kFounder.identity);
+    pv::require(count.registration_window == 3, "the founder's count is window 3's");
+    harness_->count_after_the_thousandth = count.registrations_in_window;
+    submit("limit.a_forgery_naming_a_full_founders_machine",
+           build_.registration(person(last + 1), 2, machine_key(0), v));
     submit("limit.the_thousand_and_first",
            build_.registration(person(last + 1), 0, machine_key(0), v));
-    submit("limit.another_machine_still_signs",
-           build_.registration(person(last + 1), 1, machine_key(1), v));
+    submit("limit.a_machine_that_attested_nobody",
+           build_.registration(person(last + 1), 2, machine_key(2), v));
+    submit("crossed.a_full_founders_signature_under_another_founders_seat",
+           build_.registration(person(last + 1), kOtherFounderSeat, machine_key(0), v,
+                               0));
+    submit("limit.another_founders_machine_still_signs",
+           build_.registration(person(last + 1), kOtherFounderSeat,
+                               machine_key(kOtherFounderSeat), v));
   }
 
  private:
@@ -178,12 +209,14 @@ class Driver {
 
 }  // namespace
 
-// 101 machines, the count at 99 and then 100, the limit, and the cap.
+// 101 machines, the count at 99 and then 100, the founder's limit, and the cap.
 Harness cutoff_run() {
   Harness harness;
   harness.ledger = open_trace_ledger();
   Driver driver(harness);
-  driver.seat_population(kMachines);
+  std::vector<Person> owners(kOtherFounderSeat, kFounder);
+  owners.push_back(kOtherFounder);
+  driver.seat_population(owners);
   const auto plan = cutoff_plan();
   for (std::uint64_t window = 1; window <= kCapRunWindow; ++window) {
     driver.open(window, plan);
@@ -222,7 +255,7 @@ Harness span_run() {
   Harness harness;
   harness.ledger = open_trace_ledger();
   Driver driver(harness);
-  driver.seat_population(1);
+  driver.seat_population({kFounder});
   for (std::uint64_t window = 1; window <= kSpanRunWindow; ++window) {
     driver.open(window, {});
     if (window % kSpanCollectionWindows == 0) {
