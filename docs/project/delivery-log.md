@@ -120,7 +120,36 @@ The four that over-count or under-count were refused by the state they wrote:
   window;
 - a count starting at zero is refused by the block's gate.
 
-**Evidence.** The Python vector checkers re-recorded 114 contract and 147
+**An independent review found no divergence, five stale sentences, and five
+evidence gaps, and all ten were closed before merge.** A reviewer agent read the
+model, the kernel, the fixtures, and the records against each other, and they
+agreed on every condition, write, refusal, and projection. The stale sentences
+were the specification's entry-kind row, a result-code comment, a test's account
+of the chain, a docstring, and an unwrapped line. A sixth, in the registration
+message's docstring, was found while fixing them. The gaps:
+
+- **An invariant-8 probe weaker than its name.** It gave a count to someone who
+  owns no seat, so a mutant accepting any seat owner passed it. The probe now
+  gives that person an activated seat with no machine key, and that mutant fails
+  by name in both languages.
+- **A seat-binding claim no vector isolated.** The cross-founder signature is
+  refused even without the binding, because the two keys differ. So in window 4
+  the founder replaces seat 1's key, and the other founder re-registers the
+  released key on seat 100. Its signature for seat 1 is refused under seat 100,
+  and its signature for seat 100 is accepted. A model whose message drops the
+  seat now fails that vector by name.
+- **A vacuous atomicity check in the kernel's harness.** It compared two
+  optional roots, and two absent roots are equal. The harness and the bench now
+  require a root before a labelled step and after a refusal.
+- **An unstated consequence of the shared count.** A compromised key can spend
+  its founder's whole window, and replacing it does not give the window back,
+  because that would reopen the rotation bypass. The specification and ADR 0107
+  now say so.
+- **A spread described rather than evidenced.** Both harnesses now tally what
+  each machine attested that the model or the kernel accepted. Three vectors
+  agree it with the split the independent derivation assumes: 500, 500, and 0.
+
+**Evidence.** The Python vector checkers re-recorded 114 contract and 152
 execution vectors through the agreement gate, and both unit suites pass. GCC 12
 compiled the version-one and version-ten kernels and both version-ten targets
 with the repository's warning flags, through the scratch-shim route, and Clang

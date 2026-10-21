@@ -2,7 +2,7 @@
 
 Status: Accepted M4 consensus transition contract. The independent model's
 contract half and execution half are recorded, with 114 contract vectors in
-`test-vectors/economy-transition-v10.txt` and 147 execution vectors in
+`test-vectors/economy-transition-v10.txt` and 152 execution vectors in
 `test-vectors/economy-transition-v10-execution.txt`. The C++ kernel under
 `src/v10/` reproduces every contract vector a codec can reach (M4.3d, ADR 0104)
 and every execution vector (M4.3e, ADR 0105). The snapshot, the store, the
@@ -85,7 +85,7 @@ reference.** That includes:
 | Who signs a registration | the genesis `verifier_key` | an active machine's registered key, or the launch key until it retires |
 | Genesis fields | ten | eleven, gaining `build_authority_key` |
 | Genesis prefix | 150 octets | 182 octets |
-| Entry kinds | 22 | 26, gaining 24 through 27 |
+| Entry kinds | 20 assigned | 24 assigned, gaining 24 through 27 |
 | Transaction kinds | 17 assigned | 18 assigned, gaining kind 23 |
 | Kind-10 body | 128 octets | 132 octets |
 | HUB approval message | five per-action messages binding listed fields | one message binding the whole unsigned transaction |
@@ -378,6 +378,15 @@ holds.** Once a founder's machines have attested 1,000 registrations in a
 window, every one of their machines is refused until the next window, including
 a machine that has attested none. So the network can admit 1,000 people a day
 for each founder with an active machine, which ADR 0106 accepts.
+
+**A compromised key can spend its founder's whole window.** Every registration
+it signs counts against the founder, so a stolen key that signs 1,000 false
+registrations leaves every one of that founder's machines refused until the
+next window. Replacing the key with kind 23 stops it signing, and does not give
+the window's count back. A replacement that restored the count would let key
+rotation bypass the limit, which is the bypass the count exists to close. So a
+compromise costs its founder at most the rest of one window, and other founders'
+machines still register people meanwhile.
 
 **The launch key has no daily limit.** ADR 0101 makes it the only signer until
 it retires, and ADR 0106's limit is about founders' machines.
@@ -760,7 +769,9 @@ least:
     attested none, another founder's machine still signing, and the count
     resetting in the next window;
   - a signature presented under another seat's identifier, including a full
-    founder's signature under another founder's seat;
+    founder's signature under another founder's seat, and a key one founder
+    released and another re-registered, whose signature for its old seat is
+    refused under its new one;
 - **the approval**: each body-carried kind approved over the whole
   transaction; a version-nine-style approval refused; the republished relax
   and the reused transfer confirmation refused, each in both forms;
