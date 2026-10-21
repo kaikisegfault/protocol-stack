@@ -38,6 +38,98 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How M4.3f was delivered
+
+**The founder-decision gate passed with nothing reserved.** Issue #400. The
+slice had to settle:
+
+- the limit, who a founder is, the window it counts in, the launch key's
+  exemption, and the check's place after the signature, which ADR 0106 fixes;
+- whether the machine-key entry keeps its own count, which ADR 0106 names as
+  the revision's to decide;
+- the founder count's encoding, its invariants, and the fixtures, which are
+  mechanism.
+
+[ADR 0107](../decisions/0107-the-registration-count-is-the-founders.md) records
+the mechanism. No value a participant pays, receives, or must do moved beyond
+what the owner answered.
+
+**The contract was revised in place**, because no snapshot, store, application,
+or network stores a version-ten state, as ADR 0103 repaired the registry step
+before anything implemented it. The order was the specification and ADR 0107,
+then the model and both vector files, then the kernel.
+
+**The count is the founder's, and the machine key keeps none.** Entry kind 27
+holds each founder's window and count, keyed by the identity that owns the
+attesting seat. The machine-key value fell from 92 octets to 80.
+
+- Rejected: **keeping a per-machine count beside the founder's.** One machine's
+  registrations are a subset of its founder's, so its check could never decide
+  an outcome, and a probe that deleted it would survive every vector. It would
+  also keep alive the rule that a key replacement must preserve a count.
+- Rejected: **a field in the HUB identity entry**, which changes version six's
+  identity layout for every identity to serve at most 100,000 founders.
+- Rejected: **summing counts kept on the founder's machine keys**, up to 1,000
+  reads per registration with the limit's count stored nowhere.
+- Rejected: **an entry per founder per window**, and **sweeping stale counts at
+  each window**. Reading an earlier window's count as zero needs neither.
+
+**Invariant 8 is what bounds the founder entries.** Each must name an identity
+that owns a seat holding a machine key. Invariants 5 and 6 keep their numbers
+and move to the new entry, and 6 gains a floor of one, because a count of zero
+would be a second encoding of absence. Invariant 7 kept its number, so every
+existing reference to the retirement's persistence stayed correct.
+
+**The population gained a second founder, on its last seat.** The cutoff plan's
+failing seats moved down by one, so the other founder's machine meets windows 1
+and 2, and the counts stay 0, 99, 100, and 50. The founder's 1,000 registrations
+in window 3 are spread across two machines, 500 each. Then:
+
+- the 1,001st is refused on one of the two, and on a third machine that has
+  attested nobody;
+- a forgery naming a full founder's machine is refused for its signature;
+- a full founder's genuine signature under the other founder's seat is
+  refused;
+- the other founder's machine still signs.
+
+**The independent derivation sums each founder's count over every seat the
+founder owns**, so a model that counted per machine would disagree with it
+rather than agree by construction.
+
+**The chain's audit moved, and nothing it claims did.** Challenge selection
+reads the previous root, and the machine-key values changed from the block that
+registered them. So Alice was challenged 83 times rather than 80 and Bob kept 8
+slots rather than 9. Every claim still holds: Alice answered every challenge,
+and Bob's machine is unmarked.
+
+**Nineteen mutation probes, and every one failed.** Nine were in the model and
+ten in the kernel. Fifteen failed by a named vector or claim:
+
+- a limit with no window reset;
+- the limit checked before the signature;
+- a founder read from the wrong seat;
+- fresh machines counting alone;
+- a key replacement that clears the count;
+- invariants 5, 6's floor, and 8 removed;
+- a decoder that admits a count of zero.
+
+The four that over-count or under-count were refused by the state they wrote:
+
+- the limit removed or off by one leaves a count of 1,001, which the model's
+  encoder refuses, and which the kernel's invariant 6 refuses at the next
+  window;
+- a count starting at zero is refused by the block's gate.
+
+**Evidence.** The Python vector checkers re-recorded 114 contract and 147
+execution vectors through the agreement gate, and both unit suites pass. GCC 12
+compiled the version-one and version-ten kernels and both version-ten targets
+with the repository's warning flags, through the scratch-shim route, and Clang
+14 checked every changed file. `economy-transition-v10-cpp` and
+`economy-transition-v10-execution-cpp` both pass locally, the second in about
+1.3 seconds. The new test code never keeps a reference returned by a call that
+was passed a temporary, which is the shape GCC 13's `-Wdangling-reference`
+reports.
+
 ### How M4.3e was delivered
 
 **The founder-decision gate passed with nothing reserved.** Issue #396. The
