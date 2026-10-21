@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-10-20
+Last updated: 2026-10-21
 
 This is the handoff. It says what is true now, and nothing else. How each slice
 was delivered is in [`delivery-log.md`](delivery-log.md), newest first, and
@@ -19,9 +19,9 @@ its eleven requirements, and four are met.
 | ---: | --- | --- |
 | 1 | A test Founder's lifecycle on the four-validator devnet | Met 2026-09-27, M4.1 |
 | 2 | A kind-4 and a kind-18 mint on a network | Met 2026-10-03, M4.2a to M4.2c |
-| 3 | The per-machine attestation-key registry | Specified in `economy-transition-v10`, M4.3a; executes in Python, M4.3b and M4.3c, and in the C++ kernel, M4.3d and M4.3e; no network runs it |
+| 3 | The per-machine attestation-key registry | Specified in `economy-transition-v10`, M4.3a, and revised per founder, M4.3f; executes in Python and in the C++ kernel, M4.3b to M4.3f; no network runs it |
 | 4 | A deterministic test verifier as a replaceable component | Met 2026-10-09, M4.4, for version nine's proofs |
-| 5 | Sensitive-action authorization with expiry and replay protection | Specified in `economy-transition-v10`, M4.3a; executes in Python, M4.3b and M4.3c, and in the C++ kernel, M4.3d and M4.3e; no network runs it |
+| 5 | Sensitive-action authorization with expiry and replay protection | Specified in `economy-transition-v10`, M4.3a; executes in Python and in the C++ kernel, M4.3b to M4.3e; no network runs it |
 | 6 | Legacy succession mechanics | Open; the values are founder-reserved |
 | 7 | The threat model for local HUB verification | Met 2026-10-09, M4.7; its review is owed |
 | 8 | Storage bounds for every new entry | Open; due with each new entry |
@@ -63,28 +63,33 @@ define them:
 
 - a machine-key registry keyed by seat, filled by kind 23 under the build
   authority's attestation and the owner's HUB approval;
-- registrations signed by an active machine, at most 1,000 per window, or by
-  the launch key until 100 machines are active;
+- registrations signed by an active machine, or by the launch key until 100
+  machines are active;
+- at most 1,000 registrations per window across all of one founder's
+  machines, kept on a count per founder (entry kind 27);
 - a registry step that records each machine's last met window;
 - one approval message that signs the whole transaction, with a one-slot life.
 
-The owner's answers in ADRs 0100 and 0101 fix every participant-facing value
-but one. **ADR 0106 adds that the 1,000 a day also counts per founder**, across
-all of one founder's machines, and nothing carries it yet: the specification,
-the model, and the kernel count per machine only until M4.3f revises them.
-**The independent Python model executes all of it** (M4.3b and M4.3c).
+The owner's answers in ADRs 0100, 0101, and 0106 fix every participant-facing
+value. [ADR 0107](../decisions/0107-the-registration-count-is-the-founders.md)
+records how the per-founder limit is kept: the count is the founder's, keyed by
+the identity that owns the attesting seat, and the machine-key entry keeps none.
+Invariant 8 bounds the founder counts by the seats.
+**The independent Python model executes all of it** (M4.3b, M4.3c, and M4.3f).
 `simulation/economy_transition_v10/` imports version nine and declares exactly
 what it carries, revises, withdraws, and adds. Kinds 10 and 23 are its own;
 every other kind runs on version nine's handlers, with a body approval verified
 over the whole transaction. The prologue runs the registry step.
 
-- `test-vectors/economy-transition-v10.txt` records 107 contract vectors.
-- `test-vectors/economy-transition-v10-execution.txt` records 141 execution
-  vectors, from a chain of blocks and from 101 machines driven through version
-  nine's evidence harness. They show every refusal in order, the launch key
-  retiring at 100 active machines and staying retired, the 1,001st
-  registration of one machine in one window refused, and both of version
-  nine's executed replays refused in both forms.
+- `test-vectors/economy-transition-v10.txt` records 114 contract vectors.
+- `test-vectors/economy-transition-v10-execution.txt` records 147 execution
+  vectors, from a chain of blocks and from 101 machines of two founders driven
+  through version nine's evidence harness. They show every refusal in order,
+  the launch key retiring at 100 active machines and staying retired, and both
+  of version nine's executed replays refused in both forms. One founder's
+  1,000 registrations in a window are spread across two machines. The 1,001st
+  is refused, including on a machine of theirs that attested nobody, while the
+  other founder's machine still signs.
 - Every value two sources can reach is agreed with an independent derivation
   that imports nothing from `simulation/`.
 
@@ -95,10 +100,10 @@ translation units under `src/v10/` compile beside version nine's kernel, under
 Everything version ten adds is in two of them, `economy_registry.cpp` for the
 codec and `economy_registry_transitions.cpp` for execution.
 
-- `economy-transition-v10-cpp` reproduces 99 of the 107 contract vectors. Its
+- `economy-transition-v10-cpp` reproduces 106 of the 114 contract vectors. Its
   guard names the other eight: seven describe the Python package's own surface,
   and the eighth, what a genesis writes, the execution target consults.
-- `economy-transition-v10-execution-cpp` reproduces all 141 execution vectors:
+- `economy-transition-v10-execution-cpp` reproduces all 147 execution vectors:
   the chain of blocks, and the 101-machine population through `open_window`,
   the prologue alone at a window opening
   ([ADR 0105](../decisions/0105-the-kernel-runs-the-prologue-alone-for-the-evidence-harness.md)).
@@ -353,32 +358,14 @@ first fee. No transition can enforce that order, so the bridge milestones must.
 
 ## Exact next action
 
-**Revise version ten so the registration limit counts per founder: M4.3f.**
-The owner answered on 2026-10-20
-([ADR 0106](../decisions/0106-founder-answer-the-registration-limit-counts-per-founder.md)):
-one founder's machines together register at most 1,000 people a day, however
-many seats that founder holds. Nothing stores a version-ten state yet, so the
-contract is revised in place, in this order:
-
-- the specification: a founder-count entry keyed by the attesting seat's
-  identity, its storage bound at 100,000 founders, kind 10's condition beside
-  the machine count and still after the signature, and the invariants;
-- the Python model and its re-recorded contract and execution vectors, with
-  one founder's 1,000th and 1,001st registrations spread across two of their
-  machines;
-- the C++ kernel, reproducing them.
-
-Whether the machine-key entry keeps its own count is the revision's to decide,
-because a founder cap of 1,000 already holds every machine to 1,000.
-
-**Then encode a version-ten ledger as a snapshot: `snapshot_v10`, M4.3g**, step
-3 of ADR 0104's enumeration. Without it a version-ten ledger cannot be written down,
-so no store, application, or node can carry one.
+**Encode a version-ten ledger as a snapshot: `snapshot_v10`, M4.3g**, step 3
+of ADR 0104's enumeration. Without it a version-ten ledger cannot be written
+down, so no store, application, or node can carry one.
 
 - `include/protocol/storage/snapshot_v10.hpp` and its translation units, version
-  nine's `snapshot_v9` copied with the namespace rebound, encoding the three
-  entries version ten adds: the machine keys, their inverse, and the
-  retirement.
+  nine's `snapshot_v9` copied with the namespace rebound, encoding the four
+  entries version ten adds: the machine keys, their inverse, the retirement,
+  and the founder counts.
 - The restore takes the build authority key as a parameter, as it takes the
   dispute authority key: the ledger keeps it, kind 23 reads it, and no root
   commits to it.
@@ -407,6 +394,6 @@ version ten to run on a network, because version ten changes what they build.
 
 ## Blockers
 
-**No blocker.** The per-founder registration limit is answered (ADR 0106), and
-every other founder value version ten needs is answered (ADRs 0100 and
-0101).
+**No blocker.** Every founder value version ten needs is answered (ADRs 0100,
+0101, and 0106), and the specification, the model, and the kernel carry them
+all.
