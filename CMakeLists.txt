@@ -709,6 +709,11 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
   )
   target_link_libraries(economy_v9_fuzz PRIVATE protocol_kernel_fuzz)
   add_executable(
+    economy_v10_fuzz
+    tests/fuzz/economy_v10_fuzz.cpp
+  )
+  target_link_libraries(economy_v10_fuzz PRIVATE protocol_kernel_fuzz)
+  add_executable(
     kernel_genesis_fuzz
     tests/fuzz/genesis_fuzz.cpp
   )
@@ -796,6 +801,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     kernel_address_fuzz
     kernel_genesis_fuzz
     economy_v9_fuzz
+    economy_v10_fuzz
     protocol_storage_fuzz
     storage_snapshot_fuzz
     storage_snapshot_v9_fuzz
@@ -838,6 +844,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       kernel_address_fuzz
       kernel_genesis_fuzz
       economy_v9_fuzz
+      economy_v10_fuzz
       protocol_storage_fuzz
       storage_snapshot_fuzz
       storage_snapshot_v9_fuzz
@@ -859,6 +866,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       kernel_address_fuzz
       kernel_genesis_fuzz
       economy_v9_fuzz
+      economy_v10_fuzz
       storage_snapshot_fuzz
       storage_snapshot_v9_fuzz
       storage_archive_fuzz
@@ -2192,6 +2200,15 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       -len_control=0
   )
   add_test(
+    NAME economy-transition-v10-fuzz-smoke
+    COMMAND
+      economy_v10_fuzz
+      -seed=824311
+      -runs=512
+      -max_len=512
+      -len_control=0
+  )
+  add_test(
     NAME storage-snapshot-fuzz-smoke
     COMMAND
       storage_snapshot_fuzz
@@ -2241,6 +2258,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     kernel-address-fuzz-smoke
     kernel-genesis-fuzz-smoke
     economy-transition-v9-fuzz-smoke
+    economy-transition-v10-fuzz-smoke
     storage-snapshot-fuzz-smoke
     storage-snapshot-v9-fuzz-smoke
     storage-archive-fuzz-smoke
