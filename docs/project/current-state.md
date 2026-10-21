@@ -82,14 +82,15 @@ every other kind runs on version nine's handlers, with a body approval verified
 over the whole transaction. The prologue runs the registry step.
 
 - `test-vectors/economy-transition-v10.txt` records 114 contract vectors.
-- `test-vectors/economy-transition-v10-execution.txt` records 147 execution
+- `test-vectors/economy-transition-v10-execution.txt` records 152 execution
   vectors, from a chain of blocks and from 101 machines of two founders driven
   through version nine's evidence harness. They show every refusal in order,
   the launch key retiring at 100 active machines and staying retired, and both
   of version nine's executed replays refused in both forms. One founder's
   1,000 registrations in a window are spread across two machines. The 1,001st
   is refused, including on a machine of theirs that attested nobody, while the
-  other founder's machine still signs.
+  other founder's machine still signs. A key one founder released and the other
+  re-registered signs only for its new seat.
 - Every value two sources can reach is agreed with an independent derivation
   that imports nothing from `simulation/`.
 
@@ -103,7 +104,7 @@ codec and `economy_registry_transitions.cpp` for execution.
 - `economy-transition-v10-cpp` reproduces 106 of the 114 contract vectors. Its
   guard names the other eight: seven describe the Python package's own surface,
   and the eighth, what a genesis writes, the execution target consults.
-- `economy-transition-v10-execution-cpp` reproduces all 147 execution vectors:
+- `economy-transition-v10-execution-cpp` reproduces all 152 execution vectors:
   the chain of blocks, and the 101-machine population through `open_window`,
   the prologue alone at a window opening
   ([ADR 0105](../decisions/0105-the-kernel-runs-the-prologue-alone-for-the-evidence-harness.md)).

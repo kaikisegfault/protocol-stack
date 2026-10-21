@@ -110,6 +110,9 @@ machine. `MACHINE_REGISTRATIONS_PER_WINDOW` becomes
   founder.
 - **The peak block does not change.** A registration through a machine writes
   one 12-octet founder value where it wrote one 92-octet machine-key value.
+- **A compromised key can spend its founder's whole window**, and replacing it
+  does not give the count back, because a replacement that did would reopen
+  the rotation bypass. The specification states it beside the shared limit.
 - **`snapshot_v10`, M4.3g, encodes the revised registry once.** Its restore runs
   invariant 8 with the others.
 - **Owed to independent review**, in place of ADR 0102's item on the kept count:
