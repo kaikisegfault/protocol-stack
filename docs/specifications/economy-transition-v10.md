@@ -1,15 +1,18 @@
 # Economy transition v10
 
 Status: Accepted M4 consensus transition contract. The independent model's
-contract half and execution half are recorded, with 107 contract vectors in
-`test-vectors/economy-transition-v10.txt` and 141 execution vectors in
+contract half and execution half are recorded, with 114 contract vectors in
+`test-vectors/economy-transition-v10.txt` and 147 execution vectors in
 `test-vectors/economy-transition-v10-execution.txt`. The C++ kernel under
 `src/v10/` reproduces every contract vector a codec can reach (M4.3d, ADR 0104)
 and every execution vector (M4.3e, ADR 0105). The snapshot, the store, the
-application, and the node are not built. **[ADR 0106](../decisions/0106-founder-answer-the-registration-limit-counts-per-founder.md)
-amends the registration limit to count per founder as well as per machine**,
-and this document does not carry that yet; M4.3f revises it, the model, and the
-kernel.
+application, and the node are not built. **The registration limit counts per
+founder**, as
+[ADR 0106](../decisions/0106-founder-answer-the-registration-limit-counts-per-founder.md)
+answers. M4.3f revised this document, the model, and the kernel to carry it
+before any layer stored a version-ten state, and
+[ADR 0107](../decisions/0107-the-registration-count-is-the-founders.md) records
+the mechanism.
 
 This document defines the version-ten Founder Economy consensus transition. It
 is [`economy-transition-v9`](economy-transition-v9.md) with **a registry of
@@ -29,7 +32,8 @@ records the decisions and the alternatives rejected.
   anyone from ever joining. ADR 0048 replaces it with a registry of per-machine
   attestation keys. ADRs 0100 and 0101 record the owner's answers on who
   verifies, how the first registrations happen, what counts as an active
-  machine, and how many registrations one machine may sign.
+  machine, and how many registrations one machine may sign. ADR 0106 makes
+  that limit hold for all of one founder's machines together.
 - **A HUB approval can be used twice.** `hub-test-verifier-v9` executes it. A
   published posture relax undoes a later tightening with a signer key alone,
   and one transfer confirmation moves value twice. No version-nine HUB message
@@ -65,8 +69,8 @@ reference.** That includes:
 
 1. Genesis's `verifier_key` becomes the `launch_key`, and genesis gains a
    `build_authority_key`.
-2. The state gains three entry kinds: a machine key per seat, its inverse, and
-   the launch key's retirement.
+2. The state gains four entry kinds: a machine key per seat, its inverse, the
+   launch key's retirement, and each founder's registration count.
 3. Kind 10's body names the seat whose machine attested the registration, and a
    new kind 23 registers a seat's machine key.
 4. Every HUB approval signs the whole transaction it approves, and its life is
@@ -81,7 +85,7 @@ reference.** That includes:
 | Who signs a registration | the genesis `verifier_key` | an active machine's registered key, or the launch key until it retires |
 | Genesis fields | ten | eleven, gaining `build_authority_key` |
 | Genesis prefix | 150 octets | 182 octets |
-| Entry kinds | 22 | 25, gaining 24, 25, and 26 |
+| Entry kinds | 22 | 26, gaining 24 through 27 |
 | Transaction kinds | 17 assigned | 18 assigned, gaining kind 23 |
 | Kind-10 body | 128 octets | 132 octets |
 | HUB approval message | five per-action messages binding listed fields | one message binding the whole unsigned transaction |
@@ -94,7 +98,8 @@ reference.** That includes:
 
 Version ten defines:
 
-- the machine-key entry, its inverse, and the retirement entry;
+- the machine-key entry, its inverse, the retirement entry, and the
+  founder-count entry;
 - kind 23's body, authority, and ordered rejection conditions;
 - kind 10's new body and its ordered rejection conditions;
 - the attestation, registration, and approval messages;
@@ -124,10 +129,11 @@ It does not define:
 
 This specification holds no second copy of any founder-directed value.
 
-**The answers** are [ADR 0100](../decisions/0100-founder-answers-on-who-verifies-and-how-registration-starts.md)
-and [ADR 0101](../decisions/0101-founder-answers-on-the-launch-cutoff-an-active-machine-and-the-registration-limit.md).
+**The answers** are [ADR 0100](../decisions/0100-founder-answers-on-who-verifies-and-how-registration-starts.md),
+[ADR 0101](../decisions/0101-founder-answers-on-the-launch-cutoff-an-active-machine-and-the-registration-limit.md),
+and [ADR 0106](../decisions/0106-founder-answer-the-registration-limit-counts-per-founder.md).
 The cutoff of 100 active machines, the meaning of an active machine, and the
-limit of 1,000 registrations a day are read from them.
+limit of 1,000 registrations a day for each founder are read from them.
 
 **The meaning of "met"** is `cycle-boundary-v1`'s `ACTIVITY_THRESHOLD_SECONDS`,
 applied to version eight's uptime figure for the seat and the window. Version
@@ -145,7 +151,7 @@ seven's settlement step 2 derives the same fact.
 | `ASSIGNMENT_LAG_WINDOWS` | 2 | `economy-transition-v7` |
 | `MAX_SEAT_ID` | 99,999 | Founder Constitution |
 | `LAUNCH_RETIREMENT_ACTIVE_MACHINES` | 100 | ADR 0101 |
-| `MACHINE_REGISTRATIONS_PER_WINDOW` | 1,000 | ADR 0101 |
+| `FOUNDER_REGISTRATIONS_PER_WINDOW` | 1,000 | ADRs 0101 and 0106 |
 | `APPROVAL_LIFETIME_BLOCKS` | 1,200 | this document |
 | `LAUNCH_ATTESTER` | 4,294,967,295 | this document |
 | `GENESIS_PREFIX_BYTES` | 182 | this document |
@@ -159,7 +165,7 @@ It is engineering's to choose: the constitution requires a "fresh" approval and
 fixes no figure. It is long enough to cover inclusion under ordinary load, and
 short enough that a withheld approval dies within the hour.
 
-All three ADR 0101 figures are **consensus parameters of this version and not
+All three founder figures are **consensus parameters of this version and not
 deployment options**, for the reason `TIMESTAMP_TOLERANCE_MILLIS` is one: two
 machines applying different values disagree about which blocks are acceptable.
 
@@ -167,14 +173,15 @@ machines applying different values disagree about which blocks are acceptable.
 
 ### Canonical economy state
 
-Version nine's key space with three entry kinds added. Every other kind, key
+Version nine's key space with four entry kinds added. Every other kind, key
 width, and value width is unchanged.
 
 | Kind | Entry | Key | Key bytes | Value | Value bytes |
 | ---: | --- | --- | ---: | --- | ---: |
-| 24 | machine key | `u8(24) \|\| seat_id:u32` | 5 | see below | 92 |
+| 24 | machine key | `u8(24) \|\| seat_id:u32` | 5 | see below | 80 |
 | 25 | launch retirement | `u8(25)` | 1 | `retired_at_height:u64` | 8 |
 | 26 | machine-key owner | `u8(26) \|\| machine_public_key:32` | 33 | `seat_id:u32` | 4 |
+| 27 | founder registrations | `u8(27) \|\| hub_identity_hash:32` | 33 | see below | 12 |
 
 The machine-key value, in this order:
 
@@ -184,16 +191,42 @@ The machine-key value, in this order:
 | `build_digest` | 32 | the attested build the key was registered under |
 | `registered_at_height` | 8 | the height of the kind-23 transaction that last wrote the key |
 | `last_met_window` | 8 | the most recent assigned window in which the seat met the cycle, or 0 for none |
+
+The founder-registrations value, in this order:
+
+| Field | Bytes | Meaning |
+| --- | ---: | --- |
 | `registration_window` | 8 | the window the count below belongs to |
-| `registrations_in_window` | 4 | registrations this seat's key signed that executed in that window |
+| `registrations_in_window` | 4 | registrations the founder's machines attested that executed in that window |
 
 Every integer is big-endian.
 
-**The entry is keyed by the seat**, because every ADR 0101 rule is about a
-machine, and a machine is a seat. Activity is the seat's cycle, and the limit is
-the machine's count. **The inverse entry exists so that one key serves one
-seat.** Without it, one key registered on two seats would sign under two
-limits, and a compromised machine would double what ADR 0101 caps.
+**The machine-key entry is keyed by the seat**, because activity is about a
+machine, and a machine is a seat. Activity is the seat's cycle. **The inverse
+entry exists so that one key serves one seat**, and therefore one founder.
+Without it, one key registered on seats of two founders would sign under both
+founders' limits.
+
+**The founder-registrations entry is keyed by an identity**, because ADR
+0106's limit belongs to a founder, across all of their machines. **A founder is
+the HUB identity that owns the attesting seat**, read from the seat entry at the
+registration's height. Seats are not transferable, and legacy succession, the
+one path that changes a seat's identity, is not built. The entry is written by
+the founder's first registration through a machine, and is never removed. A
+count from an earlier window is read as zero, so no step has to clear it.
+
+**A count of 0 is never written.** Only a registration writes the entry, and it
+leaves its window's count at 1 or more. So a count of 0 would be a second
+encoding of absence, which `protocol-primitives-v1` forbids, and a decoder
+refuses it.
+
+**The machine-key entry keeps no count of its own**, which
+[ADR 0107](../decisions/0107-the-registration-count-is-the-founders.md)
+records. One machine's count can never exceed its founder's, so a per-machine
+check could never decide an outcome, and the founder's limit already holds each
+machine to 1,000. A count on the key's entry would also have to survive every
+key replacement, or rotating keys would reset it. On the founder's entry, no
+replacement reaches it.
 
 **`last_met_window` of 0 means none, and is unambiguous.** A seat is in scope
 only from the window after its activation, so no seat is in scope in window 0,
@@ -267,16 +300,16 @@ approval lifetime rule:
    recorded `hub_public_key` is `UNAUTHORIZED`.
 
 On success, if the seat has no machine-key entry, the transition writes one with
-the key, the digest, `registered_at_height = h`, and every other field zero.
-**If it has one, it replaces the key, the digest, and `registered_at_height`, and
-keeps the other three fields.** It deletes the old key's owner entry, writes the
-new key's, and charges the fixed fee to the acting escrow. It is atomic.
+the key, the digest, `registered_at_height = h`, and `last_met_window = 0`. **If
+it has one, it replaces the key, the digest, and `registered_at_height`, and
+keeps `last_met_window`.** It deletes the old key's owner entry, writes the new
+key's, and charges the fixed fee to the acting escrow. It is atomic.
 
-**A replacement keeps the count and the activity**, and both are deliberate.
-Activity belongs to the seat's cycle, not to the key, so a machine that replaces
-its key mid-window stays active. **The count must not reset**, or rotating keys
-would bypass ADR 0101's limit. Replacing a key is how a founder retires a
-compromised one, and nothing else in this version revokes a key.
+**A replacement keeps the mark, and touches no count.** Activity belongs to the
+seat's cycle, not to the key, so a machine that replaces its key mid-window
+stays active. The registration count is the founder's, on an entry kind 23 never
+writes, so rotating keys cannot reset it. Replacing a key is how a founder
+retires a compromised one, and nothing else in this version revokes a key.
 
 **The HUB approval is always required, and the posture does not waive it.**
 Installing a key that can admit people is authority over the ecosystem, not
@@ -308,7 +341,7 @@ registration_message =
 
 `hub_public_key` is the envelope's authority key. **Binding the attesting seat
 means one machine's signature cannot be presented as another's**, so each
-registration counts against the limit of the machine that actually signed it.
+registration counts against the founder whose machine actually signed it.
 
 Rejection conditions, in this order, after `EXPIRED` and the approval lifetime
 rule:
@@ -325,21 +358,34 @@ rule:
    - a machine that is not active at `h` is `MACHINE_NOT_ACTIVE`;
    - an attestation that does not verify over the registration message, against
      the entry's `machine_public_key`, is `UNAUTHORIZED`;
-   - a machine whose count for `window_of_height(h)` already stands at
-     `MACHINE_REGISTRATIONS_PER_WINDOW` is `REGISTRATION_LIMIT`;
+   - a founder, the identity that owns the attesting seat, whose count for
+     `window_of_height(h)` already stands at `FOUNDER_REGISTRATIONS_PER_WINDOW`
+     is `REGISTRATION_LIMIT`;
 5. an entry airdrop that does not fit channel 8 is `CHANNEL_CAP`.
 
 On success it performs version nine's four writes. When a machine attested, it
-also sets that entry's `registration_window` to `window_of_height(h)`. It sets
-`registrations_in_window` to one more than its stored value when the stored
-window equals `window_of_height(h)`, and to 1 otherwise. It is atomic.
+also writes the founder's registrations entry. It sets `registration_window` to
+`window_of_height(h)`. It sets `registrations_in_window` to one more than its
+stored value when an entry exists and its stored window equals
+`window_of_height(h)`, and to 1 otherwise. It is atomic.
 
 **The limit is checked after the signature**, so that a refusal for the limit is
 only ever given for a registration that was otherwise valid. A forgery naming a
-full machine is `UNAUTHORIZED`, which is the true reason.
+machine of a full founder is `UNAUTHORIZED`, which is the true reason.
+
+**One founder's machines share one limit, however many seats the founder
+holds.** Once a founder's machines have attested 1,000 registrations in a
+window, every one of their machines is refused until the next window, including
+a machine that has attested none. So the network can admit 1,000 people a day
+for each founder with an active machine, which ADR 0106 accepts.
 
 **The launch key has no daily limit.** ADR 0101 makes it the only signer until
-it retires, and a limit would only slow the launch.
+it retires, and ADR 0106's limit is about founders' machines.
+
+**The limit does not stop someone who registers extra founder identities**
+through machines they control and buys seats under each. Seats cost the same
+however they are spread, so that case rests on uniqueness and attestation, the
+threat model's T5 and T4.
 
 **A machine that is active at `h` may register its own seat's owner's second
 identity**, and the chain cannot tell. Uniqueness is the sandbox's to decide.
@@ -486,13 +532,14 @@ Version ten adds five codes. Codes 0 through 44 keep their version-nine meanings
 | 45 | `LAUNCH_KEY_RETIRED` | kind 10 naming `LAUNCH_ATTESTER` after the retirement entry is written |
 | 46 | `MACHINE_KEY_NOT_FOUND` | kind 10 naming a seat with no machine-key entry |
 | 47 | `MACHINE_NOT_ACTIVE` | kind 10 naming a machine that is not active at `h` |
-| 48 | `REGISTRATION_LIMIT` | kind 10 naming a machine at its count for the window |
+| 48 | `REGISTRATION_LIMIT` | kind 10 naming a machine whose founder is at the count for the window |
 | 49 | `APPROVAL_LIFETIME_EXCEEDED` | any transaction the lifetime rule governs |
 
 **Each new code names a fact a person can act on.** "The launch is over, ask a
-machine." "This seat has no machine." "That machine is down." "That machine is
-full today, try the next one." "Your wallet asked for too long." Folding any of
-them into `UNAUTHORIZED` would make a person's next step guesswork.
+machine." "This seat has no machine." "That machine is down." "That machine's
+founder is full today, try another founder's machine." "Your wallet asked for
+too long." Folding any of them into `UNAUTHORIZED` would make a person's next
+step guesswork.
 
 ## Receipts
 
@@ -502,24 +549,28 @@ Version nine's receipt layout, with the version field at `10`.
 
 | Entry | Octets each | Bound at capacity |
 | --- | ---: | ---: |
-| machine key (24) | 97 | 100,000 |
+| machine key (24) | 85 | 100,000 |
 | machine-key owner (26) | 37 | 100,000 |
+| founder registrations (27) | 45 | 100,000 |
 | launch retirement (25) | 9 | 1 |
 
-**The standing cost is about 13.4 MB at the 100,000-seat capacity.** It is paid
-only by a chain on which every seat has registered a machine. Version ten adds
-no entry per identity, so the 1,000,000-identity bound adds nothing.
+**The standing cost is about 16.7 MB at the 100,000-seat capacity.** It is paid
+only by a chain on which every seat has registered a machine and has a founder
+of its own. **The founder entries are bounded by the seats, not by the
+identities.** Invariant 8 requires each to name an identity that owns a seat
+holding a machine key, so there are never more of them than seats. Version ten
+adds no entry per identity, so the 1,000,000-identity bound adds nothing.
 Requirement 8 is met for every entry this version adds.
 
 **The peak block is an assignment on a chain where every seat has a machine
 key.** It rewrites up to 100,000 machine-key values, one `u64` each, which is
 the cost version nine already pays to read every in-scope seat's uptime. A
-registration writes one machine-key value, and kind 23 writes two owner entries
-and one machine-key entry.
+registration through a machine writes one founder-registrations value, and kind
+23 writes two owner entries and one machine-key entry.
 
 ## Invariants
 
-Version nine's invariants are unchanged, and seven are added. Each is checked,
+Version nine's invariants are unchanged, and eight are added. Each is checked,
 never assumed.
 
 1. Every machine-key entry's seat is purchased and activated.
@@ -528,11 +579,19 @@ never assumed.
    machine-key entry's key has an owner entry naming its seat.
 3. No two machine-key entries hold the same key.
 4. Every `last_met_window` is 0 or at most `assigned(h)`.
-5. Every `registration_window` is at most `window_of_height(h)`.
-6. Every `registrations_in_window` is at most
-   `MACHINE_REGISTRATIONS_PER_WINDOW`.
+5. Every founder-registrations entry's `registration_window` is at most
+   `window_of_height(h)`.
+6. Every founder-registrations entry's `registrations_in_window` is at least 1
+   and at most `FOUNDER_REGISTRATIONS_PER_WINDOW`.
 7. A retirement entry, once present, is present at every later height with the
    same value.
+8. Every founder-registrations entry names an identity that owns a seat holding
+   a machine-key entry.
+
+**Invariant 8 is what bounds the founder entries.** It holds from the moment an
+entry is written, because only a registration through a machine writes one, and
+that machine's seat is the founder's. It stays true, because seats are never
+removed or transferred and a machine-key entry is only ever replaced.
 
 ## Version-ten genesis
 
@@ -574,7 +633,8 @@ chain_id = H(D("protocol-stack:v10:chain-id") || canonical_genesis_v10_bytes)
 ```
 
 **Genesis writes version nine's sixteen economy entries and no others.** It
-writes no machine key, no owner entry, and no retirement entry. Entry kind 8,
+writes no machine key, no owner entry, no retirement entry, and no founder
+registrations. Entry kind 8,
 which version six named the verifier key, holds the launch key. The build
 authority key is not written to state: like the dispute authority key, it is a
 genesis field bound into the chain identity.
@@ -614,7 +674,7 @@ A version-nine node refuses kind 23 at admission step 1 as
 `MALFORMED_TRANSACTION`.
 
 **State.** A version-nine state is not a version-ten state, and the converse
-holds too. Version nine's decoder refuses entry kinds 24 through 26. There is no
+holds too. Version nine's decoder refuses entry kinds 24 through 27. There is no
 upgrade block, no migration, and no state translation, as between every earlier
 pair.
 
@@ -653,6 +713,9 @@ Every decision this document makes was enumerated before it was judged.
   - the launch key and its retirement at 100 active machines (ADRs 0100 and
     0101);
   - what an active machine is, and the per-window limit (ADR 0101);
+  - that the limit holds for all of one founder's machines together, that a
+    founder is the identity owning the attesting seat, and that the launch key
+    keeps no limit (ADR 0106);
   - that "met" is the uptime test (ADR 0101's own reading);
   - that the build authority attests machines (ADR 0048: the company during
     initialization);
@@ -661,13 +724,17 @@ Every decision this document makes was enumerated before it was judged.
 - **Mechanism, recorded in ADR 0102:**
   - the entry shapes and the inverse index;
   - the attesting seat in kind 10;
-  - kind 23, and that a replacement keeps its count;
+  - kind 23, and that a replacement keeps its mark;
   - the whole-transaction approval;
   - the one-slot lifetime;
   - the five result codes;
   - the registry step's place;
   - the separate build authority key;
   - the unchanged header.
+- **Mechanism, recorded in ADR 0107:**
+  - the founder-registrations entry, keyed by the identity;
+  - that the machine-key entry keeps no count;
+  - invariant 8, which bounds the founder entries by the seats.
 - **Not decided, because each is reserved:**
   - legacy precedence and reclaim;
   - rotation and revocation of the launch key, the build key, and a HUB key;
@@ -682,15 +749,18 @@ A version-ten model and kernel must reproduce recorded vectors that show at
 least:
 
 - **genesis**: the 182-octet prefix, the chain ID, and the sixteen entries;
-- **kind 23**: success, replacement keeping the count and the mark, and every
-  rejection in order, including a key already owned by another seat and by the
-  same seat;
+- **kind 23**: success, replacement keeping the mark and touching no count, and
+  every rejection in order, including a key already owned by another seat and by
+  the same seat;
 - **kind 10**:
   - under the launch key before and after retirement;
   - under an active machine, an inactive one, and a seat with no key;
-  - at the 1,000th and 1,001st registration in one window, and the count
-    resetting in the next;
-  - a signature presented under another seat's identifier;
+  - one founder's 1,000th and 1,001st registration in one window, spread across
+    two of their machines, the 1,001st refused on a machine of theirs that has
+    attested none, another founder's machine still signing, and the count
+    resetting in the next window;
+  - a signature presented under another seat's identifier, including a full
+    founder's signature under another founder's seat;
 - **the approval**: each body-carried kind approved over the whole
   transaction; a version-nine-style approval refused; the republished relax
   and the reused transfer confirmation refused, each in both forms;
@@ -702,6 +772,6 @@ least:
   - the count reaching 99 and then 100;
   - the window-0 assignment counting zero, with at least 100 keys registered;
   - retirement written exactly once, and not revived when the count falls;
-- **invariants**: each of the seven, by a probe that breaks it;
+- **invariants**: each of the eight, by a probe that breaks it;
 - **non-collision** of every re-versioned construction with all nine
   predecessors.
