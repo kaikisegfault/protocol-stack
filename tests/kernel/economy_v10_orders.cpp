@@ -48,11 +48,13 @@ class Bench {
     const auto admission = v10::admit(raw, ledger_.chain_id, verify);
     pv::require(admission.admitted(), "a bench transaction is admitted");
     const auto before = v10::ledger_state_root(ledger_);
+    // Required rather than compared, because two absent roots are equal.
+    pv::require(before.has_value(), "a bench step starts from a committable state");
     const auto outcome = v10::execute(ledger_, admission.transaction.envelope, verify);
     pv::require(outcome.has_value(), "no bench step is an invariant failure");
     if (!outcome->succeeded()) {
-      pv::require(v10::ledger_state_root(ledger_) == before,
-                  "a refusal changed the state");
+      const auto after = v10::ledger_state_root(ledger_);
+      pv::require(after.has_value() && after == before, "a refusal changed the state");
     }
     return outcome->result;
   }
