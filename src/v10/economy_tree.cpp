@@ -89,14 +89,18 @@ bool entry_shape_is_valid(const EconomyEntry& entry) {
   if (kind == static_cast<std::uint8_t>(Entry::seat_window)) {
     return decode_seat_window_value(entry.value).has_value();
   }
-  // **Version ten's two valued entries are checked by content too**, for the
-  // same reason: a machine key at a zero height or over its limit, and a
-  // retirement at height zero, are each a state no transition writes.
+  // **Version ten's three valued entries are checked by content too**, for the
+  // same reason: a machine key at a zero height, a retirement at height zero,
+  // and a founder count of zero or over the limit are each a state no
+  // transition writes.
   if (kind == static_cast<std::uint8_t>(Entry::machine_key)) {
     return decode_machine_key_value(entry.value).has_value();
   }
   if (kind == static_cast<std::uint8_t>(Entry::launch_retirement)) {
     return decode_launch_retirement_value(entry.value).has_value();
+  }
+  if (kind == static_cast<std::uint8_t>(Entry::founder_registrations)) {
+    return decode_founder_registrations_value(entry.value).has_value();
   }
   return true;
 }

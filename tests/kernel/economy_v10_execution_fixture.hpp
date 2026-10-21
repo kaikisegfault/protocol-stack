@@ -14,7 +14,7 @@
 // through version nine's evidence harness: transactions executed one at a time at
 // heights the run sets, windows opened through `open_window`, and a closed
 // window's kind-19 records supplied. No recorded chain of blocks reaches the
-// launch key's retirement or the per-window limit.
+// launch key's retirement or a founder's limit.
 //
 // **No signature is computed anywhere.** A stand-in is an eight-octet counter
 // padded to 64 octets, recorded against the exact key and message it authorizes,
@@ -375,6 +375,11 @@ struct Harness {
 };
 
 inline constexpr std::uint32_t kMachines = 101;
+// One founder holds every seat but the last, and the last is another founder's,
+// whose machine still signs while the first founder's are full.
+inline const Person kPopulationFounder = person(0);
+inline const Person kOtherFounder = person(3);
+inline constexpr std::uint32_t kOtherFounderSeat = kMachines - 1;
 // The window whose opening assigns window 31, the first cycle a seat that never
 // collects cannot hold, and the window whose opening assigns the first cycle
 // past a seat's 731.

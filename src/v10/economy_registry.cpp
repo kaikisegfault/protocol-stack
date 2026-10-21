@@ -1,4 +1,4 @@
-// Everything version ten adds to the codec: the machine-key registry's three
+// Everything version ten adds to the codec: the machine-key registry's four
 // entries, the build authority's attestation, the one approval message, and the
 // approval lifetime rule.
 //
@@ -17,15 +17,16 @@ namespace {
 
 namespace i = protocol::v10::internal;
 
-constexpr std::size_t kMachineKeyValueBytes = 92;
+constexpr std::size_t kMachineKeyValueBytes = 80;
 constexpr std::size_t kLaunchRetirementValueBytes = 8;
 constexpr std::size_t kMachineKeyOwnerValueBytes = 4;
+constexpr std::size_t kFounderRegistrationsValueBytes = 12;
 
 const Bytes kNoSignature(kSignatureBytes, 0);
 
 }  // namespace
 
-// --- the three entries ------------------------------------------------------
+// --- the four entries -------------------------------------------------------
 
 Bytes machine_key_key(std::uint32_t seat_id) {
   auto key = i::key_prefix(Entry::machine_key);
@@ -41,19 +42,20 @@ Bytes machine_key_owner_key(std::span<const std::uint8_t> machine_public_key) {
   return key;
 }
 
+Bytes founder_registrations_key(std::span<const std::uint8_t> hub_identity_hash) {
+  auto key = i::key_prefix(Entry::founder_registrations);
+  i::append(key, hub_identity_hash);
+  return key;
+}
+
 std::optional<Bytes> machine_key_value(const MachineKey& entry) {
   if (entry.registered_at_height == 0) return std::nullopt;
-  if (entry.registrations_in_window > kMachineRegistrationsPerWindow) {
-    return std::nullopt;
-  }
   Bytes value;
   value.reserve(kMachineKeyValueBytes);
   i::append(value, entry.machine_public_key);
   i::append(value, entry.build_digest);
   i::append_u64(value, entry.registered_at_height);
   i::append_u64(value, entry.last_met_window);
-  i::append_u64(value, entry.registration_window);
-  i::append_u32(value, entry.registrations_in_window);
   return value;
 }
 
@@ -64,13 +66,9 @@ std::optional<MachineKey> decode_machine_key_value(std::span<const std::uint8_t>
   if (!i::copy32(raw.subspan(32, 32), entry.build_digest)) return std::nullopt;
   const auto registered = i::read_u64(raw, 64);
   const auto met = i::read_u64(raw, 72);
-  const auto window = i::read_u64(raw, 80);
-  const auto count = i::read_u32(raw, 88);
-  if (!registered || !met || !window || !count) return std::nullopt;
+  if (!registered || !met) return std::nullopt;
   entry.registered_at_height = *registered;
   entry.last_met_window = *met;
-  entry.registration_window = *window;
-  entry.registrations_in_window = *count;
   // Checked against the encoder's own rule rather than a second copy of it: a
   // value the encoder would refuse to write is not one a decoder may open.
   if (!machine_key_value(entry)) return std::nullopt;
@@ -102,6 +100,31 @@ std::optional<std::uint32_t> decode_machine_key_owner_value(
     std::span<const std::uint8_t> raw) {
   if (raw.size() != kMachineKeyOwnerValueBytes) return std::nullopt;
   return i::read_u32(raw, 0);
+}
+
+std::optional<Bytes> founder_registrations_value(const FounderRegistrations& entry) {
+  if (entry.registrations_in_window == 0) return std::nullopt;
+  if (entry.registrations_in_window > kFounderRegistrationsPerWindow) {
+    return std::nullopt;
+  }
+  Bytes value;
+  value.reserve(kFounderRegistrationsValueBytes);
+  i::append_u64(value, entry.registration_window);
+  i::append_u32(value, entry.registrations_in_window);
+  return value;
+}
+
+std::optional<FounderRegistrations> decode_founder_registrations_value(
+    std::span<const std::uint8_t> raw) {
+  if (raw.size() != kFounderRegistrationsValueBytes) return std::nullopt;
+  const auto window = i::read_u64(raw, 0);
+  const auto count = i::read_u32(raw, 8);
+  if (!window || !count) return std::nullopt;
+  FounderRegistrations entry;
+  entry.registration_window = *window;
+  entry.registrations_in_window = *count;
+  if (!founder_registrations_value(entry)) return std::nullopt;
+  return entry;
 }
 
 // --- the attestation --------------------------------------------------------

@@ -379,8 +379,8 @@ std::vector<std::string_view> conservation_failures(const Ledger& ledger) {
   check_structure(ledger, failures);
   check_uptime(ledger, failures);
   check_monthly(ledger, failures);
-  // Version ten's invariants 1 through 6, which the registry's own translation
-  // unit states beside the transitions that keep them.
+  // Version ten's invariants 1 to 6 and 8, which the registry's own
+  // translation unit states beside the transitions that keep them.
   for (const auto failure : i::registry_failures(ledger)) {
     failures.push_back(failure);
   }

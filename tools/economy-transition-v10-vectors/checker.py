@@ -39,7 +39,7 @@ HEADER = """\
 #
 # Version ten is version nine with a registry of attested machine keys in place
 # of the single verifier key, and HUB approvals that can be used once. This file
-# is the contract half: identity, widths, constants, genesis, the three new
+# is the contract half: identity, widths, constants, genesis, the four new
 # entries, the two changed bodies, the three signed constructions, and the
 # lifetime rule. The execution half, kinds 10 and 23 against a ledger and the
 # registry step, is recorded separately.

@@ -130,8 +130,10 @@ def check_widths(check: Checker) -> None:
 
 def check_constants(check: Checker) -> None:
     check.section(
-        "ADR 0101's three answers, and engineering's two figures. Each is a "
-        "consensus parameter of this version, not a deployment option."
+        "The founder answers of ADRs 0101 and 0106, and engineering's two "
+        "figures. Each is a consensus parameter of this version, not a "
+        "deployment option. The registration limit is one founder's, across "
+        "all of their machines."
     )
     check.agree(
         "constants.launch_retirement_active_machines",
@@ -139,9 +141,9 @@ def check_constants(check: Checker) -> None:
         c.LAUNCH_RETIREMENT_ACTIVE_MACHINES,
     )
     check.agree(
-        "constants.machine_registrations_per_window",
-        e.MACHINE_REGISTRATIONS_PER_WINDOW,
-        c.MACHINE_REGISTRATIONS_PER_WINDOW,
+        "constants.founder_registrations_per_window",
+        e.FOUNDER_REGISTRATIONS_PER_WINDOW,
+        c.FOUNDER_REGISTRATIONS_PER_WINDOW,
     )
     check.agree(
         "constants.activity_threshold_seconds",
@@ -253,14 +255,16 @@ def check_non_collision(check: Checker) -> None:
 
 def check_state_surface(check: Checker) -> None:
     check.section(
-        "The three new entries, encoded from the specification's tables, and "
-        "the values no transition writes, refused by the decoders."
+        "The four new entries, encoded from the specification's tables, and "
+        "the values no transition writes, refused by the decoders. The machine "
+        "key keeps no count; the founder's entry holds it."
     )
-    fixture = state.MachineKey(MACHINE_KEY, BUILD_DIGEST, 3, 5, 6, 999)
+    fixture = state.MachineKey(MACHINE_KEY, BUILD_DIGEST, 3, 5)
+    founder = state.FounderRegistrations(6, 999)
     check.agree("state.machine_key_key", e.machine_key_key(SEAT), state.machine_key_key(SEAT))
     check.agree(
         "state.machine_key_value",
-        e.machine_key_value(MACHINE_KEY, BUILD_DIGEST, 3, 5, 6, 999),
+        e.machine_key_value(MACHINE_KEY, BUILD_DIGEST, 3, 5),
         state.machine_key_value(fixture),
     )
     check.agree(
@@ -283,18 +287,44 @@ def check_state_surface(check: Checker) -> None:
         e.machine_key_owner_value(SEAT),
         state.machine_key_owner_value(SEAT),
     )
+    check.agree(
+        "state.founder_registrations_key",
+        e.founder_registrations_key(IDENTITY),
+        state.founder_registrations_key(IDENTITY),
+    )
+    check.agree(
+        "state.founder_registrations_value",
+        e.founder_registrations_value(6, 999),
+        state.founder_registrations_value(founder),
+    )
     check.equal(
         "state.machine_key_round_trips",
         state.decode_machine_key_value(state.machine_key_value(fixture)) == fixture,
     )
-    limit = e.machine_key_value(MACHINE_KEY, BUILD_DIGEST, 3, 5, 6, 1_000)
-    over = e.machine_key_value(MACHINE_KEY, BUILD_DIGEST, 3, 5, 6, 1_001)
-    unwritten = e.machine_key_value(MACHINE_KEY, BUILD_DIGEST, 0, 5, 6, 0)
     check.equal(
-        "state.machine_key_admits_the_limit",
-        state.decode_machine_key_value(limit).registrations_in_window == 1_000,
+        "state.founder_registrations_round_trips",
+        state.decode_founder_registrations_value(
+            state.founder_registrations_value(founder)
+        )
+        == founder,
     )
-    check.equal("state.machine_key_refuses_a_count_above_the_limit", _refused(state.decode_machine_key_value, over))
+    limit = e.founder_registrations_value(6, 1_000)
+    over = e.founder_registrations_value(6, 1_001)
+    none = e.founder_registrations_value(6, 0)
+    unwritten = e.machine_key_value(MACHINE_KEY, BUILD_DIGEST, 0, 5)
+    check.equal(
+        "state.founder_registrations_admits_the_limit",
+        state.decode_founder_registrations_value(limit).registrations_in_window
+        == 1_000,
+    )
+    check.equal(
+        "state.founder_registrations_refuses_a_count_above_the_limit",
+        _refused(state.decode_founder_registrations_value, over),
+    )
+    check.equal(
+        "state.founder_registrations_refuses_a_zero_count",
+        _refused(state.decode_founder_registrations_value, none),
+    )
     check.equal("state.machine_key_refuses_a_zero_height", _refused(state.decode_machine_key_value, unwritten))
     check.equal(
         "state.launch_retirement_refuses_zero",

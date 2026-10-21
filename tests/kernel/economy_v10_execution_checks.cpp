@@ -214,6 +214,15 @@ void verify_entries(const pv::Values& values, const Chain& chain) {
     pv::require(value.has_value(), "a recorded machine key encodes");
     agree(values, "chain.entry.seat_" + std::to_string(seat), hex(*value));
   }
+  // The founder count is Alice's alone: Bob's machine never attested anyone.
+  const auto alice = ledger.founder_registrations.find(kAlice.identity);
+  pv::require(alice != ledger.founder_registrations.end(),
+              "Alice's machine attested in the chain");
+  const auto count = v10::founder_registrations_value(alice->second);
+  pv::require(count.has_value(), "a recorded founder count encodes");
+  agree(values, "chain.entry.alice_founder_registrations", hex(*count));
+  expect_claim(values, "chain.entry.bob_has_no_founder_registrations",
+               !ledger.founder_registrations.contains(kBob.identity));
   expect_claim(values, "chain.entry.the_replaced_key_has_no_owner",
                !ledger.machine_key_owners.contains(machine_key(0)));
   const auto owner = ledger.machine_key_owners.find(machine_key(0, 1));
@@ -406,7 +415,10 @@ void verify_invariants(const pv::Values& values, const Harness& cutoff) {
     std::string_view failure;
     void (*breaks)(v10::Ledger&);
   };
-  const std::array<Probe, 6> probes{{
+  // Invariants 5 and 6 rewrite the population founder's count, which window
+  // 4's restart left, and invariant 8 gives a count to someone the launch key
+  // registered in window 3 who owns no seat.
+  const std::array<Probe, 8> probes{{
       {"1_a_key_on_an_unactivated_seat",
        "a machine key names a seat that is not activated",
        [](v10::Ledger& ledger) {
@@ -434,16 +446,28 @@ void verify_invariants(const pv::Values& values, const Harness& cutoff) {
              ledger.height / v10::kCycleBlocks - 1;
        }},
       {"5_a_count_for_a_future_window",
-       "a machine counted registrations for a future window",
+       "a founder counted registrations for a future window",
        [](v10::Ledger& ledger) {
-         ledger.machine_keys.at(0).registration_window =
-             ledger.height / v10::kCycleBlocks + 1;
+         ledger.founder_registrations.at(kPopulationFounder.identity)
+             .registration_window = ledger.height / v10::kCycleBlocks + 1;
        }},
-      {"6_a_count_above_the_limit",
-       "a machine signed more registrations than its limit",
+      {"6_a_count_above_the_limit", "a founder count is outside one to the limit",
        [](v10::Ledger& ledger) {
-         ledger.machine_keys.at(0).registrations_in_window =
-             v10::kMachineRegistrationsPerWindow + 1;
+         ledger.founder_registrations.at(kPopulationFounder.identity)
+             .registrations_in_window = v10::kFounderRegistrationsPerWindow + 1;
+       }},
+      {"6_a_count_of_zero", "a founder count is outside one to the limit",
+       [](v10::Ledger& ledger) {
+         ledger.founder_registrations.at(kPopulationFounder.identity)
+             .registrations_in_window = 0;
+       }},
+      {"8_a_count_for_an_identity_with_no_machine",
+       "a founder count names an identity with no machine key",
+       [](v10::Ledger& ledger) {
+         v10::FounderRegistrations entry;
+         entry.registration_window = 3;
+         entry.registrations_in_window = 1;
+         ledger.founder_registrations[person(1).identity] = entry;
        }},
   }};
   for (const auto& probe : probes) {
@@ -482,7 +506,8 @@ void verify_contract_sections(const pv::Values& contract) {
     const auto kind = entry.key.empty() ? 0 : entry.key.front();
     return kind == static_cast<std::uint8_t>(v10::Entry::machine_key) ||
            kind == static_cast<std::uint8_t>(v10::Entry::launch_retirement) ||
-           kind == static_cast<std::uint8_t>(v10::Entry::machine_key_owner);
+           kind == static_cast<std::uint8_t>(v10::Entry::machine_key_owner) ||
+           kind == static_cast<std::uint8_t>(v10::Entry::founder_registrations);
   });
   expect_claim(contract, "genesis.writes_no_registry_entry",
                none && entries.size() == 16);

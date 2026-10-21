@@ -106,8 +106,8 @@ SeatCheck require_seat(const Ledger& ledger, std::uint32_t seat_id,
                        const Octets32& escrow, bool require_activated);
 
 // --- the machine-key registry, which `economy_registry_transitions.cpp` holds
-// together: kind 23, kind 10's attester, the registry step, and invariants 1
-// through 6.
+// together: kind 23, kind 10's attester, the registry step, and invariants 1 to
+// 6 and 8.
 
 // Kind 23, after the shared envelope checks and the lifetime rule. Seven
 // ordered conditions, three writes, and the fixed fee.
@@ -118,12 +118,18 @@ std::optional<Outcome> register_machine_key(Ledger& ledger,
                                             const SignatureVerifier& verify);
 
 // Kind 10's attester branch, conditions 3 and 4 of the specification's order. A
-// refusal carries its code. A success through a machine carries the entry its
-// count produces, which kind 10 writes with its other four writes; a success
-// through the launch key carries none, because the launch key has no limit.
+// refusal carries its code. A success through a machine carries the founder
+// whose machine signed and the count the registration leaves, which kind 10
+// writes with its other four writes; a success through the launch key carries
+// none, because the launch key has no limit.
+struct FounderCount {
+  Octets32 founder{};
+  FounderRegistrations count;
+};
+
 struct Attestation {
   std::optional<Result> refusal;
-  std::optional<MachineKey> counted;
+  std::optional<FounderCount> counted;
 };
 
 Attestation check_attester(const Ledger& ledger, const Envelope& envelope,
@@ -140,7 +146,7 @@ struct RegistryStep {
 RegistryStep registry_step(Ledger& ledger, std::uint64_t due,
                            std::span<const SeatCycle> measured);
 
-// Invariants 1 through 6, each checked and never assumed. A quiet height runs
+// Invariants 1 to 6 and 8, each checked and never assumed. A quiet height runs
 // them as well as the full gate, as the model's quiet run does: they read the
 // height and the window, which a quiet height moves.
 std::vector<std::string_view> registry_failures(const Ledger& ledger);

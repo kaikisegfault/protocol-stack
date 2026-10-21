@@ -5,11 +5,11 @@ nine's own dispatch, handed an `ApprovalOracle` so that a body approval verifies
 over the version-ten message and nothing else about the kind moves.
 
 **Kind 10 is restated rather than wrapped** because its conditions change in
-three places — the lifetime rule, the attester branch, and the count — and its
-version-nine handler verifies the version-nine message against the launch key
-before the point where version ten's machine branch begins. Its four writes are
-version nine's, performed in the same order with the same values, and the count
-is the one write added.
+three places — the lifetime rule, the attester branch, and the founder's count —
+and its version-nine handler verifies the version-nine message against the
+launch key before the point where version ten's machine branch begins. Its four
+writes are version nine's, performed in the same order with the same values, and
+the founder's count is the one write added.
 
 `tests/simulation/economy_transition_v10_execution_test.py` requires the carried
 path to be version nine's own function object, so a copy that appeared here
@@ -44,7 +44,7 @@ from .messages import (
     attestation_message,
     registration_message,
 )
-from .state import MachineKey
+from .state import FounderRegistrations, MachineKey
 
 __all__ = [
     "VERSION_NINE_DISPATCH",
@@ -86,7 +86,8 @@ def hub_register(
 
     The attester is the launch key while it is unretired, or the registered key
     of a machine that is active at this height. Each registration a machine
-    signs counts against that machine, because the message binds the seat.
+    signs counts against that machine's founder, because the message binds the
+    seat and the seat names its owner.
     """
     del escrow
     require_fresh(ledger, transaction)
@@ -107,7 +108,7 @@ def hub_register(
         body["first_signer_public_key"],
         transaction.valid_until_height,
     )
-    counted: MachineKey | None = None
+    counted: tuple[bytes, FounderRegistrations] | None = None
     if attester == c.LAUNCH_ATTESTER:
         if ledger.launch_retired_at is not None:
             raise Refused("LAUNCH_KEY_RETIRED")
@@ -125,7 +126,8 @@ def hub_register(
 
     _admit_participant(ledger, transaction, first_signer, enrolling, airdrop)
     if counted is not None:
-        ledger.machine_keys[attester] = counted
+        founder, count = counted
+        ledger.founder_registrations[founder] = count
     return Outcome(result="SUCCESS", issued_atomic=airdrop, fee_charged=0)
 
 
@@ -135,12 +137,15 @@ def _counted_attestation(
     message: bytes,
     signature: bytes,
     oracle: SignatureOracle,
-) -> MachineKey:
-    """The machine branch's four conditions, and the entry its count produces.
+) -> tuple[bytes, FounderRegistrations]:
+    """The machine branch's five conditions, and the founder count it leaves.
 
-    **The limit is checked after the signature**, so a refusal for the limit is
-    only ever given for a registration that was otherwise valid. A forgery naming
-    a full machine is `UNAUTHORIZED`, which is the true reason.
+    **The limit is the founder's** (ADR 0106): one founder's machines together
+    attest at most `FOUNDER_REGISTRATIONS_PER_WINDOW` a window, so a machine of a
+    full founder is refused even if it has attested nobody. **It is checked
+    after the signature**, so a refusal for the limit is only ever given for a
+    registration that was otherwise valid. A forgery naming a machine of a full
+    founder is `UNAUTHORIZED`, which is the true reason.
     """
     if seat_id > c.MAX_SEAT_ID:
         raise Refused("CYCLE_RANGE")
@@ -151,11 +156,12 @@ def _counted_attestation(
         raise Refused("MACHINE_NOT_ACTIVE")
     if not oracle.verify(entry.machine_public_key, message, signature):
         raise Refused("UNAUTHORIZED")
+    founder = ledger.founder_of(seat_id)
     window = window_of_height(ledger.height)
-    count = entry.registrations_in_window if entry.registration_window == window else 0
-    if count >= c.MACHINE_REGISTRATIONS_PER_WINDOW:
+    count = ledger.founder_count(founder, window)
+    if count >= c.FOUNDER_REGISTRATIONS_PER_WINDOW:
         raise Refused("REGISTRATION_LIMIT")
-    return replace(entry, registration_window=window, registrations_in_window=count + 1)
+    return founder, FounderRegistrations(window, count + 1)
 
 
 def _admit_participant(
@@ -202,9 +208,10 @@ def register_machine_key(
     Installing a key that can admit people is authority over the ecosystem, not
     movement of the founder's own value.
 
-    **A replacement keeps the count and the mark.** Activity belongs to the
-    seat's cycle, so a machine that replaces its key mid-window stays active,
-    and a count that reset would let key rotation bypass the limit.
+    **A replacement keeps the mark and touches no count.** Activity belongs to
+    the seat's cycle, so a machine that replaces its key mid-window stays
+    active. The registration count is the founder's (ADR 0107), on an entry this
+    transition never writes, so key rotation cannot reset it.
     """
     assert escrow is not None
     body = transaction.body

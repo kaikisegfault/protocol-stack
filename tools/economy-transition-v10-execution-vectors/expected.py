@@ -7,7 +7,8 @@ ordered rejection conditions, the registry step, and `hashlib`.
 Two kinds of derivation live here:
 
 - **encodings**, built field by field from the tables: genesis, receipts, the
-  block header, the approval message, and the machine-key value;
+  block header, the approval message, the machine-key value, and the
+  founder-registrations value;
 - **outcomes**, read off the specification's ordered conditions by a small
   evaluator that is handed the facts a case was built to have. The model reaches
   the same outcome by executing the transaction against a ledger. A condition
@@ -49,7 +50,7 @@ SLOTS_PER_WINDOW = 24
 ASSIGNMENT_LAG_WINDOWS = 2
 ACTIVITY_THRESHOLD_SECONDS = 64_800
 APPROVAL_LIFETIME_BLOCKS = 1_200
-MACHINE_REGISTRATIONS_PER_WINDOW = 1_000
+FOUNDER_REGISTRATIONS_PER_WINDOW = 1_000
 LAUNCH_RETIREMENT_ACTIVE_MACHINES = 100
 MAX_SEAT_ID = 99_999
 MINT_ACCUMULATION_CAP = 30
@@ -158,17 +159,14 @@ def machine_key_value(
     build_digest: bytes,
     registered_at_height: int,
     last_met_window: int,
-    registration_window: int,
-    registrations_in_window: int,
 ) -> bytes:
-    return (
-        key
-        + build_digest
-        + be(registered_at_height, 8)
-        + be(last_met_window, 8)
-        + be(registration_window, 8)
-        + be(registrations_in_window, 4)
-    )
+    return key + build_digest + be(registered_at_height, 8) + be(last_met_window, 8)
+
+
+def founder_registrations_value(
+    registration_window: int, registrations_in_window: int
+) -> bytes:
+    return be(registration_window, 8) + be(registrations_in_window, 4)
 
 
 def block_header(
@@ -264,6 +262,20 @@ def retirement_height(
     return None
 
 
+# --- the founder's count ----------------------------------------------------------
+
+
+def founder_count(attested: dict[int, int], owners: dict[int, str], seat: int) -> int:
+    """What `seat`'s founder's machines have attested in the window so far.
+
+    `attested` is each seat's registrations in the window and `owners` each
+    seat's founder. The count is the founder's (ADR 0106), so it sums every seat
+    the founder owns, whichever machine signed.
+    """
+    founder = owners[seat]
+    return sum(count for other, count in attested.items() if owners[other] == founder)
+
+
 # --- the ordered conditions ---------------------------------------------------------
 
 
@@ -310,7 +322,11 @@ def kind_10_outcome(
     active: bool = True,
     count: int = 0,
 ) -> str:
-    """`EXPIRED`, the lifetime, the two replays, then the attester's branch."""
+    """`EXPIRED`, the lifetime, the two replays, then the attester's branch.
+
+    `count` is the attesting seat's founder's count in the window, which
+    `founder_count` derives for the population.
+    """
     if beyond_lifetime:
         return "APPROVAL_LIFETIME_EXCEEDED"
     if identity_known or signer_known:
@@ -328,7 +344,7 @@ def kind_10_outcome(
         return "MACHINE_NOT_ACTIVE"
     if not signed:
         return "UNAUTHORIZED"
-    if count >= MACHINE_REGISTRATIONS_PER_WINDOW:
+    if count >= FOUNDER_REGISTRATIONS_PER_WINDOW:
         return "REGISTRATION_LIMIT"
     return "SUCCESS"
 

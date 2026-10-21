@@ -291,10 +291,11 @@ std::vector<EconomyEntry> economy_entries(const Ledger& ledger) {
     push(entries, monthly_claim_key(seat_id),
          monthly_claim_value(claim).value_or(Bytes{}));
   }
-  // Version ten's three, projected from typed fields the same way. The
-  // machine-key encoder refuses a zero height and a count over the limit, and
-  // the retirement's refuses a zero height, so a field no transition could have
-  // written fails at the root's shape rules rather than being committed.
+  // Version ten's four, projected from typed fields the same way. The
+  // machine-key encoder refuses a zero height, the retirement's a zero height,
+  // and the founder count's a count of zero or over the limit, so a field no
+  // transition could have written fails at the root's shape rules rather than
+  // being committed.
   for (const auto& [seat_id, entry] : ledger.machine_keys) {
     push(entries, machine_key_key(seat_id),
          machine_key_value(entry).value_or(Bytes{}));
@@ -305,6 +306,10 @@ std::vector<EconomyEntry> economy_entries(const Ledger& ledger) {
   if (ledger.launch_retired_at) {
     push(entries, launch_retirement_key(),
          launch_retirement_value(*ledger.launch_retired_at).value_or(Bytes{}));
+  }
+  for (const auto& [founder, count] : ledger.founder_registrations) {
+    push(entries, founder_registrations_key(founder),
+         founder_registrations_value(count).value_or(Bytes{}));
   }
   return entries;
 }

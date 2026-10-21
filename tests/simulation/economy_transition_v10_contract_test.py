@@ -88,7 +88,7 @@ class DeclarationTest(unittest.TestCase):
 
     def test_the_founder_figures_are_the_adr_s(self) -> None:
         self.assertEqual(c.LAUNCH_RETIREMENT_ACTIVE_MACHINES, 100)
-        self.assertEqual(c.MACHINE_REGISTRATIONS_PER_WINDOW, 1_000)
+        self.assertEqual(c.FOUNDER_REGISTRATIONS_PER_WINDOW, 1_000)
         self.assertEqual(c.APPROVAL_LIFETIME_BLOCKS, c.SLOT_BLOCKS)
 
 
@@ -110,20 +110,36 @@ class GenesisTest(unittest.TestCase):
 
 class StateTest(unittest.TestCase):
     def entry(self, **changes) -> state.MachineKey:
-        return replace(state.MachineKey(KEY, bytes([0x33]) * 32, 3, 5, 6, 7), **changes)
+        return replace(state.MachineKey(KEY, bytes([0x33]) * 32, 3, 5), **changes)
 
     def test_every_machine_key_refusal_is_reachable(self) -> None:
         for bad in (
             self.entry(machine_public_key=bytes(31)),
             self.entry(build_digest=bytes(33)),
             self.entry(registered_at_height=0),
-            self.entry(registrations_in_window=1_001),
             self.entry(last_met_window=-1),
         ):
             with self.assertRaises(state.InvalidStateEntry):
                 state.machine_key_value(bad)
         with self.assertRaises(state.InvalidStateEntry):
-            state.decode_machine_key_value(bytes(91))
+            state.decode_machine_key_value(bytes(79))
+
+    def test_every_founder_count_refusal_is_reachable(self) -> None:
+        for bad in (
+            state.FounderRegistrations(6, 0),
+            state.FounderRegistrations(6, c.FOUNDER_REGISTRATIONS_PER_WINDOW + 1),
+            state.FounderRegistrations(-1, 1),
+        ):
+            with self.assertRaises(state.InvalidStateEntry):
+                state.founder_registrations_value(bad)
+        with self.assertRaises(state.InvalidStateEntry):
+            state.decode_founder_registrations_value(bytes(11))
+        with self.assertRaises(state.InvalidStateEntry):
+            state.founder_registrations_key(bytes(31))
+        with self.assertRaises(state.InvalidStateEntry):
+            state.founder_registrations_parts(state.machine_key_owner_key(KEY))
+        key = state.founder_registrations_key(KEY)
+        self.assertEqual(state.founder_registrations_parts(key), KEY)
 
     def test_owner_and_retirement_refusals(self) -> None:
         with self.assertRaises(state.InvalidStateEntry):

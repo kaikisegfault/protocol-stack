@@ -50,7 +50,7 @@ RECEIPT_VERSION = 10
 # --- the specification's constants table ---------------------------------------
 
 LAUNCH_RETIREMENT_ACTIVE_MACHINES = 100
-MACHINE_REGISTRATIONS_PER_WINDOW = 1_000
+FOUNDER_REGISTRATIONS_PER_WINDOW = 1_000
 APPROVAL_LIFETIME_BLOCKS = 1_200
 LAUNCH_ATTESTER = 4_294_967_295
 ACTIVITY_THRESHOLD_SECONDS = 64_800
@@ -67,9 +67,10 @@ RESULT_CODE_COUNT = 50
 
 # Kind, entry, key bytes, and value bytes, from the specification's tables.
 ADDED_ENTRIES = {
-    24: ("machine_key", 5, 92),
+    24: ("machine_key", 5, 80),
     25: ("launch_retirement", 1, 8),
     26: ("machine_key_owner", 33, 4),
+    27: ("founder_registrations", 33, 12),
 }
 
 KIND_10_BODY_BYTES = 32 + 32 + 4 + 64
@@ -134,7 +135,7 @@ def chain_id(genesis: bytes) -> bytes:
     return digest(CHAIN_ID_LABEL, genesis)
 
 
-# --- the three new entries ---------------------------------------------------------
+# --- the four new entries ----------------------------------------------------------
 
 
 def machine_key_key(seat_id: int) -> bytes:
@@ -146,16 +147,12 @@ def machine_key_value(
     build_digest: bytes,
     registered_at_height: int,
     last_met_window: int,
-    registration_window: int,
-    registrations_in_window: int,
 ) -> bytes:
-    raw = bytearray(92)
+    raw = bytearray(80)
     raw[0:32] = machine_public_key
     raw[32:64] = build_digest
     raw[64:72] = be(registered_at_height, 8)
     raw[72:80] = be(last_met_window, 8)
-    raw[80:88] = be(registration_window, 8)
-    raw[88:92] = be(registrations_in_window, 4)
     return bytes(raw)
 
 
@@ -173,6 +170,19 @@ def machine_key_owner_key(machine_public_key: bytes) -> bytes:
 
 def machine_key_owner_value(seat_id: int) -> bytes:
     return be(seat_id, 4)
+
+
+def founder_registrations_key(hub_identity_hash: bytes) -> bytes:
+    return bytes([27]) + hub_identity_hash
+
+
+def founder_registrations_value(
+    registration_window: int, registrations_in_window: int
+) -> bytes:
+    raw = bytearray(12)
+    raw[0:8] = be(registration_window, 8)
+    raw[8:12] = be(registrations_in_window, 4)
+    return bytes(raw)
 
 
 # --- the three signed constructions ----------------------------------------------

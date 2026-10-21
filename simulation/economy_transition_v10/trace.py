@@ -18,11 +18,11 @@ this chain records both through blocks, the way a node runs them:
 7. **machines register people**: Alice's active machine succeeds, Bob's inactive
    one is refused, a seat with no key is refused, and another machine's
    signature presented under Alice's seat is refused;
-8. **the next window**: the count restarts, Alice replaces her key and keeps her
-   count and her mark, the old key signs nothing, and every mint is approved
-   over the whole transaction.
+8. **the next window**: Alice's founder count restarts, she replaces her key and
+   keeps her mark, the replacement leaves her count where it was, the old key
+   signs nothing, and every mint is approved over the whole transaction.
 
-The population the launch key's retirement and the per-window limit need is in
+The population the launch key's retirement and a founder's limit need is in
 `population.py`, because no chain of blocks reaches it in a recorded run.
 
 **The chain runs at version nine's ninety seconds a block**, so each window is a

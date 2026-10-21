@@ -132,13 +132,16 @@ inline constexpr std::uint64_t kAssignmentLagWindows = 2;
 
 // --- the registry and the approval, which are version ten's -----------------
 //
-// **ADR 0101's three answers are consensus parameters of this version and not
-// deployment options**, for the reason `kTimestampToleranceSeconds` is one: two
-// machines applying different values disagree about which blocks are
-// acceptable. The launch key retires once this many machines are active, and a
-// machine may sign this many registrations in one window.
+// **The founder answers of ADRs 0101 and 0106 are consensus parameters of this
+// version and not deployment options**, for the reason
+// `kTimestampToleranceSeconds` is one: two machines applying different values
+// disagree about which blocks are acceptable. The launch key retires once this
+// many machines are active, and one founder's machines together may sign this
+// many registrations in one window, however many seats the founder holds. That
+// holds each machine to the same figure, because no machine signs more than its
+// founder's machines do.
 inline constexpr std::uint32_t kLaunchRetirementActiveMachines = 100;
-inline constexpr std::uint32_t kMachineRegistrationsPerWindow = 1'000;
+inline constexpr std::uint32_t kFounderRegistrationsPerWindow = 1'000;
 
 // The founder-directed activity threshold: 18 hours of cumulative fully
 // operational uptime per cycle, which is `cycle-boundary-v1`'s figure and what
@@ -404,11 +407,12 @@ enum class Entry : std::uint8_t {
   monthly_uptime_figure = 21,
   monthly_pool_claim = 22,
   settlement_cursor = 23,
-  // Version ten's three. Entry kind 8 keeps the name version six gave it and
+  // Version ten's four. Entry kind 8 keeps the name version six gave it and
   // holds the launch key, which is the same key in a narrower role.
   machine_key = 24,
   launch_retirement = 25,
   machine_key_owner = 26,
+  founder_registrations = 27,
 };
 
 // Kinds 7, 8, 9, 11, and 12 and entry kinds 7, 9, and 11 are retired and
@@ -420,7 +424,7 @@ enum class Entry : std::uint8_t {
 // **Neither 20 nor 21 nor entry kind 18 nor 19 was ever assigned**, so version
 // eight extended both spaces without reusing anything, and neither was 22 nor
 // entry kinds 20 through 23, so version nine did the same; version ten takes
-// kind 23 and entry kinds 24 through 26 the same way. Note that the two spaces
+// kind 23 and entry kinds 24 through 27 the same way. Note that the two spaces
 // collide numerically — `native_transfer` and `seat` are both 1,
 // `mint_verified_user` and `open_challenge` are both 18, `mint_monthly_pool` and
 // `monthly_pool_claim` are both 22, and `register_machine_key` and
@@ -535,7 +539,7 @@ Bytes encode_body(std::uint8_t kind, const Body& body);
 // The registration an attester signs: the launch key while it is unretired, or
 // the registered key of an active machine. **It binds the attesting seat**, so
 // one machine's signature cannot be presented as another's, and each
-// registration counts against the limit of the machine that actually signed it.
+// registration counts against the founder whose machine actually signed it.
 // It also binds the identity, so a signature over one person's registration is
 // never presentable as another's.
 Bytes registration_message(std::span<const std::uint8_t> chain_id,
@@ -668,11 +672,13 @@ std::optional<Bytes> monthly_figure_key(std::uint32_t month_index,
                                         std::uint32_t seat_id);
 Bytes monthly_claim_key(std::uint32_t seat_id);
 Bytes settlement_cursor_key();
-// The three version ten adds: a machine key per seat, the launch key's
-// retirement, and the inverse of the first, keyed by the machine's public key.
+// The four version ten adds: a machine key per seat, the launch key's
+// retirement, the inverse of the first, keyed by the machine's public key, and
+// each founder's registration count, keyed by the founder's identity.
 Bytes machine_key_key(std::uint32_t seat_id);
 Bytes launch_retirement_key();
 Bytes machine_key_owner_key(std::span<const std::uint8_t> machine_public_key);
+Bytes founder_registrations_key(std::span<const std::uint8_t> hub_identity_hash);
 
 // 82 bytes. The purchaser account, the biometric flag, and the manager count
 // are gone with the concepts they served: a seat is owned by an identity and
@@ -1005,34 +1011,30 @@ std::optional<std::uint32_t> decode_settlement_cursor_value(
 // block — which machine is active at a height, what the registry step marks,
 // and when the launch key retires — reads state and is the ledger's.
 
-// Kind 24, 92 octets, keyed by the seat, because every ADR 0101 rule is about a
-// machine and a machine is a seat.
+// Kind 24, 80 octets, keyed by the seat, because activity is about a machine
+// and a machine is a seat.
 //
 // **`last_met_window` of 0 means none, and is unambiguous for activity**: a seat
 // is in scope only from the window after its activation, so no seat is in scope
 // in window 0 and no window-0 assignment can mark a machine. The registry
 // step's count excludes a mark of 0 for the same reason (ADR 0103).
 //
-// **A replacement keeps the last three fields.** Activity belongs to the seat's
-// cycle rather than to the key, and a count that reset would let key rotation
-// bypass ADR 0101's limit.
+// **It keeps no registration count** (ADR 0107). The count is the founder's,
+// on kind 27, so a replacement keeps the mark and no key rotation reaches the
+// count.
 struct MachineKey {
   Octets32 machine_public_key{};
   Octets32 build_digest{};
   std::uint64_t registered_at_height = 0;
   std::uint64_t last_met_window = 0;
-  std::uint64_t registration_window = 0;
-  std::uint32_t registrations_in_window = 0;
 
   bool operator==(const MachineKey&) const = default;
 };
 
-// `nullopt` for the two values no transition writes: a `registered_at_height`
-// of 0, because the kind-23 transaction that writes an entry executes at a
-// height of at least 1, and a count above `kMachineRegistrationsPerWindow`,
-// because the limit is checked before the count is written. The decoder refuses
-// both by asking the encoder, so there is one statement of what a valid entry
-// is.
+// `nullopt` for the one value no transition writes: a `registered_at_height` of
+// 0, because the kind-23 transaction that writes an entry executes at a height
+// of at least 1. The decoder refuses it by asking the encoder, so there is one
+// statement of what a valid entry is.
 std::optional<Bytes> machine_key_value(const MachineKey& entry);
 std::optional<MachineKey> decode_machine_key_value(std::span<const std::uint8_t> raw);
 
@@ -1044,10 +1046,30 @@ std::optional<std::uint64_t> decode_launch_retirement_value(
     std::span<const std::uint8_t> raw);
 
 // Kind 26, the seat a machine key belongs to. It exists so that one key serves
-// one seat: without it, a key registered on two seats would sign under two
-// limits, and a compromised machine would double what ADR 0101 caps.
+// one seat, and therefore one founder: without it, a key registered on seats of
+// two founders would sign under both founders' limits.
 Bytes machine_key_owner_value(std::uint32_t seat_id);
 std::optional<std::uint32_t> decode_machine_key_owner_value(
+    std::span<const std::uint8_t> raw);
+
+// Kind 27, 12 octets, keyed by the founder's identity, because ADR 0106's limit
+// belongs to the founder across all of their machines. Only the latest window's
+// count is kept: a count from an earlier window reads as zero, so nothing has to
+// clear it.
+struct FounderRegistrations {
+  std::uint64_t registration_window = 0;
+  std::uint32_t registrations_in_window = 0;
+
+  bool operator==(const FounderRegistrations&) const = default;
+};
+
+// `nullopt` for the two counts no transition writes: 0, because only a
+// registration writes the entry and it leaves the count at 1 or more, so 0
+// would be a second encoding of absence, and a count above
+// `kFounderRegistrationsPerWindow`, because the limit is checked before the
+// count is written. The decoder refuses both by asking the encoder.
+std::optional<Bytes> founder_registrations_value(const FounderRegistrations& entry);
+std::optional<FounderRegistrations> decode_founder_registrations_value(
     std::span<const std::uint8_t> raw);
 
 // The open window's month and its predecessor's. `unreferred-pool-payout-v1`
@@ -1057,8 +1079,8 @@ std::optional<std::uint32_t> decode_machine_key_owner_value(
 inline constexpr std::size_t kLiveWindowMonths = 2;
 
 // Version nine's sixteen genesis economy entries, and no others: genesis writes
-// no machine key, no owner entry, and no retirement. Entry kind 8 holds the
-// launch key where version nine's held the verifier key.
+// no machine key, no owner entry, no retirement, and no founder registrations.
+// Entry kind 8 holds the launch key where version nine's held the verifier key.
 inline constexpr std::size_t kGenesisEconomyEntries = 16;
 
 struct EconomyEntry {

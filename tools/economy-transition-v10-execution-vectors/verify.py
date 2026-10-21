@@ -36,7 +36,12 @@ from simulation.economy_transition_v10.envelope import decode_signed
 from simulation.economy_transition_v10.genesis import chain_id, encode
 from simulation.economy_transition_v10.ledger import ConservationFailure
 from simulation.economy_transition_v10.messages import approval_message
-from simulation.economy_transition_v10.state import MachineKey, machine_key_value
+from simulation.economy_transition_v10.state import (
+    FounderRegistrations,
+    MachineKey,
+    founder_registrations_value,
+    machine_key_value,
+)
 
 LAUNCH = "launch"
 
@@ -273,22 +278,42 @@ def check_registry_in_the_chain(check: Checker, scenario) -> None:
 
 def check_entries(check: Checker, scenario) -> None:
     check.section(
-        "The machine-key entries the chain ends with, built from the table. "
-        "Alice's replacement kept her mark from window 2 and her count of two "
-        "in window 4, and moved the key and the height."
+        "The registry entries the chain ends with, built from the tables. "
+        "Alice's replacement kept her mark from window 2 and moved the key and "
+        "the height. Her founder count is two in window 4, one registration "
+        "either side of the replacement, which touches no count. Bob's machine "
+        "never attested, so he has no founder entry."
     )
     heights = _heights(scenario)
     ledger = scenario.ledger
     expected_alice = e.machine_key_value(
         fixture.machine_key(0, 1), fixture.BUILD_DIGEST,
-        heights["kind_23.the_replacement"], 2, 4, 2,
+        heights["kind_23.the_replacement"], 2,
     )
     expected_bob = e.machine_key_value(
         fixture.machine_key(1), fixture.BUILD_DIGEST,
-        heights["kind_23.bob_registers_his_machine"], 0, 0, 0,
+        heights["kind_23.bob_registers_his_machine"], 0,
     )
     check.agree("chain.entry.seat_0", expected_alice, machine_key_value(ledger.machine_keys[0]))
     check.agree("chain.entry.seat_1", expected_bob, machine_key_value(ledger.machine_keys[1]))
+    # Seat 0 is Alice's only machine, so her count is what it attested in the
+    # chain's last window, read off the registrations that succeed there.
+    window = e.window_of_height(heights["kind_10.the_new_key_signs"])
+    attested = sum(
+        1 for label, facts in CHAIN_REGISTRATIONS.items()
+        if facts["attester"] == 0
+        and e.kind_10_outcome(**facts) == "SUCCESS"
+        and e.window_of_height(heights[label]) == window
+    )
+    check.agree(
+        "chain.entry.alice_founder_registrations",
+        e.founder_registrations_value(window, attested),
+        founder_registrations_value(ledger.founder_registrations[fixture.ALICE.identity]),
+    )
+    check.equal(
+        "chain.entry.bob_has_no_founder_registrations",
+        fixture.BOB.identity not in ledger.founder_registrations,
+    )
     check.equal(
         "chain.entry.the_replaced_key_has_no_owner",
         fixture.machine_key(0) not in ledger.machine_key_owners,
@@ -382,6 +407,16 @@ def check_blocks(check: Checker, scenario) -> None:
 # --- the population ---------------------------------------------------------------
 
 
+# Who owns each seat of the population, and what the founder's machines have
+# attested in window 3 at each point the run asks: half the limit on each of two
+# machines once it is full, and one fewer on the second before the thousandth.
+OTHER = population.OTHER_FOUNDER_SEAT
+OWNERS = {seat: "founder" for seat in range(OTHER)} | {OTHER: "other"}
+HALF = e.FOUNDER_REGISTRATIONS_PER_WINDOW // 2
+BEFORE_THE_THOUSANDTH = {0: HALF, 1: HALF - 1}
+FULL = {0: HALF, 1: HALF}
+
+
 def _cutoff_facts() -> dict[str, dict]:
     plan = population.CUTOFF_PLAN
     first = e.first_cycle_window(population.ACTIVATION_HEIGHT)
@@ -399,24 +434,29 @@ def _cutoff_facts() -> dict[str, dict]:
         due = window - e.ASSIGNMENT_LAG_WINDOWS
         return due >= first and e.met(plan.get(due, {}).get(seat, e.SLOTS_PER_WINDOW))
 
+    def machine(seat: int, window: int, attested: dict[int, int], **more) -> dict:
+        return dict(
+            attester=seat,
+            active=active(seat, window),
+            count=e.founder_count(attested, OWNERS, seat),
+            **more,
+        )
+
     facts = {
         "founder_registers": dict(attester=LAUNCH),
-        "crossed.a_key_signing_for_another_seat": dict(
-            attester=2, active=active(2, 3), signed=False),
-        "crossed.a_genuine_signature_under_another_seat": dict(
-            attester=2, active=active(2, 3), signed=False),
-        "limit.the_first": dict(attester=0, active=active(0, 3), count=0),
-        "limit.the_thousandth": dict(
-            attester=0, active=active(0, 3),
-            count=e.MACHINE_REGISTRATIONS_PER_WINDOW - 1),
-        "limit.a_forgery_naming_a_full_machine": dict(
-            attester=0, active=active(0, 3), signed=False,
-            count=e.MACHINE_REGISTRATIONS_PER_WINDOW),
-        "limit.the_thousand_and_first": dict(
-            attester=0, active=active(0, 3), count=e.MACHINE_REGISTRATIONS_PER_WINDOW),
-        "limit.another_machine_still_signs": dict(attester=1, active=active(1, 3)),
-        "limit.the_count_restarts_in_the_next_window": dict(
-            attester=0, active=active(0, 4), count=0),
+        "crossed.a_key_signing_for_another_seat": machine(2, 3, {}, signed=False),
+        "crossed.a_genuine_signature_under_another_seat": machine(
+            2, 3, {}, signed=False),
+        "limit.the_first": machine(0, 3, {}),
+        "limit.the_thousandth": machine(1, 3, BEFORE_THE_THOUSANDTH),
+        "limit.a_forgery_naming_a_full_founders_machine": machine(
+            2, 3, FULL, signed=False),
+        "limit.the_thousand_and_first": machine(0, 3, FULL),
+        "limit.a_machine_that_attested_nobody": machine(2, 3, FULL),
+        "crossed.a_full_founders_signature_under_another_founders_seat": machine(
+            OTHER, 3, FULL, signed=False),
+        "limit.another_founders_machine_still_signs": machine(OTHER, 3, FULL),
+        "limit.the_count_restarts_in_the_next_window": machine(0, 4, {}),
     }
     for label, window in heights.items():
         facts[label] = dict(attester=LAUNCH, retired=retired(window))
@@ -461,15 +501,20 @@ def check_cutoff(check: Checker, harness) -> None:
     )
     check.section(
         "Kind 10 across the population: the launch key at 99 and after the "
-        "cutoff, two machines' signatures crossed, the 1,000th and 1,001st "
-        "registration of one machine in one window, a forgery naming the full "
-        "machine, and the count restarting in the next window."
+        "cutoff, signatures crossed between two seats and between two "
+        "founders, and the founder's limit. One founder's 1,000 registrations "
+        "in a window are spread across two of their machines, 500 each. The "
+        "1,001st is refused on one of the two and on a third machine that has "
+        "attested nobody, a forgery naming a full founder's machine is refused "
+        "for its signature, another founder's machine still signs, and the "
+        "count restarts in the next window. Every count is the founder's, "
+        "summed over every machine the founder owns."
     )
     for label, facts in _cutoff_facts().items():
         check.agree(f"cutoff.{label}", e.kind_10_outcome(**facts), harness.results[label])
     check.agree(
         "cutoff.limit.count_after_the_thousandth",
-        e.MACHINE_REGISTRATIONS_PER_WINDOW,
+        e.founder_count(FULL, OWNERS, 0),
         harness.notes["count_after_the_thousandth"],
     )
     for label, kind, result in (
@@ -535,9 +580,10 @@ def check_span(check: Checker, harness) -> None:
 
 def check_invariants(check: Checker, harness) -> None:
     check.section(
-        "Each of the seven invariants, broken by a probe on a copy of the "
-        "population's ledger. The first six are the ledger's own checks and "
-        "the seventh is the block's, because it is about two heights."
+        "Each of the eight invariants, broken by a probe on a copy of the "
+        "population's ledger. Invariant 7 is the block's, because it is about "
+        "two heights, and the other seven are the ledger's own checks. "
+        "Invariant 6 is broken from both sides."
     )
     check.equal("invariants.the_population_satisfies_all", not harness.ledger.conservation_failures())
     probes = {
@@ -559,18 +605,20 @@ def check_invariants(check: Checker, harness) -> None:
             "a machine was marked for a window not yet assigned",
         ),
         "5_a_count_for_a_future_window": (
-            lambda l: _rewrite(l, 0, registration_window=l.height // e.CYCLE_BLOCKS + 1),
-            "a machine counted registrations for a future window",
+            lambda l: _recount(l, registration_window=l.height // e.CYCLE_BLOCKS + 1),
+            "a founder counted registrations for a future window",
         ),
         "6_a_count_above_the_limit": (
-            lambda l: _rewrite(l, 0, registrations_in_window=e.MACHINE_REGISTRATIONS_PER_WINDOW + 1),
-            "a machine signed more registrations than its limit",
+            lambda l: _recount(l, registrations_in_window=e.FOUNDER_REGISTRATIONS_PER_WINDOW + 1),
+            "a founder count is outside one to the limit",
+        ),
+        "6_a_count_of_zero": (
+            lambda l: _recount(l, registrations_in_window=0),
+            "a founder count is outside one to the limit",
         ),
     }
     for name, (probe, failure) in probes.items():
-        ledger = copy.deepcopy(harness.ledger)
-        probe(ledger)
-        check.equal(f"invariants.{name}", failure in ledger.registry_failures())
+        _probe(check, harness, name, probe, failure)
     retired = harness.ledger.launch_retired_at
     for name, after in (("7_a_retirement_removed", None), ("7_a_retirement_moved", retired + 1)):
         ledger = copy.deepcopy(harness.ledger)
@@ -581,10 +629,36 @@ def check_invariants(check: Checker, harness) -> None:
         except ConservationFailure:
             caught = True
         check.equal(f"invariants.{name}", caught)
+    # Someone the launch key registered in window 3, who owns no seat.
+    _probe(
+        check, harness, "8_a_count_for_an_identity_with_no_machine",
+        lambda l: l.founder_registrations.__setitem__(
+            fixture.person(1).identity, FounderRegistrations(3, 1)),
+        "a founder count names an identity with no machine key",
+    )
+
+
+def _probe(check: Checker, harness, name: str, probe, failure: str) -> None:
+    """Break one invariant on a copy, and require exactly that failure named."""
+    ledger = copy.deepcopy(harness.ledger)
+    probe(ledger)
+    check.equal(
+        f"invariants.{name}",
+        failure not in harness.ledger.registry_failures()
+        and failure in ledger.registry_failures(),
+    )
 
 
 def _rewrite(ledger, seat: int, **fields) -> None:
     ledger.machine_keys[seat] = replace(ledger.machine_keys[seat], **fields)
+
+
+def _recount(ledger, **fields) -> None:
+    """Rewrite the population founder's count, which window 4's restart left."""
+    founder = population.FOUNDER.identity
+    ledger.founder_registrations[founder] = replace(
+        ledger.founder_registrations[founder], **fields
+    )
 
 
 def parse_args() -> argparse.Namespace:
