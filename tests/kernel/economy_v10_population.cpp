@@ -79,16 +79,23 @@ class Driver {
     const auto admission = v10::admit(raw, ledger.chain_id, verify);
     pv::require(admission.admitted(), label + " was not admitted");
     std::optional<Hash> before;
-    if (!label.empty()) before = v10::ledger_state_root(ledger);
+    if (!label.empty()) {
+      before = v10::ledger_state_root(ledger);
+      // Required rather than compared, because two absent roots are equal and
+      // the comparison below would then pass whatever the step did.
+      pv::require(before.has_value(), label + " starts from a committable state");
+    }
     const auto outcome = v10::execute(ledger, admission.transaction.envelope, verify);
     pv::require(outcome.has_value(), "no harness step is an invariant failure");
+    if (outcome->succeeded()) tally(admission.transaction.envelope);
     if (label.empty()) {
       pv::require(outcome->succeeded(),
                   "a bulk step was refused: " + result_name(outcome->result));
       return outcome->result;
     }
     if (!outcome->succeeded()) {
-      pv::require(v10::ledger_state_root(ledger) == before,
+      const auto after = v10::ledger_state_root(ledger);
+      pv::require(after.has_value() && after == before,
                   "a refused " + label + " changed the state");
     }
     const auto receipt = v10::encode_receipt(v10::receipt_for(
@@ -97,6 +104,15 @@ class Driver {
     harness_->results[label] = result_name(outcome->result);
     harness_->receipts[label] = *receipt;
     return outcome->result;
+  }
+
+  void tally(const v10::Envelope& envelope) {
+    if (envelope.kind != static_cast<std::uint8_t>(Kind::hub_register)) return;
+    const auto body = v10::decode_body(envelope.kind, envelope.body);
+    pv::require(body.has_value(), "an executed registration's body decodes");
+    if (body->attesting_seat_id == v10::kLaunchAttester) return;
+    const auto window = v10::window_of_height(harness_->ledger.height);
+    harness_->attested[{window, body->attesting_seat_id}] += 1;
   }
 
   // Open `window`, then write the records of the window it closed.
@@ -202,6 +218,24 @@ class Driver {
                                machine_key(kOtherFounderSeat), v));
   }
 
+  // A key one founder released, re-registered on the other founder's seat. A
+  // signature that key made for seat 1 is refused under seat 100, because the
+  // registration message binds the seat, and a signature it makes for seat 100
+  // is accepted. Without the binding the first would verify too, and count
+  // against the founder who did not sign it.
+  void released_key(std::uint64_t height) {
+    const auto v = height + kLifetime;
+    const auto released = machine_key(1);
+    submit("", build_.machine_registration(kFounder, 1, machine_key(1, 1),
+                                           nonce(kFounder), v));
+    submit("", build_.machine_registration(kOtherFounder, kOtherFounderSeat,
+                                           released, nonce(kOtherFounder), v));
+    submit("crossed.a_released_keys_signature_for_its_old_seat",
+           build_.registration(person(9'004), kOtherFounderSeat, released, v, 1));
+    submit("crossed.the_released_key_signs_for_its_new_seat",
+           build_.registration(person(9'004), kOtherFounderSeat, released, v));
+  }
+
  private:
   Harness* harness_;
   Builder build_;
@@ -240,6 +274,7 @@ Harness cutoff_run() {
       driver.submit("limit.the_count_restarts_in_the_next_window",
                     driver.build().registration(person(9'002), 0, machine_key(0),
                                                 height + kLifetime));
+      driver.released_key(height);
     } else if (window == 5) {
       const auto height = driver.at(base + 1);
       driver.submit("launch.not_revived_when_the_count_falls",

@@ -297,8 +297,8 @@ enum class Result : std::uint8_t {
   dispute_cap_exceeded = 44,
   // The five version ten adds. Each names a fact a person can act on, so none
   // is folded into `UNAUTHORIZED`: the launch is over, this seat has no
-  // machine, that machine is down, that machine is full for the window, and
-  // the wallet asked for too long a life.
+  // machine, that machine is down, that machine's founder is full for the
+  // window, and the wallet asked for too long a life.
   launch_key_retired = 45,
   machine_key_not_found = 46,
   machine_not_active = 47,

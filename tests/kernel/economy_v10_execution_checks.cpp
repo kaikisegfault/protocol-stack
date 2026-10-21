@@ -397,6 +397,13 @@ void verify_population(const pv::Values& values, const Harness& cutoff,
   }
   agree(values, "cutoff.limit.count_after_the_thousandth",
         cutoff.count_after_the_thousandth);
+  // What each of the founder's machines attested in window 3, tallied from the
+  // registrations the kernel accepted: the split the population was built with.
+  for (const std::uint32_t seat : {0U, 1U, 2U}) {
+    const auto found = cutoff.attested.find({3, seat});
+    agree(values, "cutoff.limit.attested_in_window_3.seat_" + std::to_string(seat),
+          found == cutoff.attested.end() ? 0 : found->second);
+  }
   for (const std::string label :
        {"limit.the_thousand_and_first", "launch.refused_once_retired"}) {
     agree(values, "cutoff.receipt." + label, hex(cutoff.receipts.at(label)));
@@ -464,6 +471,14 @@ void verify_invariants(const pv::Values& values, const Harness& cutoff) {
       {"8_a_count_for_an_identity_with_no_machine",
        "a founder count names an identity with no machine key",
        [](v10::Ledger& ledger) {
+         // Someone the launch key registered in window 3, given an activated
+         // seat that holds no machine key, then a count: owning a seat is not
+         // enough, the seat must hold a machine key.
+         v10::SeatRecord seat;
+         seat.hub_identity_hash = person(1).identity;
+         seat.is_activated = true;
+         seat.activation_height = v10::kCycleBlocks - 10;
+         ledger.seats[kMachines + 1] = seat;
          v10::FounderRegistrations entry;
          entry.registration_window = 3;
          entry.registrations_in_window = 1;

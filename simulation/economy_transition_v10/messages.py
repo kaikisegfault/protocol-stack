@@ -58,8 +58,8 @@ def registration_message(
     valid_until_height: int,
 ) -> bytes:
     """Binding the attesting seat means one machine's signature cannot be
-    presented as another's, so each registration counts against the limit of
-    the machine that actually signed it."""
+    presented as another's, so each registration counts against the founder
+    whose machine actually signed it."""
     return (
         label_prefix(c.REGISTRATION_LABEL)
         + _octets(chain_id, 32, "chain ID")

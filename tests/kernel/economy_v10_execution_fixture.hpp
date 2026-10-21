@@ -369,6 +369,10 @@ struct Harness {
   std::map<std::string, Bytes> receipts;
   std::map<std::uint64_t, v10::BlockOutcome> windows;
   std::uint32_t count_after_the_thousandth = 0;
+  // Registrations each machine attested that the kernel accepted, by window and
+  // seat. No state holds a per-machine count any more (ADR 0107), so this is
+  // what evidences how a founder's registrations were spread.
+  std::map<std::pair<std::uint64_t, std::uint32_t>, std::uint64_t> attested;
   // Observed rather than assumed: the keys whose mark is 0 straight after the
   // window-0 assignment, which is what the count's exclusion is about.
   std::optional<std::uint64_t> unmarked_at_the_window_0_assignment;

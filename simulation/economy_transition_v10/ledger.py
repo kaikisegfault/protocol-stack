@@ -100,9 +100,10 @@ class Ledger(LedgerV9):
     def from_genesis(cls, genesis: Genesis) -> "Ledger":
         """Version nine's sixteen entries under a version-ten chain identity.
 
-        Genesis writes no machine key, no owner entry, and no retirement. The
-        build authority key is bound into the chain identity and held here, as
-        the dispute authority key is, and appears in no economy key.
+        Genesis writes no machine key, no owner entry, no retirement, and no
+        founder registrations. The build authority key is bound into the chain
+        identity and held here, as the dispute authority key is, and appears in
+        no economy key.
         """
         month = genesis_month(genesis)
         return cls(

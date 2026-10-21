@@ -15,9 +15,9 @@
 // 6. the registry step marks Alice's machine at the assignment of window 1, and
 //    not Bob's, whose machine answered no audit;
 // 7. machines register people;
-// 8. the next window: the count restarts, Alice replaces her key and keeps her
-//    count and her mark, the old key signs nothing, and every mint is approved
-//    over the whole transaction.
+// 8. the next window: Alice's founder count restarts, she replaces her key and
+//    keeps her mark, the replacement leaves her count where it was, the old key
+//    signs nothing, and every mint is approved over the whole transaction.
 //
 // **Every step list is a braced initializer**, whose elements C++ evaluates in
 // the order they appear, so each builder issues its signatures in the order the

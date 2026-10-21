@@ -34,7 +34,7 @@ from simulation.economy_transition_v10 import fixture, population, trace
 from simulation.economy_transition_v10.block import require_retirement_kept
 from simulation.economy_transition_v10.envelope import decode_signed
 from simulation.economy_transition_v10.genesis import chain_id, encode
-from simulation.economy_transition_v10.ledger import ConservationFailure
+from simulation.economy_transition_v10.ledger import ConservationFailure, Seat
 from simulation.economy_transition_v10.messages import approval_message
 from simulation.economy_transition_v10.state import (
     FounderRegistrations,
@@ -457,6 +457,9 @@ def _cutoff_facts() -> dict[str, dict]:
             OTHER, 3, FULL, signed=False),
         "limit.another_founders_machine_still_signs": machine(OTHER, 3, FULL),
         "limit.the_count_restarts_in_the_next_window": machine(0, 4, {}),
+        "crossed.a_released_keys_signature_for_its_old_seat": machine(
+            OTHER, 4, {}, signed=False),
+        "crossed.the_released_key_signs_for_its_new_seat": machine(OTHER, 4, {}),
     }
     for label, window in heights.items():
         facts[label] = dict(attester=LAUNCH, retired=retired(window))
@@ -508,7 +511,9 @@ def check_cutoff(check: Checker, harness) -> None:
         "attested nobody, a forgery naming a full founder's machine is refused "
         "for its signature, another founder's machine still signs, and the "
         "count restarts in the next window. Every count is the founder's, "
-        "summed over every machine the founder owns."
+        "summed over every machine the founder owns. A key one founder "
+        "released and the other re-registered signs only for its new seat, "
+        "because the registration message binds the seat."
     )
     for label, facts in _cutoff_facts().items():
         check.agree(f"cutoff.{label}", e.kind_10_outcome(**facts), harness.results[label])
@@ -517,6 +522,14 @@ def check_cutoff(check: Checker, harness) -> None:
         e.founder_count(FULL, OWNERS, 0),
         harness.notes["count_after_the_thousandth"],
     )
+    # What each of the founder's machines attested in window 3, tallied from
+    # the registrations the model accepted: the split the facts above assume.
+    for seat in (0, 1, 2):
+        check.agree(
+            f"cutoff.limit.attested_in_window_3.seat_{seat}",
+            FULL.get(seat, 0),
+            harness.attested.get((3, seat), 0),
+        )
     for label, kind, result in (
         ("limit.the_thousand_and_first", 10, "REGISTRATION_LIMIT"),
         ("launch.refused_once_retired", 10, "LAUNCH_KEY_RETIRED"),
@@ -629,11 +642,9 @@ def check_invariants(check: Checker, harness) -> None:
         except ConservationFailure:
             caught = True
         check.equal(f"invariants.{name}", caught)
-    # Someone the launch key registered in window 3, who owns no seat.
     _probe(
         check, harness, "8_a_count_for_an_identity_with_no_machine",
-        lambda l: l.founder_registrations.__setitem__(
-            fixture.person(1).identity, FounderRegistrations(3, 1)),
+        _a_seat_owner_with_no_machine_key,
         "a founder count names an identity with no machine key",
     )
 
@@ -651,6 +662,20 @@ def _probe(check: Checker, harness, name: str, probe, failure: str) -> None:
 
 def _rewrite(ledger, seat: int, **fields) -> None:
     ledger.machine_keys[seat] = replace(ledger.machine_keys[seat], **fields)
+
+
+def _a_seat_owner_with_no_machine_key(ledger) -> None:
+    """Someone the launch key registered in window 3, given an activated seat
+    that holds no machine key, then a count. Owning a seat is not enough:
+    invariant 8 asks for a seat that holds a machine key."""
+    owner = fixture.person(1).identity
+    ledger.seats[population.MACHINES + 1] = Seat(
+        hub_identity_hash=owner,
+        referrer_hub_identity=None,
+        is_activated=True,
+        activation_height=population.ACTIVATION_HEIGHT,
+    )
+    ledger.founder_registrations[owner] = FounderRegistrations(3, 1)
 
 
 def _recount(ledger, **fields) -> None:

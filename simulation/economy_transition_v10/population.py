@@ -4,8 +4,8 @@ The launch key retires when 100 machines meet one assigned cycle, and one
 founder's machines may sign 1,000 registrations a window between them. No
 recorded chain of blocks reaches either: every in-scope seat is audited at every
 height, so a hundred machines answering their challenges for one window is
-millions of selections and thousands of blocks. So these runs use version nine's evidence harness, as
-`economy-scenario-suite-v4` does:
+millions of selections and thousands of blocks. So these runs use version
+nine's evidence harness, as `economy-scenario-suite-v4` does:
 
 - transactions are admitted and executed by the version-ten model one at a
   time, at heights the run sets;
@@ -29,11 +29,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from simulation.economy_transition_v8.slots import in_scope
+from simulation.economy_transition_v8.slots import in_scope, window_of_height
 from simulation.economy_transition_v8.state import seat_window_key, seat_window_value
 
 from . import contract as c
 from .block import BlockOutcome, open_window
+from .envelope import Transaction
 from .execution import admit, execute, receipt_for
 from .fixture import (
     Builder,
@@ -99,6 +100,10 @@ class Harness:
     raw: dict[str, bytes] = field(default_factory=dict)
     windows: dict[int, BlockOutcome] = field(default_factory=dict)
     notes: dict[str, object] = field(default_factory=dict)
+    # Registrations each machine attested that the model accepted, by window
+    # and seat. No state holds a per-machine count any more (ADR 0107), so this
+    # is what evidences how a founder's registrations were spread.
+    attested: dict[tuple[int, int], int] = field(default_factory=dict)
 
     @property
     def build(self) -> Builder:
@@ -122,6 +127,8 @@ class Harness:
             raise ConservationFailure(f"{label} was not admitted: {admission.code}")
         before = ledger.state_root() if label is not None else None
         outcome = execute(ledger, admission.transaction, self.signatures.oracle)
+        if outcome.succeeded:
+            self._tally(admission.transaction)
         if label is None:
             if not outcome.succeeded:
                 raise ConservationFailure(f"a bulk step was refused: {outcome.result}")
@@ -134,6 +141,15 @@ class Harness:
         self.receipts[label] = encode_receipt(receipt)
         self.raw[label] = raw
         return outcome.result
+
+    def _tally(self, transaction: Transaction) -> None:
+        if transaction.kind != c.HUB_REGISTER:
+            return
+        seat = transaction.body["attesting_seat_id"]
+        if seat == c.LAUNCH_ATTESTER:
+            return
+        key = (window_of_height(self.ledger.height), seat)
+        self.attested[key] = self.attested.get(key, 0) + 1
 
     def open(self, window: int, plan: dict[int, dict[int, int]]) -> BlockOutcome:
         """Open `window`, then write the records of the window it closed."""
@@ -206,6 +222,7 @@ def cutoff_run(through_window: int = CAP_RUN_WINDOW) -> Harness:
             harness.submit("limit.the_count_restarts_in_the_next_window",
                            build.registration(person(9_002), 0, machine_key(0),
                                               height + 1_200))
+            _a_released_key(harness, build, height)
         elif window == 5:
             height = harness.at(base + 1)
             harness.submit("launch.not_revived_when_the_count_falls",
@@ -254,6 +271,30 @@ def _window_three(harness: Harness, build: Builder, base: int) -> None:
     )
     harness.submit("limit.another_founders_machine_still_signs", build.registration(
         person(last + 1), OTHER_FOUNDER_SEAT, machine_key(OTHER_FOUNDER_SEAT), valid))
+
+
+def _a_released_key(harness: Harness, build: Builder, height: int) -> None:
+    """A key one founder released, re-registered on the other founder's seat.
+
+    The founder replaces seat 1's key, and the other founder installs the
+    released key on seat 100. A signature that key made for seat 1 is then
+    refused under seat 100, because the registration message binds the seat,
+    and a signature it makes for seat 100 is accepted. Without the binding the
+    first would verify too, and count against the founder who did not sign it.
+    """
+    valid = height + 1_200
+    released = machine_key(1)
+    harness.submit(None, build.machine_registration(
+        FOUNDER, 1, machine_key(1, 1), harness.nonce(FOUNDER), valid))
+    harness.submit(None, build.machine_registration(
+        OTHER_FOUNDER, OTHER_FOUNDER_SEAT, released, harness.nonce(OTHER_FOUNDER),
+        valid))
+    harness.submit("crossed.a_released_keys_signature_for_its_old_seat",
+                   build.registration(person(9_004), OTHER_FOUNDER_SEAT, released,
+                                      valid, signed_seat=1))
+    harness.submit("crossed.the_released_key_signs_for_its_new_seat",
+                   build.registration(person(9_004), OTHER_FOUNDER_SEAT, released,
+                                      valid))
 
 
 # A span run collects this often, so the accumulation cap never decides a cycle
