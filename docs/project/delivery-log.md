@@ -67,6 +67,12 @@ The hosted `clang-sanitizers` preset builds it with libFuzzer and runs
 `economy-transition-v10-fuzz-smoke`, 512 seeded runs like its predecessor, which
 takes that preset from 190 CTest entries to 191.
 
+**Merged and verified.** PR #406 merged by rebase as `1a2b273`, closing #405.
+Run 39778368532 on the PR head `bc4f16c` passed all six checks: 181 CTest
+entries on three presets and 191 on `clang-sanitizers`, where
+`economy-transition-v10-fuzz-smoke` passed, and all eight network runs. `main`'s
+tree at `1a2b273` is byte-identical to the candidate's.
+
 ### How the parallel drafts of 2026-10-21 were set aside
 
 **Three slices were begun in parallel by agents, and none was finished.** The

@@ -284,8 +284,9 @@ dependency.
 
 - `kaikisegfault/protocol-stack`. Issue #402 is open for the next action,
   M4.3g. Every other issue is closed, and `main` is the only branch.
-- **The last full hosted verification** is candidate run 39630257119, on
-  M4.3f's tree, which `main` holds byte for byte at `b8e7475`.
+- **The last full hosted verification** is candidate run 39778368532, on the
+  version-ten fuzz target's tree, which `main` holds byte for byte at
+  `1a2b273`.
 - `verify.yml` classifies the changed paths with `tools/verification_scope.py`.
   Markdown and skill metadata take the lightweight path:
   `tools/verify_metadata.py` and the `tests/tools` suites. Everything else takes
