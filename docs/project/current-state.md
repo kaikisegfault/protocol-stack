@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-10-21
+Last updated: 2026-10-22
 
 This is the handoff. It says what is true now, and nothing else. How each slice
 was delivered is in [`delivery-log.md`](delivery-log.md), newest first, and
@@ -282,23 +282,28 @@ dependency.
 
 ## Repository and verification
 
-- `kaikisegfault/protocol-stack`. Every issue is closed, and `main` is the
-  only branch.
-- **The last full hosted verification** is candidate run 39487145302, on
-  M4.3e's tree, which `main` holds byte for byte at `09d937f`.
+- `kaikisegfault/protocol-stack`. Issue #402 is open for the next action,
+  M4.3g. Every other issue is closed, and `main` is the only branch.
+- **The last full hosted verification** is candidate run 39630257119, on
+  M4.3f's tree, which `main` holds byte for byte at `b8e7475`.
 - `verify.yml` classifies the changed paths with `tools/verification_scope.py`.
   Markdown and skill metadata take the lightweight path:
   `tools/verify_metadata.py` and the `tests/tools` suites. Everything else takes
   the full path, `tools/verify.sh`, on four presets: `gcc-debug`,
   `gcc-sanitizers`, `clang-debug`, and `clang-sanitizers`.
 - The full path verifies and tests the Go module and builds with CMake. It runs
-  181 CTest entries, or 190 on `clang-sanitizers`, which adds nine fuzz smokes,
+  181 CTest entries, or 191 on `clang-sanitizers`, which adds ten fuzz smokes,
   and then the eight network runs. "Verification required" gates the merge.
 - The owner's machine is resource-constrained. Run focused local checks, leave
   the matrix to the hosted runners, and remove local build trees with
   `tools/clean-local.sh`.
 - `.claude/RESUME.md` is a Claude Code checkpoint from 2026-08-19, ignored
   through `.git/info/exclude`. It is not repository state.
+- `.claude/drafts/` holds three partial drafts that agents began on 2026-10-21
+  and did not finish: `snapshot_v10`, a version-ten HUB test verifier, and a
+  version-ten scenario suite. It is ignored through `.git/info/exclude`, exists
+  only on the owner's machine, and passed no check. It is not repository state:
+  a slice may start from a draft, and must verify it as new code.
 
 ## Remaining gap
 
@@ -360,8 +365,9 @@ first fee. No transition can enforce that order, so the bridge milestones must.
 ## Exact next action
 
 **Encode a version-ten ledger as a snapshot: `snapshot_v10`, M4.3g**, step 3
-of ADR 0104's enumeration. Without it a version-ten ledger cannot be written
-down, so no store, application, or node can carry one.
+of ADR 0104's enumeration, issue #402. Without it a version-ten ledger cannot
+be written down, so no store, application, or node can carry one. An unverified
+partial draft is in `.claude/drafts/402-snapshot-v10/`.
 
 - `include/protocol/storage/snapshot_v10.hpp` and its translation units, version
   nine's `snapshot_v9` copied with the namespace rebound, encoding the four
@@ -375,6 +381,8 @@ down, so no store, application, or node can carry one.
   them in.
 - Round trips over the version-ten execution chain and population, and the
   inherited refusals, as `storage_snapshot_v9_tests` has them.
+- `storage_snapshot_v9_fuzz`'s counterpart, which ADR 0104's last step must
+  keep. `economy_v10_fuzz` already stands for `economy_v9_fuzz`.
 
 ADR 0104 enumerates the rest: the store, the application, the node and the
 network with the HUB test verifier moved onto version ten, and then the
@@ -388,10 +396,13 @@ deletion of version nine's stack.
 **Driving the C++ kernel over `economy-scenario-suite-v4`** now has its entry
 point in version ten, `open_window` (ADR 0105). The suite's seven pinned roots
 are version nine's, though, and version nine's kernel will not gain the entry
-point, so that evidence waits for the suite to be rebound to version ten.
+point, so that evidence waits for the suite to be rebound to version ten. An
+unverified partial draft is in `.claude/drafts/404-scenario-suite-v10/`.
 
 Moving the network fixtures onto `protocol-hub-test-verifier-v9` waits for
 version ten to run on a network, because version ten changes what they build.
+A version-ten verifier depends only on the kernel and can be built first; an
+unverified partial draft is in `.claude/drafts/403-hub-test-verifier-v10/`.
 
 ## Blockers
 
