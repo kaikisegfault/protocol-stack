@@ -38,6 +38,65 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How the version-ten fuzz target was delivered
+
+**The founder-decision gate passed with nothing reserved.** Issue #405. It is a
+test: no rule, value, or encoding moved.
+
+**`economy_v10_fuzz` is `economy_v9_fuzz`'s counterpart**, which ADR 0104's last
+step must keep when version nine's stack is deleted. Version nine's twelve entry
+points are its harness with the namespace rebound. Version ten adds two things:
+
+- **the four registry values**, each held to determinism and an exact round
+  trip, with the rules only arbitrary bytes can reach: a founder count of zero
+  or above the limit, and a machine key or a retirement at height zero;
+- **the approval over every transaction that decodes.** An approval message
+  exists exactly for the body-carried kinds. Its approved bytes differ from the
+  unsigned encoding only where the HUB field is zeroed. The lifetime rule never
+  wraps at the top of the height range.
+
+**This host has no x86_64 libFuzzer runtime**, so the local evidence is a
+scratch driver, not committed. It fed the target 34,035 inputs: 35 seeds taken
+from the contract vectors' encodings, 400 single-octet mutations of each, and
+20,000 random inputs. A separate check confirmed that the seeds reach the
+decoders: both kind-10 bodies and kind 23 decode, kind 23 builds its approval,
+and the founder count decodes. GCC 12 and Clang 14 compile it with the
+repository's flags.
+
+The hosted `clang-sanitizers` preset builds it with libFuzzer and runs
+`economy-transition-v10-fuzz-smoke`, 512 seeded runs like its predecessor, which
+takes that preset from 190 CTest entries to 191.
+
+### How the parallel drafts of 2026-10-21 were set aside
+
+**Three slices were begun in parallel by agents, and none was finished.** The
+owner suggested using more of the day's capacity, so three slices went to agents
+in isolated worktrees while M4.3f was verified:
+
+- M4.3g, `snapshot_v10` (issue #402);
+- a version-ten HUB test verifier (#403);
+- a version-ten scenario suite driving the kernel (#404).
+
+A usage limit stopped them twice, and the owner then asked for the session to be
+concluded without agents. None had made a commit or passed a check. A design
+study of ADR 0089's outage wall was stopped before it produced anything.
+
+**Their files are kept, not delivered.** The untracked drafts, of 1,479, 592,
+and 907 lines, were copied to `.claude/drafts/`, which `.git/info/exclude`
+ignores. The worktrees and their commit-less branches were removed. #402 stays
+open for M4.3g, the recorded next action, and #403 and #404 were closed as not
+planned until a slice takes them up.
+
+**Two coordination lessons.**
+
+- Two worktrees were created on the `main` that preceded the revision, while the
+  shared kernel objects were built from its head. Linking one against the
+  other's headers would have mismatched struct layouts. The bases were moved
+  before anything was built.
+- Work kept on one machine until publication is lost with the machine. The
+  workers were switched to pushing their branches after every verified commit.
+  That costs nothing here, because only pull requests and `main` start CI.
+
 ### How M4.3f was delivered
 
 **The founder-decision gate passed with nothing reserved.** Issue #400. The
@@ -158,6 +217,15 @@ with the repository's warning flags, through the scratch-shim route, and Clang
 1.3 seconds. The new test code never keeps a reference returned by a call that
 was passed a temporary, which is the shape GCC 13's `-Wdangling-reference`
 reports.
+
+**Merged and verified.** PR #401 merged by rebase as `b8e7475`, closing #400.
+Run 39623196371 on `e6002cf` and run 39630257119 on the PR head `04c0fad` each
+passed all six checks. Each ran 181 CTest entries on three presets and 190 on
+`clang-sanitizers`, with both version-ten C++ targets passing in every job, and
+all eight network runs. `main`'s tree at `b8e7475` is byte-identical to the
+head's. **The longest job took 16:04 against the twenty-minute timeout**, up
+from 15:51 on M4.3e, which is the trend ADR 0104 says to answer by finishing the
+migration rather than by trimming a gate.
 
 ### How M4.3e was delivered
 
