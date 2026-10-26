@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-10-22
+Last updated: 2026-10-26
 
 This is the handoff. It says what is true now, and nothing else. How each slice
 was delivered is in [`delivery-log.md`](delivery-log.md), newest first, and
@@ -113,8 +113,19 @@ codec and `economy_registry_transitions.cpp` for execution.
 - Every claim about what version ten carries is pinned to an accepted
   version-six to version-nine file, never to the version-nine kernel.
 
-The snapshot, the store, the application, and the network all still run version
-nine.
+**A version-ten ledger can be written down and restored** (M4.3g,
+[ADR 0108](../decisions/0108-the-version-ten-snapshot.md)). `snapshot_v10`
+carries the build authority key as a sixth parameter and decodes the four
+registry entries through the kernel's own decoders. A restore refuses a
+retirement that one height proves wrong: absent while the head's own count
+reached 100, present with fewer than 100 machines ever marked, or at a height no
+registry step runs. Invariant 7 compares two heights, so this is the only guard
+a seeded network has, because its replicas agree with each other.
+`version-ten-snapshot` round-trips the chain, the population, and the span run
+against their recorded final roots, and carries version eight's and version
+nine's refusal sweeps for ADR 0104's deletion step.
+
+The store, the application, and the network still run version nine.
 
 **The model found a specification defect, repaired before anything implemented
 it.** The registry step counted a mark of 0, which means never met, as meeting
@@ -136,7 +147,7 @@ version nine already handles and the obligations of the next contract version.
 [`economy-transition-v9`](../specifications/economy-transition-v9.md) under
 [`consensus-application-v2`](../specifications/consensus-application-v2.md).
 The repository compiles it, the M1 version-one ledger, and version ten's kernel
-staged beside it (ADR 0104). Every layer of version nine is built:
+and snapshot staged beside it (ADR 0104). Every layer of version nine is built:
 
 - the C++20 kernel, `include/protocol/v9/` and 21 translation units under
   `src/v9/`;
@@ -282,8 +293,8 @@ dependency.
 
 ## Repository and verification
 
-- `kaikisegfault/protocol-stack`. Issue #402 is open for the next action,
-  M4.3g. Every other issue is closed, and `main` is the only branch.
+- `kaikisegfault/protocol-stack`. Issue #408 is open for the next action,
+  M4.3h. Every other issue is closed, and `main` is the only branch.
 - **The last full hosted verification** is candidate run 39778368532, on the
   version-ten fuzz target's tree, which `main` holds byte for byte at
   `1a2b273`.
@@ -293,16 +304,16 @@ dependency.
   the full path, `tools/verify.sh`, on four presets: `gcc-debug`,
   `gcc-sanitizers`, `clang-debug`, and `clang-sanitizers`.
 - The full path verifies and tests the Go module and builds with CMake. It runs
-  181 CTest entries, or 191 on `clang-sanitizers`, which adds ten fuzz smokes,
+  182 CTest entries, or 193 on `clang-sanitizers`, which adds eleven fuzz smokes,
   and then the eight network runs. "Verification required" gates the merge.
 - The owner's machine is resource-constrained. Run focused local checks, leave
   the matrix to the hosted runners, and remove local build trees with
   `tools/clean-local.sh`.
 - `.claude/RESUME.md` is a Claude Code checkpoint from 2026-08-19, ignored
   through `.git/info/exclude`. It is not repository state.
-- `.claude/drafts/` holds three partial drafts that agents began on 2026-10-21
-  and did not finish: `snapshot_v10`, a version-ten HUB test verifier, and a
-  version-ten scenario suite. It is ignored through `.git/info/exclude`, exists
+- `.claude/drafts/` holds two partial drafts that agents began on 2026-10-21
+  and did not finish: a version-ten HUB test verifier and a version-ten
+  scenario suite. M4.3g started from the third, `snapshot_v10`, and removed it. It is ignored through `.git/info/exclude`, exists
   only on the owner's machine, and passed no check. It is not repository state:
   a slice may start from a draft, and must verify it as new code.
 
@@ -365,29 +376,26 @@ first fee. No transition can enforce that order, so the bridge milestones must.
 
 ## Exact next action
 
-**Encode a version-ten ledger as a snapshot: `snapshot_v10`, M4.3g**, step 3
-of ADR 0104's enumeration, issue #402. Without it a version-ten ledger cannot
-be written down, so no store, application, or node can carry one. An unverified
-partial draft is in `.claude/drafts/402-snapshot-v10/`.
+**Store a version-ten ledger: `SQLiteLedgerV10`, M4.3h**, step 4 of ADR
+0104's enumeration, issue #408. Without it no application or node can carry a
+version-ten state across a restart.
 
-- `include/protocol/storage/snapshot_v10.hpp` and its translation units, version
-  nine's `snapshot_v9` copied with the namespace rebound, encoding the four
-  entries version ten adds: the machine keys, their inverse, the retirement,
-  and the founder counts.
-- The restore takes the build authority key as a parameter, as it takes the
-  dispute authority key: the ledger keeps it, kind 23 reads it, and no root
-  commits to it.
-- A restore must refuse what the registry invariants refuse. Version nine's
-  restore already runs `conservation_failures`, which version ten's carries
-  them in.
-- Round trips over the version-ten execution chain and population, and the
-  inherited refusals, as `storage_snapshot_v9_tests` has them.
-- `storage_snapshot_v9_fuzz`'s counterpart, which ADR 0104's last step must
-  keep. `economy_v10_fuzz` already stands for `economy_v9_fuzz`.
+- `include/protocol/storage/sqlite_ledger_v10.hpp` and its translation units,
+  version nine's `SQLiteLedgerV9` and `sqlite_schema_v9` with the namespace
+  rebound, holding `snapshot_v10` payloads.
+- The store derives a restore's parameters from the version-ten genesis it is
+  opened with, as version nine's does, so the build authority key reaches every
+  restore and a payload under another one is refused (ADR 0108).
+- A seeded store accepts a payload only through `decode_snapshot_v10`'s gates,
+  the retirement rule included.
+- Tests at the depth of `storage_sqlite_ledger_v9_tests` and
+  `storage_sqlite_recovery_v9_tests`, over the version-ten fixtures, carrying
+  the inherited refusal and recovery cases so the deletion step loses none.
+- An ADR, as ADR 0081 was for version nine.
 
-ADR 0104 enumerates the rest: the store, the application, the node and the
-network with the HUB test verifier moved onto version ten, and then the
-deletion of version nine's stack.
+ADR 0104 enumerates the rest: the application, the node and the network with
+the HUB test verifier moved onto version ten, and then the deletion of version
+nine's stack.
 
 **Unblocked candidates behind it:**
 
