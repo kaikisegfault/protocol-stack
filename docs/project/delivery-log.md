@@ -38,6 +38,51 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How the version-ten owning store was delivered
+
+**The founder-decision gate passed with nothing reserved.** Issue #408, M4.3h,
+step 4 of ADR 0104. Every decision was node-local persistence of states
+`economy-transition-v10` already defines: the DDL widths, the application
+identifier and schema version, the table names, and the fixtures. ADR 0109
+records them.
+
+**It came in two parts.** The store needed a model-recorded run it could replay
+one height at a time, and none existed, so M4.3h-1 recorded the `restart.` run
+first (PR #412). This part is the store and its suites.
+
+**The store is version nine's, generated and then edited.** The sources and the
+suites were copied with the namespace rebound, then the version-specific text
+was rewritten by hand: the widths, the markers, the counts, and every comment
+that described version nine. Normalised against version nine's, the two store
+units differ in comments alone.
+
+**The first local run found a defect the port introduced**, and ADR 0109
+records it. Version nine's schema states each pragma twice: once as the
+constant a reopen compares against, and once as a literal in the install
+statement. The port changed the constants and not the literals. The store
+therefore created a file marked `PSL9` at schema version 9, committed its first
+block, and refused its own file as `schema_mismatch` at the first reopen.
+Version ten writes both pragmas from the constants. Version nine's store is
+correct as delivered and is left alone.
+
+**A second local failure was the scratch build's, not the code's.** The
+restart unit's object predated the `block_inputs` field the store suite reads,
+so two units disagreed about a struct's layout and the suite crashed. Every
+unit that includes the fixture header was rebuilt before anything else was
+believed.
+
+**Local evidence, scratch only.** This host has the SQLite 3.40.1 runtime and no
+headers. A copy of SQLite 3.53.0's official `sqlite3.h` found in an unrelated
+package cache served as declarations, beside the scratch `sodium.h`. Both suites
+pass, and three probes each fail the suite: a stale snapshot width, a stale
+genesis width, and a restore that drops the build authority key. Clang 14
+compiles every new unit with the repository's warnings as errors. The hosted
+matrix, on the pinned 3.53.3, is the gate.
+
+**What the slice adds to the matrix:** `version-ten-owning-store` and
+`version-ten-store-recovery` on every preset, 184 CTest entries where there
+were 182, and 195 on `clang-sanitizers`.
+
 ### How the version-ten restart run was delivered
 
 **The founder-decision gate passed with nothing reserved.** Issue #411, M4.3h-1,
