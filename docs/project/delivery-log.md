@@ -38,6 +38,89 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How the version-ten snapshot was delivered
+
+**The founder-decision gate passed with nothing reserved.** Issue #402, M4.3g,
+step 3 of ADR 0104. Every decision was node-local encoding of states
+`economy-transition-v10` already defines. That covered the prefix layout, the
+sixth out-of-band parameter, typed decoding of kinds 24 to 27, what a restore
+refuses, the version number and digest label, and the fixtures. None of it
+touches supply, beneficiaries, ownership, or what a participant must do.
+
+**It started from the unverified draft of 2026-10-21**, which supplied the
+header and the five source units and no tests. Its sources compiled and
+restored all three version-ten fixtures as they stood, and were verified as new
+code. **One rule was incomplete.** The draft's retirement check knew the two
+count conditions and not the height, so a retirement at a height no registry
+step runs, or above the head, restored. The slice added the third condition:
+the retirement sits at an assignment of a window of at least 1, at or below the
+head.
+
+**Writing the ADR corrected the draft's account of what exposes a dropped
+retirement.** The draft said the root does, because the restoring node holds a
+root no peer holds. That is true of a node restoring alone. It is false of a
+seeded network: every replica restores the same payload and takes its root as
+`app_hash` (ADR 0097), so the replicas agree. For a seeded launch the
+single-height rule is the only guard, and ADR 0108 says so.
+
+**The tests reuse the kernel suite's fixtures and link no version nine.** The
+chain, the 101-machine population, and the span run restore to the final roots
+the execution vectors record, `chain.final_root`, `cap.final_root`, and
+`span.final_root`. Between them they hold every entry kind version ten writes.
+The registry sweep mutates the typed ledger for each of invariants 1 to 6 and 8
+and requires that invariant among the failures, because `not_conserved` alone
+would not say which one fired. **Version eight's and version nine's sweeps are
+carried** rather than left to die with version nine's suite. The version-ten
+chain holds a real referral balance and real custody legs, so those cases now
+mutate entries a block wrote where version nine's had to insert them. The open
+challenge comes from running the chain's quiet heights forward, unanswered, to
+the first issue.
+
+**Mutation probes, run locally against the decoder.** Thirteen probes each
+removed one rule:
+
+- the retirement rule;
+- either of its count conditions;
+- the head bound;
+- the window-0 exclusion;
+- the assignment-height condition;
+- restoring the build authority key;
+- comparing the build authority key;
+- the launch key's two-copy check;
+- gate 3;
+- each of the three registry value decoders, replaced with a raw read.
+
+Every probe failed the suite but one. **The raw retirement read passed**, because
+height 0 is refused by both the decoder and the new height condition. The
+decoder's rule is pinned alone in the codec target, and the test says so.
+
+**The fuzz target's first form was too slow, and was measured before it
+shipped.** Its registry seed is 27 KB, and one root over it costs about 10 ms
+under ASan at `-O0`. Checking both seeds' restores and neighbourhoods after
+every input took 83 seconds for the 512-run smoke, against a 60-second timeout.
+Two changes brought it to 11 seconds. The registry seed's own restore is now
+checked once, when it is built, and one input octet chooses which seed's
+neighbourhood an input explores. An input file still reproduces exactly. The
+hosted runners ran the v10 execution target 1.7 times slower than this host, so
+the smoke should take about 19 seconds there. A 60-second session of 3,698 runs
+found nothing.
+
+**The previous record's statement that this host has no x86_64 libFuzzer
+runtime was wrong.** Clang 14's `libclang_rt.fuzzer-x86_64.a` is installed, and
+this slice built and ran the target with it. The local evidence was a
+cache-free scratch build:
+
+- GCC 12 at `-O1` with the repository's warnings as errors, for every new unit;
+- Clang 14 with ASan and UBSan at `-O0`, under which `storage_snapshot_v10_tests`
+  passed in 28 seconds;
+- the fuzz smoke as CTest runs it.
+
+The scratch objects were deleted afterwards.
+
+**What the slice adds to the matrix:** `version-ten-snapshot` on every preset,
+182 CTest entries where there were 181, and `storage-snapshot-v10-fuzz-smoke`
+on `clang-sanitizers`, 193 where there were 191.
+
 ### How the version-ten fuzz target was delivered
 
 **The founder-decision gate passed with nothing reserved.** Issue #405. It is a
