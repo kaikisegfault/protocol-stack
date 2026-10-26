@@ -38,6 +38,41 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How the version-ten restart run was delivered
+
+**The founder-decision gate passed with nothing reserved.** Issue #411, M4.3h-1,
+the first part of the store slice. It is test evidence for behaviour
+`economy-transition-v10` already fixes, and no rule moved.
+
+**Writing the anchor for M4.3g found the gap.** Every recorded version-ten
+chain jumps to the activation height, and a store commits one height at a time,
+so it had nothing model-recorded to replay. Version nine closed the same gap in
+its store slice with a four-height `restart` run (commit `159eb27`), and this
+follows that commit's shape: the model, both derivations, the C++ reproduction,
+and one note in the specification.
+
+**The run is five heights rather than four.** The first four are version nine's
+in version ten's transactions: launch-key registrations, purchases, a block at
+its predecessor's stamp after one a millisecond below it is refused, and
+activations. **The fifth registers both machines through kind 23**, because the
+build authority key is the field version ten could lose in silence (ADR 0108).
+A model test replays the five blocks on a ledger whose key was zeroed after
+block 4. The first four blocks commit identically, the fifth refuses both
+registrations as `UNAUTHORIZED`, and no machine key is written.
+
+**The first draft of that test asserted the wrong thing**: that the refused
+fifth block left block 4's root. A block advances the height and the stamp
+whatever its transactions do, so the root moves. The test now asserts what
+distinguishes the refusal: no machine key, and a root other than the recorded
+one.
+
+The model records 46 new vectors, 152 to 198, appended without moving a line.
+`expected.py` derives the stamps from its own statement of the block rate, and
+the registration and kind-23 outcomes from the specification's ordered
+conditions. `economy-transition-v10-execution-cpp` reproduces every one from
+`tests/kernel/economy_v10_restart.cpp`, a new unit, because the trace and the
+checks units are already past 500 lines.
+
 ### How the version-ten snapshot was delivered
 
 **The founder-decision gate passed with nothing reserved.** Issue #402, M4.3g,
