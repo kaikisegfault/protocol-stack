@@ -73,6 +73,12 @@ conditions. `economy-transition-v10-execution-cpp` reproduces every one from
 `tests/kernel/economy_v10_restart.cpp`, a new unit, because the trace and the
 checks units are already past 500 lines.
 
+**Merged and verified.** PR #412 merged by rebase as `918ad53`, closing #411.
+Run 40397809634 on the PR head `884f627` passed all six checks: 182 CTest
+entries on three presets, 193 on `clang-sanitizers`, and all eight network runs
+on every preset. `main`'s tree at `918ad53` is byte-identical to the
+candidate's.
+
 ### How the version-ten snapshot was delivered
 
 **The founder-decision gate passed with nothing reserved.** Issue #402, M4.3g,
