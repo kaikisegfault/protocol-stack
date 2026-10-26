@@ -230,6 +230,9 @@ add_library(
     src/storage/sqlite_ledger_v9.cpp
     src/storage/sqlite_ledger_v9_open.cpp
     src/storage/sqlite_schema_v9.cpp
+    src/storage/sqlite_ledger_v10.cpp
+    src/storage/sqlite_ledger_v10_open.cpp
+    src/storage/sqlite_schema_v10.cpp
     src/storage/sqlite_snapshot_v1.cpp
     src/storage/snapshot_v1.cpp
     src/storage/snapshot_v9.cpp
@@ -517,6 +520,23 @@ add_executable(
   tests/storage/sqlite_fault_vfs.cpp
   tests/kernel/economy_v9_trace.cpp
 )
+# The version-ten restart run is its own unit, so these link it and the trace's
+# builders and nothing that records a longer chain.
+add_executable(
+  storage_sqlite_ledger_v10_tests
+  tests/storage/sqlite_ledger_v10_test.cpp
+  tests/storage/sqlite_ledger_v10_refusals.cpp
+  tests/storage/sqlite_ledger_v10_seed.cpp
+  tests/kernel/economy_v10_trace.cpp
+  tests/kernel/economy_v10_restart.cpp
+)
+add_executable(
+  storage_sqlite_recovery_v10_tests
+  tests/storage/sqlite_recovery_v10_test.cpp
+  tests/storage/sqlite_fault_vfs.cpp
+  tests/kernel/economy_v10_trace.cpp
+  tests/kernel/economy_v10_restart.cpp
+)
 add_executable(
   storage_archive_v1_tests
   tests/storage/archive_v1_test.cpp
@@ -619,6 +639,18 @@ target_link_libraries(
     protocol_stack_sqlite
 )
 target_link_libraries(
+  storage_sqlite_ledger_v10_tests
+  PRIVATE
+    protocol_storage
+    protocol_stack_sqlite
+)
+target_link_libraries(
+  storage_sqlite_recovery_v10_tests
+  PRIVATE
+    protocol_storage
+    protocol_stack_sqlite
+)
+target_link_libraries(
   storage_archive_v1_tests
   PRIVATE
     protocol_storage
@@ -700,6 +732,8 @@ set(
   storage_snapshot_v10_tests
   storage_sqlite_ledger_v9_tests
   storage_sqlite_recovery_v9_tests
+  storage_sqlite_ledger_v10_tests
+  storage_sqlite_recovery_v10_tests
   storage_archive_v1_tests
   application_v1_tests
   application_v9_tests
@@ -1019,6 +1053,20 @@ add_test(
     storage_sqlite_ledger_v9_tests
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v9-execution.txt"
     "${CMAKE_CURRENT_BINARY_DIR}/version-nine-owning-store"
+)
+add_test(
+  NAME version-ten-store-recovery
+  COMMAND
+    storage_sqlite_recovery_v10_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v10-execution.txt"
+    "${CMAKE_CURRENT_BINARY_DIR}/sr-v10"
+)
+add_test(
+  NAME version-ten-owning-store
+  COMMAND
+    storage_sqlite_ledger_v10_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v10-execution.txt"
+    "${CMAKE_CURRENT_BINARY_DIR}/version-ten-owning-store"
 )
 add_test(
   NAME ledger-transition-cpp

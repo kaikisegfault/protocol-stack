@@ -370,6 +370,9 @@ struct Restart {
   std::vector<v10::BlockOutcome> blocks;
   std::vector<std::vector<std::string>> labels;
   std::map<std::string, Bytes> raw;
+  // Each block's raw inputs in the order it offered them, which is what a layer
+  // replaying the run hands its own block entry point.
+  std::vector<std::vector<Bytes>> block_inputs;
   // The run's one refusal: the condition C2 reported for a stamp one
   // millisecond below the predecessor's, and the root the rejected block left.
   v10::TimestampCondition refused_below_the_predecessor =
