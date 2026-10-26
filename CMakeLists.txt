@@ -235,6 +235,10 @@ add_library(
     src/storage/snapshot_v9.cpp
     src/storage/snapshot_v9_assignments.cpp
     src/storage/snapshot_v9_entries.cpp
+    src/storage/snapshot_v10.cpp
+    src/storage/snapshot_v10_assignments.cpp
+    src/storage/snapshot_v10_entries.cpp
+    src/storage/snapshot_v10_registry.cpp
 )
 add_library(
   protocol_application
@@ -481,6 +485,21 @@ add_executable(
   tests/storage/snapshot_v9_inherited_refusals.cpp
   tests/kernel/economy_v9_trace.cpp
 )
+# The version-ten fixtures are the kernel execution suite's own: the chain of
+# blocks and the two population runs, whose final roots the vectors record.
+# Neither links version nine (ADR 0104).
+add_executable(
+  storage_snapshot_v10_tests
+  tests/storage/snapshot_v10_test.cpp
+  tests/storage/snapshot_v10_fixture.cpp
+  tests/storage/snapshot_v10_round_trip.cpp
+  tests/storage/snapshot_v10_refusals.cpp
+  tests/storage/snapshot_v10_registry_refusals.cpp
+  tests/storage/snapshot_v10_entry_refusals.cpp
+  tests/storage/snapshot_v10_inherited_refusals.cpp
+  tests/kernel/economy_v10_trace.cpp
+  tests/kernel/economy_v10_population.cpp
+)
 # The version-nine trace is the one translation unit these need: the `restart`
 # run it records is the only contiguous version-nine chain, and the scenario
 # checks read figures this suite does not.
@@ -581,6 +600,12 @@ target_link_libraries(
     protocol_stack_sqlite
 )
 target_link_libraries(
+  storage_snapshot_v10_tests
+  PRIVATE
+    protocol_storage
+    protocol_stack_sqlite
+)
+target_link_libraries(
   storage_sqlite_ledger_v9_tests
   PRIVATE
     protocol_storage
@@ -671,6 +696,7 @@ set(
   storage_sqlite_vfs_failure_tests
   storage_snapshot_v1_tests
   storage_snapshot_v9_tests
+  storage_snapshot_v10_tests
   storage_sqlite_ledger_v9_tests
   storage_sqlite_recovery_v9_tests
   storage_archive_v1_tests
@@ -725,6 +751,10 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       src/storage/snapshot_v9.cpp
       src/storage/snapshot_v9_assignments.cpp
       src/storage/snapshot_v9_entries.cpp
+      src/storage/snapshot_v10.cpp
+      src/storage/snapshot_v10_assignments.cpp
+      src/storage/snapshot_v10_entries.cpp
+      src/storage/snapshot_v10_registry.cpp
   )
   add_library(
     protocol_application_wire_fuzz
@@ -755,6 +785,13 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     storage_snapshot_v9_fuzz
     tests/fuzz/snapshot_v9_fuzz.cpp
   )
+  # The trace's builder and signature table build the registry seed through the
+  # kernel, so the seed is a state a chain reaches.
+  add_executable(
+    storage_snapshot_v10_fuzz
+    tests/fuzz/snapshot_v10_fuzz.cpp
+    tests/kernel/economy_v10_trace.cpp
+  )
   add_executable(
     storage_archive_fuzz
     tests/fuzz/archive_fuzz.cpp
@@ -783,6 +820,11 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       protocol_storage_fuzz
   )
   target_link_libraries(
+    storage_snapshot_v10_fuzz
+    PRIVATE
+      protocol_storage_fuzz
+  )
+  target_link_libraries(
     application_wire_fuzz
     PRIVATE
       protocol_application_wire_fuzz
@@ -805,6 +847,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     protocol_storage_fuzz
     storage_snapshot_fuzz
     storage_snapshot_v9_fuzz
+    storage_snapshot_v10_fuzz
     storage_archive_fuzz
     protocol_application_wire_fuzz
     application_wire_fuzz
@@ -848,6 +891,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       protocol_storage_fuzz
       storage_snapshot_fuzz
       storage_snapshot_v9_fuzz
+      storage_snapshot_v10_fuzz
       storage_archive_fuzz
       protocol_application_wire_fuzz
       application_wire_fuzz
@@ -869,6 +913,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       economy_v10_fuzz
       storage_snapshot_fuzz
       storage_snapshot_v9_fuzz
+      storage_snapshot_v10_fuzz
       storage_archive_fuzz
       application_wire_fuzz
       application_wire_v2_fuzz
@@ -947,6 +992,16 @@ add_test(
   COMMAND
     storage_snapshot_v9_tests
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v9-execution.txt"
+)
+# Version six's file supplies the one value the chain fixture needs from it,
+# the label a version-nine purchase approval was signed under, as it does for
+# the execution target.
+add_test(
+  NAME version-ten-snapshot
+  COMMAND
+    storage_snapshot_v10_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v10-execution.txt"
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v6.txt"
 )
 # The directory name is short because the termination cases re-exec this binary
 # and its arguments include the directory.
@@ -2227,6 +2282,15 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
       -len_control=0
   )
   add_test(
+    NAME storage-snapshot-v10-fuzz-smoke
+    COMMAND
+      storage_snapshot_v10_fuzz
+      -seed=824311
+      -runs=512
+      -max_len=4096
+      -len_control=0
+  )
+  add_test(
     NAME storage-archive-fuzz-smoke
     COMMAND
       storage_archive_fuzz
@@ -2261,6 +2325,7 @@ if(PROTOCOL_STACK_ENABLE_FUZZING)
     economy-transition-v10-fuzz-smoke
     storage-snapshot-fuzz-smoke
     storage-snapshot-v9-fuzz-smoke
+    storage-snapshot-v10-fuzz-smoke
     storage-archive-fuzz-smoke
     application-wire-fuzz-smoke
     application-wire-v2-fuzz-smoke
