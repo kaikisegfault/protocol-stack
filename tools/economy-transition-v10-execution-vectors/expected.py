@@ -57,6 +57,10 @@ MINT_ACCUMULATION_CAP = 30
 ISSUANCE_CYCLES_PER_SEAT = 731
 VERIFIED_USER_DAILY_ATOMIC = 171_000_000
 
+# The fixture's block rate, version nine's trace's ninety seconds. The restart
+# run's stamps are this module's arithmetic over it, not the model's.
+MILLIS_PER_BLOCK = 90_000
+
 RESULT_CODE = {
     "SUCCESS": 0,
     "EXPIRED": 3,
@@ -189,6 +193,10 @@ def block_header(
         + resulting_state_root
         + be(transaction_count, 4)
     )
+
+
+def stamp_of_height(genesis_millis: int, height: int) -> int:
+    return genesis_millis + height * MILLIS_PER_BLOCK
 
 
 def tx_tree(ids: list[bytes]) -> bytes:

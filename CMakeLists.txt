@@ -398,6 +398,7 @@ add_executable(
   tests/kernel/economy_v10_population.cpp
   tests/kernel/economy_v10_execution_checks.cpp
   tests/kernel/economy_v10_orders.cpp
+  tests/kernel/economy_v10_restart.cpp
 )
 target_link_libraries(economy_v10_execution_tests PRIVATE protocol_kernel)
 add_executable(

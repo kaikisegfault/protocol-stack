@@ -2,11 +2,11 @@
 
 Status: Accepted M4 consensus transition contract. The independent model's
 contract half and execution half are recorded, with 114 contract vectors in
-`test-vectors/economy-transition-v10.txt` and 152 execution vectors in
+`test-vectors/economy-transition-v10.txt` and 198 execution vectors in
 `test-vectors/economy-transition-v10-execution.txt`. The C++ kernel under
 `src/v10/` reproduces every contract vector a codec can reach (M4.3d, ADR 0104)
-and every execution vector (M4.3e, ADR 0105). The snapshot, the store, the
-application, and the node are not built. **The registration limit counts per
+and every execution vector (M4.3e, ADR 0105). The snapshot is built (M4.3g, ADR
+0108); the store, the application, and the node are not. **The registration limit counts per
 founder**, as
 [ADR 0106](../decisions/0106-founder-answer-the-registration-limit-counts-per-founder.md)
 answers. M4.3f revised this document, the model, and the kernel to carry it
@@ -786,3 +786,13 @@ least:
 - **invariants**: each of the eight, by a probe that breaks it;
 - **non-collision** of every re-versioned construction with all nine
   predecessors.
+
+**Forty-six of the execution file's vectors are the `restart.` run**, added on
+2026-10-26 for the layers above the kernel. The recorded chain jumps to the
+activation height, which a store, an application, or a transport cannot follow,
+because each commits one height at a time. This run is five heights contiguous
+from genesis with every block's commitments. It includes one block that repeats
+its predecessor's stamp, the refusal of one a millisecond below it, and a fifth
+block that registers both machines through kind 23, which reads the build
+authority key. It records behaviour this document already fixes and changes no
+rule.

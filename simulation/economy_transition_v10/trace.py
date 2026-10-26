@@ -25,6 +25,10 @@ this chain records both through blocks, the way a node runs them:
 The population the launch key's retirement and a founder's limit need is in
 `population.py`, because no chain of blocks reaches it in a recorded run.
 
+**The chain jumps to the activation height**, which a store, an application, or
+a transport cannot follow, because each commits one height at a time. So a
+second, shorter run, `restart_scenario`, is contiguous from genesis.
+
 **The chain runs at version nine's ninety seconds a block**, so each window is a
 month and the monthly pool pays inside four windows, which is what lets kind 22
 be approved here at all.
@@ -37,7 +41,7 @@ from dataclasses import replace
 from simulation.economy_transition_v6.trace import Scenario, Step
 
 from . import contract as c
-from .block import BlockOutcome, execute_block, run_quiet_heights
+from .block import BlockOutcome, InvalidBlock, execute_block, run_quiet_heights
 from .envelope import decode_signed
 from .fixture import (
     ALICE,
@@ -59,9 +63,11 @@ __all__ = [
     "ACTIVATION_HEIGHT",
     "FIRST_ASSIGNMENT_HEIGHT",
     "LIFETIME",
+    "RESTART_STAMP_HEIGHTS",
     "Responder",
     "SECOND_ASSIGNMENT_HEIGHT",
     "chain_scenario",
+    "restart_scenario",
 ]
 
 LIFETIME = c.APPROVAL_LIFETIME_BLOCKS
@@ -117,11 +123,19 @@ class Responder:
         return [self._builder.response(self._who, self._seat_id, height, nonce)]
 
 
-def _run(scenario: Scenario, signatures: Signatures, steps: list[Step]) -> BlockOutcome:
+def _run(
+    scenario: Scenario,
+    signatures: Signatures,
+    steps: list[Step],
+    timestamp: int | None = None,
+) -> BlockOutcome:
+    """One block at the next height, at the chain's own stamp unless a run
+    supplies another."""
     ledger = scenario.ledger
+    if timestamp is None:
+        timestamp = timestamp_of_height(ledger.height + 1)
     block = execute_block(
-        ledger, timestamp_of_height(ledger.height + 1), [s.raw for s in steps],
-        signatures.oracle,
+        ledger, timestamp, [s.raw for s in steps], signatures.oracle
     )
     scenario.blocks.append(block)
     scenario.labels.append([step.label for step in steps])
@@ -345,4 +359,71 @@ def chain_scenario() -> tuple[Scenario, Signatures]:
     scenario.notes["second_assignment"] = scenario.notes["audit_blocks"][-1]
     _next_window(scenario, build, signatures)
     scenario.notes["responders"] = (alice, bob)
+    return scenario, signatures
+
+
+# The heights whose stamp each block of the restart run carries. The third
+# repeats its predecessor's, which C2 admits because the rule is non-decreasing.
+RESTART_STAMP_HEIGHTS = (1, 2, 2, 4, 5)
+
+
+def restart_scenario() -> tuple[Scenario, Signatures]:
+    """Five heights contiguous from genesis, for a layer that replays blocks.
+
+    **The first four are version nine's restart run in version ten's
+    transactions**: two registrations under the launch key, two purchases, a
+    block with no inputs, and two activations. **The third block repeats its
+    predecessor's stamp**, and is first offered one a millisecond below it,
+    which C2 refuses whole. The predecessor's stamp is what a restarted layer
+    must have restored to answer both.
+
+    **The fifth registers both machines through kind 23**, which is version
+    ten's reason to extend the run. Kind 23's attestation verifies against the
+    build authority key, which the ledger keeps and no root commits to, so a
+    layer that reopened without it would commit every earlier block and refuse
+    this one.
+    """
+    signatures = Signatures()
+    scenario = Scenario(name="restart", ledger=Ledger.from_genesis(genesis()))
+    ledger = scenario.ledger
+    build = Builder(signatures, ledger)
+
+    def stamp(index: int) -> int:
+        return timestamp_of_height(RESTART_STAMP_HEIGHTS[index])
+
+    v = 1 + LIFETIME
+    _run(scenario, signatures, [
+        Step("alice_registers",
+             build.registration(ALICE, c.LAUNCH_ATTESTER, LAUNCH_KEY, v)),
+        Step("bob_registers",
+             build.registration(BOB, c.LAUNCH_ATTESTER, LAUNCH_KEY, v)),
+    ], stamp(0))
+    v = 2 + LIFETIME
+    _run(scenario, signatures, [
+        Step("seat_0_purchased", build.purchase(ALICE, ALICE_SEAT, 1, v)),
+        Step("seat_1_purchased", build.purchase(BOB, BOB_SEAT, 1, v)),
+    ], stamp(1))
+    # Height 3 is offered a stamp one millisecond below its predecessor's first.
+    # C2 refuses it and the block is rejected whole, so the ledger is exactly
+    # where block 2 left it.
+    scenario.notes["refused_below_the_predecessor"] = None
+    try:
+        execute_block(ledger, stamp(1) - 1, [], signatures.oracle)
+    except InvalidBlock as refusal:
+        cause = refusal.__cause__
+        scenario.notes["refused_below_the_predecessor"] = getattr(cause, "code", None)
+    scenario.notes["root_after_the_refusal"] = ledger.state_root()
+    _run(scenario, signatures, [], stamp(2))
+    v = 4 + LIFETIME
+    _run(scenario, signatures, [
+        Step("seat_0_activated", build.activation(ALICE, ALICE_SEAT, 2, v)),
+        Step("seat_1_activated", build.activation(BOB, BOB_SEAT, 2, v)),
+    ], stamp(3))
+    v = 5 + LIFETIME
+    _run(scenario, signatures, [
+        Step("seat_0_machine_registered",
+             build.machine_registration(ALICE, ALICE_SEAT, machine_key(ALICE_SEAT), 3, v)),
+        Step("seat_1_machine_registered",
+             build.machine_registration(BOB, BOB_SEAT, machine_key(BOB_SEAT), 3, v)),
+    ], stamp(4))
     return scenario, signatures
