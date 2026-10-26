@@ -35,6 +35,7 @@ void run(Restart& restart, const Signatures& signatures, std::uint64_t timestamp
   pv::require(block.has_value(), "every restart block must execute");
   pv::require(block->executed.size() == labels.size(),
               "every restart step is admitted");
+  restart.block_inputs.push_back(std::move(raw));
   restart.blocks.push_back(std::move(*block));
   restart.labels.push_back(std::move(labels));
 }
