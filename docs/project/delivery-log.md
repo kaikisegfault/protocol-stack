@@ -117,6 +117,16 @@ cache-free scratch build:
 
 The scratch objects were deleted afterwards.
 
+**The first hosted run, 40391468239, failed one entry on both debug presets,
+and it was the registration guard.** Every other entry passed on both, including
+`version-ten-snapshot`. `test-registration` reads each fuzz target's
+`add_executable` with a pattern that admitted exactly one source, and
+`storage_snapshot_v10_fuzz` lists the trace fixture after its fuzz source. The
+guard's rule, one executable per file under `tests/fuzz`, still holds, so the
+pattern now admits fixture sources after the fuzz source. A source token cannot
+contain `)`, so a match still ends at its own block. The `tests/tools` suites
+take a second to run, and should have been run before the first push.
+
 **What the slice adds to the matrix:** `version-ten-snapshot` on every preset,
 182 CTest entries where there were 181, and `storage-snapshot-v10-fuzz-smoke`
 on `clang-sanitizers`, 193 where there were 191.

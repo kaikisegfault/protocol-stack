@@ -54,9 +54,14 @@ IMPORTED_TARGETS = frozenset({"protocol_stack_sodium", "protocol_stack_sqlite"})
 # coverage feedback and fuzzes nothing while reporting success. Missing from the
 # link loop it has no libFuzzer `main` and fails to link, which is how M3.10c
 # found this guard was needed.
+#
+# The fuzz source comes first and may be followed by fixture sources, as
+# `storage_snapshot_v10_fuzz` links the execution suite's trace to build its
+# registry seed. A source token cannot contain `)`, so the match still ends at
+# its own block's closing paren.
 FUZZ_SOURCE = REPOSITORY_ROOT / "tests" / "fuzz"
 FUZZ_EXECUTABLE = re.compile(
-    r"add_executable\(\s*(\S+)\s+(tests/fuzz/\S+\.cpp)\s*\)", re.DOTALL
+    r"add_executable\(\s*(\S+)\s+(tests/fuzz/\S+\.cpp)(?:\s+[^\s)]+)*\s*\)", re.DOTALL
 )
 # Each list is read as a list rather than searched for as a substring. The first
 # draft of this guard split the file at the first `PROTOCOL_STACK_TARGETS` and
