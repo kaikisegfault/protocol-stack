@@ -82,9 +82,10 @@ every other kind runs on version nine's handlers, with a body approval verified
 over the whole transaction. The prologue runs the registry step.
 
 - `test-vectors/economy-transition-v10.txt` records 114 contract vectors.
-- `test-vectors/economy-transition-v10-execution.txt` records 152 execution
-  vectors, from a chain of blocks and from 101 machines of two founders driven
-  through version nine's evidence harness. They show every refusal in order,
+- `test-vectors/economy-transition-v10-execution.txt` records 198 execution
+  vectors, from a chain of blocks, from 101 machines of two founders driven
+  through version nine's evidence harness, and from a five-height run
+  contiguous from genesis for the layers that replay blocks. They show every refusal in order,
   the launch key retiring at 100 active machines and staying retired, and both
   of version nine's executed replays refused in both forms. One founder's
   1,000 registrations in a window are spread across two machines. The 1,001st
@@ -104,8 +105,9 @@ codec and `economy_registry_transitions.cpp` for execution.
 - `economy-transition-v10-cpp` reproduces 106 of the 114 contract vectors. Its
   guard names the other eight: seven describe the Python package's own surface,
   and the eighth, what a genesis writes, the execution target consults.
-- `economy-transition-v10-execution-cpp` reproduces all 152 execution vectors:
-  the chain of blocks, and the 101-machine population through `open_window`,
+- `economy-transition-v10-execution-cpp` reproduces all 198 execution vectors:
+  the chain of blocks, the restart run, and the 101-machine population through
+  `open_window`,
   the prologue alone at a window opening
   ([ADR 0105](../decisions/0105-the-kernel-runs-the-prologue-alone-for-the-evidence-harness.md)).
   Three targeted checks cover rules no vector reaches, each found by a
@@ -401,12 +403,13 @@ version-ten state across a restart.
   the inherited refusal and recovery cases so the deletion step loses none.
 - An ADR, as ADR 0081 was for version nine.
 
-**No recorded version-ten run is contiguous from genesis.** `chain_scenario`
-sets the height to 28,789 directly before any activation
-(`tests/kernel/economy_v10_trace.cpp:161`). The execution vectors record no
-per-block commitments for a contiguous stretch, the way version nine's
-`restart` section does for its store. So the store's restart evidence needs
-such a run recorded by the model first, or a store seeded from a snapshot.
+**The store replays the `restart.` run** (M4.3h-1, issue #411). It is five
+heights contiguous from genesis, with every block's commitments recorded by the
+model and reproduced by the kernel: version nine's four heights in version
+ten's transactions, then both machines registered through kind 23. A store
+that reopened without the build authority key would commit the first four and
+refuse the fifth. `tests/kernel/economy_v10_restart.cpp` builds it, and a store
+suite can link it alone.
 
 ADR 0104 enumerates the rest: the application, the node and the network with
 the HUB test verifier moved onto version ten, and then the deletion of version
