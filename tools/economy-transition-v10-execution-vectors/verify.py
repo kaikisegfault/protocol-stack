@@ -404,6 +404,88 @@ def check_blocks(check: Checker, scenario) -> None:
     check.equal("chain.final_height", ledger.height)
 
 
+# --- the restart run --------------------------------------------------------------
+
+
+# The facts each restart step was built to have, for the two kinds this module
+# derives an outcome for. The purchases and activations are version nine's, and
+# their results are the model's.
+RESTART_REGISTRATIONS = ("alice_registers", "bob_registers")
+RESTART_MACHINE_KEYS = {"seat_0_machine_registered": 0, "seat_1_machine_registered": 1}
+RESTART_MODEL_RESULTS = (
+    "seat_0_purchased", "seat_1_purchased", "seat_0_activated", "seat_1_activated",
+)
+
+
+def check_the_restart_run(check: Checker, scenario) -> None:
+    check.section(
+        "Five heights contiguous from genesis, with every block's commitments. "
+        "The chain jumps to the activation height, which a layer that commits one "
+        "height at a time cannot follow, so this is the run a store, an "
+        "application, and a transport replay block by block. The fifth block "
+        "registers both machines through kind 23, whose attestation verifies "
+        "against the build authority key no root commits to. The stamps, "
+        "transaction roots, headers, and identifiers are derived twice; the "
+        "resulting roots are the model's."
+    )
+    check.equal("restart.block_count", len(scenario.blocks))
+    for index, block in enumerate(scenario.blocks):
+        key = f"restart.block{index}"
+        check.agree(f"{key}.height", index + 1, block.height)
+        check.agree(
+            f"{key}.timestamp",
+            e.stamp_of_height(fixture.GENESIS_MILLIS, trace.RESTART_STAMP_HEIGHTS[index]),
+            block.timestamp,
+        )
+        check.equal(f"{key}.admitted_count", len(block.executed))
+        check.agree(
+            f"{key}.transaction_root",
+            e.tx_tree(block.admitted_ids).hex(), block.transaction_root,
+        )
+        derived = e.block_header(
+            scenario.ledger.chain_id, block.height, block.timestamp,
+            bytes.fromhex(block.previous_state_root),
+            e.tx_tree(block.admitted_ids),
+            bytes.fromhex(block.resulting_state_root),
+            len(block.executed),
+        )
+        check.agree(f"{key}.header", derived, block.header)
+        check.agree(
+            f"{key}.block_id", e.digest(e.BLOCK_ID_LABEL, derived).hex(),
+            block.block_id,
+        )
+        check.equal(f"{key}.resulting_state_root", block.resulting_state_root)
+
+    results = scenario.results()
+    for label in RESTART_REGISTRATIONS:
+        check.agree(
+            f"restart.{label}.result", e.kind_10_outcome(attester=LAUNCH), results[label]
+        )
+    for label in RESTART_MODEL_RESULTS:
+        check.equal(f"restart.{label}.result", results[label])
+    for label, seat_id in RESTART_MACHINE_KEYS.items():
+        check.agree(
+            f"restart.{label}.result", e.kind_23_outcome(seat_id=seat_id), results[label]
+        )
+
+    check.section(
+        "Before height 3 is committed at its predecessor's stamp it is offered "
+        "one a millisecond below it, and C2 refuses it whole. The predecessor's "
+        "stamp is what a restarted layer must have restored to answer both: one "
+        "that reopened with a stale, smaller stamp would admit the refused block, "
+        "and every block after it would still satisfy C2."
+    )
+    check.equal(
+        "restart.below_the_predecessors_stamp.refusal",
+        scenario.notes["refused_below_the_predecessor"],
+    )
+    check.equal(
+        "restart.below_the_predecessors_stamp.leaves_the_head_where_it_was",
+        scenario.notes["root_after_the_refusal"]
+        == scenario.blocks[1].resulting_state_root,
+    )
+
+
 # --- the population ---------------------------------------------------------------
 
 
@@ -702,6 +784,7 @@ def main() -> int:
     receipts = scenario.receipts()
     cutoff = population.cutoff_run()
     span = population.span_run()
+    restart, _restart_signatures = trace.restart_scenario()
 
     check_genesis(check)
     check_registrations(check, results)
@@ -717,6 +800,7 @@ def main() -> int:
     check_cap(check, cutoff)
     check_span(check, span)
     check_invariants(check, cutoff)
+    check_the_restart_run(check, restart)
     check.require_full_coverage()
 
     if check.failures:

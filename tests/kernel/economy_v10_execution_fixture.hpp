@@ -360,6 +360,29 @@ struct Chain {
 
 Chain chain_scenario(Signatures& signatures, std::string_view purchase_label);
 
+// Five heights contiguous from genesis, the model's `restart_scenario`, for a
+// layer that replays blocks one at a time. The chain above jumps to the
+// activation height, which a store, an application, or a transport has no way to
+// follow. The fifth block registers both machines through kind 23, whose
+// attestation verifies against the build authority key no root commits to.
+struct Restart {
+  v10::Ledger ledger;
+  std::vector<v10::BlockOutcome> blocks;
+  std::vector<std::vector<std::string>> labels;
+  std::map<std::string, Bytes> raw;
+  // The run's one refusal: the condition C2 reported for a stamp one
+  // millisecond below the predecessor's, and the root the rejected block left.
+  v10::TimestampCondition refused_below_the_predecessor =
+      v10::TimestampCondition::accepted;
+  bool refusal_rejected_the_block = false;
+  Hash root_after_the_refusal{};
+};
+
+Restart restart_scenario(Signatures& signatures);
+// The heights whose stamp each restart block carries. The third repeats its
+// predecessor's, which C2 admits because the rule is non-decreasing.
+inline constexpr std::array<std::uint64_t, 5> kRestartStampHeights{1, 2, 2, 4, 5};
+
 // One chain driven a transaction and a window at a time, the model's
 // `population.Harness`.
 struct Harness {
@@ -400,6 +423,9 @@ void verify_chain(const pv::Values& values, const Chain& chain,
 void verify_population(const pv::Values& values, const Harness& cutoff,
                        const Harness& span);
 void verify_invariants(const pv::Values& values, const Harness& cutoff);
+// The restart run's commitments and its one refusal, which the layers above the
+// kernel replay block by block.
+void verify_restart_run(const pv::Values& values);
 // The one contract vector the codec target defers here.
 void verify_contract_sections(const pv::Values& contract);
 // Three rules no recorded vector reaches, each found by a mutation probe the

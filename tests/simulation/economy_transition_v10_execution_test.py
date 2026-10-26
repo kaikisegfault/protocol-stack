@@ -5,7 +5,8 @@ The recorded vectors fix one outcome per case. These cover the structure behind
 them: that every carried kind runs on version nine's own dispatch, that the
 approval adapter redirects exactly the five withdrawn messages, where the
 lifetime rule sits among the envelope checks, that a chain with no machine key
-is untouched by the registry step, and that a run is deterministic.
+is untouched by the registry step, that a run is deterministic, and that the
+restart run is contiguous and reaches the build authority key.
 """
 
 from __future__ import annotations
@@ -22,7 +23,7 @@ from simulation.economy_transition_v6.receipt import InvalidReceipt, Receipt
 from simulation.economy_transition_v9 import contract as v9c
 from simulation.economy_transition_v9 import transitions as v9transitions
 from simulation.economy_transition_v10 import contract as c
-from simulation.economy_transition_v10 import population, transitions
+from simulation.economy_transition_v10 import population, trace, transitions
 from simulation.economy_transition_v10.approval import WITHDRAWN_PREFIXES, ApprovalOracle
 from simulation.economy_transition_v10.block import execute_block, open_window
 from simulation.economy_transition_v10.envelope import decode_signed
@@ -160,6 +161,48 @@ class RegistryStepTest(unittest.TestCase):
         first = population.span_run(through_window=40).ledger.state_root()
         second = population.span_run(through_window=40).ledger.state_root()
         self.assertEqual(first, second)
+
+
+class RestartTest(unittest.TestCase):
+    def test_the_run_is_contiguous_from_genesis(self) -> None:
+        built, _signatures = trace.restart_scenario()
+        self.assertEqual([block.height for block in built.blocks], [1, 2, 3, 4, 5])
+        for previous, block in zip(built.blocks, built.blocks[1:]):
+            self.assertEqual(block.previous_state_root, previous.resulting_state_root)
+
+    def test_the_repeated_stamp_is_admitted_and_one_below_it_is_not(self) -> None:
+        built, _signatures = trace.restart_scenario()
+        self.assertEqual(built.blocks[2].timestamp, built.blocks[1].timestamp)
+        self.assertEqual(
+            built.notes["refused_below_the_predecessor"], "TIMESTAMP_NOT_MONOTONIC"
+        )
+        self.assertEqual(
+            built.notes["root_after_the_refusal"], built.blocks[1].resulting_state_root
+        )
+
+    def test_the_fifth_block_reads_the_build_authority_key(self) -> None:
+        # The docstring's claim, checked: the same five blocks replayed on a
+        # ledger that lost the build authority key after block 4 commit the first
+        # four identically and refuse both kind-23 registrations.
+        built, signatures = trace.restart_scenario()
+        raw = built.notes["raw"]
+        ledger = Ledger.from_genesis(genesis())
+        for block, labels in zip(built.blocks[:4], built.labels[:4]):
+            replayed = execute_block(
+                ledger, block.timestamp, [raw[label] for label in labels],
+                signatures.oracle,
+            )
+            self.assertEqual(replayed.block_id, block.block_id)
+        ledger.build_authority_key = bytes(c.BUILD_AUTHORITY_KEY_BYTES)
+        fifth = execute_block(
+            ledger, built.blocks[4].timestamp,
+            [raw[label] for label in built.labels[4]], signatures.oracle,
+        )
+        self.assertEqual(fifth.results, ["UNAUTHORIZED", "UNAUTHORIZED"])
+        self.assertEqual(ledger.machine_keys, {})
+        self.assertNotEqual(
+            fifth.resulting_state_root, built.blocks[4].resulting_state_root
+        )
 
 
 if __name__ == "__main__":

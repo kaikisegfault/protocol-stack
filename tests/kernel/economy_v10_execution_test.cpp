@@ -58,6 +58,7 @@ int main(int argc, char** argv) {
     const auto span = fixture::span_run();
     fixture::verify_population(values, cutoff, span);
     fixture::verify_invariants(values, cutoff);
+    fixture::verify_restart_run(values);
     fixture::verify_coverage(values);
 
     fixture::verify_contract_sections(contract);
