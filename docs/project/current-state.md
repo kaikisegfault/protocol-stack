@@ -127,7 +127,16 @@ a seeded network has, because its replicas agree with each other.
 against their recorded final roots, and carries version eight's and version
 nine's refusal sweeps for ADR 0104's deletion step.
 
-The store, the application, and the network still run version nine.
+**A version-ten ledger survives a restart** (M4.3h,
+[ADR 0109](../decisions/0109-the-version-ten-owning-store.md)).
+`SQLiteLedgerV10` is version nine's store with the namespace rebound, a
+182-octet genesis column, a head column of at least 262 octets, and the marker
+`PS10` at schema version 10. `version-ten-owning-store` replays the model's
+five-height `restart.` run through a database reopened before every block, and
+its fifth block's kind-23 registrations show the build authority key came back
+from the genesis. `version-ten-store-recovery` carries the fault matrix.
+
+The application and the network still run version nine.
 
 **The model found a specification defect, repaired before anything implemented
 it.** The registry step counted a mark of 0, which means never met, as meeting
@@ -148,8 +157,8 @@ version nine already handles and the obligations of the next contract version.
 **One economy contract runs, and it runs on a network.** Version nine is
 [`economy-transition-v9`](../specifications/economy-transition-v9.md) under
 [`consensus-application-v2`](../specifications/consensus-application-v2.md).
-The repository compiles it, the M1 version-one ledger, and version ten's kernel
-and snapshot staged beside it (ADR 0104). Every layer of version nine is built:
+The repository compiles it, the M1 version-one ledger, and version ten's kernel,
+snapshot, and owning store staged beside it (ADR 0104). Every layer of version nine is built:
 
 - the C++20 kernel, `include/protocol/v9/` and 21 translation units under
   `src/v9/`;
@@ -295,8 +304,8 @@ dependency.
 
 ## Repository and verification
 
-- `kaikisegfault/protocol-stack`. Issue #408 is open for the next action,
-  M4.3h. Every other issue is closed, and `main` is the only branch.
+- `kaikisegfault/protocol-stack`. Issue #414 is open for the next action,
+  M4.3i. Every other issue is closed, and `main` is the only branch.
 - **The last full hosted verification** is candidate run 40397809634, on
   M4.3h-1's tree, which `main` holds byte for byte at `918ad53`.
 - `verify.yml` classifies the changed paths with `tools/verification_scope.py`.
@@ -305,7 +314,7 @@ dependency.
   the full path, `tools/verify.sh`, on four presets: `gcc-debug`,
   `gcc-sanitizers`, `clang-debug`, and `clang-sanitizers`.
 - The full path verifies and tests the Go module and builds with CMake. It runs
-  182 CTest entries, or 193 on `clang-sanitizers`, which adds eleven fuzz smokes,
+  184 CTest entries, or 195 on `clang-sanitizers`, which adds eleven fuzz smokes,
   and then the eight network runs. "Verification required" gates the merge.
 - The owner's machine is resource-constrained. Run focused local checks, leave
   the matrix to the hosted runners, and remove local build trees with
@@ -386,34 +395,27 @@ that yet.
 
 ## Exact next action
 
-**Store a version-ten ledger: `SQLiteLedgerV10`, M4.3h**, step 4 of ADR
-0104's enumeration, issue #408. Without it no application or node can carry a
-version-ten state across a restart.
+**Drive a version-ten chain through the application layer: the version-ten
+application contract and `ApplicationV10`, M4.3i**, step 5 of ADR 0104's
+enumeration, issue #414. Without it no node process can run version ten.
 
-- `include/protocol/storage/sqlite_ledger_v10.hpp` and its translation units,
-  version nine's `SQLiteLedgerV9` and `sqlite_schema_v9` with the namespace
-  rebound, holding `snapshot_v10` payloads.
-- The store derives a restore's parameters from the version-ten genesis it is
-  opened with, as version nine's does, so the build authority key reaches every
-  restore and a payload under another one is refused (ADR 0108).
-- A seeded store accepts a payload only through `decode_snapshot_v10`'s gates,
-  the retirement rule included.
-- Tests at the depth of `storage_sqlite_ledger_v9_tests` and
-  `storage_sqlite_recovery_v9_tests`, over the version-ten fixtures, carrying
-  the inherited refusal and recovery cases so the deletion step loses none.
-- An ADR, as ADR 0081 was for version nine.
+- An application contract that names `economy-transition-v10`, maps execution
+  results 1 through 49 to ABCI codes 257 through 305, and reads a 182-octet
+  genesis. Whether that is a new contract version or a stated rebinding of
+  `consensus-application-v2` is this slice's to decide, as ADR 0079 decided it
+  for version nine. The header, the timestamp, and every proposal rule carry
+  over unchanged.
+- `ApplicationV10` over `SQLiteLedgerV10`, with `application_v9`,
+  `application_block_v9`, `dispatcher_v9`, and `response_v9` rebound, and one
+  clock read at the proposal check (ADR 0083).
+- Tests at the depth of `application_v9_tests` and
+  `application_transport_v9_tests`, replaying the `restart.` run, which
+  `tests/kernel/economy_v10_restart.cpp` builds and the store suites already
+  link.
+- ADRs, as ADRs 0079, 0083, and 0084 were for version nine.
 
-**The store replays the `restart.` run** (M4.3h-1, issue #411). It is five
-heights contiguous from genesis, with every block's commitments recorded by the
-model and reproduced by the kernel: version nine's four heights in version
-ten's transactions, then both machines registered through kind 23. A store
-that reopened without the build authority key would commit the first four and
-refuse the fifth. `tests/kernel/economy_v10_restart.cpp` builds it, and a store
-suite can link it alone.
-
-ADR 0104 enumerates the rest: the application, the node and the network with
-the HUB test verifier moved onto version ten, and then the deletion of version
-nine's stack.
+ADR 0104 enumerates the rest: the node and the network with the HUB test
+verifier moved onto version ten, and then the deletion of version nine's stack.
 
 **Unblocked candidates behind it:**
 
