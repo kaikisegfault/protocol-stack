@@ -131,6 +131,16 @@ take a second to run, and should have been run before the first push.
 182 CTest entries where there were 181, and `storage-snapshot-v10-fuzz-smoke`
 on `clang-sanitizers`, 193 where there were 191.
 
+**Merged and verified.** PR #409 merged by rebase as `53dcc28`, closing #402.
+Run 40393321153 on the PR head `41d40bf` passed all six checks: 182 CTest
+entries on three presets, 193 on `clang-sanitizers`, and all eight network runs.
+`main`'s tree at `53dcc28` is byte-identical to the candidate's. On
+`clang-sanitizers`, `version-ten-snapshot` took 38.1 seconds and
+`storage-snapshot-v10-fuzz-smoke` 16.8 seconds, close to the predicted 19. On
+`gcc-sanitizers` in the first run, `version-ten-snapshot` took 87.7 seconds,
+beside `version-nine-snapshot`'s 72.6, and the job finished in 12 minutes 11
+seconds of its 20. That is the cost of two kernels ADR 0104 states.
+
 ### How the version-ten fuzz target was delivered
 
 **The founder-decision gate passed with nothing reserved.** Issue #405. It is a
