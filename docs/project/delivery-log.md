@@ -83,6 +83,13 @@ matrix, on the pinned 3.53.3, is the gate.
 `version-ten-store-recovery` on every preset, 184 CTest entries where there
 were 182, and 195 on `clang-sanitizers`.
 
+**Merged and verified.** PR #415 merged by rebase as `d7487a7`, closing #408.
+Run 40401822556 on the PR head `57ddd13` passed all six checks: 184 CTest
+entries on three presets, 195 on `clang-sanitizers`, and all eight network runs
+on every preset. Under the hosted SQLite 3.53.3 the two new entries took at most
+1.43 and 1.05 seconds. `main`'s tree at `d7487a7` is byte-identical to the
+candidate's.
+
 ### How the version-ten restart run was delivered
 
 **The founder-decision gate passed with nothing reserved.** Issue #411, M4.3h-1,
