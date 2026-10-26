@@ -295,9 +295,8 @@ dependency.
 
 - `kaikisegfault/protocol-stack`. Issue #408 is open for the next action,
   M4.3h. Every other issue is closed, and `main` is the only branch.
-- **The last full hosted verification** is candidate run 39778368532, on the
-  version-ten fuzz target's tree, which `main` holds byte for byte at
-  `1a2b273`.
+- **The last full hosted verification** is candidate run 40393321153, on
+  M4.3g's tree, which `main` holds byte for byte at `53dcc28`.
 - `verify.yml` classifies the changed paths with `tools/verification_scope.py`.
   Markdown and skill metadata take the lightweight path:
   `tools/verify_metadata.py` and the `tests/tools` suites. Everything else takes
@@ -374,6 +373,15 @@ responder was live, not that a resource was held.
 registers.** Until then, the entry airdrop is a newcomer's only way to pay a
 first fee. No transition can enforce that order, so the bridge milestones must.
 
+**A seeded launch trusts its seed's own root.** Every replica restores the same
+payload and takes its root as `app_hash` (ADR 0097), so the replicas agree with
+each other whatever the payload holds. The restore gates refuse what one height
+proves wrong, the retirement rule included (ADR 0108). They cannot refuse a
+retirement dropped after the active count fell below 100, which only the source
+chain's root exposes. Today's seeds are model-encoded fixtures. A launch from a
+real chain's state must take the seed's root from that chain, and no tool does
+that yet.
+
 ## Exact next action
 
 **Store a version-ten ledger: `SQLiteLedgerV10`, M4.3h**, step 4 of ADR
@@ -392,6 +400,13 @@ version-ten state across a restart.
   `storage_sqlite_recovery_v9_tests`, over the version-ten fixtures, carrying
   the inherited refusal and recovery cases so the deletion step loses none.
 - An ADR, as ADR 0081 was for version nine.
+
+**No recorded version-ten run is contiguous from genesis.** `chain_scenario`
+sets the height to 28,789 directly before any activation
+(`tests/kernel/economy_v10_trace.cpp:161`). The execution vectors record no
+per-block commitments for a contiguous stretch, the way version nine's
+`restart` section does for its store. So the store's restart evidence needs
+such a run recorded by the model first, or a store seeded from a snapshot.
 
 ADR 0104 enumerates the rest: the application, the node and the network with
 the HUB test verifier moved onto version ten, and then the deletion of version
