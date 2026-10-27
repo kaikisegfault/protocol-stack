@@ -3,32 +3,13 @@ package localapp
 import (
 	"bytes"
 	"errors"
-	"fmt"
 )
 
-// Version nine speaks the version-two frame. It is version one's frame with its
-// version octet at 2, three request payloads that carry a timestamp, four
-// response payloads that differ, and two statuses more.
-//
-// **Statuses 7 and 8 are reachable only on kind 6**, and that is a decoder
-// rule here rather than a comment. They report a decided block whose stamp this
-// machine's rules refuse, and a halt is the right answer only where the network
-// has already decided. Kind 5 reports the same two conditions as decisions 2
-// and 3 under status zero, because there the right answer is a vote. So a 7 or
-// an 8 on any other kind, or on a version-one connection, is not an answer this
-// client can hold. It is a protocol failure.
+// Version nine speaks the version-two frame, whose shared pieces are in
+// `wire_v2.go`. What is version nine's own is its receipts and the types its
+// four changed response payloads decode into.
 const (
-	wireVersionV2 = 2
-	// The two statuses version two adds, for C1 and C2 on a decided block.
-	statusDecidedBlockFailedRange        = 7
-	statusDecidedBlockFailedMonotonicity = 8
-
 	receiptBytesV9 = 56
-	// The result byte's position in the receipt. Version nine keeps the
-	// receipt layout versions seven and eight used, so this offset is theirs;
-	// it moved here from `wire_v8.go` when ADR 0092 deleted that file, as it
-	// had moved there from `wire_v7.go`.
-	receiptResultOffset = 39
 	// The receipt version, which is the last octet of the magic prefix below.
 	// **It is named rather than written into the array**, because it is the
 	// figure that moves with the ledger version while looking like framing:
@@ -42,30 +23,6 @@ const (
 var receiptPrefixV9 = []byte{
 	'P', 'S', 'R', 'C', receiptVersionV9 >> 8, receiptVersionV9 & 0xFF,
 }
-
-// The highest status a response to `kind` may carry at frame `version`.
-func maximumStatus(version uint16, kind Kind) uint16 {
-	if version == wireVersionV2 && kind == KindFinalizeBlock {
-		return statusDecidedBlockFailedMonotonicity
-	}
-	return maximumStatusV1
-}
-
-// Decision is `ProcessProposal`'s eight-value answer under status zero. Values
-// 0 through 5 are `calendar-v1`'s ordered conditions in its own numbering; 6
-// and 7 are the application contract's own.
-type Decision uint8
-
-const (
-	DecisionAccepted Decision = iota
-	DecisionHeightNotNext
-	DecisionTimestampRange
-	DecisionTimestampNotMonotonic
-	DecisionTimestampAheadOfTolerance
-	DecisionTimestampBehindTolerance
-	DecisionResourceBound
-	DecisionNotExecutable
-)
 
 // The durable head is two scalars and a root, so Info and Commit report both.
 type InfoV9 struct {
@@ -148,15 +105,6 @@ func decodeCommitV9(payload []byte) (CommittedHeadV9, error) {
 	return head, input.finish()
 }
 
-// One octet, and one of the eight. A ninth value would still vote REJECT and
-// would report an outcome the contract does not name, so it is refused.
-func decodeDecision(payload []byte) (Decision, error) {
-	if len(payload) != 1 || payload[0] > byte(DecisionNotExecutable) {
-		return 0, errors.New("invalid ProcessProposal decision")
-	}
-	return Decision(payload[0]), nil
-}
-
 // The declared code and the encoded receipt must be the same fact, and the
 // receipt must say it is version nine's.
 func validTransactionResultV9(result TransactionResult) bool {
@@ -219,24 +167,4 @@ func decodeFinalizeV9(
 		BlockID:            blockID,
 		TransactionResults: results,
 	}, nil
-}
-
-var decisionNames = [...]string{
-	"ACCEPTED",
-	"HEIGHT_NOT_NEXT",
-	"TIMESTAMP_RANGE",
-	"TIMESTAMP_NOT_MONOTONIC",
-	"TIMESTAMP_AHEAD_OF_TOLERANCE",
-	"TIMESTAMP_BEHIND_TOLERANCE",
-	"RESOURCE_BOUND",
-	"NOT_EXECUTABLE",
-}
-
-// String is the decision's name in `consensus-application-v2`'s table, which is
-// what an operator reads in the bridge's log.
-func (d Decision) String() string {
-	if int(d) < len(decisionNames) {
-		return decisionNames[d]
-	}
-	return fmt.Sprintf("DECISION_%d", uint8(d))
 }
