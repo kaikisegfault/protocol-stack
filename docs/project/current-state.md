@@ -149,7 +149,21 @@ and `version-ten-transport` replay the `restart.` run across a reopen before
 every block, the fifth block's kind-23 registrations included. A registration
 past its approval lifetime returns code `305` end to end.
 
-The node process and the network still run version nine.
+**A version-ten node runs as a process** (M4.3j). `protocol-application-v10`
+is version nine's node process rebound. It binds the platform real-time clock
+(ADR 0085), opens `SQLiteLedgerV10`, and serves `ApplicationV10`, with the
+identity, seed, and inspection modes over `snapshot_v10` heads.
+`version-ten-headless-process` carries version nine's process suite: the real
+clock, the clock-offset shim, Info's protocol version `10`, and version nine's
+application state and genesis width refused. In `version-ten-seed`, four
+Python-encoded model ledgers seed C++ stores through the snapshot's gates,
+byte for byte. They are the restart run, the recorded chain, that chain at its
+first outstanding challenge, and the cutoff population with the launch key
+retired, and between them they carry all 23 writable entry kinds.
+`tests/integration/version_ten_snapshot.py` is the encoder a seeded
+version-ten network will start from.
+
+The Go adapter and the network still run version nine.
 
 **The model found a specification defect, repaired before anything implemented
 it.** The registry step counted a mark of 0, which means never met, as meeting
@@ -171,7 +185,8 @@ version nine already handles and the obligations of the next contract version.
 [`economy-transition-v9`](../specifications/economy-transition-v9.md) under
 [`consensus-application-v2`](../specifications/consensus-application-v2.md).
 The repository compiles it, the M1 version-one ledger, and version ten's kernel,
-snapshot, owning store, application, and transport staged beside it (ADR 0104).
+snapshot, owning store, application, transport, and node process staged beside
+it (ADR 0104).
 Every layer of version nine is built:
 
 - the C++20 kernel, `include/protocol/v9/` and 21 translation units under
@@ -318,8 +333,8 @@ dependency.
 
 ## Repository and verification
 
-- `kaikisegfault/protocol-stack`. Issue #417 is open for the next action,
-  M4.3j. Every other issue is closed, and `main` is the only branch.
+- `kaikisegfault/protocol-stack`. Issue #420 is open for the next action,
+  M4.3k. Every other issue is closed, and `main` is the only branch.
 - **The last full hosted verification** is candidate run 40602254819, on
   M4.3i's tree, which `main` holds byte for byte at `c4b0810`.
 - `verify.yml` classifies the changed paths with `tools/verification_scope.py`.
@@ -328,7 +343,7 @@ dependency.
   the full path, `tools/verify.sh`, on four presets: `gcc-debug`,
   `gcc-sanitizers`, `clang-debug`, and `clang-sanitizers`.
 - The full path verifies and tests the Go module and builds with CMake. It runs
-  186 CTest entries, or 197 on `clang-sanitizers`, which adds eleven fuzz smokes,
+  188 CTest entries, or 199 on `clang-sanitizers`, which adds eleven fuzz smokes,
   and then the eight network runs. "Verification required" gates the merge.
 - The owner's machine is resource-constrained. Run focused local checks, leave
   the matrix to the hosted runners, and remove local build trees with
@@ -409,30 +424,25 @@ that yet.
 
 ## Exact next action
 
-**Run version ten as a process: `protocol-application-v10`, M4.3j**, the first
-slice of step 6 of ADR 0104's enumeration, issue #417. Without it no adapter
-has anything to dial, and no network can run version ten.
+**Connect CometBFT to version ten: the Go adapter's version-ten client, bridge,
+and launcher version, M4.3k**, the second slice of step 6 of ADR 0104's
+enumeration, issue #420. Without it no engine can drive
+`protocol-application-v10`.
 
-- `src/application/main_v10.cpp`, version nine's `main_v9.cpp` rebound. It
-  binds the platform real-time clock in milliseconds and reads it once before
-  anything opens (ADR 0085). It opens `SQLiteLedgerV10` from the 182-octet
-  genesis and serves `serve_connection(ApplicationV10&)`.
-- Its other three modes, rebound: `--genesis-identity`, `--seed` from a
-  `snapshot_v10` head, and `--inspect-seed` (ADRs 0096, 0097, and 0108).
-- A headless process test at the depth of `headless_process_v9_test.py`,
-  through `application_driver_v2.py`, Info's protocol version `10` included.
-  Like version nine's, it finalizes empty blocks, because the recorded runs are
-  signed under a stand-in verifier table and the process verifies Ed25519.
+- `localapp`'s version-ten client over the version-two frame. Its finalize
+  decoder admits receipt version 10 and 50 result codes. Its Info refuses a
+  protocol version other than `10`, which is how `consensus-application-v3`
+  names a mismatched pairing on the first frame.
+- `bridge.NewV10` with codespace `protocol-stack-v10` and Info version string
+  `10.0.0`, and `LocalV10`.
+- `protocol-cometbft-bridge` choosing it for protocol version 10.
+- `nodeconfig.ProtocolV10`, whose application state is `"protocol-stack-v10"`
+  and whose genesis binds a timestamp.
+- Go tests at the depth of version nine's, against a hand-written frame server.
 
-Step 6 continues after it, as version nine's did in ADRs 0086 to 0090:
-
-- the Go adapter's version-ten client, with `consensus-application-v3`'s Info
-  check, codespace, and version string `10.0.0`;
-- the launcher's `"protocol-stack-v10"`;
-- the version-ten devnet runs, with the HUB test verifier moved onto version
-  ten.
-
-Then step 7 deletes version nine's stack.
+Step 6 ends with the version-ten devnet runs, the HUB test verifier moved onto
+version ten, and the network fixtures moved onto it. Then step 7 deletes
+version nine's stack.
 
 **Unblocked candidates behind it:**
 

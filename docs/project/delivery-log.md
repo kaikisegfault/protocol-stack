@@ -38,6 +38,44 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How the version-ten node process was delivered
+
+**The founder-decision gate passed with nothing reserved.** Issue #417, M4.3j,
+the first slice of ADR 0104's step 6. Every decision was already fixed or was
+packaging. The clock is ADR 0085's, the genesis width is
+`economy-transition-v10`'s, and the seed payload is ADR 0108's. The modes,
+their output, and the binary's name are packaging. The one participant-facing
+requirement, a readable clock in order to vote, is `consensus-application-v2`'s
+and is inherited. No ADR was needed. The process is ADR 0085's rebound, and the
+seed path is ADRs 0096 and 0108's.
+
+**The process is version nine's, generated and then edited.** Normalised against
+`main_v9.cpp`, `main_v10.cpp` differs in comments alone.
+
+**The issue's first wording was wrong about the headless test**, and reading
+version nine's suite corrected it before any code depended on it. The recorded
+runs are signed under a stand-in verifier table, and the process verifies
+Ed25519, so no recorded block can be replayed through the binary. The suite
+finalizes empty blocks, as version nine's does. The issue and the handoff were
+corrected, the handoff in M4.3i's anchor.
+
+**A seed test was added rather than deferred.** Without a Python version-ten
+snapshot encoder, `--seed` and `--inspect-seed` could be tested only for their
+refusals. The encoder is version nine's 73 lines with two keys in the prefix,
+and every seeded version-ten network will need it. Four model ledgers were
+chosen by measurement. The model ran in under two seconds per ledger locally,
+and a chain run 383 quiet heights past its end has a challenge outstanding.
+Together the four carry all 23 writable entry kinds, the launch key's
+retirement included. Version ten adds one refusal to version nine's four: the
+chain's state under a genesis whose build authority key differs.
+
+**Local evidence, scratch only.** The binary and the clock-offset shim were
+built with GCC 12 against the scratch headers and the libraries M4.3i had
+built. Both suites pass: the headless suite against the real clock and the
+shim, and the seed suite against the model. A probe that swaps the two new
+prefix keys in the Python encoder makes the first seed fail. Clang 14 compiles
+`main_v10.cpp` with warnings as errors. The hosted matrix is the gate.
+
 ### How the version-ten application layer was delivered
 
 **The founder-decision gate passed with nothing reserved.** Issue #414, M4.3i,

@@ -6,9 +6,9 @@ contract half and execution half are recorded, with 114 contract vectors in
 `test-vectors/economy-transition-v10-execution.txt`. The C++ kernel under
 `src/v10/` reproduces every contract vector a codec can reach (M4.3d, ADR 0104)
 and every execution vector (M4.3e, ADR 0105). The snapshot (M4.3g, ADR 0108),
-the owning store (M4.3h, ADR 0109), and the application under
-[`consensus-application-v3`](consensus-application-v3.md) (M4.3i, ADR 0110)
-are built; the node is not. **The registration limit counts per founder**, as
+the owning store (M4.3h, ADR 0109), the application under
+[`consensus-application-v3`](consensus-application-v3.md) (M4.3i, ADR 0110),
+and the node process (M4.3j) are built; the adapter and the network are not. **The registration limit counts per founder**, as
 [ADR 0106](../decisions/0106-founder-answer-the-registration-limit-counts-per-founder.md)
 answers. M4.3f revised this document, the model, and the kernel to carry it
 before any layer stored a version-ten state, and
