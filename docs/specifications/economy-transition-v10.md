@@ -5,9 +5,10 @@ contract half and execution half are recorded, with 114 contract vectors in
 `test-vectors/economy-transition-v10.txt` and 198 execution vectors in
 `test-vectors/economy-transition-v10-execution.txt`. The C++ kernel under
 `src/v10/` reproduces every contract vector a codec can reach (M4.3d, ADR 0104)
-and every execution vector (M4.3e, ADR 0105). The snapshot is built (M4.3g, ADR
-0108); the store, the application, and the node are not. **The registration limit counts per
-founder**, as
+and every execution vector (M4.3e, ADR 0105). The snapshot (M4.3g, ADR 0108),
+the owning store (M4.3h, ADR 0109), and the application under
+[`consensus-application-v3`](consensus-application-v3.md) (M4.3i, ADR 0110)
+are built; the node is not. **The registration limit counts per founder**, as
 [ADR 0106](../decisions/0106-founder-answer-the-registration-limit-counts-per-founder.md)
 answers. M4.3f revised this document, the model, and the kernel to carry it
 before any layer stored a version-ten state, and
@@ -711,7 +712,10 @@ results 1 through 44 to ABCI codes 257 through 300, under the
 The header, the timestamp, and every rule about proposals carry over unchanged,
 because version ten changes none of them. Whether that is a new contract version
 or a stated rebinding is the application slice's to decide, as it was for
-version nine.
+version nine. **It decided a new version**:
+[`consensus-application-v3`](consensus-application-v3.md), which inherits
+version two by reference and keeps its frame
+([ADR 0110](../decisions/0110-the-version-ten-application-contract.md)).
 
 ## The founder-decision gate this document ran
 

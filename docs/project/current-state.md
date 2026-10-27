@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-10-26
+Last updated: 2026-10-28
 
 This is the handoff. It says what is true now, and nothing else. How each slice
 was delivered is in [`delivery-log.md`](delivery-log.md), newest first, and
@@ -136,7 +136,20 @@ five-height `restart.` run through a database reopened before every block, and
 its fifth block's kind-23 registrations show the build authority key came back
 from the genesis. `version-ten-store-recovery` carries the fault matrix.
 
-The application and the network still run version nine.
+**A version-ten chain can be driven through the application layer** (M4.3i,
+[ADR 0110](../decisions/0110-the-version-ten-application-contract.md)).
+[`consensus-application-v3`](../specifications/consensus-application-v3.md)
+inherits version two by reference and states nine differences, among them
+results 1 to 49 mapped to ABCI codes 257 to 305 and Info protocol version `10`.
+The frame stays at version two, because no payload changes shape, and a
+version-ten bridge must refuse an Info that does not say `10`. `ApplicationV10`,
+`response_v10`, and `dispatcher_v10` are version nine's, rebound over
+`SQLiteLedgerV10`, and a socket overload serves them. `version-ten-application`
+and `version-ten-transport` replay the `restart.` run across a reopen before
+every block, the fifth block's kind-23 registrations included. A registration
+past its approval lifetime returns code `305` end to end.
+
+The node process and the network still run version nine.
 
 **The model found a specification defect, repaired before anything implemented
 it.** The registry step counted a mark of 0, which means never met, as meeting
@@ -158,7 +171,8 @@ version nine already handles and the obligations of the next contract version.
 [`economy-transition-v9`](../specifications/economy-transition-v9.md) under
 [`consensus-application-v2`](../specifications/consensus-application-v2.md).
 The repository compiles it, the M1 version-one ledger, and version ten's kernel,
-snapshot, and owning store staged beside it (ADR 0104). Every layer of version nine is built:
+snapshot, owning store, application, and transport staged beside it (ADR 0104).
+Every layer of version nine is built:
 
 - the C++20 kernel, `include/protocol/v9/` and 21 translation units under
   `src/v9/`;
@@ -304,8 +318,8 @@ dependency.
 
 ## Repository and verification
 
-- `kaikisegfault/protocol-stack`. Issue #414 is open for the next action,
-  M4.3i. Every other issue is closed, and `main` is the only branch.
+- `kaikisegfault/protocol-stack`. Issue #417 is open for the next action,
+  M4.3j. Every other issue is closed, and `main` is the only branch.
 - **The last full hosted verification** is candidate run 40401822556, on
   M4.3h's tree, which `main` holds byte for byte at `d7487a7`.
 - `verify.yml` classifies the changed paths with `tools/verification_scope.py`.
@@ -314,7 +328,7 @@ dependency.
   the full path, `tools/verify.sh`, on four presets: `gcc-debug`,
   `gcc-sanitizers`, `clang-debug`, and `clang-sanitizers`.
 - The full path verifies and tests the Go module and builds with CMake. It runs
-  184 CTest entries, or 195 on `clang-sanitizers`, which adds eleven fuzz smokes,
+  186 CTest entries, or 197 on `clang-sanitizers`, which adds eleven fuzz smokes,
   and then the eight network runs. "Verification required" gates the merge.
 - The owner's machine is resource-constrained. Run focused local checks, leave
   the matrix to the hosted runners, and remove local build trees with
@@ -395,27 +409,29 @@ that yet.
 
 ## Exact next action
 
-**Drive a version-ten chain through the application layer: the version-ten
-application contract and `ApplicationV10`, M4.3i**, step 5 of ADR 0104's
-enumeration, issue #414. Without it no node process can run version ten.
+**Run version ten as a process: `protocol-application-v10`, M4.3j**, the first
+slice of step 6 of ADR 0104's enumeration, issue #417. Without it no adapter
+has anything to dial, and no network can run version ten.
 
-- An application contract that names `economy-transition-v10`, maps execution
-  results 1 through 49 to ABCI codes 257 through 305, and reads a 182-octet
-  genesis. Whether that is a new contract version or a stated rebinding of
-  `consensus-application-v2` is this slice's to decide, as ADR 0079 decided it
-  for version nine. The header, the timestamp, and every proposal rule carry
-  over unchanged.
-- `ApplicationV10` over `SQLiteLedgerV10`, with `application_v9`,
-  `application_block_v9`, `dispatcher_v9`, and `response_v9` rebound, and one
-  clock read at the proposal check (ADR 0083).
-- Tests at the depth of `application_v9_tests` and
-  `application_transport_v9_tests`, replaying the `restart.` run, which
-  `tests/kernel/economy_v10_restart.cpp` builds and the store suites already
-  link.
-- ADRs, as ADRs 0079, 0083, and 0084 were for version nine.
+- `src/application/main_v10.cpp`, version nine's `main_v9.cpp` rebound. It
+  binds the platform real-time clock in milliseconds and reads it once before
+  anything opens (ADR 0085). It opens `SQLiteLedgerV10` from the 182-octet
+  genesis and serves `serve_connection(ApplicationV10&)`.
+- Its other three modes, rebound: `--genesis-identity`, `--seed` from a
+  `snapshot_v10` head, and `--inspect-seed` (ADRs 0096, 0097, and 0108).
+- A headless process test at the depth of `headless_process_v9_test.py`,
+  driving the `restart.` run through `application_driver_v2.py`, Info's
+  protocol version `10` included.
 
-ADR 0104 enumerates the rest: the node and the network with the HUB test
-verifier moved onto version ten, and then the deletion of version nine's stack.
+Step 6 continues after it, as version nine's did in ADRs 0086 to 0090:
+
+- the Go adapter's version-ten client, with `consensus-application-v3`'s Info
+  check, codespace, and version string `10.0.0`;
+- the launcher's `"protocol-stack-v10"`;
+- the version-ten devnet runs, with the HUB test verifier moved onto version
+  ten.
+
+Then step 7 deletes version nine's stack.
 
 **Unblocked candidates behind it:**
 

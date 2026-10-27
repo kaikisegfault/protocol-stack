@@ -38,6 +38,76 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How the version-ten application layer was delivered
+
+**The founder-decision gate passed with nothing reserved.** Issue #414, M4.3i,
+step 5 of ADR 0104. It enumerated thirteen decisions. Seven were already fixed
+by `economy-transition-v10` and `consensus-application-v2`: the ledger, the
+genesis, the chain identity, the five result codes, the receipt version, the
+`256 + r` mapping, and everything version two fixes. The other six were document
+shape, framing, and naming, which the constitution leaves autonomous. The one
+participant-facing rule at this boundary, a roughly correct clock to vote, is
+version two's and was inherited.
+
+**The contract came first, and it is short.** `consensus-application-v3`
+inherits version two by reference and lists nine differences. Version two's own
+versioning rule decided that it be a new document: it says a change to result
+codes or application hashes needs a new contract version, and version ten makes
+both. A rebinding section in version two would have edited an accepted document
+frozen for another network. A standalone copy would have duplicated about 700
+lines for nine values.
+
+**The frame stays at version two.** No payload changes shape, and version one's
+frame had carried three ledger versions. ADR 0079's defect was a payload shape
+changing under an unchanged field, which does not happen here. A frame version
+3 would have copied `wire_v2` and the Go client's framing to change one
+constant. The contract instead makes Info's protocol version the field a
+version-ten bridge checks. Info is the first frame of every start, so the
+pairing the header would have caught is caught there.
+
+**Writing the contract's Info section found a drift.** Version two names ASCII
+`9.0.0` as Info's application version, and the Go bridge has always sent `1.0.0`,
+because one constant served both constructors. Nothing reads the value, so
+nothing had noticed. The bridge now takes the string from its constructor, as it
+takes its codespace, and a Go test pins `9.0.0`. It is the third prose-and-code
+disagreement with no reader to expose it, after ADRs 0068 and 0079.
+
+**The application and transport are version nine's, generated and then
+edited**, as the store was. The sources and the suites were copied with the
+namespace rebound, then the version-specific text was rewritten by hand.
+Normalised against version nine's, the production units differ in four lines:
+the protocol version, the application state, and the receipt-version and
+result-count assertions.
+
+**One rename was forced.** `ProposalDecision` is unsuffixed in version nine's
+header, and `unix_server_v1.hpp` includes both versions' headers, so version
+ten's copy would have redefined it. Version ten's is `ProposalDecisionV10`, like
+its other types. `decision_of` and `application_code` stay unsuffixed, because
+they overload on distinct kernel enums.
+
+**Version ten adds three checks to the carried suites:**
+
+- `drive_block` compares every result with the step the model recorded, so the
+  fifth block's two kind-23 registrations are measured through an application
+  reopened just before it, not inferred from the root;
+- a registration one block past its approval lifetime, offered beside the first
+  block's inputs, returns code `305` with a receipt carrying result `49`. It
+  signs under its own table, checked to reproduce the run's bytes, and its root
+  is compared with the kernel's;
+- the encoder writes result `49` under `305` and refuses it under `304`. Beside
+  those, it refuses a version-nine receipt and a result byte of `50`.
+
+**Local evidence, scratch only.** The libraries and both suites were built with
+GCC 12 against the scratch `sodium.h` and `sqlite3.h` and the system runtimes,
+and both suites pass. Both pass again under Clang 14 with AddressSanitizer and
+UndefinedBehaviorSanitizer, which is where version nine's transport suite first
+failed (ADR 0084). Three probes each fail a suite: version nine's application
+state, the encoder's result bound left at 45, and the kernel's lifetime rule
+loosened by one block. GCC 12 and Clang 14 both compile every new unit and every
+unit that includes the changed socket header, with warnings as errors. The Go change was only formatted locally,
+because this host has no module cache and the resource rules keep it that way.
+The hosted matrix is the gate for both.
+
 ### How the version-ten owning store was delivered
 
 **The founder-decision gate passed with nothing reserved.** Issue #408, M4.3h,
