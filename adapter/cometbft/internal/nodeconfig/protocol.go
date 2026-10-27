@@ -8,8 +8,9 @@ import (
 )
 
 const (
-	appStateV1 = `"protocol-stack-v1"`
-	appStateV9 = `"protocol-stack-v9"`
+	appStateV1  = `"protocol-stack-v1"`
+	appStateV9  = `"protocol-stack-v9"`
+	appStateV10 = `"protocol-stack-v10"`
 	// maxGenesisTimestampMillis is calendar-v1's MAX_TIMESTAMP_MILLIS,
 	// 9999-12-31T23:59:59.999Z. The range starts at zero, so every stamp at or
 	// below it is in range. It is also the last instant CometBFT's RFC 3339
@@ -28,8 +29,9 @@ const (
 type ProtocolVersion uint8
 
 const (
-	ProtocolV1 ProtocolVersion = 1
-	ProtocolV9 ProtocolVersion = 9
+	ProtocolV1  ProtocolVersion = 1
+	ProtocolV9  ProtocolVersion = 9
+	ProtocolV10 ProtocolVersion = 10
 )
 
 // ParseProtocolVersion accepts only the versions this adapter bridges, so an
@@ -42,6 +44,8 @@ func ParseProtocolVersion(value uint) (ProtocolVersion, error) {
 		return ProtocolV1, nil
 	case uint(ProtocolV9):
 		return ProtocolV9, nil
+	case uint(ProtocolV10):
+		return ProtocolV10, nil
 	}
 	return 0, fmt.Errorf("unsupported protocol version %d", value)
 }
@@ -52,6 +56,8 @@ func (p ProtocolVersion) appState() (string, error) {
 		return appStateV1, nil
 	case ProtocolV9:
 		return appStateV9, nil
+	case ProtocolV10:
+		return appStateV10, nil
 	}
 	return "", fmt.Errorf("unsupported protocol version %d", uint8(p))
 }
@@ -60,14 +66,14 @@ func (p ProtocolVersion) appState() (string, error) {
 // carries a timestamp. It is exactly the versions whose application prints
 // `genesis_timestamp=` in identity mode, which is why the identity parser asks.
 func (p ProtocolVersion) BindsGenesisTimestamp() bool {
-	return p == ProtocolV9
+	return p == ProtocolV9 || p == ProtocolV10
 }
 
-// GenesisTimestamp is version nine's canonical genesis stamp, in milliseconds
-// since the Unix epoch. **Its zero value is the absence of a stamp**, which is
-// what version one binds. A present stamp of zero is a different
-// value and a valid one, because calendar-v1's range starts at zero, so
-// absence cannot be spelled as a number.
+// GenesisTimestamp is version nine's and version ten's canonical genesis stamp,
+// in milliseconds since the Unix epoch. **Its zero value is the absence of a
+// stamp**, which is what version one binds. A present stamp of zero is a
+// different value and a valid one, because calendar-v1's range starts at zero,
+// so absence cannot be spelled as a number.
 type GenesisTimestamp struct {
 	millis  uint64
 	present bool
@@ -103,8 +109,8 @@ func (g GenesisTimestamp) Millis() (uint64, bool) {
 // genesisTime is consensus-application-v2's fifth derived genesis value.
 //
 // Version one binds no stamp and keeps the epoch it has always written, so its
-// genesis files are byte-identical to before. Version nine's
-// is the canonical stamp at exactly millisecond precision, which is the one
+// genesis files are byte-identical to before. Version nine's and version ten's
+// are the canonical stamp at exactly millisecond precision, which is the one
 // time the bridge's exact genesis conversion maps back to that stamp.
 //
 // **The pairing is refused in both directions.** A version-nine home written

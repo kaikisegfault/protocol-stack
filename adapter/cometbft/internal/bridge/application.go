@@ -22,18 +22,20 @@ import (
 const (
 	applicationData = "protocol-stack"
 	// Each contract names the version string Info reports: version one's is
-	// 1.0.0, and consensus-application-v2's is 9.0.0. Version nine sent 1.0.0
-	// until ADR 0110 found it, because one constant served both constructors
-	// and nothing reads the value.
-	applicationVersionV1 = "1.0.0"
-	applicationVersionV9 = "9.0.0"
+	// 1.0.0, consensus-application-v2's is 9.0.0, and -v3's is 10.0.0. Version
+	// nine sent 1.0.0 until ADR 0110 found it, because one constant served both
+	// constructors and nothing reads the value.
+	applicationVersionV1  = "1.0.0"
+	applicationVersionV9  = "9.0.0"
+	applicationVersionV10 = "10.0.0"
 	// The result codes an executed transaction can carry are the ledger
 	// version's, so the codespace that names them is too: version one has
-	// eight, and version nine forty-five. Version nine adds no result code to
-	// version eight's, but it is a different contract, so it names its own
-	// codespace; version eight's went with its client (ADR 0092).
-	codespaceV1 = "protocol-stack-v1"
-	codespaceV9 = "protocol-stack-v9"
+	// eight, version nine forty-five, and version ten fifty. Version nine adds
+	// no result code to version eight's, but it is a different contract, so it
+	// names its own codespace; version eight's went with its client (ADR 0092).
+	codespaceV1  = "protocol-stack-v1"
+	codespaceV9  = "protocol-stack-v9"
+	codespaceV10 = "protocol-stack-v10"
 )
 
 // FinalizedBlock is what this bridge needs out of a finalized block, whichever
@@ -100,6 +102,13 @@ func New(local localApplication) *Application {
 // times and says why it votes against a proposal.
 func NewV9(local localApplication) *Application {
 	return newApplication(local, codespaceV9, applicationVersionV9)
+}
+
+// NewV10 bridges a version-ten local application. It is `NewV9` under
+// `consensus-application-v3`'s codespace and version string (ADR 0110): the
+// frame and the votes are version nine's, and five result codes more reach it.
+func NewV10(local localApplication) *Application {
+	return newApplication(local, codespaceV10, applicationVersionV10)
 }
 
 func newApplication(

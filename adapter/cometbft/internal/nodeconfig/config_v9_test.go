@@ -83,14 +83,17 @@ func TestGenesisTimeIsTheStampAtMillisecondPrecision(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		value, err := ProtocolV9.genesisTime(stamp)
-		if err != nil {
-			t.Fatalf("stamp %d: %v", millis, err)
-		}
-		if value.UnixMilli() != int64(millis) ||
-			value.Nanosecond()%1_000_000 != 0 ||
-			value.Location() != time.UTC {
-			t.Fatalf("stamp %d rendered as %v", millis, value)
+		for _, protocol := range []ProtocolVersion{ProtocolV9, ProtocolV10} {
+			value, err := protocol.genesisTime(stamp)
+			if err != nil {
+				t.Fatalf("version %d, stamp %d: %v", uint8(protocol), millis, err)
+			}
+			if value.UnixMilli() != int64(millis) ||
+				value.Nanosecond()%1_000_000 != 0 ||
+				value.Location() != time.UTC {
+				t.Fatalf("version %d, stamp %d rendered as %v",
+					uint8(protocol), millis, value)
+			}
 		}
 	}
 	for _, protocol := range []ProtocolVersion{ProtocolV1} {
@@ -107,9 +110,11 @@ func TestTheStampAndTheVersionArePaired(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ProtocolV9.genesisTime(GenesisTimestamp{}); err == nil ||
-		!strings.Contains(err.Error(), "requires a genesis timestamp") {
-		t.Fatalf("version nine without a stamp: %v", err)
+	for _, protocol := range []ProtocolVersion{ProtocolV9, ProtocolV10} {
+		if _, err := protocol.genesisTime(GenesisTimestamp{}); err == nil ||
+			!strings.Contains(err.Error(), "requires a genesis timestamp") {
+			t.Fatalf("version %d without a stamp: %v", uint8(protocol), err)
+		}
 	}
 	for _, protocol := range []ProtocolVersion{ProtocolV1} {
 		if _, err := protocol.genesisTime(present); err == nil ||
@@ -117,7 +122,7 @@ func TestTheStampAndTheVersionArePaired(t *testing.T) {
 			t.Fatalf("version %d with a stamp: %v", uint8(protocol), err)
 		}
 	}
-	for _, unbridged := range []ProtocolVersion{0, 7, 8, 10} {
+	for _, unbridged := range []ProtocolVersion{0, 7, 8, 11} {
 		for _, stamp := range []GenesisTimestamp{{}, present} {
 			if _, err := unbridged.genesisTime(stamp); err == nil {
 				t.Fatalf("unbridged version %d produced a genesis time",
@@ -125,7 +130,8 @@ func TestTheStampAndTheVersionArePaired(t *testing.T) {
 			}
 		}
 	}
-	if !ProtocolV9.BindsGenesisTimestamp() || ProtocolV1.BindsGenesisTimestamp() {
+	if !ProtocolV9.BindsGenesisTimestamp() || !ProtocolV10.BindsGenesisTimestamp() ||
+		ProtocolV1.BindsGenesisTimestamp() {
 		t.Fatal("BindsGenesisTimestamp disagrees with the versions")
 	}
 }
