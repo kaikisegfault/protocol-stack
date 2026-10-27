@@ -12,10 +12,13 @@
 // request payloads carried no ledger-version meaning for it. Version nine reads
 // version-two frames, because its blocks carry a timestamp — and a version-one
 // frame offered to it is refused at the header, on the first frame, which is the
-// refusal the version-two frame exists to make possible. Version eight read
-// version-one frames too, until ADR 0092 deleted it.
+// refusal the version-two frame exists to make possible. Version ten reads
+// version-two frames as well, because it changes no payload shape: Info's
+// protocol version names its ledger (ADR 0110). Version eight read version-one
+// frames too, until ADR 0092 deleted it.
 
 #include "protocol/application/application_v1.hpp"
+#include "protocol/application/application_v10.hpp"
 #include "protocol/application/application_v9.hpp"
 
 #include <filesystem>
@@ -55,6 +58,10 @@ class UnixSocketServerV1 {
   // Version-two frames.
   ServeConnectionResult serve_connection(
       ApplicationV9& application,
+      int shutdown_descriptor = -1);
+  // Version-two frames, for version ten's ledger.
+  ServeConnectionResult serve_connection(
+      ApplicationV10& application,
       int shutdown_descriptor = -1);
 
  private:

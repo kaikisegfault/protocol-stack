@@ -248,12 +248,16 @@ add_library(
   STATIC
     src/application/application_block_v1.cpp
     src/application/application_block_v9.cpp
+    src/application/application_block_v10.cpp
     src/application/application_v1.cpp
     src/application/application_v9.cpp
+    src/application/application_v10.cpp
     src/application/dispatcher_v1.cpp
     src/application/dispatcher_v9.cpp
+    src/application/dispatcher_v10.cpp
     src/application/response_v1.cpp
     src/application/response_v9.cpp
+    src/application/response_v10.cpp
     src/application/unix_connection_v1.cpp
     src/application/unix_server_v1.cpp
     src/application/wire_v1.cpp
@@ -562,6 +566,22 @@ add_executable(
   tests/application/transport_v9_socket.cpp
   tests/kernel/economy_v9_trace.cpp
 )
+# The version-ten restart run is its own unit, for the store suites' reason:
+# these link it and the trace's builders and nothing that records a longer chain.
+add_executable(
+  application_v10_tests
+  tests/application/application_v10_test.cpp
+  tests/kernel/economy_v10_trace.cpp
+  tests/kernel/economy_v10_restart.cpp
+)
+add_executable(
+  application_transport_v10_tests
+  tests/application/transport_v10_test.cpp
+  tests/application/transport_v10_encoder.cpp
+  tests/application/transport_v10_socket.cpp
+  tests/kernel/economy_v10_trace.cpp
+  tests/kernel/economy_v10_restart.cpp
+)
 add_executable(
   application_wire_v1_tests
   tests/application/wire_v1_test.cpp
@@ -674,6 +694,18 @@ target_link_libraries(
     protocol_stack_sqlite
 )
 target_link_libraries(
+  application_v10_tests
+  PRIVATE
+    protocol_application
+    protocol_stack_sqlite
+)
+target_link_libraries(
+  application_transport_v10_tests
+  PRIVATE
+    protocol_application
+    protocol_stack_sqlite
+)
+target_link_libraries(
   application_wire_v1_tests
   PRIVATE
     protocol_application
@@ -738,6 +770,8 @@ set(
   application_v1_tests
   application_v9_tests
   application_transport_v9_tests
+  application_v10_tests
+  application_transport_v10_tests
   application_wire_v1_tests
   application_wire_v2_tests
   application_response_v1_tests
@@ -1216,6 +1250,21 @@ add_test(
     application_transport_v9_tests
     "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v9-execution.txt"
     "${CMAKE_CURRENT_BINARY_DIR}/at-v9"
+)
+add_test(
+  NAME version-ten-application
+  COMMAND
+    application_v10_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v10-execution.txt"
+    "${CMAKE_CURRENT_BINARY_DIR}/version-ten-application"
+)
+# Short for `version-nine-transport`'s reason: a Unix socket is bound inside it.
+add_test(
+  NAME version-ten-transport
+  COMMAND
+    application_transport_v10_tests
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v10-execution.txt"
+    "${CMAKE_CURRENT_BINARY_DIR}/at-v10"
 )
 add_test(
   NAME application-wire-v1
