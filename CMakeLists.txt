@@ -1349,6 +1349,16 @@ add_test(
     "${CMAKE_CURRENT_BINARY_DIR}/ah-v10"
     "$<TARGET_FILE:protocol_clock_offset_shim>"
 )
+# Four Python-encoded model ledgers seed version-ten C++ stores through the
+# snapshot's gates, which checks the Python encoder byte for byte (ADR 0108).
+add_test(
+  NAME version-ten-seed
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/integration/version_ten_seed_test.py"
+    "$<TARGET_FILE:protocol_application_server_v10>"
+    "${CMAKE_CURRENT_BINARY_DIR}/seed-v10"
+)
 # The test HUB verifier's decisions, judged by the version-nine kernel through
 # admission and execution, and then checked against the independent model's
 # own message constructions on transactions the model encodes (ADR 0099).
