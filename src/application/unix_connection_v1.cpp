@@ -3,6 +3,7 @@
 #include "unix_server_v1_internal.hpp"
 
 #include "protocol/application/dispatcher_v1.hpp"
+#include "protocol/application/dispatcher_v10.hpp"
 #include "protocol/application/dispatcher_v9.hpp"
 #include "protocol/application/wire_v1.hpp"
 #include "protocol/application/wire_v2.hpp"
@@ -234,6 +235,18 @@ ServeConnectionResult UnixSocketServerV1::serve_connection(
       implementation_->listener, shutdown_descriptor,
       [&application](const DecodedRequestV2& request) {
         return dispatch_request_v9(application, request);
+      });
+}
+
+// Version ten changes no payload shape, so it reads version nine's wire
+// (ADR 0110). Info's protocol version, not the frame's, names its ledger.
+ServeConnectionResult UnixSocketServerV1::serve_connection(
+    ApplicationV10& application,
+    int shutdown_descriptor) {
+  return serve_with<WireV2>(
+      implementation_->listener, shutdown_descriptor,
+      [&application](const DecodedRequestV2& request) {
+        return dispatch_request_v10(application, request);
       });
 }
 
