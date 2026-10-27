@@ -15,6 +15,7 @@ import (
 
 	abci "github.com/cometbft/cometbft/abci/types"
 	cmtlog "github.com/cometbft/cometbft/libs/log"
+	"github.com/cometbft/cometbft/version"
 
 	"github.com/kaikisegfault/protocol-stack/adapter/cometbft/internal/localapp"
 )
@@ -200,6 +201,28 @@ func TestVersionNineFinalizePassesTheStampThrough(t *testing.T) {
 	}
 	if stampOf(server.sent()[0].payload, 8) != pastTheCalendar {
 		t.Fatalf("FinalizeBlock payload = %x", server.sent()[0].payload)
+	}
+}
+
+// Info reports consensus-application-v2's version string, 9.0.0. The bridge
+// sent version one's until ADR 0110 found it.
+func TestVersionNineInfoReportsItsVersion(t *testing.T) {
+	root := localapp.Hash{0: 3}
+	body := binary.BigEndian.AppendUint64(nil, 9)
+	body = binary.BigEndian.AppendUint64(body, 4)
+	body = binary.BigEndian.AppendUint64(body, genesisMillis9)
+	body = append(body, root[:]...)
+	_, path := startFrameServer(t, func(byte, []byte) (uint16, []byte) {
+		return 0, body
+	})
+	application, _ := dialV9(t, path)
+	info, err := application.Info(context.Background(), &abci.RequestInfo{
+		AbciVersion: version.ABCIVersion,
+	})
+	if err != nil || info.Version != "9.0.0" || info.AppVersion != 9 ||
+		info.Data != applicationData || info.LastBlockHeight != 4 ||
+		!bytes.Equal(info.LastBlockAppHash, root[:]) {
+		t.Fatalf("Info = %#v, %v", info, err)
 	}
 }
 

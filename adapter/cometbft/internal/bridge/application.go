@@ -20,8 +20,13 @@ import (
 )
 
 const (
-	applicationData    = "protocol-stack"
-	applicationVersion = "1.0.0"
+	applicationData = "protocol-stack"
+	// Each contract names the version string Info reports: version one's is
+	// 1.0.0, and consensus-application-v2's is 9.0.0. Version nine sent 1.0.0
+	// until ADR 0110 found it, because one constant served both constructors
+	// and nothing reads the value.
+	applicationVersionV1 = "1.0.0"
+	applicationVersionV9 = "9.0.0"
 	// The result codes an executed transaction can carry are the ledger
 	// version's, so the codespace that names them is too: version one has
 	// eight, and version nine forty-five. Version nine adds no result code to
@@ -73,6 +78,7 @@ type Application struct {
 	mutex     sync.Mutex
 	local     localApplication
 	codespace string
+	version   string
 	logger    cmtlog.Logger
 	// The greatest height the local application has said it has committed,
 	// learned from its own answers to Info and Commit and never counted here.
@@ -87,19 +93,24 @@ var _ abci.Application = (*Application)(nil)
 
 // New bridges a version-one local application.
 func New(local localApplication) *Application {
-	return newApplication(local, codespaceV1)
+	return newApplication(local, codespaceV1, applicationVersionV1)
 }
 
 // NewV9 bridges a version-nine local application, which reads the engine's
 // times and says why it votes against a proposal.
 func NewV9(local localApplication) *Application {
-	return newApplication(local, codespaceV9)
+	return newApplication(local, codespaceV9, applicationVersionV9)
 }
 
-func newApplication(local localApplication, codespace string) *Application {
+func newApplication(
+	local localApplication,
+	codespace string,
+	applicationVersion string,
+) *Application {
 	return &Application{
 		local:     local,
 		codespace: codespace,
+		version:   applicationVersion,
 		logger:    cmtlog.NewNopLogger(),
 	}
 }
@@ -130,7 +141,7 @@ func (a *Application) Info(
 	a.observeCommitted(info.Height)
 	return &abci.ResponseInfo{
 		Data:             applicationData,
-		Version:          applicationVersion,
+		Version:          a.version,
 		AppVersion:       info.ApplicationVersion,
 		LastBlockHeight:  int64(info.Height),
 		LastBlockAppHash: info.StateRoot[:],
