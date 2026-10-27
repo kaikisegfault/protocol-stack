@@ -26,7 +26,7 @@ func main() {
 	flag.StringVar(&genesisTimestamp, "genesis-timestamp", "",
 		"canonical genesis timestamp in decimal milliseconds (version 9 only)")
 	flag.UintVar(&protocolVersion, "protocol-version", 1,
-		"protocol ledger version this home is initialized for (1 or 9)")
+		"protocol ledger version this home is initialized for (1, 9, or 10)")
 	flag.Parse()
 	if flag.NArg() != 0 {
 		exitWithError(fmt.Errorf("unexpected positional arguments"))

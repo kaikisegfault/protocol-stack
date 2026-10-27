@@ -317,22 +317,23 @@ func TestTheApplicationStatesAreDistinct(t *testing.T) {
 
 func TestParseProtocolVersion(t *testing.T) {
 	for value, expected := range map[uint]ProtocolVersion{
-		1: ProtocolV1,
-		9: ProtocolV9,
+		1:  ProtocolV1,
+		9:  ProtocolV9,
+		10: ProtocolV10,
 	} {
 		parsed, err := ParseProtocolVersion(value)
 		if err != nil || parsed != expected {
 			t.Fatalf("ParseProtocolVersion(%d) = %d, %v", value, parsed, err)
 		}
 	}
-	// 257 truncates to one in a byte, 264 to eight, and 265 to nine; none may
-	// be admitted as the version it truncates to. **Seven and eight are in this
+	// 257 truncates to one in a byte, 264 to eight, 265 to nine, and 266 to
+	// ten; none may be admitted as the version it truncates to. **Seven and eight are in this
 	// list rather than the one above**: ADR 0065's step 7 deleted the
 	// version-seven stack and ADR 0092 the version-eight one, so an operator
 	// who still passes either must get an error here rather than a home no
 	// binary can serve.
 	for _, value := range []uint{
-		0, 2, 6, 7, 8, 10, 256, 257, 263, 264, 265,
+		0, 2, 6, 7, 8, 11, 256, 257, 263, 264, 265, 266,
 	} {
 		if _, err := ParseProtocolVersion(value); err == nil {
 			t.Fatalf("ParseProtocolVersion(%d) was accepted", value)
