@@ -320,8 +320,8 @@ dependency.
 
 - `kaikisegfault/protocol-stack`. Issue #417 is open for the next action,
   M4.3j. Every other issue is closed, and `main` is the only branch.
-- **The last full hosted verification** is candidate run 40401822556, on
-  M4.3h's tree, which `main` holds byte for byte at `d7487a7`.
+- **The last full hosted verification** is candidate run 40602254819, on
+  M4.3i's tree, which `main` holds byte for byte at `c4b0810`.
 - `verify.yml` classifies the changed paths with `tools/verification_scope.py`.
   Markdown and skill metadata take the lightweight path:
   `tools/verify_metadata.py` and the `tests/tools` suites. Everything else takes
@@ -420,8 +420,9 @@ has anything to dial, and no network can run version ten.
 - Its other three modes, rebound: `--genesis-identity`, `--seed` from a
   `snapshot_v10` head, and `--inspect-seed` (ADRs 0096, 0097, and 0108).
 - A headless process test at the depth of `headless_process_v9_test.py`,
-  driving the `restart.` run through `application_driver_v2.py`, Info's
-  protocol version `10` included.
+  through `application_driver_v2.py`, Info's protocol version `10` included.
+  Like version nine's, it finalizes empty blocks, because the recorded runs are
+  signed under a stand-in verifier table and the process verifies Ed25519.
 
 Step 6 continues after it, as version nine's did in ADRs 0086 to 0090:
 
