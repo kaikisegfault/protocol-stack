@@ -301,6 +301,20 @@ target_link_libraries(
   PRIVATE
     protocol_application
 )
+add_executable(
+  protocol_application_server_v10
+  src/application/main_v10.cpp
+)
+set_target_properties(
+  protocol_application_server_v10
+  PROPERTIES
+    OUTPUT_NAME protocol-application-v10
+)
+target_link_libraries(
+  protocol_application_server_v10
+  PRIVATE
+    protocol_application
+)
 # The HUB verifier interface and its deterministic test implementation (ADR
 # 0099). No node links it: a node checks HUB proofs and never holds a HUB key.
 add_library(
@@ -736,6 +750,7 @@ set(
   protocol_application
   protocol_application_server
   protocol_application_server_v9
+  protocol_application_server_v10
   protocol_clock_offset_shim
   protocol_hub
   protocol_hub_test_verifier_v9
@@ -1321,6 +1336,18 @@ add_test(
     "${PROJECT_SOURCE_DIR}/tests/integration/version_nine_seed_test.py"
     "$<TARGET_FILE:protocol_application_server_v9>"
     "${CMAKE_CURRENT_BINARY_DIR}/seed-v9"
+)
+# Version nine's process suite over version ten's binary, short for the same
+# `sun_path` reason, with the same real-clock and shim cases.
+add_test(
+  NAME version-ten-headless-process
+  COMMAND
+    "${Python3_EXECUTABLE}"
+    "${PROJECT_SOURCE_DIR}/tests/application/headless_process_v10_test.py"
+    "$<TARGET_FILE:protocol_application_server_v10>"
+    "${PROJECT_SOURCE_DIR}/test-vectors/economy-transition-v10-execution.txt"
+    "${CMAKE_CURRENT_BINARY_DIR}/ah-v10"
+    "$<TARGET_FILE:protocol_clock_offset_shim>"
 )
 # The test HUB verifier's decisions, judged by the version-nine kernel through
 # admission and execution, and then checked against the independent model's
