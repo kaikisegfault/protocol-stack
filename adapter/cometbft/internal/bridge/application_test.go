@@ -156,7 +156,7 @@ func TestExactABCIConversions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if info.Data != applicationData || info.Version != applicationVersion ||
+	if info.Data != applicationData || info.Version != applicationVersionV1 ||
 		info.AppVersion != 1 || info.LastBlockHeight != 7 ||
 		string(info.LastBlockAppHash) != string(root[:]) {
 		t.Fatalf("unexpected Info response: %#v", info)
