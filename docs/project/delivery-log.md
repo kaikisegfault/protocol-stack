@@ -38,6 +38,54 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How the Go adapter's version-ten client was delivered
+
+**The founder-decision gate passed with nothing reserved.** Issue #420, M4.3k,
+the second slice of ADR 0104's step 6. Every decision was already fixed. The
+receipt version and the result count are `economy-transition-v10`'s, and the
+Info check, the codespace, the version string, and the application state are
+`consensus-application-v3`'s. Where the check sits and how the launcher lists
+versions is mechanism. No ADR was needed beyond ADR 0110.
+
+**It was begun before the owner said `conclude`, and was finished rather than
+left as local commits.** A conclusion leaves no unpushed work, and the slice
+was implemented and locally tested by then. No issue was opened for the slice
+after it.
+
+**The Info check sits in the decoder.** A version-ten Info that names another
+protocol version is a decoding error, so the client reports a protocol failure
+and latches, and nothing more is asked of that application. That is the
+refusal ADR 0110 moved from the frame header to Info.
+
+**The version-two frame's shared pieces moved first, in their own commit.**
+The frame version, statuses 7 and 8, `maximumStatus`, the decision space and
+its names, and the receipt result offset were in `wire_v9.go`, and version ten
+reads them unchanged. They moved to `wire_v2.go`, their tests to
+`wire_v2_test.go`, and the bridge's hand-written frame server to
+`frame_server_test.go`. ADR 0104 rejected making layers version-agnostic, and
+this is not that: each piece already belonged to the frame, not to a ledger.
+The ledger-specific types, `InfoV10`, `FinalizedBlockV10`, `LocalV10`, and the
+rest, are version nine's rebound rather than shared. Step 7 can then delete
+every `_v9` Go file whole. The move was checked on its own: `localapp`'s tests
+pass at that commit.
+
+**Two existing tests named 10 as an unbridged version**, in `ParseProtocolVersion`'s
+refusals and in the genesis-time pairing test. Adding `ProtocolV10` made both
+false, so they now name 11, and the parse test also refuses 266, which
+truncates to ten.
+
+**Local evidence, limited by the host.** `localapp` imports only the standard
+library, so its suite ran offline. `GOPROXY=off` and the existing module cache
+supplied the pinned toolchain, and a scratch build cache held 63 MB, deleted
+afterwards. Every `localapp` test passes, version nine's included. A probe that
+disables the Info check fails both version-ten Info tests. `bridge`,
+`nodeconfig`, and the commands import CometBFT, which this host keeps no cache
+of. A scratch `go/types` script type-checked them with our own `localapp`
+resolved from source and only CometBFT faked. It reported every error not
+caused by the faked package, and probes showed it catching an unused import and
+a wrong `localapp` method. `gofmt` is clean. The hosted matrix is the gate for
+compiling and running them.
+
 ### How the version-ten node process was delivered
 
 **The founder-decision gate passed with nothing reserved.** Issue #417, M4.3j,
