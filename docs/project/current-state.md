@@ -163,7 +163,19 @@ retired, and between them they carry all 23 writable entry kinds.
 `tests/integration/version_ten_snapshot.py` is the encoder a seeded
 version-ten network will start from.
 
-The Go adapter and the network still run version nine.
+**The Go adapter speaks to a version-ten node** (M4.3k). `localapp.ClientV10`
+is version nine's client rebound over the version-two frame. Its finalize
+decoder admits receipt version 10 and 50 result codes, so codes 301 to 305
+reach the engine. Its Info refuses any protocol version but `10` as a protocol
+failure, which is how `consensus-application-v3` names a version-nine
+application behind a version-ten bridge on the first frame. `bridge.NewV10`
+carries codespace `protocol-stack-v10` and Info version `10.0.0`.
+`protocol-cometbft-bridge`, `-init`, and `-devnet` accept protocol version 10,
+and `nodeconfig.ProtocolV10` writes `"protocol-stack-v10"` and binds the
+genesis stamp. The version-two frame's shared pieces moved out of version
+nine's Go files, so ADR 0104's step 7 can delete those whole.
+
+No network runs version ten yet.
 
 **The model found a specification defect, repaired before anything implemented
 it.** The registry step counted a mark of 0, which means never met, as meeting
@@ -185,8 +197,8 @@ version nine already handles and the obligations of the next contract version.
 [`economy-transition-v9`](../specifications/economy-transition-v9.md) under
 [`consensus-application-v2`](../specifications/consensus-application-v2.md).
 The repository compiles it, the M1 version-one ledger, and version ten's kernel,
-snapshot, owning store, application, transport, and node process staged beside
-it (ADR 0104).
+snapshot, owning store, application, transport, node process, and Go adapter
+client staged beside it (ADR 0104).
 Every layer of version nine is built:
 
 - the C++20 kernel, `include/protocol/v9/` and 21 translation units under
@@ -333,10 +345,11 @@ dependency.
 
 ## Repository and verification
 
-- `kaikisegfault/protocol-stack`. Issue #420 is open for the next action,
-  M4.3k. Every other issue is closed, and `main` is the only branch.
-- **The last full hosted verification** is candidate run 40602254819, on
-  M4.3i's tree, which `main` holds byte for byte at `c4b0810`.
+- `kaikisegfault/protocol-stack`. Every issue is closed, and `main` is the only
+  branch. The next action, M4.3l, has no issue yet: the session that takes it
+  opens one.
+- **The last full hosted verification** is candidate run 40604665184, on
+  M4.3j's tree, which `main` held byte for byte at `a7fde42`.
 - `verify.yml` classifies the changed paths with `tools/verification_scope.py`.
   Markdown and skill metadata take the lightweight path:
   `tools/verify_metadata.py` and the `tests/tools` suites. Everything else takes
@@ -424,25 +437,26 @@ that yet.
 
 ## Exact next action
 
-**Connect CometBFT to version ten: the Go adapter's version-ten client, bridge,
-and launcher version, M4.3k**, the second slice of step 6 of ADR 0104's
-enumeration, issue #420. Without it no engine can drive
-`protocol-application-v10`.
+**Run version ten through CometBFT: `cometbft_version_ten_test.py`, M4.3l**,
+the third slice of step 6 of ADR 0104's enumeration, as
+`cometbft_version_nine_test.py` was for version nine (ADR 0090). One node runs
+`protocol-application-v10` behind `protocol-cometbft-bridge -protocol-version
+10`. It runs six blocks and a restart, and every receipt and root is compared
+with the version-ten model.
 
-- `localapp`'s version-ten client over the version-two frame. Its finalize
-  decoder admits receipt version 10 and 50 result codes. Its Info refuses a
-  protocol version other than `10`, which is how `consensus-application-v3`
-  names a mismatched pairing on the first frame.
-- `bridge.NewV10` with codespace `protocol-stack-v10` and Info version string
-  `10.0.0`, and `LocalV10`.
-- `protocol-cometbft-bridge` choosing it for protocol version 10.
-- `nodeconfig.ProtocolV10`, whose application state is `"protocol-stack-v10"`
-  and whose genesis binds a timestamp.
-- Go tests at the depth of version nine's, against a hand-written frame server.
+- `tests/integration/cometbft_process.py` gains protocol version 10. Its
+  independent head audit reads frame version 2 for versions nine and ten, and
+  checks Info's protocol version.
+- The transactions are the version-ten model's, signed with real Ed25519:
+  registrations under the launch key, which the test holds, and a transfer.
+- The genesis is minted at launch, as version nine's is, because CometBFT
+  stamps block 1 with the genesis time (ADR 0088).
 
-Step 6 ends with the version-ten devnet runs, the HUB test verifier moved onto
-version ten, and the network fixtures moved onto it. Then step 7 deletes
-version nine's stack.
+Step 6 then moves the four-validator, skewed-replica, founder-lifecycle,
+seeded-launch, and seeded-mint runs onto version ten, with the HUB test verifier
+rebuilt for version ten and the network fixtures built on it. Then step 7
+deletes version nine's stack. A seeded version-ten network starts from
+`tests/integration/version_ten_snapshot.py`.
 
 **Unblocked candidates behind it:**
 
