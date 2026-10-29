@@ -40,14 +40,22 @@ import sys
 from dataclasses import dataclass, replace
 
 REPOSITORY = pathlib.Path(__file__).resolve().parents[2]
-for _entry in (REPOSITORY, REPOSITORY / "tests" / "differential"):
+for _entry in (
+    REPOSITORY,
+    REPOSITORY / "tests" / "differential",
+    pathlib.Path(__file__).resolve().parent,
+):
     if str(_entry) not in sys.path:
         sys.path.insert(0, str(_entry))
 
+import version_ten_snapshot  # noqa: E402
 from pinned_sodium import Sodium  # noqa: E402
 from simulation.economy_transition_v10 import contract as c  # noqa: E402
 from simulation.economy_transition_v10 import genesis as g  # noqa: E402
-from simulation.economy_transition_v10.block import execute_block  # noqa: E402
+from simulation.economy_transition_v10.block import (  # noqa: E402
+    execute_block,
+    run_quiet_heights,
+)
 from simulation.economy_transition_v10.envelope import decode_signed  # noqa: E402
 from simulation.economy_transition_v10.fixture import (  # noqa: E402
     Builder,
@@ -155,6 +163,7 @@ class Session:
             self._signer.derive("bob-signer"),
         )
         self.alice_machine_key = self._signer.derive("alice-machine")
+        self.bob_machine_key = self._signer.derive("bob-machine")
         genesis = g.Genesis(
             network_id=NETWORK_ID,
             genesis_timestamp=genesis_timestamp,
@@ -196,18 +205,71 @@ class Session:
             who, c.LAUNCH_ATTESTER, self.launch_key, height + LIFETIME
         )
 
-    def alice_buys_seat(self, nonce: int, height: int) -> bytes:
-        return self._build.purchase(self.alice, SEAT_ID, nonce, height + LIFETIME)
+    def register_attested(self, who: Person, seat_id: int, height: int) -> bytes:
+        """Kind 10 attested by `seat_id`'s machine, under the key it registered.
 
-    def alice_activates_seat(self, nonce: int, height: int) -> bytes:
-        return self._build.activation(self.alice, SEAT_ID, nonce, height + LIFETIME)
+        The test holds every machine key it registers, so this signs for any
+        keyed seat, and whether the chain accepts it is the chain's question.
+        """
+        machine = self.machine_key(seat_id)
+        if machine is None:
+            raise RuntimeError(f"seat {seat_id} has no machine key to sign with")
+        return self._build.registration(who, seat_id, machine, height + LIFETIME)
 
-    def alice_registers_machine(self, nonce: int, height: int) -> bytes:
-        """Kind 23: the build authority attests and Alice's HUB key approves."""
+    def buys_seat(
+        self, who: Person, seat_id: int, nonce: int, height: int
+    ) -> bytes:
+        return self._build.purchase(who, seat_id, nonce, height + LIFETIME)
+
+    def activates_seat(
+        self, who: Person, seat_id: int, nonce: int, height: int
+    ) -> bytes:
+        return self._build.activation(who, seat_id, nonce, height + LIFETIME)
+
+    def registers_machine(
+        self, who: Person, seat_id: int, key: bytes, nonce: int, height: int
+    ) -> bytes:
+        """Kind 23: the build authority attests and the owner's HUB key approves."""
         return self._build.machine_registration(
-            self.alice, SEAT_ID, self.alice_machine_key, nonce, height + LIFETIME,
+            who, seat_id, key, nonce, height + LIFETIME,
             attester=self.build_authority_key,
         )
+
+    def alice_buys_seat(self, nonce: int, height: int) -> bytes:
+        return self.buys_seat(self.alice, SEAT_ID, nonce, height)
+
+    def alice_activates_seat(self, nonce: int, height: int) -> bytes:
+        return self.activates_seat(self.alice, SEAT_ID, nonce, height)
+
+    def alice_registers_machine(self, nonce: int, height: int) -> bytes:
+        return self.registers_machine(
+            self.alice, SEAT_ID, self.alice_machine_key, nonce, height)
+
+    def answers(
+        self, who: Person, seat_id: int, challenge_height: int, nonce: int
+    ) -> bytes:
+        """Kind 20, which carries no HUB proof and so no lifetime."""
+        return self._build.response(who, seat_id, challenge_height, nonce)
+
+    def mints_seat(
+        self, who: Person, seat_id: int, nonce: int, height: int
+    ) -> bytes:
+        """Kind 4: everything the seat has earned, into `who`'s first escrow."""
+        return self._build.mint(
+            who, c.MINT_NODE, nonce, height + LIFETIME, seat_id=seat_id)
+
+    def mints_verified_user(self, who: Person, nonce: int, height: int) -> bytes:
+        """Kind 18: every daily permission `who`'s enrollment has earned."""
+        return self._build.mint(
+            who, c.MINT_VERIFIED_USER, nonce, height + LIFETIME)
+
+    def pays(
+        self, who: Person, recipient: Person, nonce: int, height: int,
+        amount: int = TRANSFER_AMOUNT,
+    ) -> bytes:
+        """Kind 19 from `who`'s first escrow, confirmed by its owner's HUB key."""
+        return self._build.confirmed_transfer(
+            who, recipient, amount, nonce, height + LIFETIME)
 
     def alice_pays_bob(
         self,
@@ -237,10 +299,55 @@ class Session:
         transaction, _signature = decode_signed(raw)
         return self._build.sign(replace(transaction, nonce=nonce))
 
+    def newcomer(self, name: str, identity: bytes) -> Person:
+        """Someone the chain has not met, with keys derived from `name`."""
+        return Person(
+            identity,
+            self._signer.derive(f"{name}-hub"),
+            self._signer.derive(f"{name}-signer"),
+        )
+
     # --- the ledger -------------------------------------------------------
 
     def balance(self, escrow: bytes) -> int:
         return self._ledger.balance(escrow)
+
+    def nonce(self, escrow: bytes) -> int:
+        return self._ledger.nonce(escrow)
+
+    def machine_active(self, seat_id: int) -> bool:
+        return self._ledger.machine_active(seat_id)
+
+    def launch_retired(self) -> bool:
+        return self._ledger.launch_retired_at is not None
+
+    def founder_count(self, founder: bytes, window: int) -> int:
+        return self._ledger.founder_count(founder, window)
+
+    def seat_minted_through(self, seat_id: int) -> int:
+        """The last window a seat has collected, or its activation window."""
+        return self._ledger.seats[seat_id].minted_through_window
+
+    def enrollment_minted_through(self, identity: bytes) -> int:
+        return self._ledger.registry.enrollments[identity].minted_through_window
+
+    def snapshot(self) -> bytes:
+        """The head as the payload a store is seeded from (ADRs 0096 and 0108)."""
+        return version_ten_snapshot.encode(self._ledger)
+
+    def run_quiet(self, target_height: int, timestamp_of_height, respond) -> int:
+        """Run the model alone to `target_height`, for a seed.
+
+        This is the trace's fast path: a height with no input and no window
+        opening is advanced without computing its root. So it is only for a
+        history no network will be asked to reproduce, and it returns how many
+        heights it ran.
+        """
+        count, _recorded = run_quiet_heights(
+            self._ledger, target_height, timestamp_of_height, self._signer,
+            respond,
+        )
+        return count
 
     def activations(self) -> dict[int, int]:
         """Activated seats and the heights they were activated at."""
