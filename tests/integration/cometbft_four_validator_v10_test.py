@@ -13,10 +13,11 @@ Transactions enter through four different replicas:
 - Alice registers, then Bob, both under the launch key, and the network is
   stopped and started.
 - Alice buys seat 0 and activates it, then pays Bob.
-- Three replicas are each handed a transaction that must be refused by name: a
-  transfer at a consumed nonce, a second purchase of the seat Alice owns, and
-  Alice's confirmation re-signed under the next nonce. Each must land on the
-  root an empty block at that height and stamp would produce.
+- Four transactions, through all four replicas, must each be refused by name:
+  a transfer at a consumed nonce, a second purchase of the seat Alice owns,
+  Alice's confirmation re-signed under the next nonce, and a confirmation whose
+  approval would outlive its slot. Each must land on the root an empty block at
+  that height and stamp would produce.
 - While the network is down, one replica's own store is driven directly. It is
   interrupted mid-block and handed two blocks its peers never proposed. Then
   one replica leaves a network that keeps committing, catches up, and proposes
@@ -25,13 +26,19 @@ Transactions enter through four different replicas:
 After every stop, all four stores are opened directly and must report the
 model's height, stamp, and root, and name protocol version 10.
 
-**The re-signed confirmation is version ten's own refusal**, and requirement
-5's network evidence. Version nine executed it: its confirmation bound the
-escrow, the recipient, the amount, and the expiry, but no nonce. Version ten's
-approval signs the whole transaction, so a confirmation moved to another nonce
-verifies over nothing and is refused as `UNAUTHORIZED`. The republished bytes
-themselves cannot be shown, because the engine's mempool drops a hash it has
-seen.
+**The last two refusals are version ten's own**, and requirement 5's network
+evidence: one is replay protection and the other expiry.
+
+- **The re-signed confirmation is a replay version nine executed.** Its
+  confirmation bound the escrow, the recipient, the amount, and the expiry, but
+  no nonce. Version ten's approval signs the whole transaction, so a
+  confirmation moved to another nonce verifies over nothing and is refused as
+  `UNAUTHORIZED`. The republished bytes themselves cannot be shown, because the
+  engine's mempool drops a hash it has seen.
+- **The last confirmation expires two slots after the height it is built for**,
+  so wherever inside a slot it lands it is refused as
+  `APPROVAL_LIFETIME_EXCEEDED`. It carries the unconsumed nonce, so no earlier
+  condition can refuse it first.
 
 **Every transaction is built when it is submitted, for the next height the
 model has not seen.** A transaction that carries a HUB proof must expire within
@@ -97,6 +104,8 @@ PROTOCOL_VERSION = 10
 NONCE_MISMATCH = c.CODE_NUMBER["NONCE_MISMATCH"]
 REPLAY = c.CODE_NUMBER["REPLAY"]
 UNAUTHORIZED = c.CODE_NUMBER["UNAUTHORIZED"]
+APPROVAL_LIFETIME_EXCEEDED = c.CODE_NUMBER["APPROVAL_LIFETIME_EXCEEDED"]
+LIFETIME = c.APPROVAL_LIFETIME_BLOCKS
 
 # How much of the tolerance must remain once a network reports ready. The
 # engine proposes one commit timeout after it starts, and this leaves five
@@ -519,8 +528,11 @@ def verify(
         chain = Chain(sodium, now_millis())
         session = chain.session
 
-        def pay(nonce: int, amount: int = 1_000_000) -> Build:
-            return lambda height: session.alice_pays_bob(nonce, height, amount)
+        def pay(
+            nonce: int, amount: int = 1_000_000, lifetime: int = LIFETIME
+        ) -> Build:
+            return lambda height: session.alice_pays_bob(
+                nonce, height, amount, lifetime)
 
         genesis = workspace / "protocol.genesis"
         genesis.write_bytes(session.genesis)
@@ -563,6 +575,10 @@ def verify(
             submit_refused(
                 network, workspace, chain, 3,
                 lambda _height: session.resigned(confirmed, 4), UNAUTHORIZED)
+            submit_refused(
+                network, workspace, chain, 0,
+                pay(4, lifetime=2 * LIFETIME),
+                APPROVAL_LIFETIME_EXCEEDED)
             stop_network(second, network)
         finally:
             second.kill()
@@ -585,9 +601,10 @@ def verify(
         "CometBFT four-validator version-ten integration: passed "
         "(4 independent replicas, genesis stamped at launch and carried by "
         "block 1, 2 launch-key registrations, 1 seat bought and activated at "
-        f"height {activation_height}, 5 confirmed transfers, and 3 refusals -- "
-        "NONCE_MISMATCH, REPLAY, and UNAUTHORIZED for a confirmation re-signed "
-        "under the next nonce -- through 4 different nodes, 2 full restarts "
+        f"height {activation_height}, 5 confirmed transfers, and 4 refusals -- "
+        "NONCE_MISMATCH, REPLAY, UNAUTHORIZED for a confirmation re-signed "
+        "under the next nonce, and APPROVAL_LIFETIME_EXCEEDED for one that "
+        "outlives its slot -- through 4 different nodes, 2 full restarts "
         f"inside the window, node {DRIVEN_NODE} interrupted mid-block and fed "
         "a block two heights ahead and a stamp below its head, node "
         f"{DEPARTING_NODE} stopped while the other 3 committed to height "

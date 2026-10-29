@@ -210,16 +210,21 @@ class Session:
         )
 
     def alice_pays_bob(
-        self, nonce: int, height: int, amount: int = TRANSFER_AMOUNT
+        self,
+        nonce: int,
+        height: int,
+        amount: int = TRANSFER_AMOUNT,
+        lifetime: int = LIFETIME,
     ) -> bytes:
         """Kind 19, confirmed by an approval of the whole transfer.
 
         `amount` exists for the caller that needs two transfers at one nonce:
         the same bytes twice never reach an application, because the engine's
-        mempool discards a hash it has seen.
+        mempool discards a hash it has seen. `lifetime` exists for the caller
+        that needs an approval to outlive its slot.
         """
         return self._build.confirmed_transfer(
-            self.alice, self.bob, amount, nonce, height + LIFETIME
+            self.alice, self.bob, amount, nonce, height + lifetime
         )
 
     def resigned(self, raw: bytes, nonce: int) -> bytes:
