@@ -17,10 +17,12 @@ model's counter tokens, which `protocol-application-v10` would refuse as
 `invalid_signature`. So nothing here restates what version ten signs.
 
 **Every transaction that carries a HUB proof expires exactly one slot after the
-height it is built for**, which is the boundary the lifetime rule admits. A
-transaction built for one height and committed at another would fail the run
-on its height before its lifetime could matter, so the boundary is exercised
-end to end rather than approached.
+height it is built for**, which is the boundary the lifetime rule admits. So a
+transaction built for height `h` is admitted at every height from `h` to one
+slot past it. The single-node run knows each landing height and builds for it,
+which exercises the boundary end to end. A multi-replica run cannot know where
+a transaction lands, so it builds each one for the next height the model has
+not seen.
 
 **The keys are stand-ins, labelled as such.** The launch key, the dispute
 authority, and the build authority are derived from their names. They say
@@ -32,9 +34,10 @@ imported, so that ADR 0104's step 7 can delete `version_nine_chain` whole.
 
 from __future__ import annotations
 
+import copy
 import pathlib
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 REPOSITORY = pathlib.Path(__file__).resolve().parents[2]
 for _entry in (REPOSITORY, REPOSITORY / "tests" / "differential"):
@@ -45,6 +48,7 @@ from pinned_sodium import Sodium  # noqa: E402
 from simulation.economy_transition_v10 import contract as c  # noqa: E402
 from simulation.economy_transition_v10 import genesis as g  # noqa: E402
 from simulation.economy_transition_v10.block import execute_block  # noqa: E402
+from simulation.economy_transition_v10.envelope import decode_signed  # noqa: E402
 from simulation.economy_transition_v10.fixture import (  # noqa: E402
     Builder,
     Person,
@@ -184,7 +188,7 @@ class Session:
         entry = self._ledger.machine_keys.get(seat_id)
         return None if entry is None else entry.machine_public_key
 
-    # --- the transactions, each for the height it executes at -------------
+    # --- the transactions, each for the earliest height it may execute at --
 
     def register(self, who: Person, height: int) -> bytes:
         """Kind 10 under the launch key, which no seat holds."""
@@ -205,16 +209,37 @@ class Session:
             attester=self.build_authority_key,
         )
 
-    def alice_pays_bob(self, nonce: int, height: int) -> bytes:
-        """Kind 19, confirmed by an approval of the whole transfer."""
+    def alice_pays_bob(
+        self, nonce: int, height: int, amount: int = TRANSFER_AMOUNT
+    ) -> bytes:
+        """Kind 19, confirmed by an approval of the whole transfer.
+
+        `amount` exists for the caller that needs two transfers at one nonce:
+        the same bytes twice never reach an application, because the engine's
+        mempool discards a hash it has seen.
+        """
         return self._build.confirmed_transfer(
-            self.alice, self.bob, TRANSFER_AMOUNT, nonce, height + LIFETIME
+            self.alice, self.bob, amount, nonce, height + LIFETIME
         )
+
+    def resigned(self, raw: bytes, nonce: int) -> bytes:
+        """`raw` under another nonce, its body and so its approval unchanged.
+
+        This is the replay a network can be shown. The approval signed the
+        whole transaction, nonce included, so it no longer verifies, and
+        version ten refuses the transaction as `UNAUTHORIZED`.
+        """
+        transaction, _signature = decode_signed(raw)
+        return self._build.sign(replace(transaction, nonce=nonce))
 
     # --- the ledger -------------------------------------------------------
 
     def balance(self, escrow: bytes) -> int:
         return self._ledger.balance(escrow)
+
+    def activations(self) -> dict[int, int]:
+        """Activated seats and the heights they were activated at."""
+        return self._ledger.activations()
 
     def apply(self, raw: bytes, timestamp: int) -> Block:
         """Execute one block holding this transaction, and require it to succeed.
@@ -234,6 +259,33 @@ class Session:
         """A block with no transaction, whose root depends on its stamp alone."""
         return self._apply([], timestamp)
 
+    def apply_refused(self, raw: bytes, timestamp: int, expected: int) -> Block:
+        """Execute one block whose transaction the contract must refuse by name.
+
+        The code is passed in because two different defects both refuse, and
+        only one refuses for the stated reason.
+        """
+        block = self._apply([raw], timestamp)
+        actual = block.receipts[0][RESULT_OFFSET]
+        if actual != expected or actual == 0:
+            raise RuntimeError(
+                f"fixture transaction produced result {actual}, expected "
+                f"{expected}"
+            )
+        return block
+
+    def block_if_empty(self, timestamp: int) -> Block:
+        """The block the next height would be with no transaction at `timestamp`.
+
+        The ledger is copied rather than advanced, because asking must not
+        spend the height. A refused transaction writes no state and charges no
+        fee, so a block whose only transaction was refused must land on exactly
+        this root at the same height and stamp.
+        """
+        probe = copy.deepcopy(self._ledger)
+        outcome = execute_block(probe, timestamp, [], self._signer)
+        return self._block(outcome)
+
     def _apply(self, raw_inputs: list[bytes], timestamp: int) -> Block:
         outcome = execute_block(self._ledger, timestamp, raw_inputs, self._signer)
         if len(outcome.admissions) != len(raw_inputs):
@@ -244,6 +296,10 @@ class Session:
                     "fixture transaction was refused at admission: "
                     f"{admission.code}"
                 )
+        return self._block(outcome)
+
+    @staticmethod
+    def _block(outcome) -> Block:
         return Block(
             height=outcome.height,
             timestamp=outcome.timestamp,
