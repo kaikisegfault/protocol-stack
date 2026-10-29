@@ -52,6 +52,16 @@ def abci_info(rpc_port: int) -> tuple[int, bytes]:
     )
 
 
+def abci_version(rpc_port: int) -> tuple[str, int]:
+    """The version string and protocol version the bridge's Info reports.
+
+    The engine asks the bridge, and the bridge asks the application, on every
+    call, so this is a live answer rather than one cached at the handshake.
+    """
+    response = rpc_call(rpc_port, "abci_info", {})["response"]
+    return response.get("version", ""), int(response.get("app_version", "0"))
+
+
 def commit_transaction(rpc_port: int, transaction: bytes) -> tuple[int, bytes]:
     """Broadcast, wait for the commit, and return its height and receipt.
 
