@@ -22,8 +22,9 @@ state is encoded as a version-ten snapshot, and
 - Bob's machine, which met nothing, cannot register Dave: `MACHINE_NOT_ACTIVE`.
 - The launch key still registers Erin, because one active machine is far below
   the hundred that retire it.
-- Carol pays Alice, and Alice's kind-18 and kind-4 mints issue exactly what
-  the script says they must. A second kind-4 mint is `NOTHING_TO_MINT`.
+- Carol pays Alice, and Alice's kind-18 and kind-4 mints issue, and credit
+  her, exactly what the script says they must. A second kind-4 mint is
+  `NOTHING_TO_MINT`.
 - Every receipt and root is the model's, each refusal lands on the root an
   empty block at that height and stamp would produce, and after a stop all four
   stores hold the model's height, stamp, and root and name protocol version 10.
@@ -70,19 +71,32 @@ def run_step(
     network: Network, workspace: pathlib.Path, chain: four.Chain,
     step: script.Step,
 ) -> None:
-    """Submit one step, and hold a mint to what it must issue."""
-    escrow = chain.session.alice.escrow
-    before = chain.session.balance(escrow)
+    """Submit one step, and hold a mint to what it must issue and credit.
+
+    The receipts already agree with the model's. These two figures are fixed
+    in advance, so a model and a kernel that agreed on a wrong amount would
+    still fail here. No empty block issues anything, so the supply's movement
+    across the step is the mint's alone.
+    """
+    session = chain.session
+    escrow = session.alice.escrow
+    supply, balance = session.total_supply(), session.balance(escrow)
     if step.refusal is None:
         four.submit(network, workspace, chain, step.node, step.build)
     else:
         four.submit_refused(
             network, workspace, chain, step.node, step.build, step.code)
     if step.issues is not None:
-        issued = chain.session.balance(escrow) - before + FIXED_FEE
+        issued = session.total_supply() - supply
         if issued != step.issues:
             raise RuntimeError(
                 f"{step.label} issued {issued} atomic units, not {step.issues}")
+    if step.credits is not None:
+        credited = session.balance(escrow) - balance + FIXED_FEE
+        if credited != step.credits:
+            raise RuntimeError(
+                f"{step.label} credited alice {credited} atomic units, not "
+                f"{step.credits}")
 
 
 def verify(

@@ -33,8 +33,10 @@ does for version nine (ADRs 0096 and 0097).
 - Carol pays Alice, so the person a machine admitted is a participant.
 - Alice's kind-18 and kind-4 mints collect what windows 1 and 2 earned, and a
   second kind-4 mint is refused as `NOTHING_TO_MINT`. Bob's seat failed window
-  1, so its Founder portion settles at the mint of the window's best performer,
-  and Alice's kind-4 mint collects both seats' 574.3 units (ADR 0049).
+  1, so its permission settles at the mint of the window's best performer
+  (ADR 0049). Alice's kind-4 mint therefore issues both seats' 574.3 units.
+  Each seat's 342-unit operator leg goes to her escrow, and the institutional
+  legs go to their custody.
 
 **Every transaction is built when it is submitted**, for the four-validator
 run's reason: an approval is admitted for one slot from the height it is built
@@ -64,10 +66,13 @@ BOB_SEAT = SEAT_ID + 1
 # window 0, was the registration's airdrop.
 VERIFIED_USER_WINDOWS = 2
 
-# What each mint issues into Alice's escrow: two daily 1.71-unit permissions,
-# and two seats' 574.3 units for window 1, her own and Bob's failed one.
+# What each mint issues, and what of it Alice's escrow receives. Kind 18 pays
+# two daily 1.71-unit permissions to her whole. Kind 4 issues two seats' 574.3
+# units for window 1, her own and Bob's failed one. Of each seat's share, the
+# 342-unit operator leg is hers and the four institutional legs go to custody.
 VERIFIED_USER_ISSUED = VERIFIED_USER_WINDOWS * 171_000_000
 SEAT_ISSUED = 2 * 57_430_000_000
+SEAT_OPERATOR_LEG = 2 * 34_200_000_000
 
 CAROL_IDENTITY = bytes.fromhex("c1" * 32)
 DAVE_IDENTITY = bytes.fromhex("d1" * 32)
@@ -79,8 +84,8 @@ class Step:
     """One transaction the network is handed, built for the height it is given.
 
     `refusal` names the result the contract must refuse it with, or is `None`
-    for one that must succeed. `issues` is what a mint must issue into Alice's
-    first escrow.
+    for one that must succeed. `issues` is what a mint must add to the issued
+    supply, and `credits` what of it must reach Alice's first escrow.
     """
 
     label: str
@@ -88,6 +93,7 @@ class Step:
     node: int
     refusal: str | None = None
     issues: int | None = None
+    credits: int | None = None
 
     @property
     def code(self) -> int:
@@ -185,10 +191,10 @@ def steps(session: Session) -> tuple[Step, ...]:
         Step("carol pays alice", lambda h: session.pays(carol, alice, 1, h), 3),
         Step("alice mints her verified-user permissions",
              lambda h: session.mints_verified_user(alice, nonce, h), 0,
-             issues=VERIFIED_USER_ISSUED),
+             issues=VERIFIED_USER_ISSUED, credits=VERIFIED_USER_ISSUED),
         Step("alice mints what seat 0 earned",
              lambda h: session.mints_seat(alice, SEAT_ID, nonce + 1, h), 1,
-             issues=SEAT_ISSUED),
+             issues=SEAT_ISSUED, credits=SEAT_OPERATOR_LEG),
         Step("a second seat mint collects nothing",
              lambda h: session.mints_seat(alice, SEAT_ID, nonce + 2, h), 2,
              "NOTHING_TO_MINT"),

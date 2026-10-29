@@ -315,6 +315,10 @@ class Session:
     def nonce(self, escrow: bytes) -> int:
         return self._ledger.nonce(escrow)
 
+    def total_supply(self) -> int:
+        """Every native unit issued so far, custody legs included."""
+        return self._ledger.total_supply
+
     def machine_active(self, seat_id: int) -> bool:
         return self._ledger.machine_active(seat_id)
 
