@@ -38,6 +38,65 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How four version-ten replicas were delivered
+
+**The founder-decision gate passed with nothing reserved.** Issue #428, M4.3m,
+the fourth slice of ADR 0104's step 6. The scenario, the node choices, the
+restart windows, and the driven replica are version nine's run (ADR 0090). The
+two added refusals are `economy-transition-v10`'s, recorded in its execution
+vectors. Building each transaction for the next unseen height follows from the
+lifetime rule (ADR 0102). No ADR was needed.
+
+**Every transaction is built when it is submitted.** Version nine's run built
+its whole script before the launch, with a validity far beyond any height. That
+cannot work under version ten. An approval is admitted only from the height it
+is built for to one slot past it, and a four-replica network closes a block
+about every three seconds and cannot be told where a transaction lands. So
+`submit` takes a builder and calls it with the first height the model has not
+seen. The network is never behind the model, so the transaction lands at that
+height or after, well inside the slot.
+
+**Two refusals were added, and they make requirement 5 met.**
+
+- **A confirmation re-signed under the next nonce**, refused as
+  `UNAUTHORIZED`. Version nine executed this replay. A republished copy of the
+  original bytes would show nothing, because the mempool drops a hash it has
+  seen and the transaction never reaches an application. The re-signed form
+  is the one a network can be shown.
+- **A confirmation whose approval would outlive its slot**, refused as
+  `APPROVAL_LIFETIME_EXCEEDED`. It expires two slots after its build height,
+  so wherever inside a slot it lands, the lifetime rule refuses it. It carries
+  the unconsumed nonce, so no earlier condition refuses it first.
+
+The second was added after the first candidate's run had started. Reviewing
+requirement 5's text against the run showed replay protection on a network but
+not expiry. That run was cancelled and replaced, rather than claiming the
+requirement on half its evidence.
+
+**The first handoff correction this session shaped the plan.** It established
+that requirement 3 cannot be met by any fresh network, because a machine is
+active only from height 86,400. So this slice claims requirement 5 alone. The
+next action is the seeded network on which an active machine registers a
+person.
+
+**The durable-head audit chooses its reader by protocol version.**
+`application_head_v10` is version nine's reader under its own name, because
+step 7 deletes `application_head_v9`. The audit refuses a stamp for any version
+but nine and ten, and requires one for both.
+
+**Local evidence, limited by the host.** The whole sequence ran on the model
+with the system libsodium, in a scratch script, with every transaction built
+for the next unseen height and landing zero to three empty blocks later. All
+four refusals came back with their named codes, each on the empty-block root,
+and Bob ended at 1.76 units. A fake Unix-socket server showed that
+`application_head_v10` reads a version-ten head and refuses a version-nine one.
+
+**Hosted evidence.** Candidate run 40966839306 on `8820ddf` passed all four
+presets, and each printed the four-validator version-ten pass line: four
+refusals, both restarts inside the window, node 2 driven, and node 3 away
+while its peers reached height 13. It was the run's first execution. PR #429
+was rebase-merged as `0d52866`, whose tree is the candidate's byte for byte.
+
 ### How the first version-ten network run was delivered
 
 **The founder-decision gate passed with nothing reserved.** Issue #424, M4.3l,

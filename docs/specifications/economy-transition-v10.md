@@ -9,8 +9,9 @@ and every execution vector (M4.3e, ADR 0105). The snapshot (M4.3g, ADR 0108),
 the owning store (M4.3h, ADR 0109), the application under
 [`consensus-application-v3`](consensus-application-v3.md) (M4.3i, ADR 0110),
 the node process (M4.3j), and the Go adapter's client (M4.3k) are built. One
-node runs it through CometBFT (M4.3l), and no multi-replica network runs it
-yet. **The registration limit counts per founder**, as
+node runs it through CometBFT (M4.3l), and so do four replicas (M4.3m). No
+network has yet admitted a registration an active machine signs. **The
+registration limit counts per founder**, as
 [ADR 0106](../decisions/0106-founder-answer-the-registration-limit-counts-per-founder.md)
 answers. M4.3f revised this document, the model, and the kernel to carry it
 before any layer stored a version-ten state, and

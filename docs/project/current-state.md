@@ -13,7 +13,7 @@ the alternatives it rejected go in its delivery record.
 
 **M4, Founder identity, seats, and authority, is the active milestone.** It
 began when M3 closed on 2026-09-27. [`first-goal.md`](first-goal.md) states
-its eleven requirements, and four are met.
+its eleven requirements, and five are met.
 
 | # | Requirement | Status |
 | ---: | --- | --- |
@@ -21,7 +21,7 @@ its eleven requirements, and four are met.
 | 2 | A kind-4 and a kind-18 mint on a network | Met 2026-10-03, M4.2a to M4.2c |
 | 3 | The per-machine attestation-key registry | Specified in `economy-transition-v10`, M4.3a, and revised per founder, M4.3f; executes in Python and in the C++ kernel, M4.3b to M4.3f; one node runs launch-key registrations and a machine key through CometBFT, M4.3l; no network has admitted a registration a machine signs |
 | 4 | A deterministic test verifier as a replaceable component | Met 2026-10-09, M4.4, for version nine's proofs |
-| 5 | Sensitive-action authorization with expiry and replay protection | Specified in `economy-transition-v10`, M4.3a; executes in Python and in the C++ kernel, M4.3b to M4.3e; one node runs approvals at the lifetime bound through CometBFT, M4.3l; no network has refused a replayed approval |
+| 5 | Sensitive-action authorization with expiry and replay protection | Met 2026-10-29, M4.3m: specified in `economy-transition-v10`, M4.3a; executes in Python and in the C++ kernel, M4.3b to M4.3e; four replicas refuse a re-signed and an outliving approval |
 | 6 | Legacy succession mechanics | Open; the values are founder-reserved |
 | 7 | The threat model for local HUB verification | Met 2026-10-09, M4.7; its review is owed |
 | 8 | Storage bounds for every new entry | Open; due with each new entry |
@@ -55,21 +55,26 @@ every approvable kind through admission and execution, with real Ed25519. The
 Python model verifies every decision the command prints. Requirements 3 and 5
 will rebind what it signs, and the network fixtures still sign by hand.
 
-**Requirements 3 and 5 execute in both languages and on one node, and are not
-met.** Each lacks its own network evidence, and a multi-replica run alone
-supplies only requirement 5's.
+**Requirement 5 is met, and requirement 3 is not.** Both execute in both
+languages and on a network, but only requirement 5's network evidence is
+complete.
 
-- **No network has admitted a registration an active machine signs.** Every
-  network registration so far is the launch key's. A machine is active only
-  once its seat meets an assigned cycle, and the first assignment is at height
-  86,400, about three days of three-second blocks, which no fresh test network
-  reaches. So requirement 3 needs a version-ten network seeded past that height
-  (ADRs 0096 and 0097), with an active machine whose key the test holds, and a
-  person that machine registers on the network.
-- **No network has refused a replayed approval.** The same bytes twice never
-  reach an application, because the engine's mempool drops a hash it has seen.
-  So the replay a network can show is an approval re-signed under the next
-  nonce, which version ten refuses as `UNAUTHORIZED`.
+- **Requirement 5's network evidence is `cometbft_four_validator_v10_test.py`**
+  (M4.3m). Four replicas refuse Alice's transfer confirmation re-signed under
+  the next nonce as `UNAUTHORIZED`, a replay version nine executed. They refuse
+  a confirmation whose approval would outlive its slot as
+  `APPROVAL_LIFETIME_EXCEEDED`. Each refusal lands on the root an empty block
+  would. The republished bytes themselves never reach an application, because
+  the engine's mempool drops a hash it has seen.
+- **No network has admitted a registration an active machine signs**, so
+  requirement 3 is not met. Every network registration so far is the launch
+  key's. A machine is active only once its seat meets an assigned cycle, and
+  the first assignment is at height 86,400, about three days of three-second
+  blocks, which no fresh test network reaches. So requirement 3 needs a
+  version-ten network seeded past that height (ADRs 0096 and 0097), with an
+  active machine whose key the test holds, and a person that machine registers
+  on the network.
+
 [`economy-transition-v10`](../specifications/economy-transition-v10.md) and
 [ADR 0102](../decisions/0102-economy-transition-v10-the-registry-and-single-use-approvals.md)
 define them:
@@ -204,8 +209,24 @@ builders, signed by real Ed25519:
 Every approval expires exactly at its one-slot bound. The kind-23 block comes
 after the restart, so it passes only if the store restored the build authority
 key from its genesis. Info, asked through the engine, reports `10.0.0` and
-protocol version `10` at launch and after the restart. No multi-replica network
-runs version ten yet.
+protocol version `10` at launch and after the restart.
+
+**Four version-ten replicas run through CometBFT** (M4.3m).
+`cometbft_four_validator_v10_test.py` is version nine's four-validator run
+asked of version ten:
+
+- transactions through all four nodes, and two full restarts;
+- four named refusals, each on the root an empty block would produce:
+  `NONCE_MISMATCH`, `REPLAY`, and requirement 5's two;
+- node 2 driven directly while the network is down, interrupted mid-block and
+  refusing a block two heights ahead and a stamp below its head;
+- node 3 leaving, catching up, and proposing the next block.
+
+After every stop each store must name protocol version 10 and hold the model's
+height, stamp, and root. **Every transaction is built when it is submitted**,
+for the next height the model has not seen. An approval is admitted for one
+slot from the height it is built for, and a network cannot be told where a
+transaction lands.
 
 **The model found a specification defect, repaired before anything implemented
 it.** The registry step counted a mark of 0, which means never met, as meeting
@@ -268,7 +289,7 @@ vectors. The kernel reproduces every one of both.
 research seats' 731 cycles, and checks the exit audit's four claims at every
 window.
 
-**Nine network runs gate every full verification**, in `tools/verify.sh`:
+**Ten network runs gate every full verification**, in `tools/verify.sh`:
 
 - `cometbft_single_node_test.py` and `cometbft_four_validator_test.py`, the
   version-one devnet;
@@ -278,6 +299,8 @@ window.
 - `cometbft_four_validator_v9_test.py`: transactions through all four nodes,
   two named refusals, two full restarts, a driven replica refusing a bad block,
   and a replica that leaves and catches up;
+- `cometbft_four_validator_v10_test.py`, the same on version ten, with
+  requirement 5's two refusals;
 - `cometbft_skewed_replica_v9_test.py`, one replica's clock 120 seconds ahead,
   then behind, while the chain keeps committing;
 - `cometbft_founder_lifecycle_v9_test.py`, requirement 1;
@@ -378,11 +401,11 @@ dependency.
 ## Repository and verification
 
 - `kaikisegfault/protocol-stack`. Every issue is closed, and `main` is the only
-  branch. The next action, M4.3m, has no issue yet: the session that takes it
+  branch. The next action, M4.3n, has no issue yet: the session that takes it
   opens one.
-- **The last full hosted verification** is candidate run 40963235744, on
-  M4.3l's tree, which `main` holds byte for byte at `dcb631b`. Every preset
-  printed the version-ten run's pass line, at durable height 7.
+- **The last full hosted verification** is candidate run 40966839306, on
+  M4.3m's tree, which `main` holds byte for byte at `0d52866`. Every preset
+  printed both version-ten runs' pass lines.
 - `verify.yml` classifies the changed paths with `tools/verification_scope.py`.
   Markdown and skill metadata take the lightweight path:
   `tools/verify_metadata.py` and the `tests/tools` suites. Everything else takes
@@ -390,7 +413,7 @@ dependency.
   `gcc-sanitizers`, `clang-debug`, and `clang-sanitizers`.
 - The full path verifies and tests the Go module and builds with CMake. It runs
   188 CTest entries, or 199 on `clang-sanitizers`, which adds eleven fuzz smokes,
-  and then the nine network runs. "Verification required" gates the merge.
+  and then the ten network runs. "Verification required" gates the merge.
 - The owner's machine is resource-constrained. Run focused local checks, leave
   the matrix to the hosted runners, and remove local build trees with
   `tools/clean-local.sh`.
@@ -470,38 +493,33 @@ that yet.
 
 ## Exact next action
 
-**Run four version-ten replicas: `cometbft_four_validator_v10_test.py`,
-M4.3m**, the fourth slice of step 6 of ADR 0104's enumeration, as
-`cometbft_four_validator_v9_test.py` is for version nine. Four replicas take
-transactions through different nodes, two full restarts, two named refusals, a
-driven replica refusing a block whose stamp runs backwards, and a replica that
-leaves and catches up. After every stop each store is opened directly and must
-report the version-ten model's height, stamp, and root.
+**A machine registers a person on a seeded version-ten network: M4.3n**, the
+fifth slice of step 6 of ADR 0104's enumeration, and requirement 3's only route
+to a network. It is `seeded_mints_v9.py` and `cometbft_seeded_mints_v9_test.py`
+asked of version ten, with a machine key in the history.
 
-- `tests/integration/cometbft_devnet.py`'s durable-head audit reads version
-  ten's stamp over the version-two frame, as it reads version nine's, and
-  requires protocol version 10.
-- The scenario's transactions extend `tests/integration/version_ten_chain.py`,
-  each built for the height it is meant to commit at, because every HUB-proven
-  transaction must expire within one slot of it. A refusal's transaction must
-  still fit that bound, or it is refused as `APPROVAL_LIFETIME_EXCEEDED`
-  instead of for the reason under test.
-- One refusal is requirement 5's network evidence: Alice's transfer
-  confirmation re-signed under the next nonce, refused as `UNAUTHORIZED`, as
-  the execution vectors' `replay.the_confirmation_resigned_under_a_new_nonce`
-  records.
-- The driven replica speaks the version-two frame through
-  `tests/application/application_driver_v2.py`, which the version-ten headless
-  process suite already uses.
+- **The model runs the history alone**, as ADR 0096 does for version nine.
+  Alice and Bob register under the launch key. Alice buys and activates seat 0
+  in window 0, and registers its machine key through kind 23. Her machine
+  answers every audit through windows 1 and 2. Block 86,400 assigns window 1,
+  and its registry step marks her machine as having met it. That block is the
+  seed's head, stamped at launch, with the stamps below it a millisecond apart.
+- **Four replicas launch from it** through `version_ten_snapshot.py` and
+  `protocol-cometbft-devnet start -seed`. On the network, Alice's machine signs
+  a registration naming seat 0, and a new person registers. Alice's founder
+  count is then 1 in window 3. Her kind-4 and kind-18 mints execute too, which
+  moves requirement 2's evidence onto version ten.
+- Every key the network checks is real Ed25519: Alice's machine key, which
+  signs the network registration, and the HUB and signer keys of everyone who
+  transacts after the launch. The network restores the history and never
+  re-executes it.
+- Bob's seat is keyed too, but his machine answers no audit, so a registration
+  naming it is refused as `MACHINE_NOT_ACTIVE`. The launch key still signs,
+  because one active machine is far below 100.
 
-Step 6 then moves the skewed-replica, founder-lifecycle, seeded-launch, and
-seeded-mint runs onto version ten, with the HUB test verifier rebuilt for
-version ten and the network fixtures built on it. **The seeded version-ten run
-must include a person registered by an active machine**, because it is
-requirement 3's only route to a network: its seed carries a seat whose machine
-met window 1's assignment at height 86,400, under a machine key the test holds.
-Then step 7 deletes version nine's stack. A seeded version-ten network starts from
-`tests/integration/version_ten_snapshot.py`.
+Step 6 then moves the skewed-replica, founder-lifecycle, and seeded-launch runs
+onto version ten, with the HUB test verifier rebuilt for version ten and the
+network fixtures built on it. Then step 7 deletes version nine's stack.
 
 **Unblocked candidates behind it:**
 
