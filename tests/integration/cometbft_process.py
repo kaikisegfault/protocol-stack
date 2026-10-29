@@ -276,7 +276,22 @@ def application_head_v9(path: pathlib.Path) -> tuple[int, int, bytes]:
     ABCI's Info carries no stamp, so this, over the application's own socket, is
     the one place a replica's durable stamp can be read at all.
     """
-    height, stamp, root = _application_head(path, 9)
+    return _stamped_head(path, 9)
+
+
+def application_head_v10(path: pathlib.Path) -> tuple[int, int, bytes]:
+    """A version-ten application's durable height, stamp, and root.
+
+    Version nine's answer, which must name protocol version 10. It has its own
+    name so that ADR 0104's step 7 can delete `application_head_v9`.
+    """
+    return _stamped_head(path, 10)
+
+
+def _stamped_head(
+    path: pathlib.Path, protocol_version: int
+) -> tuple[int, int, bytes]:
+    height, stamp, root = _application_head(path, protocol_version)
     if stamp is None:
         raise RuntimeError("a version-two Info answer carried no stamp")
     return height, stamp, root

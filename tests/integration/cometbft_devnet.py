@@ -25,6 +25,7 @@ from dataclasses import dataclass
 from cometbft_process import (
     ManagedProcess,
     application_head_v9,
+    application_head_v10,
     application_info,
     await_unix_socket,
     reserve_non_ephemeral_port_block,
@@ -32,6 +33,8 @@ from cometbft_process import (
 )
 
 NODE_COUNT = 4
+# The versions whose durable head carries a stamp, and the reader for each.
+STAMPED_HEADS = {9: application_head_v9, 10: application_head_v10}
 COMMAND_TIMEOUT_SECONDS = 100
 PORT_OFFSETS = tuple(
     offset
@@ -399,11 +402,14 @@ def audit_durable_heads(
     **Version nine adds the durable stamp**, which `consensus-application-v2`
     requires all four replicas to hold identically. ABCI's Info carries none,
     so it is read here, over each application's own socket, and a version-nine
-    network must be audited with one.
+    network must be audited with one. **So must a version-ten network**, whose
+    answer must also name protocol version 10.
     """
-    if (network.protocol_version == 9) != (expected_timestamp is not None):
+    stamped = STAMPED_HEADS.get(network.protocol_version)
+    if (stamped is not None) != (expected_timestamp is not None):
         raise RuntimeError(
-            "a durable stamp is audited for version nine and only for it")
+            "a durable stamp is audited for versions nine and ten and only "
+            "for them")
     network.socket_root.mkdir(mode=0o700)
     try:
         for index in range(NODE_COUNT):
@@ -420,8 +426,8 @@ def audit_durable_heads(
             )
             try:
                 await_unix_socket(process, socket_path)
-                if expected_timestamp is not None:
-                    if application_head_v9(socket_path) != (
+                if stamped is not None:
+                    if stamped(socket_path) != (
                         expected_height,
                         expected_timestamp,
                         expected_application_root,
