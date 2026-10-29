@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-10-28
+Last updated: 2026-10-29
 
 This is the handoff. It says what is true now, and nothing else. How each slice
 was delivered is in [`delivery-log.md`](delivery-log.md), newest first, and
@@ -19,9 +19,9 @@ its eleven requirements, and four are met.
 | ---: | --- | --- |
 | 1 | A test Founder's lifecycle on the four-validator devnet | Met 2026-09-27, M4.1 |
 | 2 | A kind-4 and a kind-18 mint on a network | Met 2026-10-03, M4.2a to M4.2c |
-| 3 | The per-machine attestation-key registry | Specified in `economy-transition-v10`, M4.3a, and revised per founder, M4.3f; executes in Python and in the C++ kernel, M4.3b to M4.3f; no network runs it |
+| 3 | The per-machine attestation-key registry | Specified in `economy-transition-v10`, M4.3a, and revised per founder, M4.3f; executes in Python and in the C++ kernel, M4.3b to M4.3f; one node runs it through CometBFT, M4.3l, and no multi-replica network does |
 | 4 | A deterministic test verifier as a replaceable component | Met 2026-10-09, M4.4, for version nine's proofs |
-| 5 | Sensitive-action authorization with expiry and replay protection | Specified in `economy-transition-v10`, M4.3a; executes in Python and in the C++ kernel, M4.3b to M4.3e; no network runs it |
+| 5 | Sensitive-action authorization with expiry and replay protection | Specified in `economy-transition-v10`, M4.3a; executes in Python and in the C++ kernel, M4.3b to M4.3e; one node runs it through CometBFT, M4.3l, and no multi-replica network does |
 | 6 | Legacy succession mechanics | Open; the values are founder-reserved |
 | 7 | The threat model for local HUB verification | Met 2026-10-09, M4.7; its review is owed |
 | 8 | Storage bounds for every new entry | Open; due with each new entry |
@@ -55,8 +55,8 @@ every approvable kind through admission and execution, with real Ed25519. The
 Python model verifies every decision the command prints. Requirements 3 and 5
 will rebind what it signs, and the network fixtures still sign by hand.
 
-**Requirements 3 and 5 execute in both languages and are not met**, because no
-network runs version ten yet.
+**Requirements 3 and 5 execute in both languages and on one node, and are not
+met**, because no multi-replica network runs version ten yet.
 [`economy-transition-v10`](../specifications/economy-transition-v10.md) and
 [ADR 0102](../decisions/0102-economy-transition-v10-the-registry-and-single-use-approvals.md)
 define them:
@@ -175,7 +175,24 @@ and `nodeconfig.ProtocolV10` writes `"protocol-stack-v10"` and binds the
 genesis stamp. The version-two frame's shared pieces moved out of version
 nine's Go files, so ADR 0104's step 7 can delete those whole.
 
-No network runs version ten yet.
+**A version-ten chain runs through CometBFT** (M4.3l).
+`cometbft_version_ten_test.py` runs one `protocol-application-v10` node behind
+`protocol-cometbft-bridge -protocol-version 10`, for seven blocks with a restart
+after the third. Every receipt, header app hash, application head, block
+identifier, and durable head is the version-ten model's.
+`tests/integration/version_ten_chain.py` drives the model with its own
+builders, signed by real Ed25519:
+
+- Alice and Bob register under the launch key;
+- Alice buys and activates a seat, and registers its machine key under the
+  build authority's attestation;
+- Alice pays Bob.
+
+Every approval expires exactly at its one-slot bound. The kind-23 block comes
+after the restart, so it passes only if the store restored the build authority
+key from its genesis. Info, asked through the engine, reports `10.0.0` and
+protocol version `10` at launch and after the restart. No multi-replica network
+runs version ten yet.
 
 **The model found a specification defect, repaired before anything implemented
 it.** The registry step counted a mark of 0, which means never met, as meeting
@@ -238,11 +255,13 @@ vectors. The kernel reproduces every one of both.
 research seats' 731 cycles, and checks the exit audit's four claims at every
 window.
 
-**Eight network runs gate every full verification**, in `tools/verify.sh`:
+**Nine network runs gate every full verification**, in `tools/verify.sh`:
 
 - `cometbft_single_node_test.py` and `cometbft_four_validator_test.py`, the
   version-one devnet;
 - `cometbft_version_nine_test.py`, one node, six blocks, and a restart;
+- `cometbft_version_ten_test.py`, one version-ten node, seven blocks, and a
+  restart;
 - `cometbft_four_validator_v9_test.py`: transactions through all four nodes,
   two named refusals, two full restarts, a driven replica refusing a bad block,
   and a replica that leaves and catches up;
@@ -253,9 +272,9 @@ window.
   refused wrong launches;
 - `cometbft_seeded_mints_v9_test.py`, requirement 2.
 
-Every version-nine run compares each receipt and root with the model. The
-multi-replica runs then audit every store's durable height, stamp, and root
-through an independent process.
+Every version-nine and version-ten run compares each receipt and root with
+its version's model. The multi-replica runs then audit every store's durable
+height, stamp, and root through an independent process.
 
 **Older evidence is kept, not compiled.** The economy models and accepted
 vector files of versions two to eight stay and pass, and version nine's
@@ -346,10 +365,11 @@ dependency.
 ## Repository and verification
 
 - `kaikisegfault/protocol-stack`. Every issue is closed, and `main` is the only
-  branch. The next action, M4.3l, has no issue yet: the session that takes it
+  branch. The next action, M4.3m, has no issue yet: the session that takes it
   opens one.
-- **The last full hosted verification** is candidate run 40606946574, on
-  M4.3k's tree, which `main` holds byte for byte at `ee980ab`.
+- **The last full hosted verification** is candidate run 40963235744, on
+  M4.3l's tree, which `main` holds byte for byte at `dcb631b`. Every preset
+  printed the version-ten run's pass line, at durable height 7.
 - `verify.yml` classifies the changed paths with `tools/verification_scope.py`.
   Markdown and skill metadata take the lightweight path:
   `tools/verify_metadata.py` and the `tests/tools` suites. Everything else takes
@@ -357,7 +377,7 @@ dependency.
   `gcc-sanitizers`, `clang-debug`, and `clang-sanitizers`.
 - The full path verifies and tests the Go module and builds with CMake. It runs
   188 CTest entries, or 199 on `clang-sanitizers`, which adds eleven fuzz smokes,
-  and then the eight network runs. "Verification required" gates the merge.
+  and then the nine network runs. "Verification required" gates the merge.
 - The owner's machine is resource-constrained. Run focused local checks, leave
   the matrix to the hosted runners, and remove local build trees with
   `tools/clean-local.sh`.
@@ -437,25 +457,30 @@ that yet.
 
 ## Exact next action
 
-**Run version ten through CometBFT: `cometbft_version_ten_test.py`, M4.3l**,
-the third slice of step 6 of ADR 0104's enumeration, as
-`cometbft_version_nine_test.py` was for version nine (ADR 0090). One node runs
-`protocol-application-v10` behind `protocol-cometbft-bridge -protocol-version
-10`. It runs six blocks and a restart, and every receipt and root is compared
-with the version-ten model.
+**Run four version-ten replicas: `cometbft_four_validator_v10_test.py`,
+M4.3m**, the fourth slice of step 6 of ADR 0104's enumeration, as
+`cometbft_four_validator_v9_test.py` is for version nine. Four replicas take
+transactions through different nodes, two full restarts, two named refusals, a
+driven replica refusing a block whose stamp runs backwards, and a replica that
+leaves and catches up. After every stop each store is opened directly and must
+report the version-ten model's height, stamp, and root.
 
-- `tests/integration/cometbft_process.py` gains protocol version 10. Its
-  independent head audit reads frame version 2 for versions nine and ten, and
-  checks Info's protocol version.
-- The transactions are the version-ten model's, signed with real Ed25519:
-  registrations under the launch key, which the test holds, and a transfer.
-- The genesis is minted at launch, as version nine's is, because CometBFT
-  stamps block 1 with the genesis time (ADR 0088).
+- `tests/integration/cometbft_devnet.py`'s durable-head audit reads version
+  ten's stamp over the version-two frame, as it reads version nine's, and
+  requires protocol version 10.
+- The scenario's transactions extend `tests/integration/version_ten_chain.py`,
+  each built for the height it is meant to commit at, because every HUB-proven
+  transaction must expire within one slot of it. A refusal's transaction must
+  still fit that bound, or it is refused as `APPROVAL_LIFETIME_EXCEEDED`
+  instead of for the reason under test.
+- The driven replica speaks the version-two frame through
+  `tests/application/application_driver_v2.py`, which the version-ten headless
+  process suite already uses.
 
-Step 6 then moves the four-validator, skewed-replica, founder-lifecycle,
-seeded-launch, and seeded-mint runs onto version ten, with the HUB test verifier
-rebuilt for version ten and the network fixtures built on it. Then step 7
-deletes version nine's stack. A seeded version-ten network starts from
+Step 6 then moves the skewed-replica, founder-lifecycle, seeded-launch, and
+seeded-mint runs onto version ten, with the HUB test verifier rebuilt for
+version ten and the network fixtures built on it. Then step 7 deletes version
+nine's stack. A seeded version-ten network starts from
 `tests/integration/version_ten_snapshot.py`.
 
 **Unblocked candidates behind it:**
@@ -469,9 +494,8 @@ are version nine's, though, and version nine's kernel will not gain the entry
 point, so that evidence waits for the suite to be rebound to version ten. An
 unverified partial draft is in `.claude/drafts/404-scenario-suite-v10/`.
 
-Moving the network fixtures onto `protocol-hub-test-verifier-v9` waits for
-version ten to run on a network, because version ten changes what they build.
-A version-ten verifier depends only on the kernel and can be built first; an
+Moving the network fixtures onto a HUB test verifier now has a version-ten
+network to run on. A version-ten verifier depends only on the kernel; an
 unverified partial draft is in `.claude/drafts/403-hub-test-verifier-v10/`.
 
 ## Blockers

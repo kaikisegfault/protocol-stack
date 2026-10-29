@@ -38,6 +38,69 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How the first version-ten network run was delivered
+
+**The founder-decision gate passed with nothing reserved.** Issue #424, M4.3l,
+the third slice of ADR 0104's step 6. The run's shape is ADR 0090's, the
+genesis minted at launch is ADR 0088's, the restart window is ADR 0089's, the
+one-slot approval bound is `economy-transition-v10`'s, and Info's protocol
+version is `consensus-application-v3`'s. The launch key, dispute authority,
+build authority, and HUB keys are test stand-ins derived from their labels.
+The constitution allows labelled stand-ins on a test network, and they decide
+nothing about who holds the production launch or build-signing keys, which
+stays founder-reserved. No ADR was needed.
+
+**The transactions are the model's own builders, not a restatement of them.**
+Version nine's fixture built every transaction by hand, because version nine's
+model fixture signed with counter tokens. Version ten's
+`fixture.Builder` takes a signature oracle and people by value. Handing it a
+real-Ed25519 `Signer` and people with derived keys gives the network run
+exactly the approval construction the vectors were recorded with, so the run
+cannot pass on a second, divergent copy of what version ten signs.
+`Signer` and `engine_millis` are version nine's restated, so step 7 can delete
+`version_nine_chain.py` whole, as ADR 0092's deletion of version eight's
+fixture did not reach version nine's.
+
+**The handoff named six blocks, and the run has seven.** The seventh is a
+kind-23 machine key, placed after the restart. No root commits to the build
+authority key, so a store that reopened without it would commit the first five
+blocks and refuse the sixth's registration as `UNAUTHORIZED`. Every layer from the store up checks that with the
+model's `restart.` run, and this is the same check through an engine.
+
+**Every HUB-proven transaction expires exactly one slot after its height.**
+That is the lifetime rule's admitted boundary, so it is exercised end to end.
+The script is still fixed before the first block, because each step's height is
+its position: a transaction that committed anywhere else fails the run on its
+height first. CheckTx is admission only and reads no height, so a transaction
+at the bound is not refused by the mempool.
+
+**Info's protocol version is checked twice, by two routes.** Through the engine,
+`/abci_info` must report `10.0.0` and protocol version `10` at launch and after
+the restart. That answer comes from the bridge's version string and the
+application's own version, on every call. Over the application's own socket,
+after each orderly stop, the harness reads the durable head over the
+version-two frame and refuses an answer naming another version. A
+version-nine application asked as version ten is refused there, which a
+fake-socket probe showed.
+
+**Rejected:** making `cometbft_version_nine_test.py` take a protocol-version
+argument. ADR 0104 rejected version-agnostic layers, and step 7 deletes the
+version-nine run whole. So the run is version nine's restated, at the cost of
+about 300 duplicated lines that live only until step 7.
+
+**Local evidence, limited by the host.** The host has no CMake and no CometBFT
+module cache, so the network run itself executes only on the hosted matrix.
+Locally, the seven-block script ran on the model with the system libsodium in a
+scratch script. Every transaction succeeded: Bob ended at 1.72 units, Alice at
+1.71 less 0.01 and four fees. A fake Unix-socket server showed the harness
+accepts a version-ten Info answer, refuses a version-nine one asked as ten, and
+still reads version nine's stamp. Every changed file compiles.
+
+**Hosted evidence.** Candidate run 40963235744 on `fafe6b1` passed all four
+presets, and each printed the version-ten run's pass line at durable height 7.
+It was the network run's first execution, and it passed first time. PR #425
+was rebase-merged as `dcb631b`, whose tree is the candidate's byte for byte.
+
 ### How the Go adapter's version-ten client was delivered
 
 **The founder-decision gate passed with nothing reserved.** Issue #420, M4.3k,
