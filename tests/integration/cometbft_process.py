@@ -14,6 +14,8 @@ from cometbft_rpc import rpc_call
 
 HEADER = struct.Struct(">4sHBBQI")
 INFO_KIND = 1
+# The protocol versions whose application speaks the version-two frame.
+VERSION_TWO_FRAME = (9, 10)
 MAXIMUM_FRAME = 33_554_432
 MAXIMUM_PORT = 65_535
 MINIMUM_UNPRIVILEGED_PORT = 1_024
@@ -258,6 +260,11 @@ def application_info(
     function drops. The version-nine root commits to the stamp, so comparing the
     root against an independent derivation compares the stamp too.
     `application_head_v9` returns the stamp itself for a caller that states it.
+
+    **Version ten answers over the same frame**, which `consensus-application-v3`
+    keeps at version two, so the frame cannot tell the two ledgers apart. The
+    protocol version in the answer is what does, and a version-nine application
+    asked for version ten is refused on it.
     """
     height, _stamp, root = _application_head(path, protocol_version)
     return height, root
@@ -279,7 +286,9 @@ def _application_head(
     path: pathlib.Path,
     protocol_version: int,
 ) -> tuple[int, int | None, bytes]:
-    wire_version, payload_size = (2, 62) if protocol_version == 9 else (1, 54)
+    wire_version, payload_size = (
+        (2, 62) if protocol_version in VERSION_TWO_FRAME else (1, 54)
+    )
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
         connection.connect(str(path))
         connection.sendall(
@@ -342,6 +351,25 @@ def inspect_identity_v9(
     initializer accepts, so a value this accepted and it refused would fail one
     step later with a vaguer error.
     """
+    return _stamped_identity(application_binary, genesis)
+
+
+def inspect_identity_v10(
+    application_binary: pathlib.Path,
+    genesis: pathlib.Path,
+) -> tuple[bytes, bytes, int]:
+    """Version nine's three figures, which a version-ten binary prints unchanged.
+
+    It has its own name so that ADR 0104's step 7 can delete
+    `inspect_identity_v9` with version nine's callers and leave this one.
+    """
+    return _stamped_identity(application_binary, genesis)
+
+
+def _stamped_identity(
+    application_binary: pathlib.Path,
+    genesis: pathlib.Path,
+) -> tuple[bytes, bytes, int]:
     values = _identity_values(
         application_binary,
         genesis,
