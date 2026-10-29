@@ -19,9 +19,9 @@ its eleven requirements, and four are met.
 | ---: | --- | --- |
 | 1 | A test Founder's lifecycle on the four-validator devnet | Met 2026-09-27, M4.1 |
 | 2 | A kind-4 and a kind-18 mint on a network | Met 2026-10-03, M4.2a to M4.2c |
-| 3 | The per-machine attestation-key registry | Specified in `economy-transition-v10`, M4.3a, and revised per founder, M4.3f; executes in Python and in the C++ kernel, M4.3b to M4.3f; one node runs it through CometBFT, M4.3l, and no multi-replica network does |
+| 3 | The per-machine attestation-key registry | Specified in `economy-transition-v10`, M4.3a, and revised per founder, M4.3f; executes in Python and in the C++ kernel, M4.3b to M4.3f; one node runs launch-key registrations and a machine key through CometBFT, M4.3l; no network has admitted a registration a machine signs |
 | 4 | A deterministic test verifier as a replaceable component | Met 2026-10-09, M4.4, for version nine's proofs |
-| 5 | Sensitive-action authorization with expiry and replay protection | Specified in `economy-transition-v10`, M4.3a; executes in Python and in the C++ kernel, M4.3b to M4.3e; one node runs it through CometBFT, M4.3l, and no multi-replica network does |
+| 5 | Sensitive-action authorization with expiry and replay protection | Specified in `economy-transition-v10`, M4.3a; executes in Python and in the C++ kernel, M4.3b to M4.3e; one node runs approvals at the lifetime bound through CometBFT, M4.3l; no network has refused a replayed approval |
 | 6 | Legacy succession mechanics | Open; the values are founder-reserved |
 | 7 | The threat model for local HUB verification | Met 2026-10-09, M4.7; its review is owed |
 | 8 | Storage bounds for every new entry | Open; due with each new entry |
@@ -56,7 +56,20 @@ Python model verifies every decision the command prints. Requirements 3 and 5
 will rebind what it signs, and the network fixtures still sign by hand.
 
 **Requirements 3 and 5 execute in both languages and on one node, and are not
-met**, because no multi-replica network runs version ten yet.
+met.** Each lacks its own network evidence, and a multi-replica run alone
+supplies only requirement 5's.
+
+- **No network has admitted a registration an active machine signs.** Every
+  network registration so far is the launch key's. A machine is active only
+  once its seat meets an assigned cycle, and the first assignment is at height
+  86,400, about three days of three-second blocks, which no fresh test network
+  reaches. So requirement 3 needs a version-ten network seeded past that height
+  (ADRs 0096 and 0097), with an active machine whose key the test holds, and a
+  person that machine registers on the network.
+- **No network has refused a replayed approval.** The same bytes twice never
+  reach an application, because the engine's mempool drops a hash it has seen.
+  So the replay a network can show is an approval re-signed under the next
+  nonce, which version ten refuses as `UNAUTHORIZED`.
 [`economy-transition-v10`](../specifications/economy-transition-v10.md) and
 [ADR 0102](../decisions/0102-economy-transition-v10-the-registry-and-single-use-approvals.md)
 define them:
@@ -473,14 +486,21 @@ report the version-ten model's height, stamp, and root.
   transaction must expire within one slot of it. A refusal's transaction must
   still fit that bound, or it is refused as `APPROVAL_LIFETIME_EXCEEDED`
   instead of for the reason under test.
+- One refusal is requirement 5's network evidence: Alice's transfer
+  confirmation re-signed under the next nonce, refused as `UNAUTHORIZED`, as
+  the execution vectors' `replay.the_confirmation_resigned_under_a_new_nonce`
+  records.
 - The driven replica speaks the version-two frame through
   `tests/application/application_driver_v2.py`, which the version-ten headless
   process suite already uses.
 
 Step 6 then moves the skewed-replica, founder-lifecycle, seeded-launch, and
 seeded-mint runs onto version ten, with the HUB test verifier rebuilt for
-version ten and the network fixtures built on it. Then step 7 deletes version
-nine's stack. A seeded version-ten network starts from
+version ten and the network fixtures built on it. **The seeded version-ten run
+must include a person registered by an active machine**, because it is
+requirement 3's only route to a network: its seed carries a seat whose machine
+met window 1's assignment at height 86,400, under a machine key the test holds.
+Then step 7 deletes version nine's stack. A seeded version-ten network starts from
 `tests/integration/version_ten_snapshot.py`.
 
 **Unblocked candidates behind it:**

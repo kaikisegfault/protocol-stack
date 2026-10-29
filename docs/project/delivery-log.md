@@ -101,6 +101,16 @@ presets, and each printed the version-ten run's pass line at durable height 7.
 It was the network run's first execution, and it passed first time. PR #425
 was rebase-merged as `dcb631b`, whose tree is the candidate's byte for byte.
 
+**The first handoff overstated what was left of requirements 3 and 5**, and a
+side review caught it the same session. It said the two lacked only a
+multi-replica network. But this run's registrations are all the launch key's,
+and no network has admitted one an active machine signs. A machine is active
+only from the first assignment, at height 86,400, so that evidence needs a
+seeded network, and the four-validator run will not supply it. A replayed
+approval has not been refused on a network either. The handoff now names both
+gaps, the seeded run that closes requirement 3's, and the re-signed
+confirmation that M4.3m carries for requirement 5's.
+
 ### How the Go adapter's version-ten client was delivered
 
 **The founder-decision gate passed with nothing reserved.** Issue #420, M4.3k,
