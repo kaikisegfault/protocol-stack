@@ -38,6 +38,74 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How a machine first registered a person on a network was delivered
+
+**The founder-decision gate passed with nothing reserved.** Issue #431, M4.3n,
+the fifth slice of ADR 0104's step 6. These were already decided:
+
+- an active machine is one whose seat met its most recently assigned cycle
+  (ADR 0101);
+- a machine's registrations count against the founder who owns the attesting
+  seat (ADRs 0106 and 0107);
+- the launch key signs until 100 machines are active (ADR 0101);
+- a failed cycle's Founder portion settles at the window's best performer
+  (ADR 0049);
+- the history is seeded the way ADRs 0096 and 0097 seed version nine's, and
+  ADR 0108 gives the version-ten snapshot.
+
+The keys are labelled test stand-ins. No ADR was needed.
+
+**Why a seed, and why this is requirement 3.** The registry's rule is that a
+registration is valid under an active machine's key, or the launch key's until
+100 machines are active. Until this slice, every network registration was the
+launch key's. No machine is active before the first assignment at height
+86,400, and a network begun at genesis reaches that in about three days. The
+model runs that history alone in under two seconds, and four replicas launch
+from its head.
+
+**Two seats are keyed, and only one is active.** Bob's machine answers no audit,
+so his seat fails window 1, and a registration naming it is refused as
+`MACHINE_NOT_ACTIVE`. So the network refuses a machine for not being active,
+not just for having no key. Bob's failure also gives the kind-4 mint a figure
+of its own. Alice collects 1,148.6 units, her seat's 574.3 and Bob's, so a
+failed cycle's settlement executes on a network for the first time.
+
+**The amounts are checked as amounts.** The receipts are compared with the
+model's, which compares two implementations. On top of that, each mint step
+names what it must add to the issued supply and what it must credit Alice's
+escrow, and the run compares both. So a model and kernel that agreed on a wrong
+figure would still fail.
+
+**The first candidate failed on that check, and the chain was right.** Run
+40970133078 on `eca741b` reached the kind-4 mint on all four presets, with
+every receipt and root the model's. Then each preset failed:
+`issued 68400000000 atomic units, not 114860000000`. The check had measured
+Alice's balance change, but a kind-4 mint credits only the operator leg to the
+minting escrow and puts the four institutional legs in custody. 684 units is
+exactly two seats' 342-unit operator legs. The local smokes had read the
+receipt's total and never executed the test's own check, so they could not
+have caught it. Before the cause was found, two other explanations were ruled
+out on the model: eight launch times and six landing lags all give 1,148.6. The
+fix checks the issuance by the supply and the credit by the balance. A new
+smoke drives the test's own step function with only the network stubbed, and
+would have failed the same way.
+
+**The fixture grew general builders rather than more named ones.** Seats,
+machines, mints, and transfers take the person, and newcomers derive their keys
+from a name. The single-node and four-replica runs keep their `alice_*` names,
+which now delegate.
+
+**Local evidence, limited by the host.** The history ran on the model with the
+system libsodium in 1.8 seconds, and Alice's machine answered all 39 audits.
+All seven network steps then produced their codes and amounts on the model,
+and the head held one active machine and an unretired launch key. M4.3l's and
+M4.3m's model smokes still pass.
+
+**Hosted evidence.** Candidate run 40972792857 on `2fbdcc5` passed all four
+presets. Each printed the seeded-machines pass line, with seat 0's machine
+having answered 62 audits and the network reaching height 86,408. PR #432 was
+rebase-merged as `375a586`, whose tree is the candidate's byte for byte.
+
 ### How four version-ten replicas were delivered
 
 **The founder-decision gate passed with nothing reserved.** Issue #428, M4.3m,

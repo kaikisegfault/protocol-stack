@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-10-29
+Last updated: 2026-10-30
 
 This is the handoff. It says what is true now, and nothing else. How each slice
 was delivered is in [`delivery-log.md`](delivery-log.md), newest first, and
@@ -13,13 +13,13 @@ the alternatives it rejected go in its delivery record.
 
 **M4, Founder identity, seats, and authority, is the active milestone.** It
 began when M3 closed on 2026-09-27. [`first-goal.md`](first-goal.md) states
-its eleven requirements, and five are met.
+its eleven requirements, and six are met.
 
 | # | Requirement | Status |
 | ---: | --- | --- |
 | 1 | A test Founder's lifecycle on the four-validator devnet | Met 2026-09-27, M4.1 |
-| 2 | A kind-4 and a kind-18 mint on a network | Met 2026-10-03, M4.2a to M4.2c |
-| 3 | The per-machine attestation-key registry | Specified in `economy-transition-v10`, M4.3a, and revised per founder, M4.3f; executes in Python and in the C++ kernel, M4.3b to M4.3f; one node runs launch-key registrations and a machine key through CometBFT, M4.3l; no network has admitted a registration a machine signs |
+| 2 | A kind-4 and a kind-18 mint on a network | Met 2026-10-03, M4.2a to M4.2c; repeated on version ten, M4.3n |
+| 3 | The per-machine attestation-key registry | Met 2026-10-30, M4.3n: specified in `economy-transition-v10`, M4.3a, and revised per founder, M4.3f; executes in Python and in the C++ kernel, M4.3b to M4.3f; four seeded replicas admit a registration an active machine signs and refuse an inactive one's |
 | 4 | A deterministic test verifier as a replaceable component | Met 2026-10-09, M4.4, for version nine's proofs |
 | 5 | Sensitive-action authorization with expiry and replay protection | Met 2026-10-29, M4.3m: specified in `economy-transition-v10`, M4.3a; executes in Python and in the C++ kernel, M4.3b to M4.3e; four replicas refuse a re-signed and an outliving approval |
 | 6 | Legacy succession mechanics | Open; the values are founder-reserved |
@@ -55,9 +55,8 @@ every approvable kind through admission and execution, with real Ed25519. The
 Python model verifies every decision the command prints. Requirements 3 and 5
 will rebind what it signs, and the network fixtures still sign by hand.
 
-**Requirement 5 is met, and requirement 3 is not.** Both execute in both
-languages and on a network, but only requirement 5's network evidence is
-complete.
+**Requirements 3 and 5 are met.** Both execute in both languages and on a
+network.
 
 - **Requirement 5's network evidence is `cometbft_four_validator_v10_test.py`**
   (M4.3m). Four replicas refuse Alice's transfer confirmation re-signed under
@@ -66,14 +65,14 @@ complete.
   `APPROVAL_LIFETIME_EXCEEDED`. Each refusal lands on the root an empty block
   would. The republished bytes themselves never reach an application, because
   the engine's mempool drops a hash it has seen.
-- **No network has admitted a registration an active machine signs**, so
-  requirement 3 is not met. Every network registration so far is the launch
-  key's. A machine is active only once its seat meets an assigned cycle, and
+- **Requirement 3's network evidence is `cometbft_seeded_machines_v10_test.py`**
+  (M4.3n). A machine is active only once its seat meets an assigned cycle, and
   the first assignment is at height 86,400, about three days of three-second
-  blocks, which no fresh test network reaches. So requirement 3 needs a
-  version-ten network seeded past that height (ADRs 0096 and 0097), with an
-  active machine whose key the test holds, and a person that machine registers
-  on the network.
+  blocks. So four replicas are seeded at that height from a model history in
+  which Alice's machine met window 1 and Bob's met nothing. On the network,
+  Alice's machine registers Carol, counted against Alice, and Bob's is refused
+  as `MACHINE_NOT_ACTIVE`. The launch key still registers someone, because one
+  active machine is far below 100.
 
 [`economy-transition-v10`](../specifications/economy-transition-v10.md) and
 [ADR 0102](../decisions/0102-economy-transition-v10-the-registry-and-single-use-approvals.md)
@@ -228,6 +227,24 @@ for the next height the model has not seen. An approval is admitted for one
 slot from the height it is built for, and a network cannot be told where a
 transaction lands.
 
+**A machine registers a person on a seeded version-ten network** (M4.3n).
+`seeded_machines_v10.py` runs the history in the model alone. Alice and Bob
+each buy, activate, and key a seat through kind 23, and only Alice's machine
+answers its audits. Block 86,400 assigns window 1 and marks her machine.
+`cometbft_seeded_machines_v10_test.py` launches four replicas from that head
+through `version_ten_snapshot.py`, and through all four nodes:
+
+- Alice's machine registers Carol, and Bob's inactive one is refused;
+- the launch key registers Erin, and Carol pays Alice;
+- Alice's kind-18 mint issues 3.42 units, and her kind-4 mint 1,148.6: her
+  seat's 574.3 and Bob's failed cycle's, which settles at the window's best
+  performer (ADR 0049). Of that, the two 342-unit operator legs reach her
+  escrow, and the institutional legs go to custody;
+- a second kind-4 mint is refused as `NOTHING_TO_MINT`.
+
+Every receipt, root, and durable head is the model's, and the run checks each
+mint's issuance by the supply and its credit by Alice's balance.
+
 **The model found a specification defect, repaired before anything implemented
 it.** The registry step counted a mark of 0, which means never met, as meeting
 window 0. So 100 keys registered in the first two windows retired the launch key
@@ -289,7 +306,7 @@ vectors. The kernel reproduces every one of both.
 research seats' 731 cycles, and checks the exit audit's four claims at every
 window.
 
-**Ten network runs gate every full verification**, in `tools/verify.sh`:
+**Eleven network runs gate every full verification**, in `tools/verify.sh`:
 
 - `cometbft_single_node_test.py` and `cometbft_four_validator_test.py`, the
   version-one devnet;
@@ -306,7 +323,9 @@ window.
 - `cometbft_founder_lifecycle_v9_test.py`, requirement 1;
 - `cometbft_seeded_launch_v9_test.py`, a launch from a seeded head and three
   refused wrong launches;
-- `cometbft_seeded_mints_v9_test.py`, requirement 2.
+- `cometbft_seeded_mints_v9_test.py`, requirement 2;
+- `cometbft_seeded_machines_v10_test.py`, requirement 3, and requirement 2 on
+  version ten.
 
 Every version-nine and version-ten run compares each receipt and root with
 its version's model. The multi-replica runs then audit every store's durable
@@ -401,11 +420,11 @@ dependency.
 ## Repository and verification
 
 - `kaikisegfault/protocol-stack`. Every issue is closed, and `main` is the only
-  branch. The next action, M4.3n, has no issue yet: the session that takes it
+  branch. The next action, M4.3o, has no issue yet: the session that takes it
   opens one.
-- **The last full hosted verification** is candidate run 40966839306, on
-  M4.3m's tree, which `main` holds byte for byte at `0d52866`. Every preset
-  printed both version-ten runs' pass lines.
+- **The last full hosted verification** is candidate run 40972792857, on
+  M4.3n's tree, which `main` holds byte for byte at `375a586`. Every preset
+  printed all three version-ten runs' pass lines.
 - `verify.yml` classifies the changed paths with `tools/verification_scope.py`.
   Markdown and skill metadata take the lightweight path:
   `tools/verify_metadata.py` and the `tests/tools` suites. Everything else takes
@@ -413,7 +432,7 @@ dependency.
   `gcc-sanitizers`, `clang-debug`, and `clang-sanitizers`.
 - The full path verifies and tests the Go module and builds with CMake. It runs
   188 CTest entries, or 199 on `clang-sanitizers`, which adds eleven fuzz smokes,
-  and then the ten network runs. "Verification required" gates the merge.
+  and then the eleven network runs. "Verification required" gates the merge.
 - The owner's machine is resource-constrained. Run focused local checks, leave
   the matrix to the hosted runners, and remove local build trees with
   `tools/clean-local.sh`.
@@ -433,7 +452,8 @@ resource network, bridges and liquidity (M9), the wallet (M10), a public
 testnet, and a mainnet. Revenue routing and escrow payouts exist only as Python
 models.
 
-**M4's requirements 3, 5, 6, and 8 to 11.** Three findings bear on them.
+**M4's requirements 6 and 8 to 11, and version nine's retirement.** Three
+findings bear on them.
 
 - **Version nine accepts a HUB approval twice, and `hub-test-verifier-v9`
   executes it.** Each of the five HUB messages binds the transaction's
@@ -442,8 +462,9 @@ models.
   a signer, the published relax is accepted again under a new nonce. A signer
   key alone undoes the tightening, which is the weakening ADR 0043's asymmetry
   exists to prevent. One kind-19 confirmation also moves value twice.
-  The version-ten model refuses both, in both forms. The verifier's check
-  flips when the kernel runs version ten.
+  Version ten refuses both, in both forms, and four replicas refuse the
+  re-signed confirmation (M4.3m). The verifier's check flips when it is
+  rebuilt for version ten.
 - **A HUB key derived from a face alone is only as secret as the face.**
   Anyone holding a good enough image could compute it offline, with no
   liveness check, so the derivation must also depend on a secret only an
@@ -493,33 +514,27 @@ that yet.
 
 ## Exact next action
 
-**A machine registers a person on a seeded version-ten network: M4.3n**, the
-fifth slice of step 6 of ADR 0104's enumeration, and requirement 3's only route
-to a network. It is `seeded_mints_v9.py` and `cometbft_seeded_mints_v9_test.py`
-asked of version ten, with a machine key in the history.
+**Run a Founder's lifecycle on four version-ten replicas:
+`cometbft_founder_lifecycle_v10_test.py`, M4.3o**, the sixth slice of step 6
+of ADR 0104's enumeration, and requirement 1's evidence moved onto version ten.
+It is `founder_lifecycle_v9.py` and its run asked of version ten:
 
-- **The model runs the history alone**, as ADR 0096 does for version nine.
-  Alice and Bob register under the launch key. Alice buys and activates seat 0
-  in window 0, and registers its machine key through kind 23. Her machine
-  answers every audit through windows 1 and 2. Block 86,400 assigns window 1,
-  and its registry step marks her machine as having met it. That block is the
-  seed's head, stamped at launch, with the stamps below it a millisecond apart.
-- **Four replicas launch from it** through `version_ten_snapshot.py` and
-  `protocol-cometbft-devnet start -seed`. On the network, Alice's machine signs
-  a registration naming seat 0, and a new person registers. Alice's founder
-  count is then 1 in window 3. Her kind-4 and kind-18 mints execute too, which
-  moves requirement 2's evidence onto version ten.
-- Every key the network checks is real Ed25519: Alice's machine key, which
-  signs the network registration, and the HUB and signer keys of everyone who
-  transacts after the launch. The network restores the history and never
-  re-executes it.
-- Bob's seat is keyed too, but his machine answers no audit, so a registration
-  naming it is refused as `MACHINE_NOT_ACTIVE`. The launch key still signs,
-  because one active machine is far below 100.
+- Alice enrolls, buys and activates a seat, admits a signer, and creates and
+  funds a holding escrow;
+- her HUB key revokes every signer she has, and after a restart it recovers
+  her;
+- another person's HUB key, and her own signer posing as the authority, are
+  both refused.
 
-Step 6 then moves the skewed-replica, founder-lifecycle, and seeded-launch runs
-onto version ten, with the HUB test verifier rebuilt for version ten and the
-network fixtures built on it. Then step 7 deletes version nine's stack.
+Kinds 13 to 16 are signed whole by the HUB key, so each always carries a HUB
+proof and the lifetime governs it. So every transaction is built when it is
+submitted, as M4.3m's are, and the steps carry builders, as
+`seeded_machines_v10.Step` does.
+
+Step 6 then moves the skewed-replica and seeded-launch runs onto version ten,
+and rebuilds the HUB test verifier for version ten with the network fixtures
+built on it. Then step 7 deletes version nine's stack, after ADR 0104's audit
+of what version ten still needs from it.
 
 **Unblocked candidates behind it:**
 
