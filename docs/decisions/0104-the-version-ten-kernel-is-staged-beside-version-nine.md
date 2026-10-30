@@ -72,13 +72,16 @@ is a repository that compiles two economy contracts with no decided end.
 
 **Step 7 must not take what version ten still needs.** ADR 0092 found five
 things a deletion by filename would have broken. The same audit is owed here.
-It has three named items already:
+It has four named items already:
 
 - the accepted version-nine vector files, which this codec's suite reads as
   carried sources;
 - the version-nine Python model, which version ten's model imports throughout;
 - `economy_v9_fuzz` and `storage_snapshot_v9_fuzz`, which need version-ten
-  counterparts rather than removal, as `economy_v8_fuzz` did.
+  counterparts rather than removal, as `economy_v8_fuzz` did;
+- `hub-test-verifier-v9` and version nine's lifecycle run, which are what checks
+  kinds 13, 14, and 16 on version nine's kernel. Version ten's execution vectors
+  must record those kinds, refusals included, before step 7 removes them.
 
 ## Why the version-ten suite does not link version nine
 

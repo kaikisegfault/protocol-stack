@@ -38,6 +38,62 @@ the handoff is what gets repaired.
 Newest first. Every record from `M3.15a` downward was moved verbatim out of the
 handoff; `M3.15b` and anything after it was written here.
 
+### How a Founder's lifecycle reached version ten was delivered
+
+**The founder-decision gate passed with nothing reserved.** Issue #434, M4.3o,
+the sixth slice of ADR 0104's step 6. These were already decided:
+
+- the lifecycle's steps are requirement 1's, and its refusals are the contract's;
+- the launch key signs registrations until 100 machines are active (ADR 0101);
+- the HUB key signs kinds 13 to 16 whole, and recovery is kind 15 (ADR 0044);
+- an approval lives one slot (ADR 0102).
+
+The keys are labelled test stand-ins. No ADR was needed.
+
+**Why this slice exists.** Requirement 1's evidence ran on version nine alone,
+so ADR 0104's step 7 would have deleted it.
+
+**The script grew three things version nine's could not say, or did not.**
+Kind 23 keys the seat's machine, and the run checks that losing every signer
+leaves that key in place, because the key is the seat's and no signer's. A
+recovery whose approval would outlive its slot is refused while Alice holds no
+signer, so a captured recovery cannot be withheld for later. And an empty escrow
+is created and deleted.
+
+**The delete came from a review note the owner relayed.** It observed that the
+script only ever had kind 14 refused, and that version ten's recorded vectors
+skip kinds 13, 14, and 16. The first candidate was already running on `d828813`.
+A successful delete had run on no version-ten kernel, and it cost two steps, so
+it went into the slice. That run was cancelled and replaced.
+
+**The note's wider point was checked and is worse than it said.** Running the
+model's chain and restart traces and collecting what they execute gives kinds 1
+to 5, 10, 15, 17 to 19, 22, and 23, and kind 20 runs on the quiet path, which
+that count does not see. No version-ten module but the contract table names the
+three missing kinds, and no version-nine or version-ten vector file does. The
+last file to record any of them is version eight's, whose kernel ADR 0092
+deleted. So the kernel's refusal branches for these kinds have had no vector
+since then, in version nine as well as ten.
+This slice does not close that. ADR 0104 now names the vectors as a precondition
+of step 7, and they are the next action, ahead of the remaining runs, because
+the runs are mechanical and this is a gap in what the kernel is checked against.
+
+**The next slice's first draft was parked, not published.** While the first
+candidate ran, the skewed-replica and seeded-launch runs were rebound to version
+ten, with two refusals added to the seeded-machines script. The owner then asked
+to conclude, so they went to `.claude/drafts/M4.3q-version-ten-skew-and-seed/`
+with the smoke that drove them. They are unverified on a network.
+
+**Local evidence, limited by the host.** The test's own `verify` ran with only
+the network stubbed, against the model and the system libsodium. Every step gave
+its expected code, each refusal landed on the empty-block root, and the final
+identity check passed. This is what M4.3n's first candidate lacked.
+
+**Hosted evidence.** Candidate run 41092967503 on `a6763a2` passed all four
+presets: CTest 188 of 188 on three and 199 of 199 on `clang-sanitizers`, and all
+twelve network pass lines on each. PR #435 was rebase-merged as `ca77f6d`, whose
+tree is the candidate's byte for byte.
+
 ### How a machine first registered a person on a network was delivered
 
 **The founder-decision gate passed with nothing reserved.** Issue #431, M4.3n,
