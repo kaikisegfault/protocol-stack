@@ -17,7 +17,7 @@ its eleven requirements, and six are met.
 
 | # | Requirement | Status |
 | ---: | --- | --- |
-| 1 | A test Founder's lifecycle on the four-validator devnet | Met 2026-09-27, M4.1 |
+| 1 | A test Founder's lifecycle on the four-validator devnet | Met 2026-09-27, M4.1; repeated on version ten, M4.3o |
 | 2 | A kind-4 and a kind-18 mint on a network | Met 2026-10-03, M4.2a to M4.2c; repeated on version ten, M4.3n |
 | 3 | The per-machine attestation-key registry | Met 2026-10-30, M4.3n: specified in `economy-transition-v10`, M4.3a, and revised per founder, M4.3f; executes in Python and in the C++ kernel, M4.3b to M4.3f; four seeded replicas admit a registration an active machine signs and refuse an inactive one's |
 | 4 | A deterministic test verifier as a replaceable component | Met 2026-10-09, M4.4, for version nine's proofs |
@@ -34,7 +34,8 @@ enrolls, buys and activates a seat, admits a signer, and funds a holding
 escrow. Her HUB key revokes every signer she has, and after a restart it
 recovers her. Eighteen blocks run on four replicas through two full restarts.
 Another person's HUB key, and her own signer posing as the authority, are both
-refused, so no wallet key alone rewrites an identity.
+refused, so no wallet key alone rewrites an identity. M4.3o, below, runs it on
+version ten.
 
 **Requirement 2's evidence** is `cometbft_seeded_mints_v9_test.py`. Four
 replicas are seeded from one snapshot at height 86,400, which the Python model
@@ -245,6 +246,20 @@ through `version_ten_snapshot.py`, and through all four nodes:
 Every receipt, root, and durable head is the model's, and the run checks each
 mint's issuance by the supply and its credit by Alice's balance.
 
+**A Founder's lifecycle runs on four version-ten replicas** (M4.3o).
+`cometbft_founder_lifecycle_v10_test.py` runs `founder_lifecycle_v10.py`:
+twenty-two transactions through all four nodes and two full restarts, one while
+Alice holds no signer. It is version nine's lifecycle with three additions:
+
+- kind 23 keys the seat's machine, and losing every signer leaves that key in
+  place;
+- a recovery whose approval would outlive its slot is refused as
+  `APPROVAL_LIFETIME_EXCEEDED`;
+- an empty escrow is created and deleted, so kind 14 runs to both of its answers.
+
+Every receipt, root, and durable head is the model's, and each of the six
+refusals lands on the root an empty block would.
+
 **The model found a specification defect, repaired before anything implemented
 it.** The registry step counted a mark of 0, which means never met, as meeting
 window 0. So 100 keys registered in the first two windows retired the launch key
@@ -306,7 +321,7 @@ vectors. The kernel reproduces every one of both.
 research seats' 731 cycles, and checks the exit audit's four claims at every
 window.
 
-**Eleven network runs gate every full verification**, in `tools/verify.sh`:
+**Twelve network runs gate every full verification**, in `tools/verify.sh`:
 
 - `cometbft_single_node_test.py` and `cometbft_four_validator_test.py`, the
   version-one devnet;
@@ -321,6 +336,7 @@ window.
 - `cometbft_skewed_replica_v9_test.py`, one replica's clock 120 seconds ahead,
   then behind, while the chain keeps committing;
 - `cometbft_founder_lifecycle_v9_test.py`, requirement 1;
+- `cometbft_founder_lifecycle_v10_test.py`, requirement 1 on version ten;
 - `cometbft_seeded_launch_v9_test.py`, a launch from a seeded head and three
   refused wrong launches;
 - `cometbft_seeded_mints_v9_test.py`, requirement 2;
@@ -420,11 +436,12 @@ dependency.
 ## Repository and verification
 
 - `kaikisegfault/protocol-stack`. Every issue is closed, and `main` is the only
-  branch. The next action, M4.3o, has no issue yet: the session that takes it
+  branch. The next action, M4.3p, has no issue yet: the session that takes it
   opens one.
-- **The last full hosted verification** is candidate run 40972792857, on
-  M4.3n's tree, which `main` holds byte for byte at `375a586`. Every preset
-  printed all three version-ten runs' pass lines.
+- **The last full hosted verification** is candidate run 41092967503, on
+  M4.3o's tree, which `main` holds byte for byte at `ca77f6d`. Every preset
+  passed its CTest entries and printed all twelve network pass lines, four of
+  them version ten's.
 - `verify.yml` classifies the changed paths with `tools/verification_scope.py`.
   Markdown and skill metadata take the lightweight path:
   `tools/verify_metadata.py` and the `tests/tools` suites. Everything else takes
@@ -432,7 +449,7 @@ dependency.
   `gcc-sanitizers`, `clang-debug`, and `clang-sanitizers`.
 - The full path verifies and tests the Go module and builds with CMake. It runs
   188 CTest entries, or 199 on `clang-sanitizers`, which adds eleven fuzz smokes,
-  and then the eleven network runs. "Verification required" gates the merge.
+  and then the twelve network runs. "Verification required" gates the merge.
 - The owner's machine is resource-constrained. Run focused local checks, leave
   the matrix to the hosted runners, and remove local build trees with
   `tools/clean-local.sh`.
@@ -443,6 +460,9 @@ dependency.
   scenario suite. M4.3g started from the third, `snapshot_v10`, and removed it. It is ignored through `.git/info/exclude`, exists
   only on the owner's machine, and passed no check. It is not repository state:
   a slice may start from a draft, and must verify it as new code.
+- `.claude/drafts/M4.3q-version-ten-skew-and-seed/` was written on 2026-10-30
+  under the same terms. It has passed a stubbed-network smoke and has never run
+  on a network.
 
 ## Remaining gap
 
@@ -452,8 +472,16 @@ resource network, bridges and liquidity (M9), the wallet (M10), a public
 testnet, and a mainnet. Revenue routing and escrow payouts exist only as Python
 models.
 
-**M4's requirements 6 and 8 to 11, and version nine's retirement.** Three
+**M4's requirements 6 and 8 to 11, and version nine's retirement.** Four
 findings bear on them.
+
+- **No vector file a compiled kernel reproduces records kinds 13, 14, or 16**,
+  which create and delete an escrow and revoke a signer. Version eight's were
+  the last to record any of them, and that kernel is gone (ADR 0092). On a kernel
+  today they are checked only by `hub-test-verifier-v9`, a success-only sequence,
+  and each version's lifecycle run, and step 7 removes the first and version
+  nine's run. Most of their refusal branches execute on no kernel. ADR 0104 makes
+  these vectors a precondition of step 7.
 
 - **Version nine accepts a HUB approval twice, and `hub-test-verifier-v9`
   executes it.** Each of the five HUB messages binds the transaction's
@@ -514,27 +542,32 @@ that yet.
 
 ## Exact next action
 
-**Run a Founder's lifecycle on four version-ten replicas:
-`cometbft_founder_lifecycle_v10_test.py`, M4.3o**, the sixth slice of step 6
-of ADR 0104's enumeration, and requirement 1's evidence moved onto version ten.
-It is `founder_lifecycle_v9.py` and its run asked of version ten:
+**Give version ten's execution vectors kinds 13, 14, and 16: M4.3p.** It comes
+before the rest of the migration because it closes a gap in what the kernel is
+checked against, and the rest is mechanical. Append to the model's chain, so no
+earlier vector's root moves, and have the C++ execution target reproduce:
 
-- Alice enrolls, buys and activates a seat, admits a signer, and creates and
-  funds a holding escrow;
-- her HUB key revokes every signer she has, and after a restart it recovers
-  her;
-- another person's HUB key, and her own signer posing as the authority, are
-  both refused.
+- each kind's success and each of its refusals, at the lifetime bound and one
+  height past it;
+- kind 14 with and without signers on the target, a target holding value, a
+  target equal to the fee escrow, and a deleted index not being reused;
+- kind 16 removing the last signer.
 
-Kinds 13 to 16 are signed whole by the HUB key, so each always carries a HUB
-proof and the lifetime governs it. So every transaction is built when it is
-submitted, as M4.3m's are, and the steps carry builders, as
-`seeded_machines_v10.Step` does.
+The chain's final root moves, and every consumer reads it from the file. The
+independent derivation in `tools/economy-transition-v10-execution-vectors/` must
+agree. No behaviour changes, so no specification or ADR should need to.
 
-Step 6 then moves the skewed-replica and seeded-launch runs onto version ten,
-and rebuilds the HUB test verifier for version ten with the network fixtures
-built on it. Then step 7 deletes version nine's stack, after ADR 0104's audit
-of what version ten still needs from it.
+**Then the rest of step 6, then step 7:**
+
+1. **M4.3q**, the skewed-replica and seeded-launch runs on version ten. Its draft
+   holds both, and adds to `seeded_machines_v10` the two refusals version nine's
+   seeded-mints run has and version ten's lacks: Bob minting Alice's seat, and a
+   second kind-18 mint.
+2. **The HUB test verifier** for version ten, with the network fixtures built on
+   it. It depends only on the kernel, and an unverified partial draft is in
+   `.claude/drafts/403-hub-test-verifier-v10/`.
+3. **Step 7** deletes version nine's stack, after ADR 0104's audit of what version
+   ten still needs from it.
 
 **Unblocked candidates behind it:**
 
@@ -546,10 +579,6 @@ point in version ten, `open_window` (ADR 0105). The suite's seven pinned roots
 are version nine's, though, and version nine's kernel will not gain the entry
 point, so that evidence waits for the suite to be rebound to version ten. An
 unverified partial draft is in `.claude/drafts/404-scenario-suite-v10/`.
-
-Moving the network fixtures onto a HUB test verifier now has a version-ten
-network to run on. A version-ten verifier depends only on the kernel; an
-unverified partial draft is in `.claude/drafts/403-hub-test-verifier-v10/`.
 
 ## Blockers
 
