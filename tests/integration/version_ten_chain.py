@@ -50,6 +50,7 @@ for _entry in (
 
 import version_ten_snapshot  # noqa: E402
 from pinned_sodium import Sodium  # noqa: E402
+from simulation.economy_transition_v6.identity import signer_id  # noqa: E402
 from simulation.economy_transition_v10 import contract as c  # noqa: E402
 from simulation.economy_transition_v10 import genesis as g  # noqa: E402
 from simulation.economy_transition_v10.block import (  # noqa: E402
@@ -307,10 +308,94 @@ class Session:
             self._signer.derive(f"{name}-signer"),
         )
 
+    def key(self, label: str) -> bytes:
+        """Another key the test holds. The same label is the same key."""
+        return self._signer.derive(label)
+
+    # --- what an identity does with its own keys --------------------------
+
+    def pays_from(
+        self, who: Person, signer_key: bytes, recipient_escrow: bytes,
+        nonce: int, height: int, amount: int = TRANSFER_AMOUNT,
+    ) -> bytes:
+        """Kind 19 by any signer key, confirmed by `who`'s HUB key.
+
+        The key decides which escrow pays, because a signer belongs to one
+        escrow. A key that is not, or is no longer, a signer is refused as
+        `SIGNER_NOT_FOUND`.
+        """
+        return self._build.approved(
+            replace(who, signer_key=signer_key), c.TRANSFER_VERIFIED, nonce,
+            {"recipient_escrow_id": recipient_escrow, "amount_atomic": amount},
+            height + LIFETIME,
+        )
+
+    def adds_signer(
+        self, who: Person, escrow: bytes, signer_key: bytes, nonce: int,
+        height: int, authority: bytes | None = None, lifetime: int = LIFETIME,
+    ) -> bytes:
+        """Kind 15, which the escrow it names pays for at that escrow's nonce.
+
+        **This is also recovery** (ADR 0044): an identity whose every signer is
+        gone adds a new one exactly this way. `authority` replaces the HUB key
+        only to be refused, and `lifetime` exists for the caller that needs an
+        approval to outlive its slot.
+        """
+        return self._signed_whole(
+            c.SIGNER_ADD, authority or who.hub_key, nonce, {
+                "hub_identity_hash": who.identity,
+                "escrow_id": escrow,
+                "signer_public_key": signer_key,
+            }, height + lifetime)
+
+    def revokes_signer(
+        self, who: Person, escrow: bytes, signer_key: bytes, nonce: int,
+        height: int,
+    ) -> bytes:
+        """Kind 16: the HUB key removes a signer, the last one included."""
+        return self._signed_whole(c.SIGNER_REVOKE, who.hub_key, nonce, {
+            "hub_identity_hash": who.identity,
+            "escrow_id": escrow,
+            "signer_id": signer_id(signer_key),
+        }, height + LIFETIME)
+
+    def creates_escrow(self, who: Person, nonce: int, height: int) -> bytes:
+        """Kind 13: a keyless holding escrow, its fee paid by the first escrow."""
+        return self._signed_whole(c.ESCROW_CREATE, who.hub_key, nonce, {
+            "hub_identity_hash": who.identity,
+            "fee_escrow_id": who.escrow,
+        }, height + LIFETIME)
+
+    def deletes_escrow(
+        self, who: Person, target: bytes, nonce: int, height: int
+    ) -> bytes:
+        """Kind 14, which refuses an escrow still holding value."""
+        return self._signed_whole(c.ESCROW_DELETE, who.hub_key, nonce, {
+            "hub_identity_hash": who.identity,
+            "target_escrow_id": target,
+            "fee_escrow_id": who.escrow,
+        }, height + LIFETIME)
+
+    def _signed_whole(
+        self, kind: int, authority: bytes, nonce: int, body: dict,
+        valid_until: int,
+    ) -> bytes:
+        """Kinds 13 to 16 carry no body approval: the envelope is the proof."""
+        return self._build.sign(
+            self._build.transaction(kind, authority, nonce, body, valid_until))
+
     # --- the ledger -------------------------------------------------------
 
     def balance(self, escrow: bytes) -> int:
         return self._ledger.balance(escrow)
+
+    def signers_of(self, escrow: bytes) -> set[bytes]:
+        """The signer identifiers an escrow currently has, possibly none."""
+        return {
+            signer
+            for signer, owner in self._ledger.registry.signers.items()
+            if owner == escrow
+        }
 
     def nonce(self, escrow: bytes) -> int:
         return self._ledger.nonce(escrow)
