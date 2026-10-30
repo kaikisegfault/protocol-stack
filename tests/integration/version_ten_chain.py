@@ -389,6 +389,9 @@ class Session:
     def balance(self, escrow: bytes) -> int:
         return self._ledger.balance(escrow)
 
+    def has_escrow(self, escrow: bytes) -> bool:
+        return escrow in self._ledger.registry.escrows
+
     def signers_of(self, escrow: bytes) -> set[bytes]:
         """The signer identifiers an escrow currently has, possibly none."""
         return {

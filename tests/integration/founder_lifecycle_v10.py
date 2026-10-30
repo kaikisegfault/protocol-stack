@@ -30,7 +30,8 @@ the only thing she can do.
 
 A holding escrow that still holds value cannot be deleted, which is the last
 refusal. Every refusal must land on the root an empty block at that height and
-stamp would produce: it writes nothing and charges nothing.
+stamp would produce: it writes nothing and charges nothing. Then her HUB key
+creates an empty escrow and deletes it, so kind 14 runs to both of its answers.
 
 **Every transaction is built when it is submitted.** Version nine's script was
 built before the launch. Kinds 13 to 16 are signed whole by the HUB key, so each
@@ -60,6 +61,9 @@ HOLDING_FUNDS = 5_000_000
 # The holding escrow her HUB key creates second. An escrow is derived from its
 # owner and an index, so it is known before the chain exists.
 ALICE_HOLDING_ESCROW = escrow_id(ALICE_IDENTITY, 1)
+
+# The escrow she creates third, and deletes while it is empty.
+ALICE_EMPTY_ESCROW = escrow_id(ALICE_IDENTITY, 2)
 
 # The keys a Founder's lifecycle adds and loses, derived from these labels.
 SECOND_SIGNER = "alice-second-signer"
@@ -144,6 +148,10 @@ def lifecycle(session: Session) -> tuple[Step, ...]:
         Step("a holding escrow with value cannot be deleted",
              lambda h: s.deletes_escrow(alice, ALICE_HOLDING_ESCROW, 11, h), 3,
              "ESCROW_NOT_EMPTY"),
+        Step("her HUB key creates an empty escrow",
+             lambda h: s.creates_escrow(alice, 11, h), 0),
+        Step("her HUB key deletes the empty escrow",
+             lambda h: s.deletes_escrow(alice, ALICE_EMPTY_ESCROW, 12, h), 1),
     )
 
 
@@ -163,5 +171,7 @@ def check_the_identity(session: Session) -> None:
         raise RuntimeError("the holding escrow does not hold its own signer")
     if session.balance(ALICE_HOLDING_ESCROW) == 0:
         raise RuntimeError("the holding escrow was emptied")
+    if session.has_escrow(ALICE_EMPTY_ESCROW):
+        raise RuntimeError("the deleted escrow is still there")
     if session.machine_key(SEAT_ID) != session.alice_machine_key:
         raise RuntimeError("losing every signer moved the seat's machine key")

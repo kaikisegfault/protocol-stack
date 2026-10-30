@@ -3,11 +3,9 @@
 """A test Founder's lifecycle on four independent version-ten replicas.
 
 This is requirement 1 of the M4 goal, `first-goal.md`, on the contract that
-replaces version nine. Version ten's execution vectors reach kind 15 and none
-of kinds 13, 14, or 16, so this run is also the first time the version-ten
-kernel executes those three.
+replaces version nine.
 
-**The script is `founder_lifecycle_v10.lifecycle`**, twenty blocks entering
+**The script is `founder_lifecycle_v10.lifecycle`**, twenty-two blocks entering
 through all four replicas in turn:
 
 - Alice enrolls, buys a seat, activates it, and keys its machine.
@@ -16,6 +14,7 @@ through all four replicas in turn:
 - The HUB key revokes her first signer and then her last, and each revoked key
   is refused by name.
 - The HUB key recovers her with a new signer, which pays.
+- A holding escrow with value cannot be deleted, and an empty one can.
 
 Two refusals are M4's exit criterion made concrete. Another person's HUB key,
 and Alice's own signer presented as the authority, are both `UNAUTHORIZED` to
@@ -135,7 +134,8 @@ def verify(
         "all 4 nodes, a seat bought, activated, and keyed, a second signer and "
         "a holding escrow added under the HUB key, every signer revoked, and "
         "the identity recovered under the HUB key after a restart with no "
-        f"signer; {len(refusals)} refusals by name -- {', '.join(refusals)} -- "
+        "signer, and an empty escrow created and deleted; "
+        f"{len(refusals)} refusals by name -- {', '.join(refusals)} -- "
         f"each on the empty-block root; {len(runs) - 1} full restarts inside "
         "the window, protocol version, durable height, stamp and root audited "
         "in all 4 stores per stop)"
