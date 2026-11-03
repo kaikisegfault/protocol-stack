@@ -260,3 +260,14 @@ where practical.
 Work is done only when relevant verification passes, the diff is self-reviewed,
 documentation matches behavior, and `docs/project/current-state.md` records the
 evidence and next unblocked action.
+
+## Agent context
+
+Lessons and decisions kept for Claude, one file each in `.claude/agent-context/` (moved in from Claude Code's auto-memory on 3 Nov 2026). Check a file is still true before relying on it; fix or delete it when it isn't.
+
+- `local-cpp-feedback-without-cmake.md`: The owner's host has no cmake/ninja; compile changed C++ directly with g++ against a scratch sodium.h and the system libsodium runtime for fast, cache-free feedback.
+- `local-go-feedback-offline.md`: How to check Go adapter changes on the owner's host without downloading CometBFT: offline tests for stdlib-only packages, and a faked-import go/types check for the rest.
+- `owner-invites-surface-logic-questions.md`: The owner wants to be asked whenever a surface-level rule or user-to-system flow is in doubt, not only for founder-reserved values
+- `owner-prefers-prose-for-broad-questions.md`: For broad architectural questions the owner cancels the selectable-option tool and answers in raw prose; keep using the tool for narrow value choices.
+- `parallel-agents-lessons.md`: What went wrong running parallel worker agents on 2026-10-21; check bases, push backups, and expect usage limits to kill workers mid-draft.
+- `run-only-necessary-hosted-checks.md`: Owner wants only the hosted CI a change actually needs; don't wait on a post-merge run that re-verifies an identical tree.
